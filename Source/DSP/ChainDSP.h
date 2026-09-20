@@ -2,33 +2,31 @@
 
 #include <JuceHeader.h>
 #include <array>
+#include <complex>
 
 class VVChainDSP
 {
 public:
     struct Parameters
     {
-        // Analog prototype EQ
+        // Four-band analogue-coloured parametric EQ.
         std::array<float, 4> freq { 80.f, 350.f, 2500.f, 10000.f };
         std::array<float, 4> gain { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> q { 0.707f, 0.707f, 0.707f, 0.707f };
         float eqColor = 35.f;
         float hfCornerHz = 70.f;
 
-        // OTT / PunkOTT-MB style: gate -> 4-band split -> lifter -> compressor -> band level
-        // -> sum -> limiter -> optional clipper -> output.
+        // Four-band OTT / PunkOTT-MB style chain.
         std::array<float, 4> ottDegree { 100.f, 100.f, 100.f, 100.f };
         std::array<float, 4> ottLifterThreshold { -40.f, -40.f, -40.f, -40.f };
         std::array<float, 4> ottLifterAttack { 50.f, 50.f, 50.f, 50.f };
         std::array<float, 4> ottLifterRelease { 50.f, 50.f, 50.f, 50.f };
         std::array<float, 4> ottLifterMix { 100.f, 100.f, 100.f, 100.f };
-
         std::array<float, 4> ottCompThreshold { -12.f, -12.f, -12.f, -12.f };
         std::array<float, 4> ottCompAttack { 15.f, 15.f, 15.f, 15.f };
         std::array<float, 4> ottCompRelease { 60.f, 60.f, 60.f, 60.f };
         std::array<float, 4> ottCompMix { 100.f, 100.f, 100.f, 100.f };
         std::array<float, 4> ottBandLevelDb { 0.f, 0.f, 0.f, 0.f };
-
         float ottX1 = 350.f;
         float ottX2 = 1000.f;
         float ottX3 = 9000.f;
@@ -38,7 +36,7 @@ public:
         bool ottClipper = true;
         float ottOutputGainDb = -6.f;
 
-        // Type-A / Dolby A style 4-band encoder-inspired enhancement.
+        // Four-band Type-A / Dolby-A-style dynamic enhancer.
         std::array<float, 4> atypeDegree { 0.f, 20.f, 70.f, 55.f };
         std::array<float, 4> atypeBandLevelDb { 0.f, 0.f, 1.f, 1.f };
         float atypeAttackMs = 10.f;
@@ -47,14 +45,13 @@ public:
         float atypeInputGainDb = 0.f;
         float atypeOutputGainDb = 0.f;
 
-        // Split-band de-esser with two direct crossover controls.
-        float deessLowHz = 4500.f;
-        float deessHighHz = 10500.f;
-        float deessRangeDb = 10.f;
-        float deessStrength = 75.f;
-        float deessAttackMs = 1.f;
-        float deessReleaseMs = 80.f;
-        bool deessListen = false;
+        // DeEsser reference algorithm controls from IgorKhramtsov/DeEsser.
+        // The original reference is a file/offline processor using:
+        // zero-crossing / difference-rate detection -> 8192-point FFT ->
+        // frequency-dependent suppression -> inverse FFT.
+        int deessVoice = 0;             // 0 = Male Vocal, 1 = Female Vocal.
+        float deessIntensity = 10.f;    // Reference range 2..10.
+        float deessAverageOffset = 0.f; // Reference slider range -0.1..0.1.
 
         float dryWet = 100.f;
         float outputDb = 0.f;
@@ -65,6 +62,8 @@ public:
     void process(juce::AudioBuffer<float>& buffer, const Parameters& p);
 
 private:
+    static constexpr int kDeessBlockSize = 8192;
+
     struct Biquad
     {
         double b0 = 1.0, b1 = 0.0, b2 = 0.0;
@@ -111,6 +110,15 @@ private:
         std::array<float, 2> compEnvDb { 0.f, 0.f };
     };
 
+    struct DeEssState
+    {
+        std::array<float, kDeessBlockSize> input {};
+        std::array<float, kDeessBlockSize> output {};
+        int inputCount = 0;
+        int outputRead = 0;
+        int outputReady = 0;
+    };
+
     static Biquad makeAnalogPeak(double fs, double f0, double gainDb, double q);
     static Biquad makeAnalogHighPass(double fs, double f0, double q);
     static Biquad makeLowPass(double fs, double f0, double q);
@@ -134,6 +142,15 @@ private:
 
     static float applyLimiter(float input, float& envDb, double sampleRate);
 
+    static void fft(std::array<std::complex<double>, kDeessBlockSize>& data, bool inverse);
+
+    void processDeEsserWindow(DeEssState& state, const Parameters& p);
+    void processDeEsser(juce::AudioBuffer<float>& buffer, const Parameters& p);
+
+    void applyEq(juce::AudioBuffer<float>&, const Parameters&);
+    void applyOtt(juce::AudioBuffer<float>&, const Parameters&);
+    void applyAType(juce::AudioBuffer<float>&, const Parameters&);
+
     std::array<Biquad, 4> eq {};
     Biquad hp {};
 
@@ -147,18 +164,15 @@ private:
     Biquad typeHP9k {};
     std::array<std::array<float, 2>, 4> typeEnv {};
 
-    Biquad deessHP {};
-    Biquad deessLP {};
-    std::array<float, 2> deessEnv {};
+    std::array<DeEssState, 2> deess {};
+    std::array<std::array<float, kDeessBlockSize>, 2> dryDelay {};
+    int dryDelayWrite = 0;
 
     std::array<float, 2> gateEnvDb {};
     std::array<float, 2> limiterEnvDb {};
 
+    std::array<std::complex<double>, kDeessBlockSize> deessFft {};
+
     double sr = 48000.0;
     int channels = 2;
-
-    void applyEq(juce::AudioBuffer<float>&, const Parameters&);
-    void applyOtt(juce::AudioBuffer<float>&, const Parameters&);
-    void applyAType(juce::AudioBuffer<float>&, const Parameters&);
-    void applyDeEsser(juce::AudioBuffer<float>&, const Parameters&);
 };
