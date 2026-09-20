@@ -53,9 +53,9 @@ public:
 
         // Reference-based DeEsser controls. Defaults preserve the reference behaviour.
         float deessReferenceHz = 12500.f;
-        float deessSensitivity = 1.f;
+        float deessIntensity = 10.f;
+        float deessAverageOffset = 0.f;
         int deessTriggerCount = 10;
-        float deessAmount = 100.f;
         float deessMix = 100.f;
 
         float dryWet = 100.f;
@@ -67,10 +67,7 @@ public:
     void process(juce::AudioBuffer<float>& buffer, const Parameters& p);
 
 private:
-    static constexpr int kDeessBlockSize = 4096;
-    static constexpr int kDeessHopSize = 1365;
-    static constexpr int kDeessFrameShift = 2730;
-    static constexpr int kDeessDelay = kDeessBlockSize - kDeessHopSize;
+    static constexpr int kDeessBlockSize = 8192;
 
     struct Biquad
     {
@@ -184,6 +181,11 @@ private:
     std::array<float, 2> limiterEnvDb {};
 
     std::array<std::complex<double>, kDeessBlockSize> deessFft {};
+
+    double deessAvgSum = 0.0;
+    uint64_t deessAvgCount = 0;
+    uint64_t deessSampleCounter = 0;
+    float deessPendingSample = 0.0f;
 
     double sr = 48000.0;
     int channels = 2;
