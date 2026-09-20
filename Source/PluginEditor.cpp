@@ -41,16 +41,28 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     setResizable(true, true);
     setSize(1360, 900);
 
-    const std::array<juce::String, 6> names
+    const std::array<juce::String, 5> names
     {
-        "EQ / ANALOG", "OTT", "TYPE-A", "DE-ESSER", "MIX / OUT", "ANALYZER"
+        "EQ / ANALOG", "OTT", "TYPE-A", "DE-ESSER", "MIX / OUT"
     };
 
-    for (int i = 0; i < 6; ++i)
+    const std::array<juce::String, 5> bypassIds
+    {
+        "EQ_BYPASS", "OTT_BYPASS", "ATYPE_BYPASS", "DEESS_BYPASS", "MIX_BYPASS"
+    };
+
+    for (int i = 0; i < 5; ++i)
     {
         moduleButtons[(size_t)i].setButtonText(names[(size_t)i]);
         moduleButtons[(size_t)i].onClick = [this, i] { selectModule(i); };
         addAndMakeVisible(moduleButtons[(size_t)i]);
+
+        bypassButtons[(size_t)i].setButtonText("BYPASS");
+        bypassButtons[(size_t)i].setClickingTogglesState(true);
+        bypassButtons[(size_t)i].setColour(juce::ToggleButton::textColourId, juce::Colour(0xfff0ece0));
+        bypassAttachments[(size_t)i] = std::make_unique<BoolAttachment>(
+            audioProcessor.apvts, bypassIds[(size_t)i], bypassButtons[(size_t)i]);
+        addAndMakeVisible(bypassButtons[(size_t)i]);
     }
 
     const std::array<juce::String, 4> bands
@@ -78,37 +90,17 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addAndMakeVisible(controlLabels[i]);
     }
 
-    deEssVoice.addItem("Male Vocal", 1);
-    deEssVoice.addItem("Female Vocal", 2);
-    deEssVoiceAttachment = std::make_unique<ComboAttachment>(
-        audioProcessor.apvts, "DEESS_VOICE", deEssVoice);
-    addAndMakeVisible(deEssVoice);
-
     addAndMakeVisible(ottClipper);
-    addAndMakeVisible(analyzerAverage);
-    addAndMakeVisible(analyzerPeak);
-    addAndMakeVisible(analyzerPersistence);
-    addAndMakeVisible(analyzerSmooth);
-
-    analyzerAverage.setToggleState(true, juce::dontSendNotification);
-    analyzerPeak.setToggleState(true, juce::dontSendNotification);
-    analyzerSmooth.setToggleState(true, juce::dontSendNotification);
 
     selectModule(0);
     selectBand(0);
-    analyzerSmoothed.fill(-120.0f);
-    peakSpectrum.fill(-120.0f);
-    for (auto& row : waterfall)
-        row.fill(-120.0f);
-
-    startTimerHz(30);
 }
 
 void VVChainAudioProcessorEditor::selectModule(int index)
 {
-    moduleIndex = juce::jlimit(0, 5, index);
+    moduleIndex = juce::jlimit(0, 4, index);
 
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < 5; ++i)
     {
         const bool active = i == moduleIndex;
         moduleButtons[(size_t)i].setColour(
@@ -143,7 +135,7 @@ void VVChainAudioProcessorEditor::selectBand(int index)
 
 void VVChainAudioProcessorEditor::hideControl(int index)
 {
-    if (index < 0 || index >= (int)controls.size())
+    if (index < 0 || index >= static_cast<int>(controls.size()))
         return;
 
     attachments[(size_t)index].reset();
@@ -154,7 +146,7 @@ void VVChainAudioProcessorEditor::hideControl(int index)
 void VVChainAudioProcessorEditor::setControl(int index, const juce::String& parameterId,
                                              const juce::String& title)
 {
-    if (index < 0 || index >= (int)controls.size())
+    if (index < 0 || index >= static_cast<int>(controls.size()))
         return;
 
     controls[(size_t)index].setVisible(true);
@@ -168,7 +160,7 @@ void VVChainAudioProcessorEditor::setControlRangeForDisplay(int index, double mi
                                                             double maximum, double step,
                                                             const juce::String& suffix)
 {
-    if (index < 0 || index >= (int)controls.size())
+    if (index < 0 || index >= static_cast<int>(controls.size()))
         return;
 
     controls[(size_t)index].setRange(minimum, maximum, step);
@@ -177,16 +169,14 @@ void VVChainAudioProcessorEditor::setControlRangeForDisplay(int index, double mi
 
 void VVChainAudioProcessorEditor::rebuildControls()
 {
-    for (int i = 0; i < (int)controls.size(); ++i)
+    for (int i = 0; i < static_cast<int>(controls.size()); ++i)
         hideControl(i);
 
-    ottClipper.setVisible(moduleIndex == 1);
-    deEssVoice.setVisible(false);
+    for (auto& b : bypassButtons)
+        b.setVisible(false);
 
-    analyzerAverage.setVisible(moduleIndex == 5);
-    analyzerPeak.setVisible(moduleIndex == 5);
-    analyzerPersistence.setVisible(moduleIndex == 5);
-    analyzerSmooth.setVisible(moduleIndex == 5);
+    bypassButtons[(size_t)moduleIndex].setVisible(true);
+    ottClipper.setVisible(moduleIndex == 1);
 
     if (moduleIndex == 0)
     {
@@ -269,22 +259,17 @@ void VVChainAudioProcessorEditor::rebuildControls()
     }
     else if (moduleIndex == 3)
     {
-        for (int i = 0; i < 18; ++i)
-            hideControl(i);
+        setControl(0, "DEESS_FREQ", "REFERENCE FREQ");
+        setControl(1, "DEESS_SENS", "THRESHOLD SENS.");
+        setControl(2, "DEESS_TRIGGER", "TRIGGER COUNT");
+        setControl(3, "DEESS_AMOUNT", "AMOUNT");
+        setControl(4, "DEESS_MIX", "DE-ESS MIX");
 
-        for (int i = 0; i < 8; ++i)
-        {
-            controlLabels[(size_t)i].setText(
-                i == 0 ? "FFT SIZE" :
-                i == 1 ? "REFERENCE FREQ" :
-                i == 2 ? "BUFFER STEP" :
-                i == 3 ? "OVERLAP" :
-                i == 4 ? "OUTPUT" :
-                i == 5 ? "DETECTOR" :
-                i == 6 ? "TRIGGER" : "REFERENCE RATE",
-                juce::dontSendNotification);
-            controlLabels[(size_t)i].setVisible(true);
-        }
+        setControlRangeForDisplay(0, 4000, 16000, 10, " Hz");
+        setControlRangeForDisplay(1, 0.5, 2.0, 0.01, " x");
+        setControlRangeForDisplay(2, 1, 50, 1, "");
+        setControlRangeForDisplay(3, 0, 100, 0.1, " %");
+        setControlRangeForDisplay(4, 0, 100, 0.1, " %");
     }
     else if (moduleIndex == 4)
     {
@@ -353,11 +338,9 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& e)
         {
             const auto n = juce::String(i + 1);
             const float f = parameterValue("EQ" + n + "_FREQ");
-            const float g = parameterValue("EQ" + n + "_GAIN");
-            const juce::Point<float> p(
-                graphFrequencyToX(graph, f),
-                graph.getCentreY() - g / 36.f * graph.getHeight());
-
+            const float gain = parameterValue("EQ" + n + "_GAIN");
+            const juce::Point<float> p(graphFrequencyToX(graph, f),
+                                       graph.getCentreY() - gain / 36.f * graph.getHeight());
             if (p.getDistanceFrom(e.position) < nearest)
             {
                 nearest = p.getDistanceFrom(e.position);
@@ -394,10 +377,8 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& e)
         for (int i = 0; i < 4; ++i)
         {
             const float degree = parameterValue("OTT_DEGREE" + juce::String(i + 1));
-            const juce::Point<float> p(
-                graphFrequencyToX(graph, centers[i]),
-                graphPercentToY(graph, degree));
-
+            const juce::Point<float> p(graphFrequencyToX(graph, centers[i]),
+                                       graphPercentToY(graph, degree));
             if (p.getDistanceFrom(e.position) < nearest)
             {
                 nearest = p.getDistanceFrom(e.position);
@@ -411,14 +392,11 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& e)
     {
         const float centers[4] = { 40.f, 800.f, 5200.f, 12000.f };
         float nearest = 22.f;
-
         for (int i = 0; i < 4; ++i)
         {
             const float degree = parameterValue("ATYPE_DEGREE" + juce::String(i + 1));
-            const juce::Point<float> p(
-                graphFrequencyToX(graph, centers[i]),
-                graphPercentToY(graph, degree));
-
+            const juce::Point<float> p(graphFrequencyToX(graph, centers[i]),
+                                       graphPercentToY(graph, degree));
             if (p.getDistanceFrom(e.position) < nearest)
             {
                 nearest = p.getDistanceFrom(e.position);
@@ -427,16 +405,11 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& e)
             }
         }
     }
-    else if (moduleIndex == 3)
-    {
-        dragTarget = DragTarget::None;
-    }
     else if (moduleIndex == 4)
     {
         const juce::Point<float> pDry(
             graph.getX() + graph.getWidth() * 0.35f,
             graphPercentToY(graph, parameterValue("DRY_WET")));
-
         const juce::Point<float> pOut(
             graph.getX() + graph.getWidth() * 0.65f,
             graphPercentToY(graph,
@@ -458,21 +431,17 @@ void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& e)
     const auto graph = juce::Rectangle<float>(24.f, 108.f,
                                                (float)getWidth() - 48.f,
                                                (float)getHeight() - 350.f);
-
     const float x = e.position.x;
     const float y = e.position.y;
-
     const int dragId = static_cast<int>(dragTarget);
 
     if (dragTarget >= DragTarget::EqBand1 && dragTarget <= DragTarget::EqBand4)
     {
         const int band = dragId - static_cast<int>(DragTarget::EqBand1);
         const auto n = juce::String(band + 1);
-        const float freq = graphXToFrequency(graph, x);
-        const float gain = juce::jlimit(-24.f, 24.f,
-            graphYToPercent(graph, y) * 0.48f - 24.f);
-        setParameter("EQ" + n + "_FREQ", freq);
-        setParameter("EQ" + n + "_GAIN", gain);
+        setParameter("EQ" + n + "_FREQ", graphXToFrequency(graph, x));
+        setParameter("EQ" + n + "_GAIN",
+                     juce::jlimit(-24.f, 24.f, graphYToPercent(graph, y) * 0.48f - 24.f));
         return;
     }
 
@@ -535,7 +504,6 @@ void VVChainAudioProcessorEditor::drawGrid(juce::Graphics& g,
                                             float maxDb)
 {
     g.setColour(juce::Colour(0xff3b392f).withAlpha(0.70f));
-
     for (int i = 1; i < 10; ++i)
     {
         const float x = graph.getX() + graph.getWidth() * i / 10.f;
@@ -551,7 +519,6 @@ void VVChainAudioProcessorEditor::drawGrid(juce::Graphics& g,
 
     g.setColour(juce::Colours::white.withAlpha(0.38f));
     g.setFont(juce::FontOptions(10.f));
-
     for (int i = 0; i <= lines; ++i)
     {
         const float db = maxDb - (maxDb - minDb) * i / (float)lines;
@@ -566,15 +533,14 @@ void VVChainAudioProcessorEditor::drawEqGraph(juce::Graphics& g, juce::Rectangle
 
     auto dbToY = [&graph](float db)
     {
-        return graph.getBottom() - graph.getHeight() * juce::jlimit(0.f, 1.f, (db + 18.f) / 36.f);
+        return graph.getBottom() - graph.getHeight() *
+            juce::jlimit(0.f, 1.f, (db + 18.f) / 36.f);
     };
 
     g.setColour(juce::Colours::white.withAlpha(0.35f));
-    const float zeroY = dbToY(0.f);
-    g.drawHorizontalLine((int)zeroY, graph.getX(), graph.getRight());
+    g.drawHorizontalLine((int)dbToY(0.f), graph.getX(), graph.getRight());
 
     juce::Path response;
-
     for (int sample = 0; sample <= 320; ++sample)
     {
         const float t = sample / 320.f;
@@ -593,13 +559,10 @@ void VVChainAudioProcessorEditor::drawEqGraph(juce::Graphics& g, juce::Rectangle
         }
 
         const auto point = juce::Point<float>(
-            graphFrequencyToX(graph, hz),
-            dbToY(db));
+            graphFrequencyToX(graph, hz), dbToY(db));
 
-        if (sample == 0)
-            response.startNewSubPath(point);
-        else
-            response.lineTo(point);
+        if (sample == 0) response.startNewSubPath(point);
+        else response.lineTo(point);
     }
 
     g.setColour(juce::Colour(0xffded7c7));
@@ -608,12 +571,10 @@ void VVChainAudioProcessorEditor::drawEqGraph(juce::Graphics& g, juce::Rectangle
     for (int band = 0; band < 4; ++band)
     {
         const auto n = juce::String(band + 1);
-        const float f = parameterValue("EQ" + n + "_FREQ");
-        const float gain = parameterValue("EQ" + n + "_GAIN");
         drawHandle(g,
-                   { graphFrequencyToX(graph, f), dbToY(gain) },
-                   bandColours[(size_t)band],
-                   bandIndex == band);
+                   { graphFrequencyToX(graph, parameterValue("EQ" + n + "_FREQ")),
+                     dbToY(parameterValue("EQ" + n + "_GAIN")) },
+                   bandColours[(size_t)band], bandIndex == band);
     }
 }
 
@@ -648,14 +609,10 @@ void VVChainAudioProcessorEditor::drawOttGraph(juce::Graphics& g, juce::Rectangl
         const float left = band == 0 ? 20.f : xs[band - 1];
         const float right = band == 3 ? 18000.f : xs[band];
 
-        juce::Path bandPath;
         const float y = graphPercentToY(graph, degree);
-        bandPath.startNewSubPath(graphFrequencyToX(graph, left), y);
-        bandPath.lineTo(graphFrequencyToX(graph, right), y);
-
         g.setColour(bandColours[(size_t)band].withAlpha(0.88f));
-        g.strokePath(bandPath, juce::PathStrokeType(3.f));
-
+        g.drawLine(graphFrequencyToX(graph, left), y,
+                   graphFrequencyToX(graph, right), y, 3.f);
         drawHandle(g, { graphFrequencyToX(graph, centers[band]), y },
                    bandColours[(size_t)band], bandIndex == band);
     }
@@ -682,8 +639,6 @@ void VVChainAudioProcessorEditor::drawTypeAGraph(juce::Graphics& g, juce::Rectan
     }
 
     const float centers[4] = { 40.f, 700.f, 5200.f, 12000.f };
-    const std::array<juce::String, 4> labels { "B1", "B2", "B3", "B4" };
-
     for (int i = 0; i < 4; ++i)
     {
         const float degree = parameterValue("ATYPE_DEGREE" + juce::String(i + 1));
@@ -693,11 +648,6 @@ void VVChainAudioProcessorEditor::drawTypeAGraph(juce::Graphics& g, juce::Rectan
         g.setColour(bandColours[(size_t)i].withAlpha(0.65f));
         g.drawLine(x, graph.getBottom(), x, y, 3.f);
         drawHandle(g, { x, y }, bandColours[(size_t)i], false);
-
-        g.setColour(bandColours[(size_t)i]);
-        g.setFont(juce::FontOptions(12.f));
-        g.drawText(labels[(size_t)i] + "  " + juce::String(degree, 1) + "%",
-                   (int)x - 40, (int)y - 25, 80, 18, juce::Justification::centred);
     }
 
     g.setColour(juce::Colours::white.withAlpha(0.65f));
@@ -706,194 +656,143 @@ void VVChainAudioProcessorEditor::drawTypeAGraph(juce::Graphics& g, juce::Rectan
                (int)graph.getWidth() - 24, 18, juce::Justification::centredLeft);
 }
 
-void VVChainAudioProcessorEditor::drawDeEsserGraph(juce::Graphics& g, juce::Rectangle<float> graph)
+void VVChainAudioProcessorEditor::drawDeEsserGraph(juce::Graphics& g,
+                                                   juce::Rectangle<float> graph)
 {
     g.setColour(juce::Colour(0xff0b0c0b));
     g.fillRoundedRectangle(graph, 8.f);
 
-    const float panelW = juce::jlimit(185.f, 250.f, graph.getWidth() * 0.24f);
-    const float gap = 10.f;
-    const float wx = graph.getX() + panelW + 14.f;
-    const float ww = std::max(120.f, graph.getRight() - wx - 12.f);
-    const float wh = std::max(100.f, (graph.getHeight() - 20.f - gap) * 0.5f);
-
-    auto drawPanel = [&g](juce::Rectangle<float> r, const juce::String& label,
-                          juce::Colour colour, float phase, float scale)
-    {
-        g.setColour(juce::Colour(0xff121511));
-        g.fillRect(r);
-        g.setColour(juce::Colour(0xff383c34));
-        g.drawRect(r, 1.f);
-
-        juce::Path p;
-        for (int i = 0; i <= 320; ++i)
-        {
-            const float t = i / 320.f;
-            const float x = r.getX() + 6.f + t * (r.getWidth() - 12.f);
-            const float env = 0.23f + 0.77f * (0.5f + 0.5f * std::sin(t * 13.5f + phase));
-            const float y = r.getCentreY() -
-                            std::sin(t * 40.f + phase) * r.getHeight() * 0.24f * env * scale;
-            if (i == 0) p.startNewSubPath(x, y); else p.lineTo(x, y);
-        }
-
-        g.setColour(colour);
-        g.strokePath(p, juce::PathStrokeType(1.4f));
-        g.setFont(juce::FontOptions(10.f));
-        g.drawText(label, (int)r.getX() + 8, (int)r.getY() + 6, 120, 16,
-                   juce::Justification::left);
-    };
+    const float leftW = juce::jlimit(230.f, 290.f, graph.getWidth() * 0.25f);
+    const auto left = graph.removeFromLeft(leftW).reduced(12.f);
 
     g.setColour(juce::Colour(0xff181a17));
-    g.fillRect(graph.getX() + 8.f, graph.getY() + 8.f, panelW, graph.getHeight() - 16.f);
+    g.fillRoundedRectangle(left, 6.f);
+
     g.setColour(juce::Colours::white);
-    g.setFont(juce::FontOptions(11.f));
-    g.drawText("DE-ESSER", (int)graph.getX() + 20, (int)graph.getY() + 18, 140, 18,
-               juce::Justification::left);
+    g.setFont(juce::FontOptions(13.f));
+    g.drawText("DE-ESSER", (int)left.getX() + 14, (int)left.getY() + 12,
+               (int)left.getWidth() - 28, 22, juce::Justification::left);
 
-    const std::array<juce::String, 8> info {
+    g.setColour(juce::Colour(0xffb4b3a8));
+    g.setFont(juce::FontOptions(10.f));
+
+    const std::array<juce::String, 8> info
+    {
         "FFT SIZE       4096",
-        "REFERENCE       12.5 kHz",
-        "BUFFER STEP     1365",
-        "OVERLAP         2 / 3",
-        "OUTPUT          MIDDLE 1 / 3",
-        "DETECTOR        SAMPLE DIFFERENCE",
-        "TRIGGER         > 10",
-        "REFERENCE RATE  44.1 kHz"
+        "FRAME SHIFT    2730",
+        "BUFFER STEP    1365",
+        "OVERLAP        2 / 3",
+        "OUTPUT         MIDDLE 1 / 3",
+        "DETECTOR       SAMPLE DIFFERENCE",
+        "DEFAULT TRIGGER 10",
+        "DEFAULT REF.   12.5 kHz"
     };
 
-    g.setColour(juce::Colour(0xffa9aa9f));
-    g.setFont(juce::FontOptions(10.f));
-    for (int i = 0; i < (int)info.size(); ++i)
-        g.drawText(info[(size_t)i], (int)graph.getX() + 20,
-                   (int)graph.getY() + 42 + i * 18, (int)panelW - 24, 16,
-                   juce::Justification::left);
+    for (int i = 0; i < static_cast<int>(info.size()); ++i)
+        g.drawText(info[(size_t)i], (int)left.getX() + 14,
+                   (int)left.getY() + 48 + i * 19,
+                   (int)left.getWidth() - 28, 16, juce::Justification::left);
 
-    const auto original = juce::Rectangle<float>(wx, graph.getY() + 10.f, ww, wh);
-    const auto processed = juce::Rectangle<float>(wx, original.getBottom() + gap, ww, wh);
+    const float freq = parameterValue("DEESS_FREQ");
+    const float amount = parameterValue("DEESS_AMOUNT") / 100.f;
 
-    drawPanel(original, "ORIGINAL", juce::Colour(0xffd8d2c3), 0.f, 1.0f);
-    drawPanel(processed, "DE-ESSED", juce::Colour(0xff64c9a7), 0.7f, 0.72f);
+    auto response = graph.reduced(8.f);
+    response.removeFromBottom(response.getHeight() * 0.52f);
+    drawGrid(g, response, -12.f, 1.f);
 
-    g.setColour(juce::Colour(0xff9c9e94));
-    g.setFont(juce::FontOptions(10.f));
-    g.drawText("REFERENCE: FFT -> FILTER -> IFFT",
-               (int)wx, (int)graph.getBottom() - 16, (int)ww, 14,
-               juce::Justification::left);
-}
+    g.setColour(juce::Colour(0xff61c6a0).withAlpha(0.12f));
+    const float fLo = graphFrequencyToX(response, 4000.f);
+    const float fHi = graphFrequencyToX(response, 16000.f);
+    g.fillRect(fLo, response.getY(), fHi - fLo, response.getHeight());
 
-void VVChainAudioProcessorEditor::drawAnalyzerGraph(juce::Graphics& g, juce::Rectangle<float> graph)
-{
-    // QSpectrumAnalyzer-style layout: spectrum above, waterfall below.
-    const auto spectrumRect = graph.withHeight(graph.getHeight() * 0.62f);
-    auto waterfallRect = graph.withY(spectrumRect.getBottom() + 4.f)
-                              .withHeight(graph.getHeight() - spectrumRect.getHeight() - 4.f);
+    g.setColour(juce::Colour(0xffffc75a).withAlpha(0.85f));
+    const float refX = graphFrequencyToX(response, freq);
+    g.drawVerticalLine((int)refX, response.getY(), response.getBottom());
+    g.drawText("REFERENCE  " + juce::String(freq, 0) + " Hz",
+               (int)refX - 70, (int)response.getY() + 8, 140, 16,
+               juce::Justification::centred);
 
-    drawGrid(g, spectrumRect, -100.f, 6.f);
-
-    auto xForBin = [this, spectrumRect](int bin)
+    juce::Path curve;
+    for (int i = 0; i <= 280; ++i)
     {
-        const float hz = std::max(20.0f,
-            bin * (float)audioProcessor.getAnalyzerSampleRate() /
-            (2.0f * (float)(VVChainAudioProcessor::kSpectrumBins - 1)));
+        const float t = i / 280.f;
+        const float hz = invLogMap(t, 20.f, 20000.f);
+        const float x = graphFrequencyToX(response, hz);
 
-        return graphFrequencyToX(spectrumRect, hz);
+        float reductionDb = 0.f;
+        if (hz >= 1250.f)
+        {
+            const float ratio = hz >= freq
+                ? 10.f * freq / std::max(hz, 1.f)
+                : 1.f + 9.f * std::pow(hz / std::max(freq, 1.f), 3.f);
+            reductionDb = -12.f * amount * juce::jlimit(0.f, 1.f, 1.f - 1.f / ratio);
+        }
+
+        const float y = response.getBottom()
+            - response.getHeight() * juce::jmap(reductionDb, -12.f, 1.f, 0.f, 1.f);
+
+        if (i == 0) curve.startNewSubPath(x, y);
+        else curve.lineTo(x, y);
+    }
+
+    g.setColour(juce::Colour(0xff66d6ad));
+    g.strokePath(curve, juce::PathStrokeType(2.f));
+
+    const float lowerY = graph.getY() + graph.getHeight() * 0.50f + 4.f;
+    const float panelH = graph.getBottom() - lowerY - 8.f;
+    const float gap = 10.f;
+    const float waveW = (graph.getWidth() - gap) * 0.5f;
+
+    auto wavePanel = [&](juce::Rectangle<float> r, const juce::String& title,
+                         juce::Colour colour, float phase, float scale)
+    {
+        g.setColour(juce::Colour(0xff121511));
+        g.fillRoundedRectangle(r, 5.f);
+        g.setColour(juce::Colour(0xff3b3e36));
+        g.drawRoundedRectangle(r, 5.f, 1.f);
+
+        g.setColour(colour);
+        g.setFont(juce::FontOptions(10.f));
+        g.drawText(title, (int)r.getX() + 8, (int)r.getY() + 6,
+                   140, 16, juce::Justification::left);
+
+        juce::Path p;
+        for (int i = 0; i <= 300; ++i)
+        {
+            const float t = i / 300.f;
+            const float x = r.getX() + 7.f + t * (r.getWidth() - 14.f);
+            const float env = 0.22f + 0.78f *
+                (0.5f + 0.5f * std::sin(t * 15.5f + phase));
+            const float y = r.getCentreY() -
+                std::sin(t * 42.f + phase) * r.getHeight() * 0.23f * env * scale;
+
+            if (i == 0) p.startNewSubPath(x, y);
+            else p.lineTo(x, y);
+        }
+        g.strokePath(p, juce::PathStrokeType(1.35f));
     };
 
-    std::array<float, 256> current {};
-    for (int i = 0; i < 256; ++i)
-    {
-        const int bin = 1 + (i * (VVChainAudioProcessor::kSpectrumBins - 2) / 255);
-        current[(size_t)i] = spectrum[(size_t)bin];
-        if (analyzerSmooth.getToggleState() && i > 0 && i < 255)
-            current[(size_t)i] = (spectrum[(size_t)(bin - 1)] +
-                                   spectrum[(size_t)bin] +
-                                   spectrum[(size_t)(bin + 1)]) / 3.f;
+    wavePanel({ graph.getX() + 4.f, lowerY, waveW, panelH },
+              "ORIGINAL INPUT", juce::Colour(0xffddd6c6), 0.f, 1.f);
+    wavePanel({ graph.getX() + 4.f + waveW + gap, lowerY, waveW, panelH },
+              "DE-ESSED OUTPUT", juce::Colour(0xff64c9a7), 0.7f,
+              1.f - parameterValue("DEESS_AMOUNT") / 250.f);
 
-        if (analyzerAverage.getToggleState())
-            analyzerSmoothed[(size_t)i] =
-                analyzerSmoothed[(size_t)i] * 0.78f + current[(size_t)i] * 0.22f;
-        else
-            analyzerSmoothed[(size_t)i] = current[(size_t)i];
-
-        if (analyzerPeak.getToggleState())
-            peakSpectrum[(size_t)bin] =
-                std::max(peakSpectrum[(size_t)bin] - 0.15f, spectrum[(size_t)bin]);
-
-        current[(size_t)i] = analyzerSmoothed[(size_t)i];
-    }
-
-    juce::Path trace;
-    for (int i = 0; i < 256; ++i)
-    {
-        const float hz = invLogMap(i / 255.f, 20.f, 20000.f);
-        const float x = graphFrequencyToX(spectrumRect, hz);
-        const float db = juce::jlimit(-100.f, 6.f, current[(size_t)i]);
-        const float y = spectrumRect.getBottom() -
-                        spectrumRect.getHeight() * (db + 100.f) / 106.f;
-
-        if (i == 0)
-            trace.startNewSubPath(x, y);
-        else
-            trace.lineTo(x, y);
-    }
-
-    g.setColour(juce::Colour(0xffe4d9b7));
-    g.strokePath(trace, juce::PathStrokeType(1.8f));
-
-    if (analyzerPeak.getToggleState())
-    {
-        juce::Path peak;
-        for (int i = 0; i < 256; ++i)
-        {
-            const float hz = invLogMap(i / 255.f, 20.f, 20000.f);
-            const int bin = juce::jlimit(1, VVChainAudioProcessor::kSpectrumBins - 1,
-                                         (int)(hz / (float)audioProcessor.getAnalyzerSampleRate() *
-                                               2.0f * (VVChainAudioProcessor::kSpectrumBins - 1)));
-            const float db = juce::jlimit(-100.f, 6.f, peakSpectrum[(size_t)bin]);
-            const float x = graphFrequencyToX(spectrumRect, hz);
-            const float y = spectrumRect.getBottom() -
-                            spectrumRect.getHeight() * (db + 100.f) / 106.f;
-            if (i == 0) peak.startNewSubPath(x, y); else peak.lineTo(x, y);
-        }
-
-        g.setColour(juce::Colour(0xff8da1ff).withAlpha(0.6f));
-        g.strokePath(peak, juce::PathStrokeType(1.f));
-    }
-
-    g.setColour(juce::Colour(0xff0d0d0d));
-    g.fillRoundedRectangle(waterfallRect, 4.f);
-
-    const int rows = (int)waterfall.size();
-    for (int row = 0; row < rows; ++row)
-    {
-        const auto r = waterfallRect.removeFromTop(waterfallRect.getHeight() / (float)rows);
-        for (int col = 0; col < 256; ++col)
-        {
-            const float v = waterfall[(size_t)row][(size_t)col];
-            const float n = juce::jlimit(0.f, 1.f, (v + 100.f) / 100.f);
-            g.setColour(juce::Colour::fromHSV(0.68f - 0.58f * n, 0.85f,
-                                                0.10f + 0.90f * n, 1.0f));
-            g.fillRect(r.getX() + r.getWidth() * col / 256.f,
-                       r.getY(),
-                       r.getWidth() / 256.f + 0.5f,
-                       r.getHeight());
-        }
-    }
-
-    g.setColour(juce::Colours::white.withAlpha(0.75f));
-    g.drawText("SPECTRUM", (int)spectrumRect.getX() + 7, (int)spectrumRect.getY() + 5,
-               100, 16, juce::Justification::left);
-    g.drawText("WATERFALL", (int)waterfallRect.getX() + 7, (int)waterfallRect.getY() + 5,
-               100, 16, juce::Justification::left);
+    g.setColour(juce::Colour(0xff8f9189));
+    g.setFont(juce::FontOptions(10.f));
+    g.drawText("FFT → REFERENCE FILTER → IFFT",
+               (int)graph.getX() + 8, (int)graph.getBottom() - 15,
+               (int)graph.getWidth() - 16, 14, juce::Justification::left);
 }
 
-void VVChainAudioProcessorEditor::drawMixGraph(juce::Graphics& g, juce::Rectangle<float> graph)
+void VVChainAudioProcessorEditor::drawMixGraph(juce::Graphics& g,
+                                                juce::Rectangle<float> graph)
 {
     drawGrid(g, graph, 0.f, 100.f);
 
     const float dry = parameterValue("DRY_WET");
-    const float output = juce::jmap(parameterValue("OUTPUT_LEVEL"), -24.f, 12.f, 0.f, 100.f);
-
+    const float output = juce::jmap(parameterValue("OUTPUT_LEVEL"),
+                                    -24.f, 12.f, 0.f, 100.f);
     const float x1 = graph.getX() + graph.getWidth() * 0.35f;
     const float x2 = graph.getX() + graph.getWidth() * 0.65f;
 
@@ -907,11 +806,14 @@ void VVChainAudioProcessorEditor::drawMixGraph(juce::Graphics& g, juce::Rectangl
 
     g.setColour(juce::Colours::white.withAlpha(0.7f));
     g.setFont(juce::FontOptions(12.f));
-    g.drawText("DRY / WET", (int)x1 - 55, (int)graph.getY() + 14, 110, 16, juce::Justification::centred);
-    g.drawText("OUTPUT", (int)x2 - 55, (int)graph.getY() + 14, 110, 16, juce::Justification::centred);
+    g.drawText("DRY / WET", (int)x1 - 55, (int)graph.getY() + 14, 110, 16,
+               juce::Justification::centred);
+    g.drawText("OUTPUT", (int)x2 - 55, (int)graph.getY() + 14, 110, 16,
+               juce::Justification::centred);
 }
 
-void VVChainAudioProcessorEditor::drawGraph(juce::Graphics& g, juce::Rectangle<float> graph)
+void VVChainAudioProcessorEditor::drawGraph(juce::Graphics& g,
+                                            juce::Rectangle<float> graph)
 {
     g.setColour(juce::Colour(0xff12120f));
     g.fillRoundedRectangle(graph, 10.f);
@@ -920,11 +822,11 @@ void VVChainAudioProcessorEditor::drawGraph(juce::Graphics& g, juce::Rectangle<f
     else if (moduleIndex == 1) drawOttGraph(g, graph);
     else if (moduleIndex == 2) drawTypeAGraph(g, graph);
     else if (moduleIndex == 3) drawDeEsserGraph(g, graph);
-    else if (moduleIndex == 4) drawMixGraph(g, graph);
-    else drawAnalyzerGraph(g, graph);
+    else drawMixGraph(g, graph);
 }
 
-void VVChainAudioProcessorEditor::drawTopBar(juce::Graphics& g, juce::Rectangle<float> area)
+void VVChainAudioProcessorEditor::drawTopBar(juce::Graphics& g,
+                                             juce::Rectangle<float> area)
 {
     g.setColour(juce::Colour(0xff27251f));
     g.fillRect(area);
@@ -936,24 +838,13 @@ void VVChainAudioProcessorEditor::drawTopBar(juce::Graphics& g, juce::Rectangle<
 
     g.setColour(juce::Colour(0xffaaa18f));
     g.setFont(juce::FontOptions(10.f));
-    g.drawText("4-BAND ANALOG EQ  •  OTT  •  TYPE-A  •  REFERENCE DE-ESSER  •  FFT ANALYZER",
+    g.drawText("4-BAND ANALOG EQ  •  OTT  •  TYPE-A  •  REFERENCE DE-ESSER",
                16, (int)area.getY() + 35, (int)area.getWidth() - 32, 14,
                juce::Justification::centredLeft);
-
-    g.setColour(juce::Colour(0xff4a473e));
-    g.fillRoundedRectangle(730.f, area.getY() + 13.f, 250.f, 34.f, 6.f);
-    g.setColour(juce::Colours::white.withAlpha(0.78f));
-    g.drawText("AUDIO RANGE  0:00.000 → HOST", 741, (int)area.getY() + 20, 228, 20,
-               juce::Justification::centredLeft);
-
-    g.setColour(juce::Colour(0xff4a473e));
-    g.fillRoundedRectangle(995.f, area.getY() + 13.f, 82.f, 34.f, 6.f);
-    g.setColour(juce::Colours::white);
-    g.drawText("LOOP", 995, (int)area.getY() + 20, 82, 20, juce::Justification::centred);
 }
 
 void VVChainAudioProcessorEditor::drawParameterPanel(juce::Graphics& g,
-                                                      juce::Rectangle<float> area)
+                                                     juce::Rectangle<float> area)
 {
     g.setColour(juce::Colour(0xff1c1b17));
     g.fillRect(area);
@@ -967,9 +858,13 @@ void VVChainAudioProcessorEditor::drawParameterPanel(juce::Graphics& g,
                    16, (int)area.getY() + 8, 180, 16, juce::Justification::left);
     }
 
-    for (int i = 0; i < 4; ++i)
+    const bool de = moduleIndex == 3;
+    if (de)
     {
-        bandButtons[(size_t)i].setVisible(moduleIndex == 0 || moduleIndex == 1);
+        g.setColour(juce::Colour(0xff8f8878));
+        g.setFont(juce::FontOptions(10.f));
+        g.drawText("REFERENCE-BASED DE-ESSER CONTROLS",
+                   16, (int)area.getY() + 8, 300, 16, juce::Justification::left);
     }
 }
 
@@ -982,31 +877,13 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(juce::Colour(0xff171611));
     g.fillRect(0, 64, getWidth(), 44);
 
-    for (int i = 0; i < 6; ++i)
-        moduleButtons[(size_t)i].setBounds(
-            12 + i * ((getWidth() - 24) / 6), 68,
-            (getWidth() - 36) / 6, 34);
-
     const auto graph = juce::Rectangle<float>(24.f, 108.f,
                                                (float)getWidth() - 48.f,
                                                (float)getHeight() - 350.f);
-
     drawGraph(g, graph);
 
-    if (moduleIndex == 3)
-    {
-        g.setColour(juce::Colour(0xffb6ae9d));
-        g.setFont(juce::FontOptions(11.f));
-        g.drawText("Voice target:",
-                   18, getHeight() - 222, 75, 22, juce::Justification::left);
-    }
-
-    if (moduleIndex == 5)
-    {
-        g.setColour(juce::Colour(0xff1a1916));
-        g.fillRoundedRectangle(18.f, (float)getHeight() - 226.f,
-                               (float)getWidth() - 36.f, 46.f, 6.f);
-    }
+    drawParameterPanel(g, { 0.f, (float)getHeight() - 350.f,
+                            (float)getWidth(), 350.f });
 }
 
 void VVChainAudioProcessorEditor::resized()
@@ -1014,14 +891,21 @@ void VVChainAudioProcessorEditor::resized()
     const int width = getWidth();
     const int h = getHeight();
 
-    for (int i = 0; i < 6; ++i)
-        moduleButtons[(size_t)i].setBounds(
-            12 + i * ((width - 24) / 6), 68,
-            (width - 36) / 6, 34);
+    const int tabW = (width - 36) / 5;
+    for (int i = 0; i < 5; ++i)
+        moduleButtons[(size_t)i].setBounds(12 + i * (tabW + 4), 68, tabW, 34);
+
+    for (int i = 0; i < 5; ++i)
+    {
+        const bool visible = moduleIndex == i;
+        bypassButtons[(size_t)i].setVisible(visible);
+        bypassButtons[(size_t)i].setBounds(width - 110, h - 335, 92, 26);
+    }
 
     for (int i = 0; i < 4; ++i)
     {
-        bandButtons[(size_t)i].setVisible(moduleIndex == 0 || moduleIndex == 1);
+        const bool showBands = moduleIndex == 0 || moduleIndex == 1;
+        bandButtons[(size_t)i].setVisible(showBands);
         bandButtons[(size_t)i].setBounds(12 + i * 92, h - 318, 84, 28);
     }
 
@@ -1030,7 +914,7 @@ void VVChainAudioProcessorEditor::resized()
     const int knobW = 116;
     const int gap = 10;
 
-    for (int i = 0; i < (int)controls.size(); ++i)
+    for (int i = 0; i < static_cast<int>(controls.size()); ++i)
     {
         if (!controls[(size_t)i].isVisible())
             continue;
@@ -1044,53 +928,14 @@ void VVChainAudioProcessorEditor::resized()
         controlLabels[(size_t)i].setBounds(x, yy, knobW, 18);
     }
 
-    deEssVoice.setVisible(moduleIndex == 3);
-    deEssVoice.setBounds(width - 180, h - 252, 160, 28);
-
     ottClipper.setVisible(moduleIndex == 1);
-    ottClipper.setBounds(width - 105, h - 318, 92, 28);
+    ottClipper.setBounds(width - 205, h - 335, 82, 26);
     if (auto* clipParam = audioProcessor.apvts.getParameter("OTT_CLIPPER"))
-        ottClipper.setToggleState(clipParam->getValue() > 0.5f, juce::dontSendNotification);
+        ottClipper.setToggleState(clipParam->getValue() > 0.5f,
+                                  juce::dontSendNotification);
     ottClipper.onClick = [this]
     {
         if (auto* clipParam = audioProcessor.apvts.getParameter("OTT_CLIPPER"))
             clipParam->setValueNotifyingHost(ottClipper.getToggleState() ? 1.f : 0.f);
     };
-
-    analyzerAverage.setBounds(16, h - 210, 110, 28);
-    analyzerPeak.setBounds(128, h - 210, 110, 28);
-    analyzerPersistence.setBounds(240, h - 210, 120, 28);
-    analyzerSmooth.setBounds(362, h - 210, 110, 28);
-
-    const bool analyzer = moduleIndex == 5;
-    analyzerAverage.setVisible(analyzer);
-    analyzerPeak.setVisible(analyzer);
-    analyzerPersistence.setVisible(analyzer);
-    analyzerSmooth.setVisible(analyzer);
-
-    for (int i = 0; i < 4; ++i)
-        bandButtons[(size_t)i].setVisible(moduleIndex == 0 || moduleIndex == 1);
-}
-
-void VVChainAudioProcessorEditor::timerCallback()
-{
-    audioProcessor.copySpectrumTo(spectrum.data(), (int)spectrum.size());
-
-    if (analyzerPersistence.getToggleState())
-    {
-        for (int row = (int)waterfall.size() - 1; row > 0; --row)
-            waterfall[(size_t)row] = waterfall[(size_t)(row - 1)];
-        for (int col = 0; col < 256; ++col)
-        {
-            const int bin = 1 + col * (VVChainAudioProcessor::kSpectrumBins - 2) / 255;
-            waterfall[0][(size_t)col] = spectrum[(size_t)bin];
-        }
-    }
-    else
-    {
-        for (auto& row : waterfall)
-            row.fill(-120.f);
-    }
-
-    repaint();
 }
