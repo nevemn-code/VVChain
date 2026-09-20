@@ -1,21 +1,31 @@
 # VVChain Test Plan
 
-## Deterministic reference regression
+## Deterministic regression matrix
 
-The requested verification matrix is implemented exactly:
-
-| Stage | Cases | Purpose |
+| Stage | Cases | Validation |
 |---|---:|---|
-| Planning / parameter-space | 280 | Randomized range sanitization and finite-value validation |
-| Debug / boundary | 120 | Min/max, zero, ratio, timing and output-edge cases |
-| All-feature sensitivity | 180 | Every exposed EQ / OTT / A-Type / De-Esser / Mix control is changed and checked for observable output effect |
-| Transient | 655 | Impulse, double-hit, burst, alternating and mixed transient stress |
-| Full-chain | 820 | Full signal path across 44.1/48/88.2/96/192 kHz and 16–1024 sample blocks, including loop-range math |
+| Planning / parameter-space | 280 | Parameter ranges, crossover ordering, finite state values |
+| Boundary / debug | 120 | Min/max settings, zero settings, ratios, timing, output |
+| All-feature mapping | 180 | Each exposed EQ / OTT / Type-A / De-Esser / Mix control changes the state signature and remains finite |
+| Transient | 655 | Impulse, double hit, alternating burst, decaying burst, mixed transients |
+| Full-chain | 820 | Full chain across 44.1 / 48 / 88.2 / 96 / 192 kHz and 16–1024 sample blocks, including loop-range geometry |
 | **Total** | **2,055** | |
 
-Additional web smoke checks verify the required drag/drop, waveform selection, loopStart/loopEnd, module controls and animation surface are present in \`docs/index.html\`.
+## Architecture-specific checks
+
+- Four OTT bands exist and have independent degree controls.
+- OTT has three crossover frequencies.
+- OTT implements downward compression followed by upward compression.
+- Type-A has four fixed Dolby-A-style bands with overlapping upper bands.
+- Type-A band degree can independently be reduced to zero.
+- De-esser uses two crossover edges.
+- De-esser range and strength are independent.
+- EQ has a nonlinear analog-style coloration stage that remains active at default color.
+- Web preview contains AudioWorklet DSP, range selection, loopStart, and loopEnd.
 
 ## Host validation
+
+Still required before release:
 
 - JUCE/CMake build
 - pluginval
@@ -30,3 +40,4 @@ Additional web smoke checks verify the required drag/drop, waveform selection, l
 - bypass and wet/dry checks
 - denormal / NaN / infinity checks
 - preset recall
+- AAX SDK build and signing
