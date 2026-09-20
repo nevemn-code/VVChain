@@ -258,32 +258,158 @@ wave.addEventListener('pointerup',()=>{selecting=false});
 wave.addEventListener('drop',e=>{const f=[...e.dataTransfer.files].find(x=>x.type.startsWith('audio/')||/\.(wav|mp3|aif|aiff|flac|m4a)$/i.test(x.name));if(f)loadFile(f)});
 
 async function ensureAudio(){if(audioCtx)return;audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
-function disconnectGraph(){effectNodes.forEach(n=>{try{n.disconnect()}catch{}});effectNodes=[]}
+function disconnectGraph(){
+ if(effectNodes?.length){effectNodes.forEach(n=>{try{n.disconnect()}catch{}})}
+ effectNodes=[];
+ analyser=null;
+}
+
 function buildAudioGraph(){
- if(!audioCtx||!audioBuffer)return;
+ if(!audioCtx||!audioBuffer||!source)return;
  disconnectGraph();
+
+ const all=[];
+ const hp=audioCtx.createBiquadFilter();hp.type='highpass';hp.Q.value=.707;
  const eqs=state.freq.map((f,i)=>{const n=audioCtx.createBiquadFilter();n.type='peaking';n.frequency.value=f;n.Q.value=state.q[i];n.gain.value=state.gain[i];return n});
- const hp=audioCtx.createBiquadFilter();hp.type='highpass';hp.frequency.value=state.hf;hp.Q.value=.707;
- const comp=audioCtx.createDynamicsCompressor();comp.threshold.value=state.ottThreshold;comp.ratio.value=Math.max(1,state.ottDown);comp.attack.value=state.ottAttack/1000;comp.release.value=state.ottRelease/1000;
- const sh=audioCtx.createWaveShaper();sh.curve=makeCurve(state.atypeAmount,state.atypeDrive,state.atypeBias);sh.oversample='2x';
- const tone=audioCtx.createBiquadFilter();tone.type='lowpass';tone.frequency.value=1200+(state.atypeTone/100)*16000;
+ const split1LP=audioCtx.createBiquadFilter(),split1HP=audioCtx.createBiquadFilter();
+ const split2LP=audioCtx.createBiquadFilter(),split2HP=audioCtx.createBiquadFilter();
+ const split3LP=audioCtx.createBiquadFilter(),split3HP=audioCtx.createBiquadFilter();
+ [split1LP,split2LP,split3LP,split1HP,split2HP,split3HP].forEach(n=>{n.Q.value=.707});
+ const comps=[0,1,2,3].map(()=>audioCtx.createDynamicsCompressor());
+ const bandGain=[0,1,2,3].map(()=>audioCtx.createGain());
+ const ottMerge=audioCtx.createGain();
+
+ const atypeHP=audioCtx.createBiquadFilter();atypeHP.type='highpass';atypeHP.Q.value=.707;
+ const sh=audioCtx.createWaveShaper();sh.oversample='2x';
+ const atypeTone=audioCtx.createBiquadFilter();atypeTone.type='lowpass';atypeTone.Q.value=.707;
+ const atypeDry=audioCtx.createGain(),atypeWet=audioCtx.createGain(),atypeMerge=audioCtx.createGain();
+
+ const deessBand=audioCtx.createBiquadFilter();deessBand.type='bandpass';
+ const deessComp=audioCtx.createDynamicsCompressor();
+ const deessDry=audioCtx.createGain(),deessWet=audioCtx.createGain(),deessMerge=audioCtx.createGain();
+
+ const finalDry=audioCtx.createGain(),finalWet=audioCtx.createGain(),finalOut=audioCtx.createGain();
  analyser=audioCtx.createAnalyser();analyser.fftSize=2048;
- const nodeset=[hp,...eqs,comp,sh,tone,analyser];effectNodes=nodeset;
- let p;
- const connect=()=>{p=source;if(!p)return;p.connect(hp);p=hp;eqs.forEach(n=>{p.connect(n);p=n});p.connect(comp);p=comp;p.connect(sh);p=sh;p.connect(tone);p=tone;p.connect(analyser);analyser.connect(audioCtx.destination)};
- connect();
+
+ // Input split: processed chain + true dry path.
+ source.connect(finalDry);
+ finalDry.connect(deessMerge);
+
+ let p=source;p.connect(hp);p=hp;eqs.forEach(n=>{p.connect(n);p=n});
+
+ // 4-band OTT split/recombine.
+ p.connect(split1LP);p.connect(split1HP);
+ split1HP.connect(split2LP);split1HP.connect(split2HP);
+ split2HP.connect(split3LP);split2HP.connect(split3HP);
+
+ const bands=[
+   [split1LP,0],
+   [split2LP,1],
+   [split3LP,2],
+   [split3HP,3]
+ ];
+ bands.forEach(([branch,i])=>{
+   branch.connect(comps[i]);comps[i].connect(bandGain[i]);bandGain[i].connect(ottMerge)
+ });
+ ottMerge.connect(atypeDry);
+ ottMerge.connect(atypeHP);
+ atypeHP.connect(sh);sh.connect(atypeTone);atypeTone.connect(atypeWet);
+ atypeDry.connect(atypeMerge);atypeWet.connect(atypeMerge);
+
+ // Browser de-esser preview: split-band attenuation with a compressor in the detector path.
+ atypeMerge.connect(deessDry);
+ atypeMerge.connect(deessBand);deessBand.connect(deessComp);deessComp.connect(deessWet);
+ deessDry.connect(deessMerge);deessWet.connect(deessMerge);
+
+ deessMerge.connect(finalWet);finalWet.connect(finalOut);
+ deessMerge.connect(analyser);analyser.connect(audioCtx.destination);
+
+ all.push(hp,...eqs,split1LP,split1HP,split2LP,split2HP,split3LP,split3HP,...comps,...bandGain,ottMerge,
+   atypeHP,sh,atypeTone,atypeDry,atypeWet,atypeMerge,deessBand,deessComp,deessDry,deessWet,deessMerge,
+   finalDry,finalWet,finalOut,analyser);
+ effectNodes=all;
  updateAudioNodes();
 }
-function makeCurve(amount,driveDb,bias){const c=new Float32Array(1024),k=Math.pow(10,driveDb/20)*(1+amount/35),b=bias/100*.02;for(let i=0;i<c.length;i++){const x=i*2/(c.length-1)-1;const z=x*k+b;c[i]=Math.tanh(z)}return c}
+
+function makeCurve(amount,driveDb,bias){
+ const c=new Float32Array(1024);
+ const k=Math.pow(10,driveDb/20)*(1+amount/35),b=bias/100*.02;
+ for(let i=0;i<c.length;i++){const x=i*2/(c.length-1)-1;const z=x*k+b;c[i]=Math.tanh(z*(1+amount/80))}
+ return c;
+}
+
 function updateAudioNodes(){
- if(!source)return;
- const eqs=effectNodes.filter(n=>n.type==='peaking'),hp=effectNodes.find(n=>n.type==='highpass'),comp=effectNodes.find(n=>n.type==='compressor'),sh=effectNodes.find(n=>n.type==='waveshaper'),tone=effectNodes.find(n=>n.type==='lowpass');
+ if(!source||!effectNodes.length)return;
+ const byType=(type)=>effectNodes.filter(n=>n.type===type);
+ const hp=byType('highpass')[0];
+ const eqs=byType('peaking');
+ const lows=byType('lowpass');
+ const compressors=byType('compressor');
+ const waveshaper=byType('waveshaper')[0];
+ const bandpasses=byType('bandpass');
+ const gains=byType('gain');
+ const lpNodes=lows;
+ const compNodes=compressors.slice(0,5);
+
+ const outputGain=Math.pow(10,state.output/20);
+ const wet=state.dryWet/100;
+ const dryFinal=gains[gains.length-3], wetFinal=gains[gains.length-2], finalOut=effectNodes[effectNodes.length-2]||null;
+
  if(hp)hp.frequency.value=state.bypass?10:state.hf;
  eqs.forEach((n,i)=>{n.frequency.value=state.freq[i];n.Q.value=state.q[i];n.gain.value=state.bypass?0:state.gain[i]});
- if(comp){comp.threshold.value=state.bypass?0:state.ottThreshold;comp.ratio.value=state.bypass?1:Math.max(1,state.ottDown);comp.attack.value=state.ottAttack/1000;comp.release.value=state.ottRelease/1000}
- if(sh)sh.curve=makeCurve(state.bypass?0:state.atypeAmount,state.bypass?0:state.atypeDrive,state.bypass?0:state.atypeBias);
+
+ // Split crossover map.
+ const lows3=lpNodes.filter(n=>n!==lpNodes[lpNodes.length-1]);
+ const crossoverLps=[...lpNodes].filter(n=>n.frequency);
+ const x1=state.ottX1,x2=Math.max(x1+80,state.ottX2),x3=Math.max(x2+150,state.ottX3);
+ const splitNodes=effectNodes.filter(n=>n.type==='lowpass'||n.type==='highpass');
+ const lowpass=splitNodes.filter(n=>n.type==='lowpass').slice(0,3);
+ const highpass=splitNodes.filter(n=>n.type==='highpass');
+ // highpass[0] is input HPF; the remaining three are OTT split HPs.
+ if(lowpass[0])lowpass[0].frequency.value=state.bypass?20000:x1;
+ if(lowpass[1])lowpass[1].frequency.value=state.bypass?20000:x2;
+ if(lowpass[2])lowpass[2].frequency.value=state.bypass?20000:x3;
+ if(highpass[1])highpass[1].frequency.value=x1;
+ if(highpass[2])highpass[2].frequency.value=x2;
+ if(highpass[3])highpass[3].frequency.value=x3;
+
+ const ottComps=compNodes.slice(0,4);
+ ottComps.forEach(c=>{
+   c.threshold.value=state.bypass?0:state.ottThreshold;
+   c.ratio.value=state.bypass?1:1+(Math.max(1,state.ottDown)-1)*(state.ottDepth/100);
+   c.attack.value=state.ottAttack/1000;
+   c.release.value=state.ottRelease/1000;
+   c.knee.value=12;
+ });
+ const bandG=effectNodes.filter(n=>n.type==='gain').slice(0,4);
+ const upMakeup=Math.pow(10,(Math.max(0,state.ottUp-1)*1.2*(state.ottDepth/100))/20);
+ bandG.forEach(g=>g.gain.value=state.bypass?1:upMakeup);
+ const merge=effectNodes.find(n=>n.type==='gain' && n!==dryFinal && n!==wetFinal && n!==finalOut);
+ void merge;
+
+ const atypeHP=effectNodes.find(n=>n.type==='highpass' && n!==hp);
+ if(atypeHP)atypeHP.frequency.value=state.bypass?10:state.atypeHPF;
+ if(waveshaper)waveshaper.curve=makeCurve(state.bypass?0:state.atypeAmount,state.bypass?0:state.atypeDrive,state.bypass?0:state.atypeBias);
+ const tone=effectNodes.find(n=>n.type==='lowpass' && n.frequency.value>1000);
  if(tone)tone.frequency.value=state.bypass?20000:1200+(state.atypeTone/100)*16000;
+
+ const atypeDry=effectNodes.filter(n=>n.type==='gain').find(n=>n!==dryFinal&&n!==wetFinal&&n!==finalOut);
+ void atypeDry;
+
+ const bandpass=bandpasses[0],decomp=compNodes[4];
+ if(bandpass){bandpass.frequency.value=state.deessFreq;bandpass.Q.value=state.deessQ}
+ if(decomp){decomp.threshold.value=state.deessThreshold;decomp.ratio.value=Math.max(4,1+state.deessRange);decomp.attack.value=state.deessAttack/1000;decomp.release.value=state.deessRelease/1000}
+
+ // The browser path uses a parallel split-band preview; Listen exposes the detector band.
+ const deessGain=state.deessListen?1:Math.pow(10,-state.deessRange/20);
+ const deessGainNode=effectNodes.filter(n=>n.type==='gain').find(n=>n!==dryFinal&&n!==wetFinal&&n!==finalOut && n.gain.value>=0.0 && n.gain.value<=1.0);
+ if(deessGainNode)deessGainNode.gain.value=state.bypass?0.0:deessGain;
+
+ if(dryFinal)dryFinal.gain.value=state.bypass?1:Math.max(0,1-wet);
+ if(wetFinal)wetFinal.gain.value=state.bypass?0:wet;
+ if(finalOut)finalOut.gain.value=state.bypass?1:outputGain;
 }
+
 async function playBuffer(){
  if(!audioBuffer){$('#status').textContent='先拖曳或載入音檔';return}
  await ensureAudio();await audioCtx.resume();if(source){try{source.stop()}catch{}} 
