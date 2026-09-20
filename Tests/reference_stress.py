@@ -175,8 +175,10 @@ def assert_ok(y,label):
 
 def structure_checks():
     cpp=Path("Source/PluginProcessor.cpp").read_text(encoding="utf-8"); dsp=Path("Source/DSP/ChainDSP.cpp").read_text(encoding="utf-8"); web=Path("docs/index.html").read_text(encoding="utf-8"); ui=Path("Source/PluginEditor.cpp").read_text(encoding="utf-8")
-    for item in ["OTT_DEGREE1","OTT_DEGREE4","OTT_LIFT_T1","OTT_LIFT_M4","OTT_COMP_T1","OTT_COMP_M4","OTT_X1","OTT_X2","OTT_X3","ATYPE_DEGREE1","ATYPE_DEGREE4","DEESS_LOW","DEESS_HIGH","DEESS_RANGE","DEESS_STRENGTH"]:
+    for item in ["OTT_DEGREE","OTT_LIFT_T","OTT_LIFT_M","OTT_COMP_T","OTT_COMP_M","OTT_X1","OTT_X2","OTT_X3","ATYPE_DEGREE","ATYPE_LEVEL","DEESS_LOW","DEESS_HIGH","DEESS_RANGE","DEESS_STRENGTH"]:
         if item not in cpp: raise AssertionError("missing APVTS "+item)
+    if "for (int i = 0; i < 4; ++i)" not in cpp:
+        raise AssertionError("missing four-band APVTS loop")
     for item in ["makeAnalogPeak","applyLifter","applyCompressor","applyGate","applyLimiter","applyOtt","applyAType","applyDeEsser"]:
         if item not in dsp: raise AssertionError("missing DSP "+item)
     for item in ["mouseDown","mouseDrag","OttDegree1","TypeDegree1","DeessLow","MixDryWet"]:
