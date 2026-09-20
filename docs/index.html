@@ -15,6 +15,8 @@
 .info{margin-top:10px;color:#676159;text-align:center;font-size:9px;line-height:1.5}
 @media(max-width:1050px){.topBtns{width:100%;margin-left:0}.controlGrid{grid-template-columns:repeat(4,minmax(110px,1fr))}.status{margin-left:0}}
 @media(max-width:620px){.wrap{padding:10px}.graph{height:430px;min-height:0}.controlGrid{grid-template-columns:repeat(2,minmax(112px,1fr))}.wave{height:125px}.waveHelp{display:none}.sub{display:none}}
+
+.moduleBar{display:flex;gap:6px;margin:12px 0 0;padding:8px;background:#1a1814;border:1px solid #38342d;border-radius:10px;overflow:auto}.moduleBar .moduleBtn{padding:7px 11px;font-size:10px;white-space:nowrap}.moduleBar .moduleBtn.active{background:#5d5649;border-color:#7c7363;color:#fff}
 </style>
 </head>
 <body>
@@ -65,6 +67,14 @@
     </div>
   </section>
 
+<div id="functionTabs" class="moduleBar">
+  <button class="moduleBtn active" data-module="EQ">EQ / ANALOG</button>
+  <button class="moduleBtn" data-module="OTT">OTT</button>
+  <button class="moduleBtn" data-module="ATYPE">TYPE-A</button>
+  <button class="moduleBtn" data-module="DEESS">DE-ESSER</button>
+  <button class="moduleBtn" data-module="MIX">MIX / OUT</button>
+  <button class="moduleBtn" data-module="ANALYZER">ANALYZER</button>
+</div>
   <section id="details" class="card details open">
     <div class="detailHead"><div class="detailTitle" id="detailTitle">EQ / ANALOG</div><div class="detailHint" id="detailHint">FlowEQ-style manual interaction + nonlinear analog coloration</div></div>
     <div id="bandBtns" class="bandBtns"></div>
@@ -76,155 +86,220 @@
 <script>
 (function(){
 'use strict';
-var $=function(s){return document.querySelector(s)},$$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
-var colors=['#30a7ff','#26d0c8','#d95fff','#83d44d'];
-var defaults={
-  freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.71,.71,.71,.71],eqColor:35,hf:70,
-  ottB1:50,ottB2:50,ottB3:50,ottB4:50,ottMix:50,ottThreshold:-24,ottUp:4,ottDown:20,ottAttack:2.5,ottRelease:80,ottX1:88,ottX2:2500,ottX3:8500,ottInput:5.2,ottPost:0,
-  atypeB1:0,atypeB2:20,atypeB3:70,atypeB4:55,atypeG1:0,atypeG2:0,atypeG3:1,atypeG4:1,atypeAttack:10,atypeRelease:120,atypeMix:100,
-  deessLow:4500,deessHigh:10500,deessRange:10,deessStrength:75,deessAttack:1,deessRelease:80,deessListen:false,
-  dryWet:100,output:0
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const colors=['#30a7ff','#26d0c8','#d95fff','#83d44d'];
+const defaults={
+ freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],eqColor:35,hf:70,
+ ottDegree:[100,100,100,100],
+ ottLiftT:[-40,-40,-40,-40],ottLiftA:[50,50,50,50],ottLiftR:[50,50,50,50],ottLiftM:[100,100,100,100],
+ ottCompT:[-12,-12,-12,-12],ottCompA:[15,15,15,15],ottCompR:[60,60,60,60],ottCompM:[100,100,100,100],
+ ottLevel:[0,0,0,0],ottX1:350,ottX2:1000,ottX3:9000,ottInput:5.2,ottGate:-80,ottMix:100,ottClipper:true,ottOutput:-6,
+ atypeDegree:[0,20,70,55],atypeLevel:[0,0,1,1],atypeAttack:10,atypeRelease:120,atypeInput:0,atypeMix:100,atypeOutput:0,
+ deessLow:4500,deessHigh:10500,deessRange:10,deessStrength:75,deessAttack:1,deessRelease:80,deessListen:false,
+ dryWet:100,output:0
 };
-var state=JSON.parse(JSON.stringify(defaults));state.module='EQ';state.selected=0;state.loop=true;state.bypass=false;state.detailOpen=true;
-var audioCtx=null,audioBuffer=null,source=null,workletNode=null,analyser=null;
-var playing=false,selectionStart=0,selectionEnd=1,selecting=false;
+let state=JSON.parse(JSON.stringify(defaults));state.module='EQ';state.selected=0;state.loop=true;state.bypass=false;
+let audioCtx=null,audioBuffer=null,source=null,workletNode=null,playing=false;
+let selectionStart=0,selectionEnd=1,selecting=false,dragTarget=null;
 
+const graph=$('#graph'), canvas=$('#eqCanvas'), ctx=canvas.getContext('2d');
 function fmtFreq(v){return v>=1000?(v/1000).toFixed(v>=10000?1:2)+' kHz':Math.round(v)+' Hz'}
 function fmtDb(v){return Number(v).toFixed(1)+' dB'}
 function fmtMs(v){return Number(v).toFixed(v<10?1:0)+' ms'}
 function fmtPct(v){return Math.round(v)+'%'}
-function fmtTime(v){if(!isFinite(v))return'0:00.0';var m=Math.floor(v/60),s=v%60;return m+':'+String(Math.floor(s)).padStart(2,'0')+'.'+String(Math.floor((s%1)*10))}
+function fmtTime(v){if(!isFinite(v))return'0:00.0';const m=Math.floor(v/60),s=v%60;return m+':'+String(Math.floor(s)).padStart(2,'0')+'.'+String(Math.floor((s%1)*10))}
 function freqX(f){return Math.log(f/20)/Math.log(1000)}
 function xFreq(x){return 20*Math.pow(1000,Math.max(0,Math.min(1,x)))}
-function gainY(g){return .5-g/36}
-function yGain(y){return (0.5-y)*36}
+function yPct(y,r){return Math.max(0,Math.min(100,100*(r.bottom-y)/r.height))}
+function pctY(p,r){return r.bottom-r.height*(Math.max(0,Math.min(100,p))/100)}
+function mapXFreq(x,r){return xFreq((x-r.left)/r.width)}
+function setParam(k,v){if(k==='freq'||k==='gain'||k==='q')state[k][state.selected]=v;else state[k]=v;sendState();renderControls();drawGraph()}
+function getParam(k){return state[k]}
+function scrollToGraph(){const top=graph.getBoundingClientRect().top+window.scrollY-78;window.scrollTo({top,behavior:'smooth'})}
 
-var descriptors={
+const descriptors={
  EQ:[
-  ['freq','Freq',20,20000,1,fmtFreq],
-  ['gain','Gain',-24,24,.1,fmtDb],
-  ['q','Q',.1,18,.01,function(v){return Number(v).toFixed(2)}],
-  ['eqColor','Analog Color',0,100,1,fmtPct],
-  ['hf','HF / HPF',40,120,.1,fmtFreq]
+  ['freq','Freq',20,20000,1,fmtFreq],['gain','Gain',-24,24,.1,fmtDb],['q','Q',.1,18,.01,v=>Number(v).toFixed(2)],
+  ['eqColor','Analog Color',0,100,1,fmtPct],['hf','HF / HPF',40,120,.1,fmtFreq]
  ],
  OTT:[
-  ['ottB1','Band 1 OTT',0,100,1,fmtPct],['ottB2','Band 2 OTT',0,100,1,fmtPct],['ottB3','Band 3 OTT',0,100,1,fmtPct],['ottB4','Band 4 OTT',0,100,1,fmtPct],
-  ['ottThreshold','Threshold',-60,0,.1,fmtDb],['ottUp','Up Ratio',1,8,.01,function(v){return Number(v).toFixed(2)+' : 1'}],['ottDown','Down Ratio',1,80,.01,function(v){return Number(v).toFixed(2)+' : 1'}],
-  ['ottAttack','Attack',.2,50,.1,fmtMs],['ottRelease','Release',10,500,1,fmtMs],
-  ['ottX1','Xover 1',60,900,1,fmtFreq],['ottX2','Xover 2',600,5000,1,fmtFreq],['ottX3','Xover 3',2500,12000,1,fmtFreq],
-  ['ottInput','Input Gain',-12,12,.1,fmtDb],['ottMix','Mix',0,100,1,fmtPct],['ottPost','Post Gain',-18,18,.1,fmtDb]
+  ['ottDegree','OTT Degree',0,100,1,fmtPct],['ottLiftT','Lifter Threshold',-80,0,.1,fmtDb],['ottLiftA','Lifter Attack',1,500,1,fmtMs],['ottLiftR','Lifter Release',10,2500,1,fmtMs],['ottLiftM','Lifter Mix',0,100,1,fmtPct],
+  ['ottCompT','Comp Threshold',-24,0,.1,fmtDb],['ottCompA','Comp Attack',.1,250,.1,fmtMs],['ottCompR','Comp Release',10,2500,1,fmtMs],['ottCompM','Comp Mix',0,100,1,fmtPct],['ottLevel','Band Level',-24,12,.1,fmtDb],
+  ['ottInput','Input Gain',-24,24,.1,fmtDb],['ottGate','Gate',-90,0,.1,fmtDb],['ottX1','Xover 1',80,600,1,fmtFreq],['ottX2','Xover 2',750,3000,1,fmtFreq],['ottX3','Xover 3',6000,12000,1,fmtFreq],['ottMix','Master Mix',0,100,1,fmtPct],['ottOutput','Output',-24,24,.1,fmtDb],
+  ['ottClipper','Clipper',0,1,1,v=>v?'ON':'OFF',true]
  ],
  ATYPE:[
-  ['atypeB1','Band 1 Degree',0,100,1,fmtPct],['atypeB2','Band 2 Degree',0,100,1,fmtPct],['atypeB3','Band 3 Degree',0,100,1,fmtPct],['atypeB4','Band 4 Degree',0,100,1,fmtPct],
-  ['atypeG1','Band 1 Gain',-6,6,.1,fmtDb],['atypeG2','Band 2 Gain',-6,6,.1,fmtDb],['atypeG3','Band 3 Gain',-6,6,.1,fmtDb],['atypeG4','Band 4 Gain',-6,6,.1,fmtDb],
-  ['atypeAttack','Attack',1,100,.1,fmtMs],['atypeRelease','Release',20,500,1,fmtMs],['atypeMix','Mix',0,100,1,fmtPct]
+  ['atypeDegree','Band Degree',0,100,1,fmtPct],['atypeLevel','Band Level',-6,6,.1,fmtDb],
+  ['atypeAttack','Attack',1,100,.1,fmtMs],['atypeRelease','Release',20,500,1,fmtMs],['atypeInput','Input Gain',-24,24,.1,fmtDb],['atypeMix','Mix',0,100,1,fmtPct],['atypeOutput','Output',-24,24,.1,fmtDb]
  ],
  DEESS:[
-  ['deessLow','LOW XOVER',2500,9000,1,fmtFreq],['deessHigh','HIGH XOVER',6000,15000,1,fmtFreq],
-  ['deessRange','Range',0,24,.1,fmtDb],['deessStrength','Strength',0,100,1,fmtPct],
-  ['deessAttack','Attack',.1,20,.1,fmtMs],['deessRelease','Release',10,300,1,fmtMs],
-  ['deessListen','Listen',0,1,1,function(v){return v?'ON':'OFF'},true]
+  ['deessLow','Low Xover',2500,9000,1,fmtFreq],['deessHigh','High Xover',6000,15000,1,fmtFreq],
+  ['deessRange','Range',0,24,.1,fmtDb],['deessStrength','Strength',0,100,1,fmtPct],['deessAttack','Attack',.1,20,.1,fmtMs],['deessRelease','Release',10,300,1,fmtMs],
+  ['deessListen','Listen',0,1,1,v=>v?'ON':'OFF',true]
  ],
  MIX:[['dryWet','Dry / Wet',0,100,1,fmtPct],['output','Output',-24,12,.1,fmtDb]],
  ANALYZER:[]
 };
 
-function sendState(){
- if(workletNode) workletNode.port.postMessage({type:'state',state:state});
+function activeValue(key){
+ if(key==='freq'||key==='gain'||key==='q')return state[key][state.selected];
+ if(['ottDegree','ottLiftT','ottLiftA','ottLiftR','ottLiftM','ottCompT','ottCompA','ottCompR','ottCompM','ottLevel'].includes(key))return state[key][state.selected];
+ if(['atypeDegree','atypeLevel'].includes(key))return state[key][state.selected];
+ return state[key];
 }
-function setKey(key,val){
- if(key==='freq'||key==='gain'||key==='q'){state[key][state.selected]=val}else state[key]=val;
+function setActive(key,v){
+ if(['freq','gain','q'].includes(key))state[key][state.selected]=v;
+ else if(['ottDegree','ottLiftT','ottLiftA','ottLiftR','ottLiftM','ottCompT','ottCompA','ottCompR','ottCompM','ottLevel'].includes(key))state[key][state.selected]=v;
+ else if(['atypeDegree','atypeLevel'].includes(key))state[key][state.selected]=v;
+ else state[key]=v;
  sendState();renderControls();drawGraph();
 }
-function renderBands(){
- var box=$('#bandBtns');box.innerHTML='';
- if(state.module!=='EQ'){box.style.display='none';return}
- box.style.display='flex';
- for(var i=0;i<4;i++){var b=document.createElement('button');b.className='bandBtn'+(i===state.selected?' active':'');b.textContent='BAND '+(i+1);b.onclick=(function(n){return function(){state.selected=n;renderControls();drawGraph()}})(i);box.appendChild(b)}
-}
 function renderControls(){
- var box=$('#controls');box.innerHTML='';
- var list=descriptors[state.module]||[];
- $('#detailTitle').textContent=state.module==='EQ'?'EQ / ANALOG':state.module==='OTT'?'4-BAND OTT':state.module==='ATYPE'?'TYPE-A · 4-BAND':state.module==='DEESS'?'SPLIT-BAND DE-ESSER':state.module==='MIX'?'MIX / OUTPUT':'ANALYZER';
- $('#detailHint').textContent=state.module==='EQ'?'FlowEQ-style manual control; DSP is intentionally nonlinear / colored':state.module==='OTT'?'Downward + upward compression per band; B1–B4 independently adjustable':state.module==='ATYPE'?'Dolby A encode-stage topology: 80 Hz / 3 kHz / 9 kHz with overlapping high bands':state.module==='DEESS'?'Two crossover edges define the sibilance band; range and strength control reduction':'';
- list.forEach(function(d){
-   var key=d[0],label=d[1],min=d[2],max=d[3],step=d[4],format=d[5],toggle=d[6],c=document.createElement('div');c.className='control';
-   var value=state[key];
+ const box=$('#controls');box.innerHTML='';
+ const list=descriptors[state.module]||[];
+ $('#detailTitle').textContent=state.module==='EQ'?'EQ / ANALOG':state.module==='OTT'?'4-BAND OTT · PUNKOTT STYLE':state.module==='ATYPE'?'TYPE-A · 4-BAND':state.module==='DEESS'?'SPLIT-BAND DE-ESSER':state.module==='MIX'?'MIX / OUTPUT':'ANALYZER';
+ $('#detailHint').textContent=state.module==='EQ'?'Analog prototype filters + nonlinear coloration; drag graph for Freq/Gain':state.module==='OTT'?'4-band Lifter 6:1 → Compressor 8:1; LR-style crossover map':state.module==='ATYPE'?'80 Hz / 80–3 kHz / >3 kHz / >9 kHz overlapping bands':'';
+ list.forEach(([key,label,min,max,step,format,toggle])=>{
+   const c=document.createElement('div');c.className='control';const v=activeValue(key);
    if(toggle){
-     c.innerHTML='<div class="ct"><span>'+label+'</span><span>SWITCH</span></div><label class="switch"><input type="checkbox" '+(value?'checked':'')+'><b>'+format(value?1:0)+'</b></label>';
-     c.querySelector('input').onchange=function(e){setKey(key,e.target.checked)};
+     c.innerHTML='<div class="ct"><span>'+label+'</span><span>SWITCH</span></div><label class="switch"><input type="checkbox" '+(v?'checked':'')+'><b>'+format(v?1:0)+'</b></label>';
+     c.querySelector('input').onchange=e=>setActive(key,e.target.checked);
    }else{
-     if(key==='freq'||key==='gain'||key==='q')value=state[key][state.selected];
-     c.innerHTML='<div class="ct"><span>'+label+'</span><span>'+format(value)+'</span></div><input class="range" type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+value+'"><div class="cv">'+format(value)+'</div>';
-     var r=c.querySelector('input'),head=c.querySelector('.ct span:last-child'),cv=c.querySelector('.cv');
-     r.oninput=function(e){var v=+e.target.value;setKey(key,v);head.textContent=format(v);cv.textContent=format(v)};
+     c.innerHTML='<div class="ct"><span>'+label+'</span><span>'+format(v)+'</span></div><input class="range" type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+v+'"><div class="cv">'+format(v)+'</div>';
+     const r=c.querySelector('input'),head=c.querySelector('.ct span:last-child'),cv=c.querySelector('.cv');
+     r.oninput=e=>{const x=+e.target.value;setActive(key,x);head.textContent=format(x);cv.textContent=format(x)}
    }
    box.appendChild(c);
  });
- renderBands();
- $('#details').classList.toggle('open',state.detailOpen);
+ $('#details').classList.add('open');
 }
-$('.moduleBtn').forEach(function(b){b.onclick=function(){var m=b.dataset.module;if(state.module===m&&m!=='EQ'&&m!=='MIX'&&m!=='ANALYZER'){state.detailOpen=!state.detailOpen}else{state.module=m;state.detailOpen=true}$('.moduleBtn').forEach(function(x){x.classList.toggle('active',x.dataset.module===m)});renderControls();drawGraph()}});
-function drawGraph(){
- var r=$('#graph').getBoundingClientRect(),d=devicePixelRatio||1;var c=$('#eqCanvas'),ctx=c.getContext('2d');c.width=r.width*d;c.height=r.height*d;ctx.setTransform(d,0,0,d,0,0);
- var mid=r.height*.5,w=r.width;ctx.clearRect(0,0,w,r.height);
- ctx.lineWidth=2;
- for(var i=0;i<4;i++){ctx.beginPath();for(var x=0;x<=500;x++){var t=x/500,p=freqX(state.freq[i]),b=state.gain[i]*Math.exp(-((t-p)*(t-p))/.012);var yy=mid-2*b-3*Math.sin(t*7+i);ctx.lineTo(t*w,yy)}ctx.strokeStyle=colors[i];ctx.globalAlpha=.86;ctx.stroke()}
- ctx.globalAlpha=.18;ctx.beginPath();for(var j=0;j<=500;j++){var tt=j/500,xx=tt*w,yy=r.height-20-28*Math.abs(Math.sin(tt*10+performance.now()/1100))-20*Math.abs(Math.sin(tt*49));j===0?ctx.moveTo(xx,yy):ctx.lineTo(xx,yy)}ctx.lineTo(w,r.height);ctx.lineTo(0,r.height);ctx.closePath();ctx.fillStyle='#9e4861';ctx.fill();ctx.globalAlpha=1;
- document.querySelectorAll('.node').forEach(function(n,i){var px=12+(r.width-24)*freqX(state.freq[i]),py=12+(r.height-24)*gainY(state.gain[i]);n.style.left=(px/r.width*100)+'%';n.style.top=(py/r.height*100)+'%';n.classList.toggle('sel',i===state.selected)});
- $('#readout').textContent='Band '+(state.selected+1)+' · '+fmtFreq(state.freq[state.selected])+' · '+fmtDb(state.gain[state.selected])+' · Q '+state.q[state.selected].toFixed(2)+' · Color '+Math.round(state.eqColor)+'%';
- requestAnimationFrame(drawGraph);
+function selectModule(m){
+ state.module=m;dragTarget=null;
+ $$('.moduleBtn').forEach(b=>b.classList.toggle('active',b.dataset.module===m));
+ $('#details').classList.add('open');renderControls();drawGraph();scrollToGraph()
 }
-document.querySelectorAll('.node').forEach(function(n,i){
- n.addEventListener('dblclick',function(){state.selected=i;renderControls()});
- n.addEventListener('pointerdown',function(e){
-   e.preventDefault();state.selected=i;n.setPointerCapture(e.pointerId);
-   var move=function(ev){var r=$('#graph').getBoundingClientRect(),x=Math.max(12,Math.min(r.width-12,ev.clientX-r.left)),y=Math.max(12,Math.min(r.height-12,ev.clientY-r.top));state.freq[i]=Math.round(xFreq((x-12)/(r.width-24)));state.gain[i]=Math.round(yGain((y-12)/(r.height-24))*10)/10;sendState();renderControls()};
-   var up=function(){n.removeEventListener('pointermove',move);n.removeEventListener('pointerup',up)};
-   n.addEventListener('pointermove',move);n.addEventListener('pointerup',up);
- });
-});
+$$('.moduleBtn').forEach(b=>b.onclick=()=>selectModule(b.dataset.module));
 
-var wave=$('#waveDrop'),waveCanvas=$('#waveCanvas'),waveCtx=waveCanvas.getContext('2d'),selection=$('#selection'),emptyWave=$('#emptyWave');
-function drawWave(){
- var r=waveCanvas.getBoundingClientRect(),d=devicePixelRatio||1;waveCanvas.width=r.width*d;waveCanvas.height=r.height*d;waveCtx.setTransform(d,0,0,d,0,0);waveCtx.clearRect(0,0,r.width,r.height);waveCtx.fillStyle='#11100d';waveCtx.fillRect(0,0,r.width,r.height);
- if(!audioBuffer)return;
- var data=audioBuffer.getChannelData(0),mid=r.height/2,step=Math.max(1,Math.floor(data.length/r.width));waveCtx.beginPath();
- for(var x=0;x<r.width;x++){var min=1,max=-1,start=x*step,end=Math.min(data.length,start+step);for(var i=start;i<end;i++){var v=data[i];if(v<min)min=v;if(v>max)max=v}waveCtx.moveTo(x,mid+min*mid*.85);waveCtx.lineTo(x,mid+max*mid*.85)}
- waveCtx.strokeStyle='#777267';waveCtx.stroke();selection.style.left=(selectionStart*100)+'%';selection.style.width=((selectionEnd-selectionStart)*100)+'%';
- if(audioBuffer){var dur=audioBuffer.duration;$('#selReadout').textContent=fmtTime(selectionStart*dur)+' → '+fmtTime(selectionEnd*dur)+' · '+fmtTime((selectionEnd-selectionStart)*dur)}
+function drawEq(){
+ const r=canvas.getBoundingClientRect();ctx.clearRect(0,0,r.width,r.height);
+ document.querySelectorAll('.node').forEach((n,i)=>{n.style.display=state.module==='EQ'?'block':'none'});
+ for(let i=0;i<4;i++){
+   const f=state.freq[i],g=state.gain[i],p=freqX(f);ctx.beginPath();
+   for(let x=0;x<=500;x++){const t=x/500,b=g*Math.exp(-((t-p)*(t-p))/.012),yy=r.height*.5-2*b-3*Math.sin(t*7+i);ctx.lineTo(t*r.width,yy)}
+   ctx.strokeStyle=colors[i];ctx.globalAlpha=.88;ctx.lineWidth=2;ctx.stroke()
+ }
+ ctx.globalAlpha=.18;ctx.beginPath();for(let i=0;i<=500;i++){const t=i/500,xx=t*r.width,yy=r.height-20-30*Math.abs(Math.sin(t*10+performance.now()/1100));i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)}ctx.lineTo(r.width,r.height);ctx.lineTo(0,r.height);ctx.closePath();ctx.fillStyle='#8e5369';ctx.fill();ctx.globalAlpha=1;
+ $('#readout').textContent='Band '+(state.selected+1)+' · '+fmtFreq(state.freq[state.selected])+' · '+fmtDb(state.gain[state.selected])+' · Q '+state.q[state.selected].toFixed(2)+' · Color '+Math.round(state.eqColor)+'%';
 }
-wave.addEventListener('pointerdown',function(e){if(!audioBuffer)return;var r=wave.getBoundingClientRect(),x=(e.clientX-r.left)/r.width;selecting=true;wave.setPointerCapture(e.pointerId);selectionStart=x;selectionEnd=x;drawWave()});
-wave.addEventListener('pointermove',function(e){if(!selecting)return;var r=wave.getBoundingClientRect(),x=(e.clientX-r.left)/r.width;selectionStart=Math.min(selectionStart,x);selectionEnd=Math.max(selectionStart,x);if(selectionEnd-selectionStart<.002)selectionEnd=Math.min(1,selectionStart+.002);drawWave();if(playing)restartPlayback()});
-wave.addEventListener('pointerup',function(){selecting=false});
-['dragenter','dragover'].forEach(function(ev){wave.addEventListener(ev,function(e){e.preventDefault();wave.classList.add('drag')})});
-['dragleave','drop'].forEach(function(ev){wave.addEventListener(ev,function(e){e.preventDefault();wave.classList.remove('drag')})});
-wave.addEventListener('drop',function(e){var f=Array.prototype.slice.call(e.dataTransfer.files).find(function(x){return x.type.indexOf('audio/')===0||/\.(wav|mp3|aif|aiff|flac|m4a)$/i.test(x.name)});if(f)loadFile(f)});
-document.addEventListener('dragover',function(e){e.preventDefault()});document.addEventListener('drop',function(e){if(e.target.closest('#waveDrop'))return;e.preventDefault();var f=Array.prototype.slice.call(e.dataTransfer.files).find(function(x){return x.type.indexOf('audio/')===0||/\.(wav|mp3|aif|aiff|flac|m4a)$/i.test(x.name)});if(f)loadFile(f)});
+function drawOTT(){
+ const r=canvas.getBoundingClientRect();ctx.clearRect(0,0,r.width,r.height);
+ document.querySelectorAll('.node').forEach(n=>n.style.display='none');
+ const xovers=[state.ottX1,state.ottX2,state.ottX3].map(freqX);
+ ctx.strokeStyle='#d5a62f';ctx.globalAlpha=.7;ctx.lineWidth=1.5;xovers.forEach(x=>{ctx.beginPath();ctx.moveTo(x*r.width,0);ctx.lineTo(x*r.width,r.height);ctx.stroke()});
+ const centers=[Math.sqrt(20*state.ottX1),Math.sqrt(state.ottX1*state.ottX2),Math.sqrt(state.ottX2*state.ottX3),Math.sqrt(state.ottX3*18000)];
+ for(let i=0;i<4;i++){const x=freqX(centers[i])*r.width,y=pctY(state.ottDegree[i],r);ctx.strokeStyle=colors[i];ctx.globalAlpha=.25;ctx.fillStyle=colors[i];ctx.fillRect(x-32,y,64,r.height-y);ctx.globalAlpha=1;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(x-40,y);ctx.lineTo(x+40,y);ctx.stroke();ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fill()}
+ ctx.globalAlpha=1;$('#readout').textContent='OTT 4-band · B1 '+Math.round(state.ottDegree[0])+'% · B2 '+Math.round(state.ottDegree[1])+'% · B3 '+Math.round(state.ottDegree[2])+'% · B4 '+Math.round(state.ottDegree[3])+'% · LR Xovers '+fmtFreq(state.ottX1)+' / '+fmtFreq(state.ottX2)+' / '+fmtFreq(state.ottX3);
+}
+function drawAType(){
+ const r=canvas.getBoundingClientRect();ctx.clearRect(0,0,r.width,r.height);document.querySelectorAll('.node').forEach(n=>n.style.display='none');
+ [80,3000,9000].forEach(f=>{const x=freqX(f)*r.width;ctx.strokeStyle='#d5a62f';ctx.globalAlpha=.45;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,r.height);ctx.stroke()});
+ const centers=[50,500,4500,12000];
+ for(let i=0;i<4;i++){const x=freqX(centers[i])*r.width,y=pctY(state.atypeDegree[i],r);ctx.fillStyle=colors[i];ctx.globalAlpha=.22;ctx.fillRect(x-32,y,64,r.height-y);ctx.globalAlpha=1;ctx.strokeStyle=colors[i];ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(x-40,y);ctx.lineTo(x+40,y);ctx.stroke();ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fill()}
+ $('#readout').textContent='TYPE-A · B1 '+Math.round(state.atypeDegree[0])+'% · B2 '+Math.round(state.atypeDegree[1])+'% · B3 '+Math.round(state.atypeDegree[2])+'% · B4 '+Math.round(state.atypeDegree[3])+'% · 80 Hz / 3 kHz / 9 kHz';
+}
+function drawDeess(){
+ const r=canvas.getBoundingClientRect();ctx.clearRect(0,0,r.width,r.height);document.querySelectorAll('.node').forEach(n=>n.style.display='none');
+ const lx=freqX(state.deessLow)*r.width,hx=freqX(state.deessHigh)*r.width;ctx.fillStyle='rgba(213,166,47,.12)';ctx.fillRect(lx,0,hx-lx,r.height);ctx.strokeStyle='#d5a62f';ctx.globalAlpha=.9;ctx.beginPath();ctx.moveTo(lx,0);ctx.lineTo(lx,r.height);ctx.moveTo(hx,0);ctx.lineTo(hx,r.height);ctx.stroke();
+ const sy=pctY(state.deessStrength,r),ry=22+state.deessRange/24*90;ctx.globalAlpha=1;ctx.fillStyle='#f2c24b';ctx.beginPath();ctx.arc(r.width/2,sy,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d6a64b';ctx.beginPath();ctx.arc(r.width/2+70,ry,7,0,Math.PI*2);ctx.fill();
+ $('#readout').textContent='DE-ESSER · '+fmtFreq(state.deessLow)+' → '+fmtFreq(state.deessHigh)+' · Strength '+Math.round(state.deessStrength)+'% · Range '+fmtDb(state.deessRange);
+}
+function drawMix(){
+ const r=canvas.getBoundingClientRect();ctx.clearRect(0,0,r.width,r.height);document.querySelectorAll('.node').forEach(n=>n.style.display='none');
+ const dy=pctY(state.dryWet,r),oy=pctY((state.output+24)/36*100,r),dx=r.width*.35,ox=r.width*.65;ctx.fillStyle='rgba(48,167,255,.23)';ctx.fillRect(dx-55,dy,110,r.height-dy);ctx.fillStyle='rgba(131,212,77,.23)';ctx.fillRect(ox-55,oy,110,r.height-oy);ctx.fillStyle='#30a7ff';ctx.beginPath();ctx.arc(dx,dy,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#83d44d';ctx.beginPath();ctx.arc(ox,oy,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='10px Arial';ctx.textAlign='center';ctx.fillText('DRY / WET',dx,18);ctx.fillText('OUTPUT',ox,18);ctx.textAlign='start';$('#readout').textContent='MIX '+Math.round(state.dryWet)+'% · OUTPUT '+fmtDb(state.output)}
+function drawAnalyzer(){const r=canvas.getBoundingClientRect();ctx.clearRect(0,0,r.width,r.height);document.querySelectorAll('.node').forEach(n=>n.style.display='none');ctx.strokeStyle='#8fb9c9';ctx.globalAlpha=.8;ctx.lineWidth=1.5;ctx.beginPath();for(let i=0;i<=500;i++){const t=i/500,y=r.height*.55-40*Math.abs(Math.sin(t*13+performance.now()/850))-18*Math.abs(Math.sin(t*81));i?ctx.lineTo(t*r.width,y):ctx.moveTo(t*r.width,y)}ctx.stroke();ctx.globalAlpha=1;$('#readout').textContent='ANALYZER · LIVE'} 
+function drawGraph(){const d=devicePixelRatio||1,r=canvas.getBoundingClientRect();canvas.width=r.width*d;canvas.height=r.height*d;ctx.setTransform(d,0,0,d,0,0);if(state.module==='EQ')drawEq();else if(state.module==='OTT')drawOTT();else if(state.module==='ATYPE')drawAType();else if(state.module==='DEESS')drawDeess();else if(state.module==='MIX')drawMix();else drawAnalyzer()}
+function graphPointerDown(e){
+ if(state.module==='EQ'||state.module==='ANALYZER')return;
+ const r=graph.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+ if(state.module==='OTT'){
+  const x1=freqX(state.ottX1)*r.width,x2=freqX(state.ottX2)*r.width,x3=freqX(state.ottX3)*r.width;
+  if(Math.abs(x-x1)<12){dragTarget='ottX1';return}if(Math.abs(x-x2)<12){dragTarget='ottX2';return}if(Math.abs(x-x3)<12){dragTarget='ottX3';return}
+  const centers=[Math.sqrt(20*state.ottX1),Math.sqrt(state.ottX1*state.ottX2),Math.sqrt(state.ottX2*state.ottX3),Math.sqrt(state.ottX3*18000)];
+  for(let i=0;i<4;i++){const px=freqX(centers[i])*r.width,py=pctY(state.ottDegree[i],r);if(Math.hypot(x-px,y-py)<22){dragTarget='ottB'+i;state.selected=i;renderControls();return}}
+ }
+ if(state.module==='ATYPE'){const centers=[50,500,4500,12000];for(let i=0;i<4;i++){const px=freqX(centers[i])*r.width,py=pctY(state.atypeDegree[i],r);if(Math.hypot(x-px,y-py)<24){dragTarget='atypeB'+i;state.selected=i;renderControls();return}}}
+ if(state.module==='DEESS'){
+  const lx=freqX(state.deessLow)*r.width,hx=freqX(state.deessHigh)*r.width;if(Math.abs(x-lx)<12){dragTarget='deLow';return}if(Math.abs(x-hx)<12){dragTarget='deHigh';return}
+  if(Math.hypot(x-r.width/2,y-pctY(state.deessStrength,r))<22){dragTarget='deStrength';return}
+  if(Math.hypot(x-(r.width/2+70),y-(22+state.deessRange/24*90))<22){dragTarget='deRange';return}
+ }
+ if(state.module==='MIX'){const dx=r.width*.35,ox=r.width*.65;if(Math.hypot(x-dx,y-pctY(state.dryWet,r))<24)dragTarget='mixDry';else if(Math.hypot(x-ox,y-pctY((state.output+24)/36*100,r))<24)dragTarget='mixOut'}
+}
+function graphPointerMove(e){
+ if(!dragTarget)return;const r=graph.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;const f=mapXFreq(e.clientX,r);
+ if(dragTarget==='ottX1')setParam('ottX1',Math.max(80,Math.min(600,f)));
+ else if(dragTarget==='ottX2')setParam('ottX2',Math.max(Math.max(750,state.ottX1+80),Math.min(3000,f)));
+ else if(dragTarget==='ottX3')setParam('ottX3',Math.max(Math.max(6000,state.ottX2+200),Math.min(12000,f)));
+ else if(dragTarget&&dragTarget.startsWith('ottB')){const i=+dragTarget.slice(4);state.ottDegree[i]=yPct(y,r);sendState();renderControls()}
+ else if(dragTarget&&dragTarget.startsWith('atypeB')){const i=+dragTarget.slice(6);state.atypeDegree[i]=yPct(y,r);sendState();renderControls()}
+ else if(dragTarget==='deLow')setParam('deessLow',Math.max(2500,Math.min(state.deessHigh-100,f)));
+ else if(dragTarget==='deHigh')setParam('deessHigh',Math.max(state.deessLow+100,Math.min(15000,f)));
+ else if(dragTarget==='deStrength')setParam('deessStrength',yPct(y,r));
+ else if(dragTarget==='deRange')setParam('deessRange',yPct(y,r)*.24);
+ else if(dragTarget==='mixDry')setParam('dryWet',yPct(y,r));
+ else if(dragTarget==='mixOut')setParam('output',(yPct(y,r)/100)*36-24);
+}
+graph.addEventListener('pointerdown',e=>{graph.setPointerCapture?.(e.pointerId);graphPointerDown(e)});
+graph.addEventListener('pointermove',graphPointerMove);graph.addEventListener('pointerup',()=>dragTarget=null);graph.addEventListener('pointercancel',()=>dragTarget=null);
+
+document.querySelectorAll('.node').forEach((n,i)=>{n.addEventListener('dblclick',()=>{state.selected=i;renderControls();drawGraph()});n.addEventListener('pointerdown',e=>{if(state.module!=='EQ')return;e.preventDefault();state.selected=i;n.setPointerCapture(e.pointerId);const move=ev=>{const r=graph.getBoundingClientRect(),x=Math.max(12,Math.min(r.width-12,ev.clientX-r.left)),y=Math.max(12,Math.min(r.height-12,ev.clientY-r.top));state.freq[i]=Math.round(xFreq((x-12)/(r.width-24)));state.gain[i]=Math.round((.5-(y-12)/(r.height-24))*36*10)/10;sendState();renderControls();drawGraph()};const up=()=>{n.removeEventListener('pointermove',move);n.removeEventListener('pointerup',up)};n.addEventListener('pointermove',move);n.addEventListener('pointerup',up)})});
+
+const wave=$('#waveDrop'),waveCanvas=$('#waveCanvas'),waveCtx=waveCanvas.getContext('2d'),selection=$('#selection'),emptyWave=$('#emptyWave');
+function drawWave(){const r=waveCanvas.getBoundingClientRect(),d=devicePixelRatio||1;waveCanvas.width=r.width*d;waveCanvas.height=r.height*d;waveCtx.setTransform(d,0,0,d,0,0);waveCtx.clearRect(0,0,r.width,r.height);waveCtx.fillStyle='#11100d';waveCtx.fillRect(0,0,r.width,r.height);if(!audioBuffer)return;const data=audioBuffer.getChannelData(0),mid=r.height/2,step=Math.max(1,Math.floor(data.length/r.width));waveCtx.beginPath();for(let x=0;x<r.width;x++){let min=1,max=-1,start=x*step,end=Math.min(data.length,start+step);for(let i=start;i<end;i++){const v=data[i];if(v<min)min=v;if(v>max)max=v}waveCtx.moveTo(x,mid+min*mid*.85);waveCtx.lineTo(x,mid+max*mid*.85)}waveCtx.strokeStyle='#777267';waveCtx.stroke();selection.style.left=(selectionStart*100)+'%';selection.style.width=((selectionEnd-selectionStart)*100)+'%';if(audioBuffer){const dur=audioBuffer.duration;$('#selReadout').textContent=fmtTime(selectionStart*dur)+' → '+fmtTime(selectionEnd*dur)+' · '+fmtTime((selectionEnd-selectionStart)*dur)}}
+wave.addEventListener('pointerdown',e=>{if(!audioBuffer)return;const r=wave.getBoundingClientRect(),x=(e.clientX-r.left)/r.width;selecting=true;wave.setPointerCapture(e.pointerId);selectionStart=x;selectionEnd=x;drawWave()});wave.addEventListener('pointermove',e=>{if(!selecting)return;const r=wave.getBoundingClientRect(),x=(e.clientX-r.left)/r.width;selectionStart=Math.min(selectionStart,x);selectionEnd=Math.max(selectionStart,x);if(selectionEnd-selectionStart<.002)selectionEnd=Math.min(1,selectionStart+.002);drawWave();if(playing)restartPlayback()});wave.addEventListener('pointerup',()=>selecting=false);
+['dragenter','dragover'].forEach(ev=>wave.addEventListener(ev,e=>{e.preventDefault();wave.classList.add('drag')}));['dragleave','drop'].forEach(ev=>wave.addEventListener(ev,e=>{e.preventDefault();wave.classList.remove('drag')}));wave.addEventListener('drop',e=>{const f=[...e.dataTransfer.files].find(x=>x.type.startsWith('audio/')||/\.(wav|mp3|aif|aiff|flac|m4a)$/i.test(x.name));if(f)loadFile(f)});document.addEventListener('dragover',e=>e.preventDefault());
 
 async function createWorklet(){
- if(audioCtx&&workletNode)return;
+ if(workletNode)return;
  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
- var code='class B{constructor(){this.b0=1;this.b1=0;this.b2=0;this.a1=0;this.a2=0;this.z1=[0,0];this.z2=[0,0]} reset(){this.z1=[0,0];this.z2=[0,0]} p(x,c){var y=this.b0*x+this.z1[c];this.z1[c]=this.b1*x-this.a1*y+this.z2[c];this.z2[c]=this.b2*x-this.a2*y;return y}}function peak(b,fs,f,g,q){var A=Math.pow(10,g/40),w=2*Math.PI*f/fs,a=Math.sin(w)/(2*Math.max(.05,q)),cw=Math.cos(w),bb0=1+a*A,bb1=-2*cw,bb2=1-a*A,aa0=1+a/A,aa1=-2*cw,aa2=1-a/A;b.b0=bb0/aa0;b.b1=bb1/aa0;b.b2=bb2/aa0;b.a1=aa1/aa0;b.a2=aa2/aa0}function lp(b,fs,f,q){var w=2*Math.PI*f/fs,a=Math.sin(w)/(2*q),cw=Math.cos(w),bb0=(1-cw)/2,bb1=1-cw,bb2=bb0,aa0=1+a,aa1=-2*cw,aa2=1-a;b.b0=bb0/aa0;b.b1=bb1/aa0;b.b2=bb2/aa0;b.a1=aa1/aa0;b.a2=aa2/aa0}function hp(b,fs,f,q){var w=2*Math.PI*f/fs,a=Math.sin(w)/(2*q),cw=Math.cos(w),bb0=(1+cw)/2,bb1=-(1+cw),bb2=bb0,aa0=1+a,aa1=-2*cw,aa2=1-a;b.b0=bb0/aa0;b.b1=bb1/aa0;b.b2=bb2/aa0;b.a1=aa1/aa0;b.a2=aa2/aa0}function db2g(v){return Math.pow(10,v/20)}function g2db(v){return 20*Math.log10(Math.max(v,1e-9))}class P extends AudioWorkletProcessor{constructor(){super();this.s={};this.d=[];this.t=[[0,0,0,0],[0,0,0,0]];this.port.onmessage=e=>{if(e.data&&e.data.type==="state"){this.s=JSON.parse(JSON.stringify(e.data.state));this.rebuild()}}}rebuild(){var s=this.s,fs=sampleRate;this.eq=[0,1,2,3].map(i=>{var b=new B();peak(b,fs,s.freq[i],s.gain[i],s.q[i]);return b});this.hp=new B();hp(this.hp,fs,s.hf,.707);this.olp=[new B(),new B(),new B()];this.ohp=[new B(),new B(),new B()];lp(this.olp[0],fs,s.ottX1,.707);hp(this.ohp[0],fs,s.ottX1,.707);lp(this.olp[1],fs,s.ottX2,.707);hp(this.ohp[1],fs,s.ottX2,.707);lp(this.olp[2],fs,s.ottX3,.707);hp(this.ohp[2],fs,s.ottX3,.707);this.tlp80=new B();this.thp80=new B();this.tlp3=new B();this.thp3=new B();this.thp9=new B();lp(this.tlp80,fs,80,.707);hp(this.thp80,fs,80,.707);lp(this.tlp3,fs,3000,.707);hp(this.thp3,fs,3000,.707);hp(this.thp9,fs,9000,.707);this.dhp=new B();this.dlp=new B();hp(this.dhp,fs,s.deessLow,.707);lp(this.dlp,fs,s.deessHigh,.707)}color(x,a){var d=1+.95*a,z=x+.018*a*x*x,y=Math.tanh(z*d),r=Math.tanh(d);return r?y/r:x}procBand(b,e,i,thr,up,down,aa,ar){var av=Math.abs(b),k=av>e?1-aa:1-ar;e+=k*(av-e);var ld=g2db(e),dd=0,du=0;if(ld>thr)dd=(thr-ld)*(1-1/down);var ad=ld+dd;if(ad<thr)du=(thr-ad)*(1-1/up);return [b*db2g(dd+du),e]}process(inp,out){var s=this.s;if(!s.freq)return;for(var c=0;c<inp.length;c++){var ch=inp[c],dst=out[c];for(var n=0;n<dst.length;n++){var x=ch[n],y=s.bypass?x:this.hp.p(x,c);if(!s.bypass){for(var i=0;i<4;i++)y=this.color(this.eq[i].p(y,c),.16+.84*s.eqColor/100)}var low=this.olp[0].p(y,c),h1=this.ohp[0].p(y,c),lm=this.olp[1].p(h1,c),h2=this.ohp[1].p(h1,c),mh=this.olp[2].p(h2,c),hi=this.ohp[2].p(h2,c),ob=[low,lm,mh,hi],wet=0;var aa=Math.exp(-1/(sampleRate*(s.ottAttack/1000))),ar=Math.exp(-1/(sampleRate*(s.ottRelease/1000)));for(var k=0;k<4;k++){var r=this.procBand(ob[k],this.t[c][k],k,s.ottThreshold,s.ottUp,s.ottDown,aa,ar);this.t[c][k]=r[1];var amt=s[["ottB1","ottB2","ottB3","ottB4"][k]]/100;wet+=r[0]*amt+ob[k]*(1-amt)}wet*=db2g(s.ottPost);y=x+(wet-x)*s.ottMix/100;var b1=this.tlp80.p(y,c),h80=this.thp80.p(y,c),b2=this.tlp3.p(h80,c),b3=this.thp3.p(h80,c),b4=this.thp9.p(b3,c),tb=[b1,b2,b3,b4],enh=0;for(var q=0;q<4;q++){var am=s[["atypeB1","atypeB2","atypeB3","atypeB4"][q]]/100;var gg=db2g(s[["atypeG1","atypeG2","atypeG3","atypeG4"][q]]);enh+=tb[q]*gg*am;enh+=tb[q]*(1-am)}y=y+enh*s.atypeMix/100;var sb=this.dlp.p(this.dhp.p(y,c),c),sl=Math.abs(sb);this.es=this.es||[0,0];var e=this.es[c],ca=Math.exp(-1/(sampleRate*(s.deessAttack/1000))),cr=Math.exp(-1/(sampleRate*(s.deessRelease/1000)));e+=(sl>e?1-ca:1-cr)*(sl-e);this.es[c]=e;var ldb=g2db(e),red=ldb>-36?-Math.min(s.deessRange,Math.max(0,ldb+36))*s.deessStrength/100:0;var rg=db2g(-red);y=s.deessListen?sb*rg:y+sb*(rg-1);dst[n]=(x+(y-x)*s.dryWet/100)*db2g(s.output)}}}} registerProcessor("vvchain-dsp",P)';
- var blob=new Blob([code],{type:'application/javascript'});var url=URL.createObjectURL(blob);await audioCtx.audioWorklet.addModule(url);workletNode=new AudioWorkletNode(audioCtx,'vvchain-dsp',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});analyser=audioCtx.createAnalyser();analyser.fftSize=2048;workletNode.connect(analyser);analyser.connect(audioCtx.destination);sendState();
+ const code=`
+class B{constructor(){this.b0=1;this.b1=0;this.b2=0;this.a1=0;this.a2=0;this.z1=[0,0];this.z2=[0,0]}p(x,c){const y=this.b0*x+this.z1[c];this.z1[c]=this.b1*x-this.a1*y+this.z2[c];this.z2[c]=this.b2*x-this.a2*y;return y}r(){this.z1=[0,0];this.z2=[0,0]}}
+function pk(b,f,g,q){const A=Math.pow(10,g/40),K=Math.tan(Math.PI*f/sampleRate),bb0=K*K+(A/q)*K+1,bb1=2*(K*K-1),bb2=K*K-(A/q)*K+1,aa0=K*K+(1/(A*q))*K+1,aa1=bb1,aa2=K*K-(1/(A*q))*K+1;b.b0=bb0/aa0;b.b1=bb1/aa0;b.b2=bb2/aa0;b.a1=aa1/aa0;b.a2=aa2/aa0}
+function lp(b,f){const K=Math.tan(Math.PI*f/sampleRate),Q=.707,bb0=K*K,bb1=2*K*K,bb2=K*K,aa0=1+K/Q+K*K,aa1=2*(K*K-1),aa2=1-K/Q+K*K;b.b0=bb0/aa0;b.b1=bb1/aa0;b.b2=bb2/aa0;b.a1=aa1/aa0;b.a2=aa2/aa0}
+function hp(b,f){const K=Math.tan(Math.PI*f/sampleRate),Q=.707,aa0=1+K/Q+K*K,aa1=2*(K*K-1),aa2=1-K/Q+K*K;b.b0=1/aa0;b.b1=-2/aa0;b.b2=1/aa0;b.a1=aa1/aa0;b.a2=aa2/aa0}
+function db2g(d){return Math.pow(10,d/20)}function g2db(g){return 20*Math.log10(Math.max(g,1e-5))}
+function tc(ms){return Math.exp(-1/(.001*Math.max(ms,.1)*sampleRate))}
+class P extends AudioWorkletProcessor{
+ constructor(){super();this.s=null;this.le=[[],[]];this.ce=[[],[]];this.te=[[],[]];this.de=[0,0];this.ge=[0,0];this.lime=[0,0];this.port.onmessage=e=>{if(e.data?.type==='state'){this.s=JSON.parse(JSON.stringify(e.data.state));this.build()}}}
+ build(){const s=this.s;
+ this.eq=s.freq.map((f,i)=>{const b=new B();pk(b,f,s.gain[i],s.q[i]);return b});this.hp=new B();hp(this.hp,s.hf);
+ this.ox=[new X(s.ottX1),new X(s.ottX2),new X(s.ottX3)];this.type1=new X(80);this.type2=new X(3000);this.type9=new B();hp(this.type9,9000);this.dh=new B();hp(this.dh,s.deessLow);this.dl=new B();lp(this.dl,s.deessHigh)}
+ color(x,a){const d=1+1.35*a,z=x+.012*a*x*x,r=Math.tanh(d);return r?Math.tanh(z*d)/r:x}
+ lif(x,b,i){const th=this.s.ottLiftT[i],st=th-3,en=th+3,ld=g2db(Math.max(Math.abs(x),1e-4)),sl=1-1/6;let tgt=0;if(ld<st)tgt=(th-ld)*sl;else if(ld<en){const z=en-ld;tgt=sl/(12)*z*z}const gl=db2g(Math.min(30,tgt)),a=tc(this.s.ottLiftA[i]),r=tc(this.s.ottLiftR[i]);this.le[b][i]=(gl>this.le[b][i]?a:r)*this.le[b][i]+(1-(gl>this.le[b][i]?a:r))*gl;const m=this.s.ottLiftM[i]*this.s.ottDegree[i]/10000;return x*this.le[b][i]*m+x*(1-m)}
+ comp(x,b,i){const th=this.s.ottCompT[i],st=th-3,en=th+3,ld=g2db(Math.max(Math.abs(x),1e-5)),sl=1-1/8;let gr=0;if(ld>en)gr=(ld-th)*sl;else if(ld>st){const z=ld-st;gr=sl/(12)*z*z}const cur=-this.ce[b][i],a=tc(this.s.ottCompA[i]),r=tc(this.s.ottCompR[i]);const k=gr>cur?a:r;const sm=k*cur+(1-k)*gr;this.ce[b][i]=-Math.min(60,sm);const wet=x*db2g(this.ce[b][i]),m=this.s.ottCompM[i]*this.s.ottDegree[i]/10000;return wet*m+x*(1-m)}
+ gate(x,c){const th=this.s.ottGate,ld=g2db(Math.max(Math.abs(x),1e-6)),slope=5,k=9,st=th-k/2,en=th+k/2;let gd=0;if(ld<st)gd=(ld-th)*slope;else if(ld<en){const z=ld-en;gd=slope/(18)*z*z}const a=tc(100),r=tc(30),t=this.ge[c],q=gd<t?a:r;this.ge[c]=q*t+(1-q)*gd;return x*(.9*db2g(this.ge[c])+.1)}
+ lim(x,c){const th=-3,ld=g2db(Math.max(Math.abs(x),1e-5)),sl=1-1/20;let gr=ld>th?(ld-th)*sl:0;const cur=-this.lime[c],a=tc(30),r=tc(100),k=gr>cur?a:r,sm=k*cur+(1-k)*gr;this.lime[c]=-Math.min(60,sm);return x*db2g(this.lime[c])}
+ process(input,output){if(!this.s)return;for(let c=0;c<input.length;c++){for(let n=0;n<input[c].length;n++){let x=input[c][n],y=x;if(!this.s.bypass){y=this.hp.p(y,c);for(let i=0;i<4;i++)y=this.color(this.eq[i].p(y,c),.2+.8*this.s.eqColor/100);y=this.gate(y,c)*db2g(Math.max(-24,Math.min(24,this.s.ottInput)));
+ const l=this.ox[0].lo(y,c),h1=this.ox[0].hi(y,c),m=this.ox[1].lo(h1,c),h2=this.ox[1].hi(h1,c),mh=this.ox[2].lo(h2,c),hi=this.ox[2].hi(h2,c),ob=[l,m,mh,hi];let wet=0;for(let i=0;i<4;i++){let z=this.lif(ob[i],c,i);z=this.comp(z,c,i);z*=db2g(Math.max(-24,Math.min(12,this.s.ottLevel[i])));wet+=z}wet=this.lim(wet,c);if(this.s.ottClipper)wet=Math.tanh(wet*1.7);y=y+(wet-y)*(this.s.ottMix/100);y*=db2g(Math.max(-24,Math.min(24,this.s.ottOutput)));
+ const b1=this.type1.lo(y,c),h80=this.type1.hi(y,c),b2=this.type2.lo(h80,c),b3=this.type2.hi(h80,c),b4=this.type9.p(b3,c),tb=[b1,b2,b3,b4];let en=0;const aa=tc(this.s.atypeAttack),rr=tc(this.s.atypeRelease);for(let i=0;i<4;i++){const av=Math.abs(tb[i]);const ce=this.te[c][i]||0;this.te[c][i]=av>ce?ce*(aa)+(1-aa)*av:ce*(rr)+(1-rr)*av;const ld=g2db(this.te[c][i]),boost=ld<-40?Math.min(10, ( -40-ld)*.5*this.s.atypeDegree[i]/100):0;en+=tb[i]*(db2g(boost+this.s.atypeLevel[i])-1)}y=y/db2g(this.s.atypeInput)+db2g(this.s.atypeInput)*(y+en*(this.s.atypeMix/100));y*=db2g(this.s.atypeOutput);
+ const sb=this.dl.p(this.dh.p(y,c),c),mag=g2db(Math.max(Math.abs(sb),1e-5)),red=mag>-36?-Math.min(this.s.deessRange,Math.max(0,(mag+36)*this.s.deessStrength/100)):0;const rg=db2g(-red);const wetS=sb*rg;y=this.s.deessListen?wetS:y+wetS-sb;y=x+(y-x)*(this.s.dryWet/100);y*=db2g(this.s.output)}output[c][n]=y}}}}
 }
-async function playBuffer(){
- if(!audioBuffer){$('#status').textContent='先拖曳或載入音檔';return}
- await createWorklet();await audioCtx.resume();if(source){try{source.stop()}catch{}}
- source=audioCtx.createBufferSource();source.buffer=audioBuffer;source.loop=state.loop;source.loopStart=selectionStart*audioBuffer.duration;source.loopEnd=selectionEnd*audioBuffer.duration;source.connect(workletNode);source.start(0,selectionStart*audioBuffer.duration);playing=true;$('#playBtn').textContent='PAUSE';$('#status').textContent='Playing · '+fmtTime(selectionStart*audioBuffer.duration)+' → '+fmtTime(selectionEnd*audioBuffer.duration);
- source.onended=function(){if(!source||!source.loop){playing=false;$('#playBtn').textContent='PLAY'}};
+class X{constructor(f){this.l1=new B();this.l2=new B();this.h1=new B();this.h2=new B();lp(this.l1,f);lp(this.l2,f);hp(this.h1,f);hp(this.h2,f)}lo(x,c){return this.l2.p(this.l1.p(x,c),c)}hi(x,c){return this.h2.p(this.h1.p(x,c),c)}}
+registerProcessor('vvchain-dsp',P)`;
+ const blob=new Blob([code],{type:'application/javascript'});const url=URL.createObjectURL(blob);await audioCtx.audioWorklet.addModule(url);workletNode=new AudioWorkletNode(audioCtx,'vvchain-dsp',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});workletNode.connect(audioCtx.destination);sendState()
 }
+function sendState(){if(workletNode)workletNode.port.postMessage({type:'state',state})}
+async function playBuffer(){if(!audioBuffer){$('#status').textContent='先拖曳或載入音檔';return}await createWorklet();await audioCtx.resume();if(source){try{source.stop()}catch{}}source=audioCtx.createBufferSource();source.buffer=audioBuffer;source.loop=state.loop;source.loopStart=selectionStart*audioBuffer.duration;source.loopEnd=selectionEnd*audioBuffer.duration;source.connect(workletNode);source.start(0,selectionStart*audioBuffer.duration);playing=true;$('#playBtn').textContent='PAUSE';$('#status').textContent='Playing · '+fmtTime(selectionStart*audioBuffer.duration)+' → '+fmtTime(selectionEnd*audioBuffer.duration);source.onended=()=>{if(!source?.loop){playing=false;$('#playBtn').textContent='PLAY'}}}
 function stopPlayback(){if(source){try{source.stop()}catch{}source.disconnect();source=null}playing=false;$('#playBtn').textContent='PLAY'}
 function restartPlayback(){if(playing){stopPlayback();playBuffer()}}
-$('#playBtn').onclick=function(){if(playing)stopPlayback();else playBuffer()};
-$('#stopBtn').onclick=stopPlayback;
-$('#loopBtn').onclick=function(){state.loop=!state.loop;this.textContent='LOOP: '+(state.loop?'ON':'OFF');this.classList.toggle('active',state.loop);if(playing)restartPlayback()};
-$('#bypassBtn').onclick=function(){state.bypass=!state.bypass;this.classList.toggle('active',state.bypass);sendState()};
-$('#resetBtn').onclick=function(){var keep={module:state.module,selected:state.selected,loop:state.loop};state=Object.assign(JSON.parse(JSON.stringify(defaults)),keep,{bypass:false});renderControls();sendState();drawGraph()};
-async function loadFile(file){
- try{await createWorklet();var ab=await file.arrayBuffer();audioBuffer=await audioCtx.decodeAudioData(ab.slice(0));emptyWave.style.display='none';selectionStart=0;selectionEnd=1;drawWave();$('#status').textContent='Loaded · '+file.name+' · '+fmtTime(audioBuffer.duration);if(playing)restartPlayback()}catch(err){$('#status').textContent='音檔解碼失敗：'+(err&&err.message?err.message:err)}}
-$('#fileInput').onchange=function(e){var f=e.target.files&&e.target.files[0];if(f)loadFile(f)};
-renderControls();drawGraph();drawWave();
+$('#playBtn').onclick=()=>playing?stopPlayback():playBuffer();$('#stopBtn').onclick=stopPlayback;
+$('#loopBtn').onclick=()=>{state.loop=!state.loop;$('#loopBtn').textContent='LOOP: '+(state.loop?'ON':'OFF');$('#loopBtn').classList.toggle('active',state.loop);if(playing)restartPlayback()};
+$('#bypassBtn').onclick=()=>{state.bypass=!state.bypass;$('#bypassBtn').classList.toggle('active',state.bypass);sendState()};
+$('#resetBtn').onclick=()=>{const keep={module:state.module,selected:state.selected,loop:state.loop,detailOpen:true};state=Object.assign(JSON.parse(JSON.stringify(defaults)),keep,{bypass:false});renderControls();sendState();drawGraph()};
+async function loadFile(file){try{await createWorklet();const ab=await file.arrayBuffer();audioBuffer=await audioCtx.decodeAudioData(ab.slice(0));emptyWave.style.display='none';selectionStart=0;selectionEnd=1;drawWave();$('#status').textContent='Loaded · '+file.name+' · '+fmtTime(audioBuffer.duration);if(playing)restartPlayback()}catch(err){$('#status').textContent='音檔解碼失敗：'+(err?.message||err)}}
+$('#fileInput').onchange=e=>{const f=e.target.files?.[0];if(f)loadFile(f)};
+renderControls();drawGraph();drawWave();window.addEventListener('resize',()=>{drawGraph();drawWave()});
+setInterval(()=>{if(state.module==='ANALYZER')drawGraph()},60);
 })();
 </script>
 </body>
