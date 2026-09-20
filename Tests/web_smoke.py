@@ -37,8 +37,8 @@ assert node.returncode == 0, node.stderr
 
 required = [
     "LOAD AUDIO",
-    "rangeStart",
-    "rangeEnd",
+    "loopStart",
+    "loopEnd",
     "loopToggle",
     "AudioWorkletNode",
     "audioWorklet.addModule",
@@ -56,11 +56,15 @@ for token in required:
     assert token in text, token
 
 for forbidden in [
+    '$("#rangeStart")',
+    '$("#rangeEnd")',
+    '$("rangeStart")',
+    '$("rangeEnd")',
     "async function processBuffer",
     "await processBuffer(audioBuffer)",
     "AudioBuffer({length",
 ]:
-    assert forbidden not in text, f"legacy blocking path remains: {forbidden}"
+    assert forbidden not in text, f"forbidden/legacy pattern remains: {forbidden}"
 
 print("VVChain web smoke test: PASS")
 print("main_js_parse: PASS")
