@@ -7,6 +7,8 @@ VVChainAudioProcessor::VVChainAudioProcessor()
         .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       apvts(*this, nullptr, "STATE", createParameterLayout())
 {
+    for (auto& value : analyzerSpectrumDb)
+        value.store(-120.0f, std::memory_order_relaxed);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::createParameterLayout()
@@ -20,79 +22,65 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
             id, name, juce::NormalisableRange<float>(lo, hi, 0.01f, skew), def));
     };
 
-    // 4-band analogue-prototype EQ.
+    // Four-band analogue-coloured EQ.
     for (int i = 0; i < 4; ++i)
     {
         const juce::String n = juce::String(i + 1);
         const float defaults[4] = { 80.f, 350.f, 2500.f, 10000.f };
-
-        f("EQ" + n + "_FREQ", "EQ " + n + " Freq", 20.f, 20000.f, defaults[i], 0.25f);
+        f("EQ" + n + "_FREQ", "EQ " + n + " Frequency", 20.f, 20000.f, defaults[i], 0.25f);
         f("EQ" + n + "_GAIN", "EQ " + n + " Gain", -24.f, 24.f, 0.f);
         f("EQ" + n + "_Q", "EQ " + n + " Q", 0.10f, 18.f, 0.707f, 0.35f);
     }
+    f("EQ_COLOR", "EQ Analog Color", 0.f, 100.f, 35.f);
+    f("HF_CORNER", "EQ High-pass Corner", 40.f, 120.f, 70.f);
 
-    f("EQ_COLOR", "Analog Color", 0.f, 100.f, 35.f);
-    f("HF_CORNER", "HF / HPF", 40.f, 120.f, 70.f);
-
-    // PunkOTT-MB style global controls.
+    // Four-band OTT / PunkOTT-MB style controls.
     f("OTT_INPUT", "OTT Input Gain", -24.f, 24.f, 5.2f);
     f("OTT_GATE", "OTT Gate", -90.f, 0.f, -80.f);
-    f("OTT_MIX", "OTT Master Mix", 0.f, 100.f, 100.f);
-    p.push_back(std::make_unique<juce::AudioParameterBool>(
-        "OTT_CLIPPER", "OTT Clipper", true));
+    f("OTT_MIX", "OTT Mix", 0.f, 100.f, 100.f);
+    p.push_back(std::make_unique<juce::AudioParameterBool>("OTT_CLIPPER", "OTT Clipper", true));
     f("OTT_OUTPUT", "OTT Output Gain", -24.f, 24.f, -6.f);
-
-    // Four-band crossover map.
-    f("OTT_X1", "OTT Xover 1", 80.f, 600.f, 350.f, 1.5f);
-    f("OTT_X2", "OTT Xover 2", 750.f, 3000.f, 1000.f, 0.8f);
-    f("OTT_X3", "OTT Xover 3", 6000.f, 12000.f, 9000.f, 0.65f);
-
-    const float degreeDefaults[4] = { 100.f, 100.f, 100.f, 100.f };
-    const float lifterThresDefaults[4] = { -40.f, -40.f, -40.f, -40.f };
-    const float compThresDefaults[4] = { -12.f, -12.f, -12.f, -12.f };
+    f("OTT_X1", "OTT Crossover 1", 80.f, 600.f, 350.f, 1.5f);
+    f("OTT_X2", "OTT Crossover 2", 750.f, 3000.f, 1000.f, 0.8f);
+    f("OTT_X3", "OTT Crossover 3", 6000.f, 12000.f, 9000.f, 0.65f);
 
     for (int i = 0; i < 4; ++i)
     {
         const juce::String n = juce::String(i + 1);
-
-        f("OTT_DEGREE" + n, "OTT Band " + n + " Degree", 0.f, 100.f, degreeDefaults[i]);
-        f("OTT_LIFT_T" + n, "OTT Band " + n + " Lifter Threshold", -80.f, 0.f, lifterThresDefaults[i]);
+        f("OTT_DEGREE" + n, "OTT Band " + n + " Degree", 0.f, 100.f, 100.f);
+        f("OTT_LIFT_T" + n, "OTT Band " + n + " Lifter Threshold", -80.f, 0.f, -40.f);
         f("OTT_LIFT_A" + n, "OTT Band " + n + " Lifter Attack", 1.f, 500.f, 50.f, 0.35f);
         f("OTT_LIFT_R" + n, "OTT Band " + n + " Lifter Release", 10.f, 2500.f, 50.f, 0.35f);
         f("OTT_LIFT_M" + n, "OTT Band " + n + " Lifter Mix", 0.f, 100.f, 100.f);
-
-        f("OTT_COMP_T" + n, "OTT Band " + n + " Compressor Threshold", -24.f, 0.f, compThresDefaults[i]);
+        f("OTT_COMP_T" + n, "OTT Band " + n + " Compressor Threshold", -24.f, 0.f, -12.f);
         f("OTT_COMP_A" + n, "OTT Band " + n + " Compressor Attack", 0.1f, 250.f, 15.f, 0.35f);
         f("OTT_COMP_R" + n, "OTT Band " + n + " Compressor Release", 10.f, 2500.f, 60.f, 0.35f);
         f("OTT_COMP_M" + n, "OTT Band " + n + " Compressor Mix", 0.f, 100.f, 100.f);
         f("OTT_LEVEL" + n, "OTT Band " + n + " Level", -24.f, 12.f, 0.f);
     }
 
-    // Type-A 4-band controls.
-    const float typeDegreeDefaults[4] = { 0.f, 20.f, 70.f, 55.f };
-    const float typeLevelDefaults[4] = { 0.f, 0.f, 1.f, 1.f };
+    // Four-band Type-A style dynamic enhancer.
     for (int i = 0; i < 4; ++i)
     {
         const juce::String n = juce::String(i + 1);
-        f("ATYPE_DEGREE" + n, "Type-A Band " + n + " Degree", 0.f, 100.f, typeDegreeDefaults[i]);
-        f("ATYPE_LEVEL" + n, "Type-A Band " + n + " Level", -6.f, 6.f, typeLevelDefaults[i]);
+        const float defaults[4] = { 0.f, 20.f, 70.f, 55.f };
+        const float levels[4] = { 0.f, 0.f, 1.f, 1.f };
+        f("ATYPE_DEGREE" + n, "Type-A Band " + n + " Degree", 0.f, 100.f, defaults[i]);
+        f("ATYPE_LEVEL" + n, "Type-A Band " + n + " Level", -6.f, 6.f, levels[i]);
     }
-
     f("ATYPE_ATTACK", "Type-A Attack", 1.f, 100.f, 10.f, 0.35f);
     f("ATYPE_RELEASE", "Type-A Release", 20.f, 500.f, 120.f, 0.35f);
     f("ATYPE_INPUT", "Type-A Input Gain", -24.f, 24.f, 0.f);
     f("ATYPE_MIX", "Type-A Mix", 0.f, 100.f, 100.f);
     f("ATYPE_OUTPUT", "Type-A Output Gain", -24.f, 24.f, 0.f);
 
-    // Two-edge split-band de-esser.
-    f("DEESS_LOW", "De-Esser Low Xover", 2500.f, 9000.f, 4500.f, 0.35f);
-    f("DEESS_HIGH", "De-Esser High Xover", 6000.f, 15000.f, 10500.f, 0.35f);
-    f("DEESS_RANGE", "De-Esser Range", 0.f, 24.f, 10.f);
-    f("DEESS_STRENGTH", "De-Esser Strength", 0.f, 100.f, 75.f);
-    f("DEESS_ATTACK", "De-Esser Attack", 0.1f, 20.f, 1.f, 0.35f);
-    f("DEESS_RELEASE", "De-Esser Release", 10.f, 300.f, 80.f, 0.35f);
-    p.push_back(std::make_unique<juce::AudioParameterBool>(
-        "DEESS_LISTEN", "De-Esser Listen", false));
+    // DeEsser reference controls. These intentionally mirror the public reference:
+    // male/female target choice, intensity and average-threshold offset.
+    p.push_back(std::make_unique<juce::AudioParameterChoice>(
+        "DEESS_VOICE", "DeEsser Voice",
+        juce::StringArray { "Male Vocal", "Female Vocal" }, 0));
+    f("DEESS_INTENSITY", "DeEsser Intensity", 2.f, 10.f, 10.f);
+    f("DEESS_OFFSET", "DeEsser Threshold Offset", -0.1f, 0.1f, 0.f);
 
     f("DRY_WET", "Dry / Wet", 0.f, 100.f, 100.f);
     f("OUTPUT_LEVEL", "Output Level", -24.f, 12.f, 0.f);
@@ -102,7 +90,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
 
 void VVChainAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
+    analyzerSampleRate = sampleRate;
+    analyzerFifoIndex = 0;
+    analyzerFftData.fill(0.0f);
+    for (auto& value : analyzerSpectrumDb)
+        value.store(-120.0f, std::memory_order_relaxed);
+
     dsp.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    setLatencySamples(8192);
 }
 
 bool VVChainAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
@@ -113,6 +108,49 @@ bool VVChainAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) c
     return (mainIn == juce::AudioChannelSet::mono()
         || mainIn == juce::AudioChannelSet::stereo())
         && mainOut == mainIn;
+}
+
+void VVChainAudioProcessor::pushAnalyzerSamples(const juce::AudioBuffer<float>& buffer) noexcept
+{
+    const int channels = buffer.getNumChannels();
+    const int samples = buffer.getNumSamples();
+    if (channels <= 0 || samples <= 0)
+        return;
+
+    const auto* left = buffer.getReadPointer(0);
+    const auto* right = channels > 1 ? buffer.getReadPointer(1) : left;
+
+    for (int n = 0; n < samples; ++n)
+    {
+        analyzerFftData[(size_t)analyzerFifoIndex] = 0.5f * (left[n] + right[n]);
+        ++analyzerFifoIndex;
+
+        if (analyzerFifoIndex == kFFTSize)
+        {
+            for (int i = 0; i < kFFTSize; ++i)
+                analyzerFftData[(size_t)i] *= 1.0f;
+
+            analyzerWindow.multiplyWithWindowingTable(analyzerFftData.data(), kFFTSize);
+            std::fill(analyzerFftData.begin() + kFFTSize, analyzerFftData.end(), 0.0f);
+            analyzerFFT.performRealOnlyForwardTransform(analyzerFftData.data());
+
+            for (int bin = 1; bin < kSpectrumBins; ++bin)
+            {
+                const float re = analyzerFftData[(size_t)(2 * bin)];
+                const float im = analyzerFftData[(size_t)(2 * bin + 1)];
+                const float mag = std::sqrt(re * re + im * im) / static_cast<float>(kFFTSize);
+                const float db = juce::jlimit(-120.0f, 12.0f,
+                    juce::Decibels::gainToDecibels(std::max(mag, 1.0e-9f)));
+                analyzerSpectrumDb[(size_t)bin].store(db, std::memory_order_relaxed);
+            }
+            analyzerSpectrumDb[0].store(-120.0f, std::memory_order_relaxed);
+            analyzerFifoIndex = 0;
+        }
+
+        // Keep the FFT overlap-free and deterministic.
+        if (analyzerFifoIndex >= kFFTSize)
+            analyzerFifoIndex = 0;
+    }
 }
 
 void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
@@ -126,7 +164,6 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     for (int i = 0; i < 4; ++i)
     {
         const juce::String n = juce::String(i + 1);
-
         p.freq[(size_t)i] = apvts.getRawParameterValue("EQ" + n + "_FREQ")->load();
         p.gain[(size_t)i] = apvts.getRawParameterValue("EQ" + n + "_GAIN")->load();
         p.q[(size_t)i] = apvts.getRawParameterValue("EQ" + n + "_Q")->load();
@@ -170,18 +207,25 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.atypeMix = value("ATYPE_MIX");
     p.atypeOutputGainDb = value("ATYPE_OUTPUT");
 
-    p.deessLowHz = value("DEESS_LOW");
-    p.deessHighHz = value("DEESS_HIGH");
-    p.deessRangeDb = value("DEESS_RANGE");
-    p.deessStrength = value("DEESS_STRENGTH");
-    p.deessAttackMs = value("DEESS_ATTACK");
-    p.deessReleaseMs = value("DEESS_RELEASE");
-    p.deessListen = apvts.getRawParameterValue("DEESS_LISTEN")->load() > 0.5f;
+    p.deessVoice = static_cast<int>(std::round(value("DEESS_VOICE")));
+    p.deessIntensity = value("DEESS_INTENSITY");
+    p.deessAverageOffset = value("DEESS_OFFSET");
 
     p.dryWet = value("DRY_WET");
     p.outputDb = value("OUTPUT_LEVEL");
 
     dsp.process(buffer, p);
+    pushAnalyzerSamples(buffer);
+}
+
+void VVChainAudioProcessor::copySpectrumTo(float* destination, int numberOfBins) const noexcept
+{
+    if (destination == nullptr || numberOfBins <= 0)
+        return;
+
+    const int count = std::min(numberOfBins, kSpectrumBins);
+    for (int i = 0; i < count; ++i)
+        destination[i] = analyzerSpectrumDb[(size_t)i].load(std::memory_order_relaxed);
 }
 
 void VVChainAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
