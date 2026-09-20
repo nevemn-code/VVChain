@@ -96,6 +96,11 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
     selectModule(0);
     selectBand(0);
+    analyzerSmoothed.fill(-120.0f);
+    peakSpectrum.fill(-120.0f);
+    for (auto& row : waterfall)
+        row.fill(-120.0f);
+
     startTimerHz(30);
 }
 
@@ -820,7 +825,7 @@ void VVChainAudioProcessorEditor::drawAnalyzerGraph(juce::Graphics& g, juce::Rec
 
     auto xForBin = [this, spectrumRect](int bin)
     {
-        const float hz = std::max(20.0,
+        const float hz = std::max(20.0f,
             bin * (float)audioProcessor.getAnalyzerSampleRate() /
             (2.0f * (float)(VVChainAudioProcessor::kSpectrumBins - 1)));
 
