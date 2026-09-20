@@ -196,6 +196,18 @@ def random_state(rng):
         drywet=rng.uniform(-20,140),output=rng.uniform(-40,24),
     ))
 
+
+def control_signature(s: State):
+    values = [
+        *s.freq, *s.gain, *s.q, s.hf,
+        s.ott_depth,s.ott_mix,s.ott_threshold,s.ott_up,s.ott_down,
+        s.ott_attack,s.ott_release,s.ott_x1,s.ott_x2,s.ott_x3,s.ott_post,
+        s.atype_amount,s.atype_drive,s.atype_bias,s.atype_mix,s.atype_tone,s.atype_hpf,
+        s.deess_freq,s.deess_q,s.deess_threshold,s.deess_range,s.deess_attack,s.deess_release,
+        float(s.deess_listen),s.drywet,s.output
+    ]
+    return sum((i+1)*float(v) for i,v in enumerate(values))
+
 def rms(x):
     return math.sqrt(sum(v*v for v in x)/max(1,len(x)))
 
