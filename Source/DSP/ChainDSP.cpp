@@ -476,6 +476,7 @@ void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters&)
 {
     constexpr int count = kDeessBlockSize;
     constexpr int hop = kDeessHopSize;
+    constexpr int frameShift = kDeessFrameShift;
 
     const float* input = state.input.data();
 
@@ -526,8 +527,8 @@ void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters&)
     state.queueCount = std::min(
         state.queueCount + hop, static_cast<int>(state.queue.size()));
 
-    std::copy(state.input.begin() + hop, state.input.end(), state.input.begin());
-    state.inputCount = count - hop;
+    std::copy(state.input.begin() + frameShift, state.input.end(), state.input.begin());
+    state.inputCount = count - frameShift;
 }
 
 void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Parameters& p)
