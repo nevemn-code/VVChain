@@ -8,11 +8,8 @@ static constexpr float kGateRatio = 6.0f;
 static constexpr float kLifterKneeDb = 6.0f;
 static constexpr float kCompressorKneeDb = 6.0f;
 static constexpr float kGateKneeDb = 9.0f;
-
-static float gainDbFromState(float v) noexcept
-{
-    return juce::Decibels::gainToDecibels(std::max(v, 1.0e-5f));
-}
+static constexpr double kReferenceSampleRate = 44100.0;
+static constexpr double kTwoPi = 6.28318530717958647692;
 }
 
 VVChainDSP::Biquad VVChainDSP::makeAnalogPeak(double fs, double f0, double gainDb, double q)
@@ -23,18 +20,18 @@ VVChainDSP::Biquad VVChainDSP::makeAnalogPeak(double fs, double f0, double gainD
     const double K = std::tan(juce::MathConstants<double>::pi * safeF / fs);
     const double Q = std::max(0.05, q);
 
-    const double bb0 = K * K + (A / Q) * K + 1.0;
-    const double bb1 = 2.0 * (K * K - 1.0);
-    const double bb2 = K * K - (A / Q) * K + 1.0;
-    const double aa0 = K * K + (1.0 / (A * Q)) * K + 1.0;
-    const double aa1 = 2.0 * (K * K - 1.0);
-    const double aa2 = K * K - (1.0 / (A * Q)) * K + 1.0;
+    const double b0 = K * K + (A / Q) * K + 1.0;
+    const double b1 = 2.0 * (K * K - 1.0);
+    const double b2 = K * K - (A / Q) * K + 1.0;
+    const double a0 = K * K + (1.0 / (A * Q)) * K + 1.0;
+    const double a1 = 2.0 * (K * K - 1.0);
+    const double a2 = K * K - (1.0 / (A * Q)) * K + 1.0;
 
-    c.b0 = bb0 / aa0;
-    c.b1 = bb1 / aa0;
-    c.b2 = bb2 / aa0;
-    c.a1 = aa1 / aa0;
-    c.a2 = aa2 / aa0;
+    c.b0 = b0 / a0;
+    c.b1 = b1 / a0;
+    c.b2 = b2 / a0;
+    c.a1 = a1 / a0;
+    c.a2 = a2 / a0;
     return c;
 }
 
@@ -45,18 +42,18 @@ VVChainDSP::Biquad VVChainDSP::makeAnalogHighPass(double fs, double f0, double q
     const double K = std::tan(juce::MathConstants<double>::pi * safeF / fs);
     const double Q = std::max(0.05, q);
 
-    const double bb0 = 1.0;
-    const double bb1 = -2.0;
-    const double bb2 = 1.0;
-    const double aa0 = 1.0 + K / Q + K * K;
-    const double aa1 = 2.0 * (K * K - 1.0);
-    const double aa2 = 1.0 - K / Q + K * K;
+    const double b0 = 1.0;
+    const double b1 = -2.0;
+    const double b2 = 1.0;
+    const double a0 = 1.0 + K / Q + K * K;
+    const double a1 = 2.0 * (K * K - 1.0);
+    const double a2 = 1.0 - K / Q + K * K;
 
-    c.b0 = bb0 / aa0;
-    c.b1 = bb1 / aa0;
-    c.b2 = bb2 / aa0;
-    c.a1 = aa1 / aa0;
-    c.a2 = aa2 / aa0;
+    c.b0 = b0 / a0;
+    c.b1 = b1 / a0;
+    c.b2 = b2 / a0;
+    c.a1 = a1 / a0;
+    c.a2 = a2 / a0;
     return c;
 }
 
@@ -67,18 +64,18 @@ VVChainDSP::Biquad VVChainDSP::makeLowPass(double fs, double f0, double q)
     const double K = std::tan(juce::MathConstants<double>::pi * safeF / fs);
     const double Q = std::max(0.05, q);
 
-    const double bb0 = K * K;
-    const double bb1 = 2.0 * K * K;
-    const double bb2 = K * K;
-    const double aa0 = 1.0 + K / Q + K * K;
-    const double aa1 = 2.0 * (K * K - 1.0);
-    const double aa2 = 1.0 - K / Q + K * K;
+    const double b0 = K * K;
+    const double b1 = 2.0 * K * K;
+    const double b2 = K * K;
+    const double a0 = 1.0 + K / Q + K * K;
+    const double a1 = 2.0 * (K * K - 1.0);
+    const double a2 = 1.0 - K / Q + K * K;
 
-    c.b0 = bb0 / aa0;
-    c.b1 = bb1 / aa0;
-    c.b2 = bb2 / aa0;
-    c.a1 = aa1 / aa0;
-    c.a2 = aa2 / aa0;
+    c.b0 = b0 / a0;
+    c.b1 = b1 / a0;
+    c.b2 = b2 / a0;
+    c.a1 = a1 / a0;
+    c.a2 = a2 / a0;
     return c;
 }
 
@@ -94,7 +91,7 @@ float VVChainDSP::dbToGain(float db) noexcept
 
 float VVChainDSP::gainToDb(float gain) noexcept
 {
-    return gainDbFromState(gain);
+    return juce::Decibels::gainToDecibels(std::max(gain, 1.0e-9f));
 }
 
 float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
@@ -127,6 +124,7 @@ void VVChainDSP::reset()
     ottXover1.reset();
     ottXover2.reset();
     ottXover3.reset();
+
     for (auto& b : ottDynamics)
     {
         b.lifterEnv = { 1.f, 1.f };
@@ -139,9 +137,18 @@ void VVChainDSP::reset()
     for (auto& e : typeEnv)
         e = { 0.f, 0.f };
 
-    deessHP.reset();
-    deessLP.reset();
-    deessEnv = { 0.f, 0.f };
+    for (auto& state : deess)
+    {
+        state.input.fill(0.f);
+        state.output.fill(0.f);
+        state.inputCount = 0;
+        state.outputRead = 0;
+        state.outputReady = 0;
+    }
+
+    for (auto& channel : dryDelay)
+        channel.fill(0.f);
+    dryDelayWrite = 0;
 
     gateEnvDb = { 0.f, 0.f };
     limiterEnvDb = { 0.f, 0.f };
@@ -154,16 +161,12 @@ float VVChainDSP::applyLifter(float input, float& env, float thresholdDb,
     const float slope = 1.0f - (1.0f / kLifterRatio);
     const float kneeStart = thresholdDb - kLifterKneeDb * 0.5f;
     const float kneeEnd = thresholdDb + kLifterKneeDb * 0.5f;
-
     const float magnitude = std::max(std::abs(input), 0.0001f);
     const float inputDb = juce::Decibels::gainToDecibels(magnitude);
 
     float targetGainDb = 0.f;
-
     if (inputDb < kneeStart)
-    {
         targetGainDb = (thresholdDb - inputDb) * slope;
-    }
     else if (inputDb < kneeEnd)
     {
         const float x = kneeEnd - inputDb;
@@ -174,7 +177,6 @@ float VVChainDSP::applyLifter(float input, float& env, float thresholdDb,
     const float attack = timeCoeff(sampleRate, attackMs);
     const float release = timeCoeff(sampleRate, releaseMs);
     const float alpha = targetLinear > env ? attack : release;
-
     env = alpha * env + (1.0f - alpha) * targetLinear;
 
     const float wet = input * env;
@@ -189,12 +191,10 @@ float VVChainDSP::applyCompressor(float input, float& envDb, float thresholdDb,
     const float slope = 1.0f - (1.0f / ratio);
     const float kneeStart = thresholdDb - kCompressorKneeDb * 0.5f;
     const float kneeEnd = thresholdDb + kCompressorKneeDb * 0.5f;
-
     const float magnitude = std::max(std::abs(input), 0.00001f);
     const float inputDb = juce::Decibels::gainToDecibels(magnitude);
 
     float targetReductionDb = 0.f;
-
     if (inputDb > kneeEnd)
         targetReductionDb = (inputDb - thresholdDb) * slope;
     else if (inputDb > kneeStart)
@@ -203,21 +203,17 @@ float VVChainDSP::applyCompressor(float input, float& envDb, float thresholdDb,
         targetReductionDb = slope / (2.0f * kCompressorKneeDb) * x * x;
     }
 
-    const float targetReductionSignedDb = -targetReductionDb;
     const float currentReductionDb = -envDb;
     const float alpha = targetReductionDb > currentReductionDb
         ? timeCoeff(sampleRate, attackMs)
         : timeCoeff(sampleRate, releaseMs);
-
     const float smoothedReduction = alpha * currentReductionDb
         + (1.0f - alpha) * targetReductionDb;
 
     envDb = -juce::jlimit(0.f, 60.f, smoothedReduction);
 
-    const float gain = dbToGain(envDb);
-    const float wet = input * gain;
+    const float wet = input * dbToGain(envDb);
     const float m = juce::jlimit(0.f, 1.f, mix / 100.f);
-    juce::ignoreUnused(targetReductionSignedDb);
     return wet * m + input * (1.0f - m);
 }
 
@@ -246,8 +242,7 @@ float VVChainDSP::applyGate(float input, float& envDb, float thresholdDb,
     const float alpha = targetGainDb < envDb ? attack : release;
     envDb = alpha * envDb + (1.f - alpha) * targetGainDb;
 
-    const float gain = dbToGain(envDb);
-    return input * (0.90f * gain + 0.10f);
+    return input * (0.90f * dbToGain(envDb) + 0.10f);
 }
 
 float VVChainDSP::applyLimiter(float input, float& envDb, double sampleRate)
@@ -270,20 +265,18 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
     for (int ch = 0; ch < channels; ++ch)
     {
-        auto* d = buffer.getWritePointer(ch);
+        auto* data = buffer.getWritePointer(ch);
         const bool right = ch == 1;
 
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
-            float y = hp.process(d[n], right);
-
+            float y = hp.process(data[n], right);
             for (auto& band : eq)
             {
                 y = band.process(y, right);
                 y = softColor(y, 0.20f + 0.80f * colorAmount);
             }
-
-            d[n] = y;
+            data[n] = y;
         }
     }
 }
@@ -311,12 +304,13 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
     for (int ch = 0; ch < channels; ++ch)
     {
-        auto* d = buffer.getWritePointer(ch);
+        auto* data = buffer.getWritePointer(ch);
         const bool right = ch == 1;
 
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
-            const float x = applyGate(d[n], gateEnvDb[(size_t)ch], p.ottGateThresholdDb, sr)
+            const float original = data[n];
+            const float x = applyGate(original, gateEnvDb[(size_t)ch], p.ottGateThresholdDb, sr)
                 * dbToGain(juce::jlimit(-24.f, 24.f, p.ottInputGainDb));
 
             const float low = ottXover1.low(x, right);
@@ -340,25 +334,21 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 float& compEnv = ottDynamics[(size_t)band].compEnvDb[(size_t)ch];
 
                 bands[band] = applyLifter(
-                    bands[band],
-                    lifterEnv,
+                    bands[band], lifterEnv,
                     p.ottLifterThreshold[(size_t)band],
                     p.ottLifterAttack[(size_t)band],
                     p.ottLifterRelease[(size_t)band],
-                    lifterMix,
-                    sr);
+                    lifterMix, sr);
 
                 bands[band] = applyCompressor(
-                    bands[band],
-                    compEnv,
+                    bands[band], compEnv,
                     p.ottCompThreshold[(size_t)band],
                     p.ottCompAttack[(size_t)band],
                     p.ottCompRelease[(size_t)band],
-                    compMix,
-                    sr,
-                    kCompressorRatio);
+                    compMix, sr, kCompressorRatio);
 
-                bands[band] *= dbToGain(juce::jlimit(-24.f, 12.f, p.ottBandLevelDb[(size_t)band]));
+                bands[band] *= dbToGain(
+                    juce::jlimit(-24.f, 12.f, p.ottBandLevelDb[(size_t)band]));
             }
 
             float y = bands[0] + bands[1] + bands[2] + bands[3];
@@ -368,15 +358,15 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 y = std::tanh(y * 1.7f);
 
             const float mix = juce::jlimit(0.f, 1.f, p.ottMix / 100.f);
-            d[n] = d[n] + mix * (y - d[n]);
-            d[n] *= dbToGain(juce::jlimit(-24.f, 24.f, p.ottOutputGainDb));
+            data[n] = original + mix * (y - original);
+            data[n] *= dbToGain(juce::jlimit(-24.f, 24.f, p.ottOutputGainDb));
         }
     }
 }
 
 void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    // Dolby A-style four control bands: LP80, 80-3k, HP3k and HP9k.
+    // Type-A style four overlapping channels.
     typeXover1.lp1 = makeLowPass(sr, 80.f, 0.707);
     typeXover1.lp2 = makeLowPass(sr, 80.f, 0.707);
     typeXover1.hp1 = makeHighPass(sr, 80.f, 0.707);
@@ -386,7 +376,6 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
     typeXover2.lp2 = makeLowPass(sr, 3000.f, 0.707);
     typeXover2.hp1 = makeHighPass(sr, 3000.f, 0.707);
     typeXover2.hp2 = makeHighPass(sr, 3000.f, 0.707);
-
     typeHP9k = makeHighPass(sr, 9000.f, 0.707);
 
     const float inputGain = dbToGain(juce::jlimit(-24.f, 24.f, p.atypeInputGainDb));
@@ -396,12 +385,12 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
 
     for (int ch = 0; ch < channels; ++ch)
     {
-        auto* d = buffer.getWritePointer(ch);
+        auto* data = buffer.getWritePointer(ch);
         const bool right = ch == 1;
 
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
-            const float x = d[n] * inputGain;
+            const float x = data[n] * inputGain;
             const float b1 = typeXover1.low(x, right);
             const float x1High = typeXover1.high(x, right);
             const float b2 = typeXover2.low(x1High, right);
@@ -410,73 +399,154 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
             const float bands[4] = { b1, b2, b3, b4 };
 
             float enhanced = 0.f;
-
             for (int band = 0; band < 4; ++band)
             {
                 const float degree = juce::jlimit(0.f, 100.f, p.atypeDegree[(size_t)band]);
-                const float levelTrim = dbToGain(
-                    juce::jlimit(-6.f, 6.f, p.atypeBandLevelDb[(size_t)band]));
-
+                const float trim = dbToGain(juce::jlimit(-6.f, 6.f,
+                                                          p.atypeBandLevelDb[(size_t)band]));
                 float& env = typeEnv[(size_t)band][(size_t)ch];
+
                 env += (std::abs(bands[band]) > env ? (1.f - attack) : (1.f - release))
-                    * (std::abs(bands[band]) - env);
+                       * (std::abs(bands[band]) - env);
 
                 const float levelDb = gainToDb(env);
-                const float thresholdDb = -40.f;
                 float boostDb = 0.f;
-
-                if (levelDb < thresholdDb)
+                if (levelDb < -40.f)
                     boostDb = juce::jlimit(0.f, 10.f,
-                        (thresholdDb - levelDb) * 0.5f * degree / 100.f);
+                                           (-40.f - levelDb) * 0.5f * degree / 100.f);
 
-                const float bandGain = dbToGain(boostDb) * levelTrim;
-                enhanced += bands[band] * (bandGain - 1.0f);
+                enhanced += bands[band] * (dbToGain(boostDb) * trim - 1.0f);
             }
 
             const float mix = juce::jlimit(0.f, 1.f, p.atypeMix / 100.f);
-            d[n] = x / inputGain + mix * enhanced;
-            d[n] *= outputGain;
+            data[n] = x / inputGain + enhanced * mix;
+            data[n] *= outputGain;
         }
     }
 }
 
-void VVChainDSP::applyDeEsser(juce::AudioBuffer<float>& buffer, const Parameters& p)
+void VVChainDSP::fft(std::array<std::complex<double>, kDeessBlockSize>& data, bool inverse)
 {
-    float low = juce::jlimit(2000.f, 12000.f, p.deessLowHz);
-    float high = juce::jlimit(low + 100.f, 18000.f, p.deessHighHz);
-    high = std::min(high, static_cast<float>(sr * 0.42));
+    // Iterative radix-2 Cooley-Tukey FFT. No windowing: this intentionally
+    // follows the reference processor's FFT -> filter -> IFFT structure.
+    const size_t n = data.size();
 
-    deessHP = makeHighPass(sr, low, 0.707);
-    deessLP = makeLowPass(sr, high, 0.707);
+    for (size_t i = 1, j = 0; i < n; ++i)
+    {
+        size_t bit = n >> 1;
+        for (; j & bit; bit >>= 1)
+            j ^= bit;
+        j ^= bit;
+        if (i < j)
+            std::swap(data[i], data[j]);
+    }
 
-    const float attack = timeCoeff(sr, p.deessAttackMs);
-    const float release = timeCoeff(sr, p.deessReleaseMs);
-    const float thresholdDb = -36.f;
-    const float strength = juce::jlimit(0.f, 1.f, p.deessStrength / 100.f);
-    const float range = juce::jlimit(0.f, 24.f, p.deessRangeDb);
+    for (size_t length = 2; length <= n; length <<= 1)
+    {
+        const double angle = (inverse ? 1.0 : -1.0) * kTwoPi / static_cast<double>(length);
+        const std::complex<double> wlen(std::cos(angle), std::sin(angle));
 
+        for (size_t i = 0; i < n; i += length)
+        {
+            std::complex<double> w(1.0, 0.0);
+            for (size_t j = 0; j < length / 2; ++j)
+            {
+                const auto u = data[i + j];
+                const auto v = data[i + j + length / 2] * w;
+                data[i + j] = u + v;
+                data[i + j + length / 2] = u - v;
+                w *= wlen;
+            }
+        }
+    }
+
+    if (inverse)
+    {
+        const double scale = 1.0 / static_cast<double>(n);
+        for (auto& v : data)
+            v *= scale;
+    }
+}
+
+void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters& p)
+{
+    const int count = kDeessBlockSize;
+    const float* input = state.input.data();
+
+    double sum = 0.0;
+    for (int i = 0; i < count - 1; ++i)
+        sum += std::abs(input[i + 1] - input[i]);
+
+    const float calculatedAvg = static_cast<float>(sum / (count / 2));
+    const float avgThreshold = calculatedAvg + juce::jlimit(-0.1f, 0.1f, p.deessAverageOffset);
+
+    int countMore = 0;
+    for (int i = 0; i < count - 1; ++i)
+        if (std::abs(input[i + 1] - input[i]) > avgThreshold)
+            ++countMore;
+
+    std::copy(state.input.begin(), state.input.end(), state.output.begin());
+
+    if (countMore > 10)
+    {
+        for (int i = 0; i < count; ++i)
+            deessFft[(size_t)i] = std::complex<double>(static_cast<double>(input[i]), 0.0);
+
+        fft(deessFft, false);
+
+        const double targetFreq = p.deessVoice == 0 ? 12500.0 : 13500.0;
+        const double intensity = juce::jlimit(2.0f, 10.0f, p.deessIntensity);
+
+        for (int i = 1; i < count / 2; ++i)
+        {
+            const double freq = kReferenceSampleRate * static_cast<double>(i) / static_cast<double>(count);
+            double coeff = -1.0;
+
+            if (freq < targetFreq / 10.0)
+                coeff = 0.5;
+            else if (freq >= targetFreq)
+                coeff = intensity * targetFreq / freq;
+            else
+                coeff = 1.0 + (intensity - 1.0) * std::pow(freq / targetFreq, 3.0);
+
+            deessFft[(size_t)i] /= coeff;
+            deessFft[(size_t)(count - i)] /= coeff;
+        }
+
+        fft(deessFft, true);
+
+        for (int i = 0; i < count; ++i)
+            state.output[(size_t)i] = static_cast<float>(deessFft[(size_t)i].real());
+    }
+}
+
+void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Parameters& p)
+{
     for (int ch = 0; ch < channels; ++ch)
     {
-        auto* d = buffer.getWritePointer(ch);
-        const bool right = ch == 1;
-        float& env = deessEnv[(size_t)ch];
+        auto* data = buffer.getWritePointer(ch);
+        auto& state = deess[(size_t)ch];
 
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
-            const float x = d[n];
-            const float band = deessLP.process(deessHP.process(x, right), right);
-            const float magnitude = std::max(std::abs(band), 0.00001f);
-            const float levelDb = gainToDb(magnitude);
-            const float targetGainDb = levelDb > thresholdDb
-                ? -juce::jlimit(0.f, range, (levelDb - thresholdDb) * strength)
-                : 0.f;
+            const float output = state.outputReady > 0
+                ? state.output[(size_t)state.outputRead++]
+                : 0.0f;
 
-            const float targetGain = dbToGain(targetGainDb);
-            env += targetGain > env ? (1.f - attack) * (targetGain - env)
-                                     : (1.f - release) * (targetGain - env);
+            if (state.outputReady > 0)
+                --state.outputReady;
 
-            const float wetBand = band * env;
-            d[n] = p.deessListen ? wetBand : x + (wetBand - band);
+            state.input[(size_t)state.inputCount++] = data[n];
+
+            if (state.inputCount == kDeessBlockSize)
+            {
+                processDeEsserWindow(state, p);
+                state.inputCount = 0;
+                state.outputRead = 0;
+                state.outputReady = kDeessBlockSize;
+            }
+
+            data[n] = output;
         }
     }
 }
@@ -490,21 +560,34 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     juce::AudioBuffer<float> dry;
     dry.makeCopyOf(buffer, true);
 
+    // The reference DeEsser is an offline 8192-sample processor. In the native
+    // real-time plugin we preserve that computation with an 8192-sample queue,
+    // giving deterministic one-block lookahead/latency.
+    for (int n = 0; n < buffer.getNumSamples(); ++n)
+    {
+        for (int ch = 0; ch < nCh; ++ch)
+        {
+            dry.getWritePointer(ch)[n] = dryDelay[(size_t)ch][(size_t)dryDelayWrite];
+            dryDelay[(size_t)ch][(size_t)dryDelayWrite] = buffer.getReadPointer(ch)[n];
+        }
+        dryDelayWrite = (dryDelayWrite + 1) % kDeessBlockSize;
+    }
+
     applyEq(buffer, p);
     applyOtt(buffer, p);
     applyAType(buffer, p);
-    applyDeEsser(buffer, p);
+    processDeEsser(buffer, p);
 
     const float mix = juce::jlimit(0.f, 1.f, p.dryWet / 100.f);
     const float out = dbToGain(juce::jlimit(-24.f, 12.f, p.outputDb));
 
     for (int ch = 0; ch < nCh; ++ch)
     {
-        auto* w = buffer.getWritePointer(ch);
-        const auto* d = dry.getReadPointer(ch);
+        auto* wet = buffer.getWritePointer(ch);
+        const auto* delayedDry = dry.getReadPointer(ch);
 
         for (int n = 0; n < buffer.getNumSamples(); ++n)
-            w[n] = (d[n] + mix * (w[n] - d[n])) * out;
+            wet[n] = (delayedDry[n] + mix * (wet[n] - delayedDry[n])) * out;
     }
 
     for (int ch = nCh; ch < buffer.getNumChannels(); ++ch)
