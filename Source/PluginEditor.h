@@ -20,6 +20,7 @@ public:
 private:
     using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using BoolAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
+    using ComboAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
 
     enum class DragTarget
     {
@@ -74,6 +75,8 @@ private:
     std::array<std::unique_ptr<Attachment>, 18> attachments;
 
     juce::ToggleButton ottClipper { "CLIP" };
+    juce::ComboBox deEssVoice;
+    std::unique_ptr<ComboAttachment> deEssVoiceAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VVChainAudioProcessorEditor)
 };
