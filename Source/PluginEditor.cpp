@@ -1,11 +1,170 @@
 #include "PluginEditor.h"
 
+namespace
+{
+struct ControlDef
+{
+    const char* id;
+    const char* label;
+};
+
+juce::Rectangle<float> graphBounds(const juce::Component& c)
+{
+    return { 36.f, 76.f, (float)c.getWidth() - 72.f, (float)c.getHeight() - 288.f };
+}
+}
+
 VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p)
 {
     setResizable(true, true);
-    setSize(1280, 720);
+    setSize(1280, 760);
+
+    const char* modules[] = { "EQ", "OTT", "A-TYPE", "DE-ESSER", "MIX", "ANALYZER" };
+    for (int i = 0; i < (int)moduleButtons.size(); ++i)
+    {
+        moduleButtons[(size_t)i].setButtonText(modules[i]);
+        moduleButtons[(size_t)i].setClickingTogglesState(false);
+        moduleButtons[(size_t)i].onClick = [this, i] { selectModule(i); };
+        addAndMakeVisible(moduleButtons[(size_t)i]);
+    }
+
+    const char* bands[] = { "BAND 1", "BAND 2", "BAND 3", "BAND 4" };
+    for (int i = 0; i < (int)bandButtons.size(); ++i)
+    {
+        bandButtons[(size_t)i].setButtonText(bands[i]);
+        bandButtons[(size_t)i].setClickingTogglesState(false);
+        bandButtons[(size_t)i].onClick = [this, i] { selectBand(i); };
+        addAndMakeVisible(bandButtons[(size_t)i]);
+    }
+
+    for (size_t i = 0; i < sliders.size(); ++i)
+    {
+        sliders[i].setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+        sliders[i].setTextBoxStyle(juce::Slider::TextBoxBelow, false, 78, 18);
+        sliders[i].setDoubleClickReturnValue(true, 0.0);
+        labels[i].setJustificationType(juce::Justification::centred);
+        labels[i].setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.85f));
+        addAndMakeVisible(sliders[i]);
+        addAndMakeVisible(labels[i]);
+    }
+
+    selectModule(0);
     startTimerHz(30);
+}
+
+void VVChainAudioProcessorEditor::selectModule(int index)
+{
+    moduleIndex = juce::jlimit(0, 5, index);
+
+    for (int i = 0; i < (int)moduleButtons.size(); ++i)
+    {
+        const bool active = i == moduleIndex;
+        moduleButtons[(size_t)i].setColour(
+            juce::TextButton::buttonColourId,
+            active ? juce::Colour(0xff5d5649) : juce::Colour(0xff38362f));
+    }
+
+    rebuildControls();
+    resized();
+}
+
+void VVChainAudioProcessorEditor::selectBand(int index)
+{
+    bandIndex = juce::jlimit(0, 3, index);
+
+    for (int i = 0; i < (int)bandButtons.size(); ++i)
+    {
+        const bool active = i == bandIndex;
+        bandButtons[(size_t)i].setColour(
+            juce::TextButton::buttonColourId,
+            active ? juce::Colour(0xff5d5649) : juce::Colour(0xff38362f));
+    }
+
+    if (moduleIndex == 0)
+        rebuildControls();
+}
+
+void VVChainAudioProcessorEditor::rebuildControls()
+{
+    for (auto& a : attachments) a.reset();
+
+    for (size_t i = 0; i < sliders.size(); ++i)
+    {
+        sliders[i].setVisible(false);
+        labels[i].setVisible(false);
+    }
+
+    if (moduleIndex == 5)
+        return;
+
+    std::vector<ControlDef> defs;
+
+    if (moduleIndex == 0)
+    {
+        const auto n = juce::String(bandIndex + 1);
+        defs = {
+            { ("EQ" + n + "_FREQ").toRawUTF8(), "FREQ" },
+            { ("EQ" + n + "_GAIN").toRawUTF8(), "GAIN" },
+            { ("EQ" + n + "_Q").toRawUTF8(), "Q" },
+            { "HF_CORNER", "HF / HPF" }
+        };
+    }
+    else if (moduleIndex == 1)
+    {
+        defs = {
+            { "OTT_DEPTH", "DEPTH" },
+            { "OTT_MIX", "MIX" },
+            { "OTT_THRESHOLD", "THRESHOLD" },
+            { "OTT_UP_RATIO", "UP RATIO" },
+            { "OTT_DOWN_RATIO", "DOWN RATIO" },
+            { "OTT_ATTACK", "ATTACK" },
+            { "OTT_RELEASE", "RELEASE" },
+            { "OTT_X1", "XOVER 1" },
+            { "OTT_X2", "XOVER 2" },
+            { "OTT_X3", "XOVER 3" },
+            { "OTT_POST", "POST GAIN" }
+        };
+    }
+    else if (moduleIndex == 2)
+    {
+        defs = {
+            { "ATYPE_AMOUNT", "AMOUNT" },
+            { "ATYPE_DRIVE", "DRIVE" },
+            { "ATYPE_BIAS", "BIAS" },
+            { "ATYPE_MIX", "MIX" },
+            { "ATYPE_TONE", "TONE" },
+            { "ATYPE_HPF", "HPF" }
+        };
+    }
+    else if (moduleIndex == 3)
+    {
+        defs = {
+            { "DEESS_FREQ", "FREQ" },
+            { "DEESS_Q", "Q" },
+            { "DEESS_THRESHOLD", "THRESHOLD" },
+            { "DEESS_RANGE", "RANGE" },
+            { "DEESS_ATTACK", "ATTACK" },
+            { "DEESS_RELEASE", "RELEASE" }
+        };
+    }
+    else
+    {
+        defs = {
+            { "DRY_WET", "DRY / WET" },
+            { "OUTPUT_LEVEL", "OUTPUT" }
+        };
+    }
+
+    for (size_t i = 0; i < defs.size() && i < sliders.size(); ++i)
+    {
+        sliders[i].setVisible(true);
+        labels[i].setVisible(true);
+        labels[i].setText(defs[i].label, juce::dontSendNotification);
+
+        const auto id = juce::String(defs[i].id);
+        attachments[i] = std::make_unique<Attachment>(audioProcessor.apvts, id, sliders[i]);
+    }
 }
 
 void VVChainAudioProcessorEditor::timerCallback()
@@ -15,136 +174,111 @@ void VVChainAudioProcessorEditor::timerCallback()
 
 void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    const auto b = getLocalBounds().toFloat();
     g.fillAll(juce::Colour(0xff11100d));
 
-    auto top = b;
     g.setColour(juce::Colour(0xff2a2924));
-    g.fillRect(top.removeFromTop(54.0f));
+    g.fillRect(0, 0, getWidth(), 58);
 
     g.setColour(juce::Colours::white);
-    g.setFont(juce::FontOptions(19.0f));
-    g.drawText("VVChain", 18, 0, 180, 54, juce::Justification::centredLeft);
+    g.setFont(juce::FontOptions(19.f));
+    g.drawText("VVChain", 18, 0, 180, 58, juce::Justification::centredLeft);
 
-    const char* modes[] = { "GENERAL", "OTT", "A-TYPE", "DE-ESSER", "ANALYZER" };
-    float x = 350.f;
-    for (auto mode : modes)
-    {
-        g.setColour(juce::Colour(0xff3c3a35));
-        g.fillRoundedRectangle(x, 9.f, 118.f, 36.f, 7.f);
-        g.setColour(juce::Colours::white);
-        g.drawText(mode, x, 9.f, 118.f, 36.f, juce::Justification::centred);
-        x += 126.f;
-    }
-
-    auto graph = juce::Rectangle<float>(44.f, 82.f, getWidth() - 88.f, getHeight() - 300.f);
+    auto graph = graphBounds(*this);
     g.setColour(juce::Colour(0xff171510));
     g.fillRoundedRectangle(graph, 10.f);
 
     g.setColour(juce::Colour(0xff514d3f).withAlpha(0.55f));
-    for (int i = 0; i < 11; ++i)
+    for (int i = 0; i <= 10; ++i)
     {
-        auto xx = graph.getX() + graph.getWidth() * i / 10.0f;
-        g.drawVerticalLine((int)xx, graph.getY(), graph.getBottom());
+        const float x = graph.getX() + graph.getWidth() * i / 10.f;
+        g.drawVerticalLine((int)x, graph.getY(), graph.getBottom());
     }
-    for (int i = 0; i < 9; ++i)
+    for (int i = 0; i <= 8; ++i)
     {
-        auto yy = graph.getY() + graph.getHeight() * i / 8.0f;
-        g.drawHorizontalLine((int)yy, graph.getX(), graph.getRight());
+        const float y = graph.getY() + graph.getHeight() * i / 8.f;
+        g.drawHorizontalLine((int)y, graph.getX(), graph.getRight());
     }
 
-    const std::array<juce::Colour, 4> cols {
+    const std::array<juce::Colour, 4> colors {
         juce::Colour(0xff30a7ff), juce::Colour(0xff26d0c8),
         juce::Colour(0xffd95fff), juce::Colour(0xff83d44d)
     };
 
     for (int band = 0; band < 4; ++band)
     {
+        const auto n = juce::String(band + 1);
+        const float f = audioProcessor.apvts.getRawParameterValue("EQ" + n + "_FREQ")->load();
+        const float gain = audioProcessor.apvts.getRawParameterValue("EQ" + n + "_GAIN")->load();
+        const float t = juce::jlimit(0.f, 1.f,
+            std::log10(std::max(20.f, f) / 20.f) / std::log10(1000.f));
+
+        const float px = graph.getX() + t * graph.getWidth();
+        const float py = graph.getCentreY() - juce::jlimit(-18.f, 18.f, gain) / 36.f * graph.getHeight();
+
         juce::Path path;
-        const float center = 0.14f + 0.22f * band;
-        for (int i = 0; i <= 300; ++i)
+        for (int i = 0; i <= 240; ++i)
         {
-            const float t = (float)i / 300.f;
-            const float y = graph.getCentreY() - (float)band * 4.f
-                - 72.f * std::exp(-std::pow((t - center) / 0.085f, 2.0f))
-                + 14.f * std::sin(t * 7.0f + band);
-            const float xx = graph.getX() + graph.getWidth() * t;
-            const float yy = juce::jlimit(graph.getY(), graph.getBottom(), y);
-            if (i == 0) path.startNewSubPath(xx, yy); else path.lineTo(xx, yy);
+            const float xNorm = i / 240.f;
+            const float y = graph.getCentreY()
+                - gain * 3.f * std::exp(-std::pow((xNorm - t) / 0.075f, 2.f))
+                + 3.f * std::sin(xNorm * 7.f + (float)band);
+            const float x = graph.getX() + xNorm * graph.getWidth();
+
+            if (i == 0) path.startNewSubPath(x, y); else path.lineTo(x, y);
         }
-        g.setColour(cols[(size_t)band].withAlpha(0.85f));
-        g.strokePath(path, juce::PathStrokeType(2.3f));
-    }
 
-    juce::Path spectrum;
-    spectrum.startNewSubPath(graph.getX(), graph.getBottom() - 45.f);
-    for (int i = 0; i <= 300; ++i)
-    {
-        const float t = (float)i / 300.f;
-        const float yy = graph.getBottom() - 30.f
-            - 80.f * std::abs(std::sin(10.f * t))
-            - 38.f * std::abs(std::sin(33.f * t + 0.8f))
-            - 24.f * std::abs(std::sin(73.f * t));
-        const float xx = graph.getX() + graph.getWidth() * t;
-        spectrum.lineTo(xx, juce::jlimit(graph.getY() + 20.f, graph.getBottom() - 8.f, yy));
-    }
-    spectrum.lineTo(graph.getRight(), graph.getBottom());
-    spectrum.lineTo(graph.getX(), graph.getBottom());
-    spectrum.closeSubPath();
-    g.setColour(juce::Colour(0xff6d3040).withAlpha(0.28f));
-    g.fillPath(spectrum);
-
-    const float nodesX[4] = { 0.11f, 0.33f, 0.61f, 0.84f };
-    const float nodesDb[4] = { 0.15f, -0.05f, 0.08f, -0.03f };
-    for (int i = 0; i < 4; ++i)
-    {
-        const float px = graph.getX() + graph.getWidth() * nodesX[i];
-        const float py = graph.getCentreY() - 155.f * nodesDb[i];
-        g.setColour(cols[(size_t)i]);
+        g.setColour(colors[(size_t)band].withAlpha(0.86f));
+        g.strokePath(path, juce::PathStrokeType(2.2f));
+        g.setColour(colors[(size_t)band]);
         g.fillEllipse(px - 9.f, py - 9.f, 18.f, 18.f);
-        g.setColour(juce::Colours::white.withAlpha(0.65f));
-        g.drawEllipse(px - 10.f, py - 10.f, 20.f, 20.f, 1.5f);
     }
 
-    auto panel = juce::Rectangle<float>(44.f, (float)getHeight() - 204.f,
-                                        (float)getWidth() - 88.f, 170.f);
+    g.setColour(juce::Colours::white.withAlpha(0.75f));
+    g.setFont(juce::FontOptions(10.f));
+    g.drawText("EQ nodes = visual reference; detailed control is in the module panel below.",
+               (int)graph.getX() + 10, (int)graph.getBottom() - 24,
+               (int)graph.getWidth() - 20, 18, juce::Justification::centredLeft);
+
+    auto panel = juce::Rectangle<float>(24.f, (float)getHeight() - 196.f,
+                                        (float)getWidth() - 48.f, 176.f);
     g.setColour(juce::Colour(0xff211f1b));
     g.fillRoundedRectangle(panel, 12.f);
-
-    const char* modules[] = { "EQ", "OTT", "A-TYPE", "DE-ESSER", "MIX", "LEVEL" };
-    float mx = panel.getX() + 16.f;
-    for (int i = 0; i < 6; ++i)
-    {
-        g.setColour(juce::Colour(0xff2e2c26));
-        g.fillRoundedRectangle(mx, panel.getY() + 12.f, 92.f, 28.f, 6.f);
-        g.setColour(juce::Colours::white);
-        g.setFont(juce::FontOptions(13.f));
-        g.drawText(modules[i], mx, panel.getY() + 12.f, 92.f, 28.f, juce::Justification::centred);
-        mx += 102.f;
-    }
-
-    const char* knobs[] = { "FREQ", "GAIN", "Q", "OTT DEPTH", "A-TYPE", "DE-ESS" };
-    const char* values[] = { "250", "+1.2", "0.71", "52%", "24%", "6.0 dB" };
-    float kx = panel.getX() + 18.f;
-    for (int i = 0; i < 6; ++i)
-    {
-        const float cx = kx + 48.f;
-        const float cy = panel.getY() + 103.f;
-        g.setColour(juce::Colour(0xff0d0c0a));
-        g.fillEllipse(cx - 34.f, cy - 34.f, 68.f, 68.f);
-        g.setColour(juce::Colour(0xff5a5648));
-        g.drawEllipse(cx - 34.f, cy - 34.f, 68.f, 68.f, 2.f);
-        g.setColour(juce::Colour(0xffd5a62f));
-        g.drawLine(cx, cy - 27.f, cx + 7.f, cy - 16.f, 3.f);
-        g.setColour(juce::Colours::white);
-        g.setFont(juce::FontOptions(11.f));
-        g.drawText(knobs[i], kx, panel.getY() + 122.f, 96.f, 18.f, juce::Justification::centred);
-        g.setFont(juce::FontOptions(12.f));
-        g.drawText(values[i], kx, panel.getY() + 141.f, 96.f, 18.f, juce::Justification::centred);
-        kx += 112.f;
-    }
 }
 
 void VVChainAudioProcessorEditor::resized()
 {
+    int x = 220;
+    for (auto& b : moduleButtons)
+    {
+        b.setBounds(x, 10, 108, 36);
+        x += 114;
+    }
+
+    int bx = 24;
+    for (auto& b : bandButtons)
+    {
+        b.setBounds(bx, 50, 82, 24);
+        b.setVisible(moduleIndex == 0);
+        bx += 88;
+    }
+
+    const int panelTop = getHeight() - 178;
+    const int margin = 28;
+    const int cols = 6;
+    const int gap = 8;
+    const int usable = getWidth() - margin * 2 - gap * (cols - 1);
+    const int w = std::max(110, usable / cols);
+
+    int shown = 0;
+    for (size_t i = 0; i < sliders.size(); ++i)
+    {
+        if (!sliders[i].isVisible())
+            continue;
+
+        const int col = shown % cols;
+        const int row = shown / cols;
+        sliders[i].setBounds(margin + col * (w + gap), panelTop + 42 + row * 82, w, 62);
+        labels[i].setBounds(margin + col * (w + gap), panelTop + 22 + row * 82, w, 18);
+        ++shown;
+    }
 }
