@@ -2,7 +2,7 @@
 
 namespace
 {
-constexpr std::array<juce::Colour, 4> bandColours
+const std::array<juce::Colour, 4> bandColours
 {
     juce::Colour(0xff39a9ff),
     juce::Colour(0xff35d0bf),
@@ -755,12 +755,12 @@ void VVChainAudioProcessorEditor::drawDeEsserGraph(juce::Graphics& g, juce::Rect
 
     g.setColour(juce::Colour(0xff1c1c1c));
     g.fillRoundedRectangle(top.withTrimmedBottom(5.f), 6.f);
-    drawWave(g, top.reduced(10.f), 0.0f, juce::Colour(0xffd6d1c4), 1.0f);
+    drawWave(top.reduced(10.f), 0.0f, juce::Colour(0xffd6d1c4), 1.0f);
 
     auto processed = top.translated(0.f, 0.f).withTrimmedTop(top.getHeight() * 0.50f);
     g.setColour(juce::Colour(0xff151515));
     g.fillRoundedRectangle(processed, 6.f);
-    drawWave(g, processed.reduced(10.f), 0.7f, juce::Colour(0xff64c9a7), 0.72f);
+    drawWave(processed.reduced(10.f), 0.7f, juce::Colour(0xff64c9a7), 0.72f);
 
     const float target = deEssVoice.getSelectedId() == 2 ? 13500.f : 12500.f;
     const float lowEdge = target / 10.f;
@@ -818,8 +818,8 @@ void VVChainAudioProcessorEditor::drawAnalyzerGraph(juce::Graphics& g, juce::Rec
 {
     // QSpectrumAnalyzer-style layout: spectrum above, waterfall below.
     const auto spectrumRect = graph.withHeight(graph.getHeight() * 0.62f);
-    const auto waterfallRect = graph.withY(spectrumRect.getBottom() + 4.f)
-                                    .withHeight(graph.getHeight() - spectrumRect.getHeight() - 4.f);
+    auto waterfallRect = graph.withY(spectrumRect.getBottom() + 4.f)
+                              .withHeight(graph.getHeight() - spectrumRect.getHeight() - 4.f);
 
     drawGrid(g, spectrumRect, -100.f, 6.f);
 
