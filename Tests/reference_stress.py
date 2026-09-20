@@ -302,7 +302,7 @@ def run():
         lambda s: setattr(s, "atype_release", 300),
         lambda s: setattr(s, "deess_voice", 1),
         lambda s: setattr(s, "deess_intensity", 2),
-        lambda s: setattr(s, "deess_intensity", 10),
+        lambda s: setattr(s, "deess_intensity", 6),
         lambda s: setattr(s, "deess_offset", -0.1),
         lambda s: setattr(s, "deess_offset", 0.1),
         lambda s: setattr(s, "drywet", 25),
