@@ -225,7 +225,7 @@ def structure_checks():
 
     for token in [
         "8192", "targetFreq", "countMore", "fft(deessFft, false)",
-        "fft(deessFft, true)", "DEESS",
+        "fft(deessFft, true)", "processDeEsser",
     ]:
         assert token in (dsp + dh), token
 
