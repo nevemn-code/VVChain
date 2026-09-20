@@ -55,8 +55,6 @@ public:
         float deessReferenceHz = 12500.f;
         float deessIntensity = 10.f;
         float deessAverageOffset = 0.f;
-        int deessTriggerCount = 10;
-        float deessMix = 100.f;
 
         float dryWet = 100.f;
         float outputDb = 0.f;
