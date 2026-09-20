@@ -11,32 +11,32 @@ public:
         std::array<float, 4> freq { 80.f, 350.f, 2500.f, 10000.f };
         std::array<float, 4> gain { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> q { 0.707f, 0.707f, 0.707f, 0.707f };
-
+        float eqColor = 35.f;
         float hfCornerHz = 70.f;
 
-        float ottDepth = 50.f;
+        std::array<float, 4> ottAmount { 50.f, 50.f, 50.f, 50.f };
         float ottMix = 50.f;
-        float ottThresholdDb = -16.f;
-        float ottUpRatio = 2.0f;
-        float ottDownRatio = 4.0f;
+        float ottThreshold = -24.f;
+        float ottUpRatio = 4.f;
+        float ottDownRatio = 20.f;
         float ottAttackMs = 2.5f;
         float ottReleaseMs = 80.f;
-        float ottLowMidHz = 180.f;
-        float ottMidHighHz = 1400.f;
-        float ottHighMidHz = 6500.f;
+        float ottX1 = 88.f;
+        float ottX2 = 2500.f;
+        float ottX3 = 8500.f;
+        float ottInputGainDb = 5.2f;
         float ottPostGainDb = 0.f;
 
-        float atypeAmount = 20.f;
-        float atypeDriveDb = 6.f;
-        float atypeBias = 0.f;
+        std::array<float, 4> atypeAmount { 0.f, 20.f, 70.f, 55.f };
+        std::array<float, 4> atypeGainDb { 0.f, 0.f, 1.f, 1.f };
+        float atypeAttackMs = 10.f;
+        float atypeReleaseMs = 120.f;
         float atypeMix = 100.f;
-        float atypeTone = 70.f;
-        float atypeHpfHz = 60.f;
 
-        float deessFreq = 6500.f;
-        float deessQ = 1.2f;
-        float deessThreshold = -30.f;
-        float deessRange = 8.f;
+        float deessLowHz = 4500.f;
+        float deessHighHz = 10500.f;
+        float deessRangeDb = 10.f;
+        float deessStrength = 75.f;
         float deessAttackMs = 1.0f;
         float deessReleaseMs = 80.f;
         bool deessListen = false;
@@ -70,27 +70,30 @@ private:
     };
 
     static Biquad makePeak(double fs, double f0, double gainDb, double q);
-    static Biquad makeHighPass(double fs, double f0, double q);
     static Biquad makeLowPass(double fs, double f0, double q);
-    static Biquad makeBandPass(double fs, double f0, double q);
+    static Biquad makeHighPass(double fs, double f0, double q);
+    static float analogColor(float x, float amount01) noexcept;
+    static float dbToGain(float db) noexcept;
+    static float gainToDb(float gain) noexcept;
 
     std::array<Biquad, 4> eq {};
     Biquad hp {};
 
-    // OTT four-band crossover bank: LP1/HP1, LP2/HP2, LP3/HP3.
-    std::array<Biquad, 6> ottFilters {};
-    std::array<float, 8> ottEnvL {};
-    std::array<float, 8> ottEnvR {};
+    Biquad ottLP1 {}, ottHP1 {}, ottLP2 {}, ottHP2 {}, ottLP3 {}, ottHP3 {};
+    std::array<float, 4> ottEnvL {};
+    std::array<float, 4> ottEnvR {};
 
-    Biquad atypeHP {};
-    Biquad atypeTone {};
-    Biquad deessBand {};
+    Biquad typeLP80 {}, typeHP80 {}, typeLP3k {}, typeHP3k {}, typeHP9k {};
+    std::array<float, 4> typeEnvL {};
+    std::array<float, 4> typeEnvR {};
+
+    Biquad deessHP {};
+    Biquad deessLP {};
+    float deessEnvL = 0.f;
+    float deessEnvR = 0.f;
 
     double sr = 48000.0;
     int channels = 2;
-
-    float deessEnvL = 0.f;
-    float deessEnvR = 0.f;
 
     void applyEq(juce::AudioBuffer<float>&, const Parameters&);
     void applyOtt(juce::AudioBuffer<float>&, const Parameters&);
