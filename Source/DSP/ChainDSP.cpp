@@ -142,13 +142,16 @@ void VVChainDSP::reset()
         state.input.fill(0.f);
         state.output.fill(0.f);
         state.inputCount = 0;
-        state.outputRead = 0;
-        state.outputReady = 0;
         state.queue.fill(0.f);
         state.queueRead = 0;
         state.queueWrite = 0;
         state.queueCount = 0;
     }
+
+    deessAvgSum = 0.0;
+    deessAvgCount = 0;
+    deessSampleCounter = 0;
+    deessPendingSample = 0.0f;
 
     for (auto& channel : dryDelay)
         channel.fill(0.f);
@@ -475,68 +478,41 @@ void VVChainDSP::fft(std::array<std::complex<double>, kDeessBlockSize>& data, bo
 void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters& p)
 {
     constexpr int count = kDeessBlockSize;
-    constexpr int hop = kDeessHopSize;
-    constexpr int frameShift = kDeessFrameShift;
-
     const float* input = state.input.data();
 
-    // Reference detector:
-    // compare adjacent samples in pairs and average their absolute difference.
-    double sum = 0.0;
-    for (int i = 0; i < count - 2; i += 2)
-        sum += std::abs(input[i + 1] - input[i]);
-
-    const float sensitivity = juce::jlimit(0.5f, 2.0f, p.deessSensitivity);
-    const float average = static_cast<float>(sum / (count / 2)) * sensitivity;
+    const float globalAverage = deessAvgCount > 0
+        ? static_cast<float>(deessAvgSum / static_cast<double>(deessAvgCount))
+        : 0.0f;
+    const float average = globalAverage + p.deessAverageOffset;
 
     int countMore = 0;
-    for (int i = 0; i < count - 1; ++i)
+    for (int i = 0; i < count - 2; i += 2)
         if (std::abs(input[i + 1] - input[i]) > average)
             ++countMore;
-
-    if (p.deessBypass)
-    {
-        // Real bypass: keep the exact same streaming delay as the active DeEsser,
-        // but do not run any detection or spectral attenuation.
-        for (int i = 0; i < hop; ++i)
-            state.queue[(size_t)state.queueWrite] = input[hop + i],
-            state.queueWrite = (state.queueWrite + 1) % static_cast<int>(state.queue.size());
-
-        state.queueCount = std::min(
-            state.queueCount + hop, static_cast<int>(state.queue.size()));
-
-        std::copy(state.input.begin() + frameShift, state.input.end(), state.input.begin());
-        state.inputCount = count - frameShift;
-        return;
-    }
 
     for (int i = 0; i < count; ++i)
         deessFft[(size_t)i] = std::complex<double>(static_cast<double>(input[i]), 0.0);
 
-    if (countMore > juce::jmax(1, p.deessTriggerCount))
+    const int trigger = juce::jmax(1, p.deessTriggerCount);
+
+    if (!p.deessBypass && countMore > trigger)
     {
         fft(deessFft, false);
 
-        const double referenceHz =
-            juce::jlimit(4000.0, 16000.0, static_cast<double>(p.deessReferenceHz));
-        const double amount =
-            juce::jlimit(0.0, 1.0, static_cast<double>(p.deessAmount) / 100.0);
-        const double mix =
-            juce::jlimit(0.0, 1.0, static_cast<double>(p.deessMix) / 100.0);
+        const double referenceHz = (p.deessReferenceHz >= 13000.f) ? 13500.0 : 12500.0;
+        const double intensity =
+            juce::jlimit(2.0, 10.0, static_cast<double>(p.deessIntensity));
 
         for (int i = 1; i < count / 2; ++i)
         {
             const double freq = kReferenceSampleRate * static_cast<double>(i)
                               / static_cast<double>(count);
-            const double baseCoeff = freq < 1250.0
+
+            const double coeff = freq < referenceHz / 10.0
                 ? 0.5
                 : (freq >= referenceHz
-                    ? 10.0 * referenceHz / std::max(freq, 1.0)
-                    : 1.0 + 9.0 * std::pow(freq / referenceHz, 3.0));
-
-            // amount=100% is the reference attenuation. Lower values interpolate
-            // continuously to unity, while retaining the same FFT/filter/IFFT core.
-            const double coeff = std::pow(std::max(baseCoeff, 1.0e-9), amount);
+                    ? intensity * referenceHz / std::max(freq, 1.0)
+                    : 1.0 + (intensity - 1.0) * std::pow(freq / referenceHz, 3.0));
 
             deessFft[(size_t)i] /= coeff;
             deessFft[(size_t)(count - i)] /= coeff;
@@ -545,14 +521,15 @@ void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters& p)
         fft(deessFft, true);
     }
 
-    for (int i = 0; i < hop; ++i)
-    {
-        float y = countMore > juce::jmax(1, p.deessTriggerCount)
-            ? static_cast<float>(deessFft[(size_t)(hop + i)].real())
-            : input[hop + i];
+    const float mix = juce::jlimit(0.f, 1.f, p.deessMix / 100.f);
 
-        const float mix = juce::jlimit(0.f, 1.f, p.deessMix / 100.f);
-        y = input[hop + i] * (1.f - mix) + y * mix;
+    for (int i = 0; i < count; ++i)
+    {
+        float y = (!p.deessBypass && countMore > trigger)
+            ? static_cast<float>(deessFft[(size_t)i].real())
+            : input[i];
+
+        y = input[i] * (1.0f - mix) + y * mix;
 
         state.queue[(size_t)state.queueWrite] = y;
         state.queueWrite =
@@ -560,40 +537,50 @@ void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters& p)
     }
 
     state.queueCount = std::min(
-        state.queueCount + hop, static_cast<int>(state.queue.size()));
-
-    std::copy(state.input.begin() + frameShift, state.input.end(), state.input.begin());
-    state.inputCount = count - frameShift;
+        state.queueCount + count, static_cast<int>(state.queue.size()));
+    state.inputCount = 0;
 }
 
 void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    for (int ch = 0; ch < channels; ++ch)
-    {
-        auto* data = buffer.getWritePointer(ch);
-        auto& state = deess[(size_t)ch];
+    const int samples = buffer.getNumSamples();
 
-        for (int n = 0; n < buffer.getNumSamples(); ++n)
+    for (int n = 0; n < samples; ++n)
+    {
+        const float detectorSample = buffer.getReadPointer(0)[n];
+
+        if ((deessSampleCounter & 1ULL) == 0)
+            deessPendingSample = detectorSample;
+        else
         {
-            const float output = state.queueCount > 0
-                ? state.queue[(size_t)state.queueRead]
-                : 0.0f;
+            deessAvgSum += std::abs(detectorSample - deessPendingSample);
+            ++deessAvgCount;
+        }
+
+        ++deessSampleCounter;
+
+        for (int ch = 0; ch < channels; ++ch)
+            deess[(size_t)ch].input[(size_t)deess[(size_t)ch].inputCount++] =
+                buffer.getReadPointer(ch)[n];
+
+        if (deess[0].inputCount == kDeessBlockSize)
+            for (int ch = 0; ch < channels; ++ch)
+                processDeEsserWindow(deess[(size_t)ch], p);
+
+        for (int ch = 0; ch < channels; ++ch)
+        {
+            auto& state = deess[(size_t)ch];
+            float output = 0.0f;
 
             if (state.queueCount > 0)
             {
-                state.queueRead = (state.queueRead + 1)
-                    % static_cast<int>(state.queue.size());
+                output = state.queue[(size_t)state.queueRead];
+                state.queueRead =
+                    (state.queueRead + 1) % static_cast<int>(state.queue.size());
                 --state.queueCount;
             }
 
-            state.input[(size_t)state.inputCount++] = data[n];
-
-            if (state.inputCount == kDeessBlockSize)
-            {
-                processDeEsserWindow(state, p);
-            }
-
-            data[n] = output;
+            buffer.getWritePointer(ch)[n] = output;
         }
     }
 }
@@ -607,8 +594,7 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     juce::AudioBuffer<float> dry;
     dry.makeCopyOf(buffer, true);
 
-    // The reference uses 4096 samples with a 1365-sample hop. The realtime
-    // implementation delays the dry path by 2731 samples so dry/wet stays aligned.
+    // The supplied reference uses complete 8192-sample blocks. The dry path uses the same fixed delay so MIX remains sample-aligned.
     for (int n = 0; n < buffer.getNumSamples(); ++n)
     {
         for (int ch = 0; ch < nCh; ++ch)
