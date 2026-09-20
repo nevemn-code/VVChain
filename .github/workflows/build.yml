@@ -6,7 +6,7 @@ on:
 
 jobs:
   windows-vst3:
-    runs-on: windows-latest
+    runs-on: windows-2025-vs2026
     steps:
       - uses: actions/checkout@v4
       - name: Reference stress test
@@ -14,7 +14,7 @@ jobs:
         run: python Tests/reference_stress.py
       - name: Configure
         shell: pwsh
-        run: cmake -S . -B Builds -G "Visual Studio 17 2022" -A x64 -DVVCHAIN_ENABLE_AAX=OFF
+        run: cmake -S . -B Builds -G "Visual Studio 18 2026" -A x64 -DVVCHAIN_ENABLE_AAX=OFF
       - name: Build
         shell: pwsh
         run: cmake --build Builds --config Release
