@@ -25,7 +25,7 @@ button.active{background:#5c584c;border-color:#777060}
 .header{height:70px;background:#20221d;display:flex;align-items:center;padding:0 15px;gap:18px}
 .brand{font-size:21px;font-weight:700;letter-spacing:.5px}
 .brand small{font-size:10px;color:#aaa99d;display:block;margin-top:4px;font-weight:400}
-.tabs{height:46px;background:#171915;border-bottom:1px solid var(--line);display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:6px 10px}
+.tabs{height:46px;background:#171915;border-bottom:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:6px 10px}
 .tabs button{font-size:12px;font-weight:700;letter-spacing:.4px}
 .workspace{padding:10px;display:grid;grid-template-rows:minmax(360px,54vh) auto;gap:10px}
 .graph-panel{position:relative;min-height:360px;background:#10120f;border:1px solid var(--line);border-radius:8px;overflow:hidden}
@@ -43,8 +43,6 @@ button.active{background:#5c584c;border-color:#777060}
 .switch{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted)}
 .section-title{font-size:10px;color:#8f9189;margin:1px 0 6px;text-transform:uppercase;letter-spacing:.7px}
 input[type=number],select{background:#10120f;color:#eee;border:1px solid #3a3d36;border-radius:4px;padding:4px}
-.analyzer-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:7px}
-.analyzer-tools label{font-size:10px;color:var(--muted)}
 #dropZone{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8d9085;font-size:14px;pointer-events:none}
 body.dragover #dropZone{display:flex;background:rgba(35,40,33,.62)}
 @media(max-width:1100px){.transport{grid-template-columns:auto minmax(120px,1fr) auto auto auto auto}.transport .range{display:none}.knob-grid{grid-template-columns:repeat(6,minmax(84px,1fr))}}
@@ -67,7 +65,7 @@ body.dragover #dropZone{display:flex;background:rgba(35,40,33,.62)}
   </div>
 
   <div class="header">
-    <div class="brand">VVChain<small>4-BAND ANALOG EQ · OTT · TYPE-A · DE-ESSER · FFT SPECTRUM</small></div>
+    <div class="brand">VVChain<small>4-BAND ANALOG EQ · OTT · TYPE-A · DE-ESSER</small></div>
   </div>
 
   <div class="tabs" id="functionTabs">
@@ -76,7 +74,6 @@ body.dragover #dropZone{display:flex;background:rgba(35,40,33,.62)}
     <button data-module="2">TYPE-A</button>
     <button data-module="3">DE-ESSER</button>
     <button data-module="4">MIX / OUT</button>
-    <button data-module="5">ANALYZER</button>
   </div>
 
   <div class="workspace">
@@ -92,21 +89,17 @@ body.dragover #dropZone{display:flex;background:rgba(35,40,33,.62)}
 <script>
 const $=s=>document.querySelector(s);
 const graph=$('#graph'),ctx2=graph.getContext('2d');
-let audioCtx=null,audioBuffer=null,processedBuffer=null,source=null,masterGain=null,analyser=null;
-let playStartedAt=0,playOffset=0,anim=0,processTimer=0,dirty=false,playing=false;
+let audioCtx=null,audioBuffer=null,processedBuffer=null,source=null,workletNode=null;
+let playStartedAt=0,anim=0,playing=false,workletModuleUrl=null;
 let moduleIndex=0,bandIndex=0;
 const state={
-  eq:{freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:35,hp:70},
-  ott:{degree:[100,100,100,100],liftT:[-40,-40,-40,-40],liftA:[50,50,50,50],liftR:[50,50,50,50],liftM:[100,100,100,100],compT:[-12,-12,-12,-12],compA:[15,15,15,15],compR:[60,60,60,60],compM:[100,100,100,100],level:[0,0,0,0],x:[350,1000,9000],input:5.2,gate:-80,mix:100,clip:true,output:-6},
-  type:{degree:[0,20,70,55],level:[0,0,1,1],attack:10,release:120,input:0,mix:100,output:0},
-  de:{},
-  mix:{drywet:100,output:0}
+  eq:{bypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:35,hp:70},
+  ott:{bypass:false,degree:[100,100,100,100],liftT:[-40,-40,-40,-40],liftA:[50,50,50,50],liftR:[50,50,50,50],liftM:[100,100,100,100],compT:[-12,-12,-12,-12],compA:[15,15,15,15],compR:[60,60,60,60],compM:[100,100,100,100],level:[0,0,0,0],x:[350,1000,9000],input:5.2,gate:-80,mix:100,clip:true,output:-6},
+  type:{bypass:false,degree:[0,20,70,55],level:[0,0,1,1],attack:10,release:120,input:0,mix:100,output:0},
+  de:{bypass:false,freq:12500,sens:1,trigger:10,amount:100,mix:100},
+  mix:{bypass:false,drywet:100,output:0}
 };
 const defaults=structuredClone(state);
-const spectrum=new Float32Array(1024);
-let waterfall=Array.from({length:60},()=>new Float32Array(256));
-let peak=new Float32Array(256).fill(-120),smooth=new Float32Array(256).fill(-120);
-let analyzerOpts={average:true,peak:true,persist:true,smoothing:true};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const db2g=db=>Math.pow(10,db/20);
 const g2db=g=>20*Math.log10(Math.max(g,1e-9));
@@ -163,31 +156,52 @@ function drawType(w,h){
 }
 function waveformFromBuffer(buffer,channel,rows=520){
   const data=buffer.getChannelData(Math.min(channel,buffer.numberOfChannels-1));const out=new Float32Array(rows);
-  for(let i=0;i<rows;i++){const a=Math.floor(i*data.length/rows),b=Math.max(a+1,Math.floor((i+1)*data.length/rows));let peak=0;for(let j=a;j<b;j++)peak=Math.max(peak,Math.abs(data[j]));out[i]=peak}return out
-}
+  for(let i=0;i<rows;i++){const a=Math.floor(i*data.length/rows),b=Math.max(a+1,Math.floor((i+1)*data.length/rows));}
 function drawWave(r,arr,color){ctx2.strokeStyle=color;ctx2.lineWidth=1;ctx2.beginPath();for(let i=0;i<arr.length;i++){const x=r.x+i/(arr.length-1)*r.w;const y=r.y+r.h/2-arr[i]*r.h*.46;i?ctx2.lineTo(x,y):ctx2.moveTo(x,y)}ctx2.stroke()}
 function drawDeEsser(w,h){
   ctx2.fillStyle='#0b0c0b';ctx2.fillRect(0,0,w,h);
-  const panelW=Math.max(185,Math.min(250,w*.24)),gap=10,top=10,wx=panelW+14,ww=Math.max(120,w-wx-12),wh=Math.max(100,(h-top*2-gap)/2),y1=top,y2=top+wh+gap;
-  ctx2.fillStyle='#181a17';ctx2.fillRect(8,8,panelW,h-16);
-  ctx2.fillStyle='#e9e8e2';ctx2.font='bold 11px Segoe UI';ctx2.fillText('DE-ESSER',20,28);
+  const leftW=Math.max(220,Math.min(285,w*.25)),pad=10;
+  ctx2.fillStyle='#181a17';ctx2.fillRect(8,8,leftW-8,h-16);
+  ctx2.fillStyle='#e9e8e2';ctx2.font='bold 12px Segoe UI';ctx2.fillText('DE-ESSER',20,28);
   ctx2.fillStyle='#a9aa9f';ctx2.font='10px Segoe UI';
-  ['FFT SIZE       4096','REFERENCE       12.5 kHz','BUFFER STEP     1365','OVERLAP         2 / 3','OUTPUT          MIDDLE 1 / 3','DETECTOR        SAMPLE DIFFERENCE','TRIGGER         > 10','REFERENCE RATE  44.1 kHz'].forEach((s,i)=>ctx2.fillText(s,20,52+i*18));
-  const panel=(y,label,color,buf)=>{ctx2.fillStyle='#121511';ctx2.fillRect(wx,y,ww,wh);ctx2.strokeStyle='#383c34';ctx2.strokeRect(wx+.5,y+.5,ww-1,wh-1);ctx2.fillStyle=color;ctx2.font='bold 10px Segoe UI';ctx2.fillText(label,wx+8,y+16);if(buf){const arr=waveformFromBuffer(buf,0,Math.min(1100,Math.max(240,Math.floor(ww))));drawWave({x:wx+6,y:y+22,w:ww-12,h:wh-28},arr,color)}else{ctx2.fillStyle='#777b72';ctx2.font='11px Segoe UI';ctx2.fillText('尚未 PROCESS',wx+8,y+38)}};
-  panel(y1,'ORIGINAL','#d8d2c3',audioBuffer);panel(y2,'DE-ESSED','#64c9a7',processedBuffer);
+  [
+    'FFT SIZE       4096',
+    'FRAME SHIFT    2730',
+    'BUFFER STEP    1365',
+    'OVERLAP        2 / 3',
+    'OUTPUT         MIDDLE 1 / 3',
+    'DETECTOR       SAMPLE DIFFERENCE',
+    'REF DEFAULT    12.5 kHz',
+    'TRIGGER DEFAULT 10'
+  ].forEach((s,i)=>ctx2.fillText(s,20,52+i*18));
+
+  const rx=leftW+8,rw=w-rx-8,topH=Math.max(160,h*.48),graphR={x:rx,y:8,w:rw,h:topH};
+  drawGrid(rw,topH,-12,1); // draw locally, then overlay the focus band
+  ctx2.save();ctx2.translate(rx,8);
+
+  const lo=freqToX(4000,rw),hi=freqToX(16000,rw),ref=freqToX(state.de.freq,rw);
+  ctx2.fillStyle='#5bcda033';ctx2.fillRect(lo,0,hi-lo,topH);
+  ctx2.strokeStyle='#ffca64';ctx2.beginPath();ctx2.moveTo(ref,0);ctx2.lineTo(ref,topH);ctx2.stroke();
+
+  ctx2.strokeStyle='#63d1ab';ctx2.lineWidth=2;ctx2.beginPath();
+  for(let i=0;i<=280;i++){
+    const t=i/280,hz=invLog(t),x=freqToX(hz,rw),base=hz<1250?.5:hz>=state.de.freq?(10*state.de.freq/Math.max(hz,1)):(1+9*Math.pow(hz/state.de.freq,3)),att=-12*(state.de.amount/100)*clamp(1-1/base,0,1),y=yFor(att,-12,1,topH);
+    i?ctx2.lineTo(x,y):ctx2.moveTo(x,y)
+  }
+  ctx2.stroke();
+  ctx2.fillStyle='#ddd';ctx2.font='10px Segoe UI';ctx2.fillText('REFERENCE '+fmt(state.de.freq,0)+' Hz',Math.max(5,ref-55),15);
+  ctx2.restore();
+
+  const y=topH+22,ph=(h-y-10),gap=10,pw=(rw-gap)/2;
+  const panel=(x,title,color,phase,scale)=>{ctx2.fillStyle='#121511';ctx2.fillRect(x,y,pw,ph);ctx2.strokeStyle='#383c34';ctx2.strokeRect(x+.5,y+.5,pw-1,ph-1);ctx2.fillStyle=color;ctx2.font='bold 10px Segoe UI';ctx2.fillText(title,x+8,y+16);ctx2.strokeStyle=color;ctx2.beginPath();for(let i=0;i<=300;i++){const t=i/300,xx=x+6+t*(pw-12),env=.2+.8*(.5+.5*Math.sin(t*15+phase)),yy=y+ph/2-Math.sin(t*42+phase)*ph*.23*env*scale;i?ctx2.lineTo(xx,yy):ctx2.moveTo(xx,yy)}ctx2.stroke()};
+  panel(rx,'ORIGINAL INPUT','#d8d2c3',0,1);
+  panel(rx+pw+gap,'DE-ESSED OUTPUT','#64c9a7',.7,1-state.de.amount/250);
 }
+
 function drawMix(w,h){
   drawGrid(w,h,0,100);const x1=w*.35,x2=w*.65,d=state.mix.drywet,o=(state.mix.output+24)/36*100;ctx2.strokeStyle='#45aaf5aa';ctx2.beginPath();ctx2.moveTo(x1,0);ctx2.lineTo(x1,h);ctx2.stroke();ctx2.strokeStyle='#9ed85caa';ctx2.beginPath();ctx2.moveTo(x2,0);ctx2.lineTo(x2,h);ctx2.stroke();node(x1,yFor(d,0,100,h),'#45aaf5',true);node(x2,yFor(o,0,100,h),'#9ed85c',true);ctx2.fillStyle='#ddd';ctx2.font='11px Segoe UI';ctx2.fillText('DRY / WET',x1-35,18);ctx2.fillText('OUTPUT',x2-25,18)}
-function drawAnalyzer(w,h){
-  const topH=h*.62,waterH=h-topH-5;drawGrid(w,topH,-100,6);
-  const vals=new Float32Array(256);for(let i=0;i<256;i++){const hz=invLog(i/255),bin=clamp(Math.floor(hz/(audioCtx?audioCtx.sampleRate:48000)*2*(1023)),1,1023);let v=spectrum[bin]||-120;if(analyzerOpts.smoothing&&i>0&&i<255){const b0=clamp(bin-1,1,1023),b1=clamp(bin+1,1,1023);v=(spectrum[b0]+spectrum[bin]+spectrum[b1])/3}vals[i]=analyzerOpts.average?(smooth[i]*.78+v*.22):v;smooth[i]=vals[i];if(analyzerOpts.peak)peak[i]=Math.max(peak[i]-0.2,v)}
-  ctx2.strokeStyle='#e3d8b6';ctx2.lineWidth=1.8;ctx2.beginPath();for(let i=0;i<256;i++){const x=freqToX(invLog(i/255),w),y=yFor(vals[i],-100,6,topH);i?ctx2.lineTo(x,y):ctx2.moveTo(x,y)}ctx2.stroke();
-  if(analyzerOpts.peak){ctx2.strokeStyle='#8da1ff99';ctx2.lineWidth=1;ctx2.beginPath();for(let i=0;i<256;i++){const x=freqToX(invLog(i/255),w),y=yFor(peak[i],-100,6,topH);i?ctx2.lineTo(x,y):ctx2.moveTo(x,y)}ctx2.stroke()}
-  const sy=topH+5;ctx2.fillStyle='#0b0d0b';ctx2.fillRect(0,sy,w,waterH);
-  for(let r=0;r<waterfall.length;r++){const yy=sy+r*waterH/waterfall.length,row=waterfall[r];for(let c=0;c<256;c++){const n=clamp((row[c]+100)/100,0,1);ctx2.fillStyle='hsl('+(245-200*n)+' '+Math.round(60+30*n)+'% '+Math.round(8+55*n)+'%)';ctx2.fillRect(c*w/256,yy,w/256+1,waterH/waterfall.length+1)}}
-  ctx2.fillStyle='#ddd';ctx2.font='11px Segoe UI';ctx2.fillText('FFT SPECTRUM',8,16);ctx2.fillText('WATERFALL',8,sy+16)
-}
-function draw(){const {w,h}=canvasInfo();if(moduleIndex===0)drawEQ(w,h);else if(moduleIndex===1)drawOTT(w,h);else if(moduleIndex===2)drawType(w,h);else if(moduleIndex===3)drawDeEsser(w,h);else if(moduleIndex===4)drawMix(w,h);else drawAnalyzer(w,h)}
+
+function draw(){const {w,h}=canvasInfo();if(moduleIndex===0)drawEQ(w,h);else if(moduleIndex===1)drawOTT(w,h);else if(moduleIndex===2)drawType(w,h);else if(moduleIndex===3)drawDeEsser(w,h);else if(moduleIndex===4)drawMix(w,h)}
 
 const controlDefs={
   eq:[
@@ -206,7 +220,8 @@ const controlDefs={
     ['attack','ATTACK',1,100,.1,' ms'],['release','RELEASE',20,500,1,' ms'],['input','INPUT',-24,24,.1,' dB'],['mix','MIX',0,100,.1,'%'],['output','OUTPUT',-24,24,.1,' dB']
   ],
   de:[
-    ['voice','VOICE',0,1,1,''],['intensity','INTENSITY',2,10,.01,''],['offset','AVERAGE OFFSET',-.1,.1,.001,'']
+    ['freq','REFERENCE FREQ',4000,16000,10,' Hz'],['sens','THRESHOLD SENS.',0.5,2,.01,' x'],
+    ['trigger','TRIGGER COUNT',1,50,1,''],['amount','AMOUNT',0,100,.1,' %'],['mix','DE-ESS MIX',0,100,.1,' %']
   ],
   mix:[['drywet','DRY / WET',0,100,.1,'%'],['output','OUTPUT',-24,12,.1,' dB']]
 };
@@ -225,22 +240,63 @@ function stateSet(key,v){
   else if(moduleIndex===3)state.de[key]=v; else state.mix[key]=v;
 }
 
+function moduleState(){return moduleIndex===0?state.eq:moduleIndex===1?state.ott:moduleIndex===2?state.type:moduleIndex===3?state.de:state.mix}
+function currentBypass(){return !!moduleState().bypass}
+function setCurrentBypass(v){moduleState().bypass=!!v;sendParams();renderControls();draw()}
+
 function renderControls(){
   const box=$('#controls');box.innerHTML='';
-  if(moduleIndex<=2){const row=document.createElement('div');row.className='band-row';for(let i=0;i<4;i++){const b=document.createElement('button');b.textContent='BAND '+(i+1);b.className=i===bandIndex?'active':'';b.onclick=()=>{bandIndex=i;renderControls();draw()};row.appendChild(b)}box.appendChild(row)}
-  if(moduleIndex===5){const tools=document.createElement('div');tools.className='analyzer-tools';[['Average','average'],['Max Hold','peak'],['Persistence','persist'],['Smoothing','smoothing']].forEach(([t,k])=>{const l=document.createElement('label');l.innerHTML='<input type="checkbox" '+(analyzerOpts[k]?'checked':'')+'> '+t;l.firstChild.onchange=e=>{analyzerOpts[k]=e.target.checked;if(!e.target.checked&&k==='peak')peak.fill(-120);draw()};tools.appendChild(l)});box.appendChild(tools);return}
-  if(moduleIndex===3){
-    const title=document.createElement('div');title.className='section-title';title.textContent='REFERENCE DE-ESSER';box.appendChild(title);
-    const grid=document.createElement('div');grid.className='knob-grid';
-    [['FFT SIZE','4096'],['REFERENCE FREQ','12.5 kHz'],['BUFFER STEP','1365'],['OVERLAP','2 / 3'],['OUTPUT','MIDDLE 1 / 3'],['DETECTOR','SAMPLE DIFFERENCE'],['TRIGGER','COUNT > 10'],['RATE','44.1 kHz']].forEach(([a,b])=>{const k=document.createElement('div');k.className='knob';const l=document.createElement('label');l.textContent=a;k.appendChild(l);const v=document.createElement('div');v.className='value';v.textContent=b;k.appendChild(v);grid.appendChild(k)});
-    box.appendChild(grid);
-    const row=document.createElement('div');row.className='band-row';row.style.marginTop='8px';
-    const p=document.createElement('button');p.textContent='PROCESS DE-ESSER';p.onclick=()=>buildDeEsserPreview().catch(e=>{console.error(e);$('#status').textContent='PROCESS ERROR'});row.appendChild(p);
-    const q=document.createElement('button');q.textContent='PLAY PROCESSED';q.onclick=()=>playProcessedPreview();row.appendChild(q);box.appendChild(row);return;
+  const bar=document.createElement('div');bar.className='band-row';
+  const bypass=document.createElement('button');bypass.textContent=currentBypass()?'BYPASSED':'BYPASS';bypass.className=currentBypass()?'active':'';
+  bypass.onclick=()=>setCurrentBypass(!currentBypass());bar.appendChild(bypass);
+
+  if(moduleIndex<=2){
+    for(let i=0;i<4;i++){const b=document.createElement('button');b.textContent='BAND '+(i+1);b.className=i===bandIndex?'active':'';b.onclick=()=>{bandIndex=i;renderControls();draw()};bar.appendChild(b)}
   }
-  const defs=moduleIndex===0?controlDefs.eq:moduleIndex===1?controlDefs.ott:moduleIndex===2?controlDefs.type:controlDefs.mix;
+  box.appendChild(bar);
+
+  if(moduleIndex===3){
+    const title=document.createElement('div');title.className='section-title';title.textContent='REFERENCE DE-ESSER · CONTROLS ARE DSP-LIVE';box.appendChild(title);
+  }
+
+  const defs=moduleIndex===0?controlDefs.eq:moduleIndex===1?controlDefs.ott:moduleIndex===2?controlDefs.type:moduleIndex===3?controlDefs.de:controlDefs.mix;
   const grid=document.createElement('div');grid.className='knob-grid';
-  defs.forEach(def=>{const [key,title,min,max,step,suf]=def;const k=document.createElement('div');k.className='knob';const l=document.createElement('label');l.textContent=title;k.appendChild(l);const d=document.createElement('div');d.className='dial';const val=document.createElement('div');val.className='value';k.appendChild(d);k.appendChild(val);const get=()=>stateGet(key);const set=v=>{stateSet(key,clamp(v,min,max));val.textContent=fmt(get(),max-min>500?0:1)+suf;updateDial(d,get(),min,max);scheduleProcess()};const update=()=>{const v=get();val.textContent=fmt(v,max-min>500?0:1)+suf;updateDial(d,v,min,max)};d.addEventListener('pointerdown',e=>{d.setPointerCapture(e.pointerId);const start=e.clientY,base=get(),mult=(max-min)/180,move=q=>set(base+(start-q.clientY)*mult),up=()=>{d.removeEventListener('pointermove',move);d.removeEventListener('pointerup',up)};d.addEventListener('pointermove',move);d.addEventListener('pointerup',up)});d.addEventListener('dblclick',()=>{let dv;if(moduleIndex===0){if(['freq','gain','q'].includes(key))dv=defaults.eq[key][bandIndex];else dv=defaults.eq[key]}else if(moduleIndex===1){if(['degree','liftT','liftA','liftR','liftM','compT','compA','compR','compM','level'].includes(key))dv=defaults.ott[key][bandIndex];else dv=defaults.ott[key]}else if(moduleIndex===2){dv=key==='degree'?defaults.type.degree[0]:key==='degree2'?defaults.type.degree[1]:key==='degree3'?defaults.type.degree[2]:key==='degree4'?defaults.type.degree[3]:defaults.type[key]}else dv=defaults.mix[key];if(dv!==undefined)set(dv)});grid.appendChild(k);update()});box.appendChild(grid);if(moduleIndex===1){const s=document.createElement('div');s.className='switch';s.style.marginTop='8px';s.innerHTML='<input type="checkbox" id="clipSwitch" '+(state.ott.clip?'checked':'')+'> OTT CLIPPER';s.firstChild.onchange=e=>{state.ott.clip=e.target.checked;scheduleProcess()};box.appendChild(s)}}
+  defs.forEach(def=>{
+    const [key,title,min,max,step,suf]=def;
+    const k=document.createElement('div');k.className='knob';
+    const l=document.createElement('label');l.textContent=title;k.appendChild(l);
+    const d=document.createElement('div');d.className='dial';
+    const val=document.createElement('div');val.className='value';
+    k.appendChild(d);k.appendChild(val);
+    const get=()=>stateGet(key);
+    const set=v=>{stateSet(key,clamp(v,min,max));val.textContent=fmt(get(),max-min>500?0:max-min>50?1:2)+suf;updateDial(d,get(),min,max);sendParams();draw()};
+    const update=()=>{const v=get();val.textContent=fmt(v,max-min>500?0:max-min>50?1:2)+suf;updateDial(d,v,min,max)};
+    d.addEventListener('pointerdown',e=>{
+      d.setPointerCapture(e.pointerId);
+      const start=e.clientY,base=get(),mult=(max-min)/180;
+      const move=q=>set(base+(start-q.clientY)*mult);
+      const up=()=>{d.removeEventListener('pointermove',move);d.removeEventListener('pointerup',up)};
+      d.addEventListener('pointermove',move);d.addEventListener('pointerup',up)
+    });
+    d.addEventListener('dblclick',()=>{
+      let dv;
+      if(moduleIndex===0){if(['freq','gain','q'].includes(key))dv=defaults.eq[key][bandIndex];else dv=defaults.eq[key]}
+      else if(moduleIndex===1){if(['degree','liftT','liftA','liftR','liftM','compT','compA','compR','compM','level'].includes(key))dv=defaults.ott[key][bandIndex];else dv=defaults.ott[key]}
+      else if(moduleIndex===2){dv=key==='degree'?defaults.type.degree[0]:key==='degree2'?defaults.type.degree[1]:key==='degree3'?defaults.type.degree[2]:key==='degree4'?defaults.type.degree[3]:defaults.type[key]}
+      else if(moduleIndex===3)dv=defaults.de[key];
+      else dv=defaults.mix[key];
+      if(dv!==undefined)set(dv)
+    });
+    grid.appendChild(k);update()
+  });
+  box.appendChild(grid);
+
+  if(moduleIndex===1){
+    const sw=document.createElement('div');sw.className='switch';sw.style.marginTop='8px';
+    sw.innerHTML='<input type="checkbox" id="clipSwitch" '+(state.ott.clip?'checked':'')+'> OTT CLIPPER';
+    sw.firstChild.onchange=e=>{state.ott.clip=e.target.checked;sendParams();draw()};box.appendChild(sw)
+  }
+}
 
 function updateDial(d,v,min,max){const t=(v-min)/(max-min);d.style.setProperty('--angle',(-125+250*t)+'deg')}
 
@@ -266,7 +322,7 @@ function processTypeChannel(data,fs){let e=new Array(4).fill(0);const a=Math.exp
 
 function fft(re,im,inverse){const n=re.length;for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]]}}for(let len=2;len<=n;len<<=1){const ang=(inverse?1:-1)*2*Math.PI/len,wr0=Math.cos(ang),wi0=Math.sin(ang);for(let i=0;i<n;i+=len){let wr=1,wi=0;for(let j=0;j<len/2;j++){const k=i+j,l=k+len/2,tr=re[l]*wr-im[l]*wi,ti=re[l]*wi+im[l]*wr;re[l]=re[k]-tr;im[l]=im[k]-ti;re[k]+=tr;im[k]+=ti;const nwr=wr*wr0-wi*wi0,nwi=wr*wi0+wi*wr0;wr=nwr;wi=nwi}}}if(inverse)for(let i=0;i<n;i++){re[i]/=n;im[i]/=n}}
 /* Rewritten transport + realtime DSP path. The UI thread never processes the entire file. */
-let workletNode = null, inputAnalyser = null, outputAnalyser = null, workletModuleUrl = null, analyzerTimer = 0;
+let workletNode = null,  = null,  = null, workletModuleUrl = null,  = 0;
 let playStartSeconds = 0, playEndSeconds = 0;
 
 const WORKLET_SOURCE = "class VVChainWorklet extends AudioWorkletProcessor {\n  constructor(){super();this.ready=false;this.s=null;this.N=4096;this.HOP=1365;this.SHIFT=2730;this.DELAY=2731;this.frame=[new Float32Array(this.N),new Float32Array(this.N)];this.fill=0;this.queue=[new Float32Array(16384),new Float32Array(16384)];this.qr=0;this.qw=0;this.qc=0;this.dry=[new Float32Array(this.N),new Float32Array(this.N)];this.dw=0;this.ch=[this.makeCh(),this.makeCh()];this.re=[new Float64Array(this.N),new Float64Array(this.N)];this.im=[new Float64Array(this.N),new Float64Array(this.N)];this.port.onmessage=e=>{if(e.data&&e.data.type===\"params\"){this.s=e.data.state;this.ready=true}}}\n  makeCh(){return{eq:Array.from({length:4},()=>({z1:0,z2:0})),hp:{z1:0,z2:0},lp:[0,0,0],gate:0,lim:0,lift:[1,1,1,1],comp:[0,0,0,0],type:[0,0,0,0]}}\n  clamp(v,a,b){return Math.max(a,Math.min(b,v))}\n  safeOut(v){const a=Math.abs(v);return a<=0.95?v:Math.sign(v)*(0.95+0.05*Math.tanh((a-0.95)/0.05))}\n  db2g(db){return Math.pow(10,db/20)}\n  g2db(g){return 20*Math.log10(Math.max(g,1e-9))}\n  tc(ms){return Math.exp(-1/(.001*Math.max(.1,ms)*sampleRate))}\n  biquad(x,c,z){const y=c[0]*x+z.z1;z.z1=c[1]*x-c[3]*y+z.z2;z.z2=c[2]*x-c[4]*y;return y}\n  peak(fs,f,q,g){const A=Math.pow(10,g/40),w=2*Math.PI*this.clamp(f,10,fs*.45)/fs,a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w),b0=1+a*A,b1=-2*cc,b2=1-a*A,a0=1+a/A,a1=-2*cc,a2=1-a/A;return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]}\n  hp(fs,f,q){const w=2*Math.PI*this.clamp(f,10,fs*.45)/fs,a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w),b0=(1+cc)/2,b1=-(1+cc),b2=(1+cc)/2,a0=1+a,a1=-2*cc,a2=1-a;return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]}\n  color(x,a){const d=1+1.35*a,z=x+.012*a*x*x,r=Math.tanh(d);return r?Math.tanh(z*d)/r:x}\n  fft(re,im,inv){const n=re.length;for(let i=1,j=0;i<n;i++){let b=n>>1;for(;j&b;b>>=1)j^=b;j^=b;if(i<j){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t}}for(let len=2;len<=n;len<<=1){const an=(inv?1:-1)*2*Math.PI/len,wr0=Math.cos(an),wi0=Math.sin(an);for(let i=0;i<n;i+=len){let wr=1,wi=0;for(let j=0;j<len/2;j++){const k=i+j,l=k+len/2,tr=re[l]*wr-im[l]*wi,ti=re[l]*wi+im[l]*wr,ur=re[k],ui=im[k];re[l]=ur-tr;im[l]=ui-ti;re[k]=ur+tr;im[k]=ui+ti;const nwr=wr*wr0-wi*wi0,nwi=wr*wi0+wi*wr0;wr=nwr;wi=nwi}}}if(inv)for(let i=0;i<n;i++){re[i]/=n;im[i]/=n}}\n  deesser(){const N=this.N,H=this.HOP;for(let ch=0;ch<2;ch++){const x=this.frame[ch],re=this.re[ch],im=this.im[ch];let sum=0;for(let i=0;i<N-2;i+=2)sum+=Math.abs(x[i+1]-x[i]);const avg=sum/(N/2);let more=0;for(let i=0;i<N-1;i++)if(Math.abs(x[i+1]-x[i])>avg)more++;for(let i=0;i<N;i++){re[i]=x[i];im[i]=0}if(more>10){this.fft(re,im,false);for(let i=1;i<N/2;i++){const f=44100*i/N,coeff=f<1250?.5:f>=12500?(10*12500/f):(1+9*Math.pow(f/12500,3));re[i]/=coeff;im[i]/=coeff;re[N-i]/=coeff;im[N-i]/=coeff}this.fft(re,im,true)}const q=this.queue[ch];for(let i=H;i<2*H;i++){const at=this.qw;q[at]=more>10?re[i]:x[i];if(ch===1)this.qw=(at+1)%q.length} }this.qc=Math.min(this.qc+H,this.queue[0].length);this.frame[0].copyWithin(0,this.SHIFT);this.frame[1].copyWithin(0,this.SHIFT);this.fill=N-this.SHIFT}\n  sample(x,ch){const s=this.s,c=this.ch[ch];let y=this.biquad(x,this.hp(sampleRate,s.eq.hp,.707),c.hp);for(let b=0;b<4;b++){y=this.biquad(y,this.peak(sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]),c.eq[b]);y=this.color(y,.2+.8*s.eq.color/100)}const original=y,gdb=this.g2db(Math.abs(y)+1e-9),gt=s.ott.gate,gtarget=gdb<gt?(gdb-gt)*5:0;c.gate=.99*c.gate+.01*gtarget;let z=original*this.db2g(s.ott.input+c.gate),xs=s.ott.x;c.lp[0]+=(1-Math.exp(-2*Math.PI*xs[0]/sampleRate))*(z-c.lp[0]);const h0=z-c.lp[0];c.lp[1]+=(1-Math.exp(-2*Math.PI*xs[1]/sampleRate))*(h0-c.lp[1]);const h1=h0-c.lp[1];c.lp[2]+=(1-Math.exp(-2*Math.PI*xs[2]/sampleRate))*(h1-c.lp[2]);const bands=[c.lp[0],c.lp[1],c.lp[2],h1-c.lp[2]];let sum=0;for(let b=0;b<4;b++){let v=bands[b],db=this.g2db(Math.abs(v)+1e-9),boost=db<s.ott.liftT[b]?(s.ott.liftT[b]-db)*5/6:0;boost=this.clamp(boost,0,30);const la=this.tc(s.ott.liftA[b]),lr=this.tc(s.ott.liftR[b]);c.lift[b]=c.lift[b]*(boost>0?la:lr)+(1-(boost>0?la:lr))*this.db2g(boost);const lm=this.clamp(s.ott.liftM[b]*s.ott.degree[b]/100,0,100);v*=c.lift[b]*lm/100+1-lm/100;const ed=this.g2db(Math.abs(v)+1e-9),red=ed>s.ott.compT[b]?(ed-s.ott.compT[b])*7/8:0,ca=this.tc(s.ott.compA[b]),cr=this.tc(s.ott.compR[b]);c.comp[b]=c.comp[b]*(red>0?ca:cr)+(1-(red>0?ca:cr))*red;const cm=this.clamp(s.ott.compM[b]*s.ott.degree[b]/100,0,100);v*=this.db2g(-c.comp[b])*cm/100+1-cm/100;sum+=v*this.db2g(s.ott.level[b])}const sdb=this.g2db(Math.abs(sum)+1e-9),lred=sdb>-3?(sdb+3)*19/20:0;c.lim=.995*c.lim+.005*lred;sum*=this.db2g(-c.lim);if(s.ott.clip)sum=Math.tanh(sum*1.7);y=(original*(1-s.ott.mix/100)+sum*s.ott.mix/100)*this.db2g(s.ott.output);const ti=y*this.db2g(s.type.input),tb=[ti*.25,ti*.25,ti*.3,ti*.2];let enh=0;for(let b=0;b<4;b++){const ab=Math.abs(tb[b]),aa=this.tc(s.type.attack),rr=this.tc(s.type.release);c.type[b]=c.type[b]*(ab>c.type[b]?aa:rr)+(1-(ab>c.type[b]?aa:rr))*ab;const ldb=this.g2db(c.type[b]),boost=ldb<-40?this.clamp((-40-ldb)*.5*s.type.degree[b]/100,0,10):0;enh+=tb[b]*(this.db2g(boost+s.type.level[b])-1)}y=(y+enh*s.type.mix/100)*this.db2g(s.type.output);return y}\n  process(inputs,outputs){const out=outputs[0],inp=inputs[0];if(!this.ready||!this.s||!inp||!inp.length){for(const c of out)c.fill(0);return true}const L=inp[0],R=inp[1]||inp[0],mix=this.clamp((this.s.mix?.drywet??100)/100,0,1),og=this.db2g(this.clamp(this.s.mix?.output??0,-24,12));for(let n=0;n<out[0].length;n++){const l=L[n]||0,r=R[n]||0,pl=this.sample(l,0),pr=this.sample(r,1);this.frame[0][this.fill]=pl;this.frame[1][this.fill]=pr;this.dry[0][this.dw]=l;this.dry[1][this.dw]=r;const di=(this.dw+this.N-this.DELAY)%this.N;let wL=0,wR=0;if(this.qc>0){wL=this.queue[0][this.qr];wR=this.queue[1][this.qr];this.qr=(this.qr+1)%this.queue[0].length;this.qc--}if(this.fill===this.N-1)this.deesser();this.fill++;if(this.fill>this.N-1)this.fill=0;this.dw=(this.dw+1)%this.N;out[0][n]=this.safeOut((this.dry[0][di]+mix*(wL-this.dry[0][di]))*og);if(out.length>1)out[1][n]=this.safeOut((this.dry[1][di]+mix*(wR-this.dry[1][di]))*og)}return true}\n}\nregisterProcessor(\"vvchain-worklet\",VVChainWorklet);";
@@ -278,7 +334,7 @@ async function buildDeEsserPreview(){
   const off=new OfflineAudioContext(ch,audioBuffer.length+tail,sr);
   await off.audioWorklet.addModule(makeWorkletUrl());
   const node=new AudioWorkletNode(off,'vvchain-worklet',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[ch]});
-  const neutral=structuredClone(state);neutral.eq.gain=[0,0,0,0];neutral.eq.color=0;neutral.ott.input=0;neutral.ott.gate=-90;neutral.ott.mix=0;neutral.ott.output=0;neutral.type.degree=[0,0,0,0];neutral.type.level=[0,0,0,0];neutral.type.mix=0;neutral.type.input=0;neutral.type.output=0;neutral.mix={drywet:100,output:0};
+  const neutral=structuredClone(state);neutral.eq.bypass=true;neutral.ott.bypass=true;neutral.type.bypass=true;neutral.mix.bypass=true;neutral.de.bypass=false;neutral.mix={bypass:false,drywet:100,output:0};
   node.port.postMessage({type:'params',state:neutral});
   const src=off.createBufferSource();src.buffer=audioBuffer;src.connect(node);node.connect(off.destination);src.start();
   processedBuffer=await off.startRendering();$('#status').textContent='DE-ESSER READY';draw();
@@ -297,33 +353,15 @@ async function ensureAudioGraph() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (!workletNode) {
     await audioCtx.audioWorklet.addModule(makeWorkletUrl());
-    workletNode = new AudioWorkletNode(audioCtx, "vvchain-worklet", {numberOfInputs:1, numberOfOutputs:1, outputChannelCount:[2]});
-    inputAnalyser = audioCtx.createAnalyser(); inputAnalyser.fftSize = 512;
-    outputAnalyser = audioCtx.createAnalyser(); outputAnalyser.fftSize = 2048; outputAnalyser.smoothingTimeConstant = .75;
-    workletNode.connect(outputAnalyser); outputAnalyser.connect(audioCtx.destination);
+    workletNode = new AudioWorkletNode(audioCtx, "vvchain-worklet",
+      {numberOfInputs:1, numberOfOutputs:1, outputChannelCount:[2]});
+    workletNode.connect(audioCtx.destination);
     workletNode.port.postMessage({type:"params",state});
-    startAnalyzerTimer();
   }
 }
-function sendParams(){ if(workletNode) workletNode.port.postMessage({type:"params",state}); }
-function scheduleProcess(){ sendParams(); }
-function startAnalyzerTimer(){
-  cancelAnimationFrame(analyzerTimer);
-  const tick=()=>{
-    if(outputAnalyser){
-      const fd=new Float32Array(outputAnalyser.frequencyBinCount); outputAnalyser.getFloatFrequencyData(fd);
-      for(let i=0;i<spectrum.length;i++) spectrum[i]=fd[i] ?? -120;
-      const tin=inputAnalyser?new Float32Array(inputAnalyser.fftSize):null, tout=new Float32Array(outputAnalyser.fftSize);
-      if(tin) inputAnalyser.getFloatTimeDomainData(tin); outputAnalyser.getFloatTimeDomainData(tout);
-      for(let i=0;i<256;i++){preTime[i]=tin?tin[Math.min(tin.length-1,i*tin.length/256|0)]:0;postTime[i]=tout[Math.min(tout.length-1,i*tout.length/256|0)]||0}
-      const row=waterfall[0]; for(let i=0;i<256;i++) row[i]=fd[Math.min(fd.length-1,i*fd.length/256|0)] ?? -120;
-      for(let r=waterfall.length-1;r>0;r--) waterfall[r].set(waterfall[r-1]);
-    }
-    if(moduleIndex===3||moduleIndex===5) draw();
-    analyzerTimer=requestAnimationFrame(tick);
-  };
-  tick();
-}
+function sendParams(){if(workletNode)workletNode.port.postMessage({type:"params",state})}
+function scheduleProcess(){sendParams()}
+
 async function loadAudioFile(file){
   if(!file)return;
   if(!file.type.startsWith("audio/") && !/\.(wav|mp3|m4a|aiff?|flac|ogg)$/i.test(file.name)){ $("#status").textContent="不是音訊檔"; return; }
@@ -340,8 +378,7 @@ async function loadAudioFile(file){
 }
 function stopPlayback(){
   if(source){try{source.stop()}catch(_){}try{source.disconnect()}catch(_){}source=null}
-  if(inputAnalyser){try{inputAnalyser.disconnect()}catch(_){}}
-  playing=false; cancelAnimationFrame(anim); $("#cursorTime").textContent="0:00.000";
+    playing=false; cancelAnimationFrame(anim); $("#cursorTime").textContent="0:00.000";
   if(audioBuffer) $("#status").textContent="READY";
 }
 async function startPlayback(){
@@ -351,7 +388,7 @@ async function startPlayback(){
   playEndSeconds=Math.max(playStartSeconds+.001,(+$("#loopEnd").value/1000)*audioBuffer.duration);
   workletNode.port.postMessage({type:"params",state});
   source=audioCtx.createBufferSource(); source.buffer=audioBuffer; source.loop=$("#loopToggle").checked;
-  source.loopStart=playStartSeconds; source.loopEnd=playEndSeconds; source.connect(inputAnalyser); source.connect(workletNode);
+  source.loopStart=playStartSeconds; source.loopEnd=playEndSeconds; source.connect(workletNode);
   source.onended=()=>{if(source&&!source.loop)playing=false};
   source.start(0,playStartSeconds); playing=true; playStartedAt=audioCtx.currentTime; $("#status").textContent="PLAYING"; animateTransport();
 }
