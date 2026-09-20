@@ -236,14 +236,14 @@ def structure_checks():
 
     for token in [
         "EqBand1", "OttDegree1", "OttX1", "TypeDegree1",
-        "DeEssIntensity", "mouseDown", "mouseDrag",
+        "mouseDown", "mouseDrag", "FFT SIZE", "12500", "4096",
     ]:
         assert token in ui, token
 
     for token in [
         "audioFileInput", "loopStart", "loopEnd", "AudioContext",
-        "createAnalyser", "fftSize", "state.de.intensity", "state.de.offset",
-        "functionTabs",
+        "createAnalyser", "fftSize", "FFT SIZE", "12500", "1365",
+        "MIDDLE 1 / 3", "functionTabs",
     ]:
         assert token in web, token
 
