@@ -12,6 +12,9 @@ jobs:
       - name: Reference stress test
         shell: pwsh
         run: python Tests/reference_stress.py
+      - name: Web Preview smoke test
+        shell: pwsh
+        run: python Tests/web_smoke.py
       - name: Configure
         shell: pwsh
         run: cmake -S . -B Builds -G "Visual Studio 18 2026" -A x64 -DVVCHAIN_ENABLE_AAX=OFF
