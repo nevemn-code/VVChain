@@ -14,7 +14,7 @@ jobs:
         run: python Tests/reference_stress.py
       - name: Configure
         shell: pwsh
-        run: cmake -S . -B Builds -G Ninja -DVVCHAIN_ENABLE_AAX=OFF
+        run: cmake -S . -B Builds -G "Visual Studio 17 2022" -A x64 -DVVCHAIN_ENABLE_AAX=OFF
       - name: Build
         shell: pwsh
         run: cmake --build Builds --config Release
