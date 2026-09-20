@@ -352,6 +352,18 @@ async function startPlayback(){
   source.start(0,playStartSeconds); playing=true; playStartedAt=audioCtx.currentTime; $("#status").textContent="PLAYING"; animateTransport();
 }
 function animateTransport(){cancelAnimationFrame(anim);const tick=()=>{if(!playing||!audioCtx||!audioBuffer)return;let t=playStartSeconds+(audioCtx.currentTime-playStartedAt);if($("#loopToggle").checked&&playEndSeconds>playStartSeconds){const len=playEndSeconds-playStartSeconds;t=playStartSeconds+((t-playStartSeconds)%len+len)%len}else t=Math.min(t,audioBuffer.duration);$("#cursorTime").textContent=sec(t);anim=requestAnimationFrame(tick)};tick()}
+function sec(v){
+  v=Math.max(0,Number(v)||0);
+  const m=Math.floor(v/60), s=v-m*60;
+  return m+":"+s.toFixed(3).padStart(6,"0");
+}
+function updateRangeLabels(){
+  const d=audioBuffer?.duration||0;
+  const a=(+$("#loopStart").value/1000)*d;
+  const b=(+$("#loopEnd").value/1000)*d;
+  $("#startTime").textContent=sec(a);
+  $("#endTime").textContent=sec(b);
+}
 function updateLoopNow(){
   if(!audioBuffer)return; let a=+$("#rangeStart").value,b=+$("#rangeEnd").value;
   if(a>=b){if(document.activeElement===$("#rangeStart"))$("#rangeStart").value=Math.max(0,b-1);else $("#rangeEnd").value=Math.min(1000,a+1)}
