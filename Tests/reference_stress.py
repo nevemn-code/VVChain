@@ -242,7 +242,7 @@ def structure_checks():
 
     for token in [
         "audioFileInput", "loopStart", "loopEnd", "AudioContext",
-        "createAnalyser", "fftSize", "DEESS_INTENSITY", "DEESS_OFFSET",
+        "createAnalyser", "fftSize", "state.de.intensity", "state.de.offset",
         "functionTabs",
     ]:
         assert token in web, token
