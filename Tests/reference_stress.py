@@ -183,7 +183,7 @@ def structure_checks():
         if item not in dsp: raise AssertionError("missing DSP "+item)
     for item in ["mouseDown","mouseDrag","OttDegree1","TypeDegree1","DeessLow","MixDryWet"]:
         if item not in ui: raise AssertionError("missing native graph control "+item)
-    for item in ["functionTabs","AudioWorkletNode","loopStart","loopEnd","ottDegree","atypeDegree","deessLow","deessHigh","Ott"]:
+    for item in ["functionTabs","AudioWorkletNode","loopStart","loopEnd","ottDegree","atypeDegree","deessLow","deessHigh","moduleBtn"]:
         if item not in web: raise AssertionError("missing web control "+item)
 
 def run():
