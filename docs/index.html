@@ -390,7 +390,7 @@ graph.addEventListener('pointerdown',e=>{const {w,h}=canvasInfo();const r=graph.
  if(moduleIndex===0){let best=18;for(let b=0;b<4;b++){const px=freqToX(state.eq.freq[b],w),py=yFor(state.eq.gain[b],-18,18,h),d=Math.hypot(px-x,py-y);if(d<best){best=d;drag={kind:'eq',b}}}}
  else if(moduleIndex===1){for(let i=0;i<3;i++){const px=freqToX(state.ott.x[i],w);if(Math.abs(px-x)<12){drag={kind:'ottx',i};break}}if(!drag.kind){let best=22;const xs=state.ott.x,c=[Math.sqrt(20*xs[0]),Math.sqrt(xs[0]*xs[1]),Math.sqrt(xs[1]*xs[2]),Math.sqrt(xs[2]*18000)];for(let b=0;b<4;b++){const px=freqToX(c[b],w),py=yFor(state.ott.degree[b],0,100,h),d=Math.hypot(px-x,py-y);if(d<best){best=d;drag={kind:'ottd',b}}}}}
  else if(moduleIndex===2){const c=[40,700,5200,12000];let best=24;for(let b=0;b<4;b++){const px=freqToX(c[b],w),py=yFor(state.type.degree[b],0,100,h),d=Math.hypot(px-x,py-y);if(d<best){best=d;drag={kind:'typed',b}}}}
- else if(moduleIndex===3){const cx1=w*.28,cy1=yFor((state.de.intensity-2)/8*100,0,100,h),cx2=w*.63+state.de.offset*180,cy2=h*.53*.43; if(Math.hypot(cx1-x,cy1-y)<25)drag={kind:'dei'};else if(Math.hypot(cx2-x,cy2-y)<25)drag={kind:'deo'}}
+ else if(moduleIndex===3){drag={kind:null}}
  else if(moduleIndex===4){const x1=w*.35,x2=w*.65;if(Math.hypot(x1-x,yFor(state.mix.drywet,0,100,h)-y)<25)drag={kind:'dry'};else if(Math.hypot(x2-x,yFor((state.mix.output+24)/36*100,0,100,h)-y)<25)drag={kind:'out'}}
  if(drag.kind){graph.setPointerCapture(e.pointerId);e.preventDefault()}});
 graph.addEventListener('pointermove',e=>{if(!drag.kind)return;const {w,h}=canvasInfo(),r=graph.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
