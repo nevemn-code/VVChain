@@ -1,0 +1,17 @@
+name: VVChain build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  windows-vst3:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B Builds -G Ninja -DVVCHAIN_ENABLE_AAX=OFF
+      - name: Build
+        shell: pwsh
+        run: cmake --build Builds --config Release
