@@ -92,6 +92,12 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
     addAndMakeVisible(ottClipper);
 
+    deEssVoice.addItem("Male Vocal", 1);
+    deEssVoice.addItem("Female Vocal", 2);
+    deEssVoiceAttachment = std::make_unique<ComboAttachment>(
+        audioProcessor.apvts, "DEESS_VOICE", deEssVoice);
+    addAndMakeVisible(deEssVoice);
+
     selectModule(0);
     selectBand(0);
 }
@@ -259,17 +265,11 @@ void VVChainAudioProcessorEditor::rebuildControls()
     }
     else if (moduleIndex == 3)
     {
-        setControl(0, "DEESS_FREQ", "REFERENCE FREQ");
-        setControl(1, "DEESS_SENS", "THRESHOLD SENS.");
-        setControl(2, "DEESS_TRIGGER", "TRIGGER COUNT");
-        setControl(3, "DEESS_AMOUNT", "AMOUNT");
-        setControl(4, "DEESS_MIX", "DE-ESS MIX");
+        setControl(0, "DEESS_INTENSITY", "INTENSITY");
+        setControl(1, "DEESS_OFFSET", "OFFSET");
 
-        setControlRangeForDisplay(0, 4000, 16000, 10, " Hz");
-        setControlRangeForDisplay(1, 0.5, 2.0, 0.01, " x");
-        setControlRangeForDisplay(2, 1, 50, 1, "");
-        setControlRangeForDisplay(3, 0, 100, 0.1, " %");
-        setControlRangeForDisplay(4, 0, 100, 0.1, " %");
+        setControlRangeForDisplay(0, 2.0, 10.0, 0.01, "");
+        setControlRangeForDisplay(1, -0.1, 0.1, 0.0001, "");
     }
     else if (moduleIndex == 4)
     {
@@ -656,133 +656,98 @@ void VVChainAudioProcessorEditor::drawTypeAGraph(juce::Graphics& g, juce::Rectan
                (int)graph.getWidth() - 24, 18, juce::Justification::centredLeft);
 }
 
-void VVChainAudioProcessorEditor::drawDeEsserGraph(juce::Graphics& g,
-                                                   juce::Rectangle<float> graph)
+void VVChainAudioProcessorEditor::drawDeEsserGraph(
+    juce::Graphics& g, juce::Rectangle<float> graph)
 {
     g.setColour(juce::Colour(0xff0b0c0b));
     g.fillRoundedRectangle(graph, 8.f);
 
-    const float leftW = juce::jlimit(230.f, 290.f, graph.getWidth() * 0.25f);
-    const auto left = graph.removeFromLeft(leftW).reduced(12.f);
+    const float sideW = juce::jlimit(230.f, 285.f, graph.getWidth() * 0.25f);
+    const auto side = graph.removeFromLeft(sideW).reduced(12.f);
 
     g.setColour(juce::Colour(0xff181a17));
-    g.fillRoundedRectangle(left, 6.f);
+    g.fillRoundedRectangle(side, 6.f);
 
     g.setColour(juce::Colours::white);
-    g.setFont(juce::FontOptions(13.f));
-    g.drawText("DE-ESSER", (int)left.getX() + 14, (int)left.getY() + 12,
-               (int)left.getWidth() - 28, 22, juce::Justification::left);
+    g.setFont(juce::FontOptions(14.f));
+    g.drawText("DE-ESSER", (int)side.getX() + 14, (int)side.getY() + 12,
+               (int)side.getWidth() - 28, 22, juce::Justification::left);
 
-    g.setColour(juce::Colour(0xffb4b3a8));
+    g.setColour(juce::Colour(0xffb7b6aa));
     g.setFont(juce::FontOptions(10.f));
+
+    const int voice = parameterValue("DEESS_VOICE") > 0.5f ? 1 : 0;
+    const float intensity = parameterValue("DEESS_INTENSITY");
+    const float offset = parameterValue("DEESS_OFFSET");
+    const float ref = voice == 0 ? 12500.f : 13500.f;
 
     const std::array<juce::String, 8> info
     {
-        "FFT SIZE       4096",
-        "FRAME SHIFT    2730",
-        "BUFFER STEP    1365",
-        "OVERLAP        2 / 3",
-        "OUTPUT         MIDDLE 1 / 3",
-        "DETECTOR       SAMPLE DIFFERENCE",
-        "DEFAULT TRIGGER 10",
-        "DEFAULT REF.   12.5 kHz"
+        "FFT SIZE       8192",
+        "REFERENCE      " + juce::String(ref, 0) + " Hz",
+        "BLOCK          8192",
+        "OVERLAP        NONE",
+        "PROCESS        FFT -> FILTER -> IFFT",
+        "DETECTOR       PAIRED SAMPLE DIFFERENCE",
+        "TRIGGER        COUNT > 10",
+        "INTENSITY      " + juce::String(intensity, 2)
     };
 
     for (int i = 0; i < static_cast<int>(info.size()); ++i)
-        g.drawText(info[(size_t)i], (int)left.getX() + 14,
-                   (int)left.getY() + 48 + i * 19,
-                   (int)left.getWidth() - 28, 16, juce::Justification::left);
+        g.drawText(info[(size_t)i], (int)side.getX() + 14,
+                   (int)side.getY() + 48 + i * 18,
+                   (int)side.getWidth() - 28, 16, juce::Justification::left);
 
-    const float freq = parameterValue("DEESS_FREQ");
-    const float amount = parameterValue("DEESS_AMOUNT") / 100.f;
+    g.drawText("OFFSET         " + juce::String(offset, 4),
+               (int)side.getX() + 14, (int)side.getY() + 48 + 8 * 18,
+               (int)side.getWidth() - 28, 16, juce::Justification::left);
 
-    auto response = graph.reduced(8.f);
-    response.removeFromBottom(response.getHeight() * 0.52f);
-    drawGrid(g, response, -12.f, 1.f);
+    auto plot = graph.reduced(8.f);
+    drawGrid(g, plot, -12.f, 1.f);
 
-    g.setColour(juce::Colour(0xff61c6a0).withAlpha(0.12f));
-    const float fLo = graphFrequencyToX(response, 4000.f);
-    const float fHi = graphFrequencyToX(response, 16000.f);
-    g.fillRect(fLo, response.getY(), fHi - fLo, response.getHeight());
+    const float bandLeft = graphFrequencyToX(plot, 4000.f);
+    const float bandRight = graphFrequencyToX(plot, 16000.f);
+    g.setColour(juce::Colour(0xff62c8a2).withAlpha(0.10f));
+    g.fillRect(bandLeft, plot.getY(), bandRight - bandLeft, plot.getHeight());
 
-    g.setColour(juce::Colour(0xffffc75a).withAlpha(0.85f));
-    const float refX = graphFrequencyToX(response, freq);
-    g.drawVerticalLine((int)refX, response.getY(), response.getBottom());
-    g.drawText("REFERENCE  " + juce::String(freq, 0) + " Hz",
-               (int)refX - 70, (int)response.getY() + 8, 140, 16,
-               juce::Justification::centred);
+    const float refX = graphFrequencyToX(plot, ref);
+    g.setColour(juce::Colour(0xffffc75a).withAlpha(0.9f));
+    g.drawVerticalLine((int)refX, plot.getY(), plot.getBottom());
 
     juce::Path curve;
     for (int i = 0; i <= 280; ++i)
     {
         const float t = i / 280.f;
         const float hz = invLogMap(t, 20.f, 20000.f);
-        const float x = graphFrequencyToX(response, hz);
-
         float reductionDb = 0.f;
-        if (hz >= 1250.f)
+
+        if (hz >= ref)
         {
-            const float ratio = hz >= freq
-                ? 10.f * freq / std::max(hz, 1.f)
-                : 1.f + 9.f * std::pow(hz / std::max(freq, 1.f), 3.f);
-            reductionDb = -12.f * amount * juce::jlimit(0.f, 1.f, 1.f - 1.f / ratio);
+            const float coeff = intensity * ref / std::max(hz, 1.f);
+            reductionDb = -12.f * juce::jlimit(0.f, 1.f, 1.f - 1.f / coeff);
+        }
+        else if (hz >= ref / 10.f)
+        {
+            const float coeff = 1.f + (intensity - 1.f)
+                * std::pow(hz / ref, 3.f);
+            reductionDb = -12.f * juce::jlimit(0.f, 1.f, 1.f - 1.f / coeff);
         }
 
-        const float y = response.getBottom()
-            - response.getHeight() * juce::jmap(reductionDb, -12.f, 1.f, 0.f, 1.f);
+        const float y = plot.getBottom()
+            - plot.getHeight() * juce::jmap(reductionDb, -12.f, 1.f, 0.f, 1.f);
 
-        if (i == 0) curve.startNewSubPath(x, y);
-        else curve.lineTo(x, y);
+        if (i == 0) curve.startNewSubPath(graphFrequencyToX(plot, hz), y);
+        else curve.lineTo(graphFrequencyToX(plot, hz), y);
     }
 
-    g.setColour(juce::Colour(0xff66d6ad));
+    g.setColour(juce::Colour(0xff67d3aa));
     g.strokePath(curve, juce::PathStrokeType(2.f));
 
-    const float lowerY = graph.getY() + graph.getHeight() * 0.50f + 4.f;
-    const float panelH = graph.getBottom() - lowerY - 8.f;
-    const float gap = 10.f;
-    const float waveW = (graph.getWidth() - gap) * 0.5f;
-
-    auto wavePanel = [&](juce::Rectangle<float> r, const juce::String& title,
-                         juce::Colour colour, float phase, float scale)
-    {
-        g.setColour(juce::Colour(0xff121511));
-        g.fillRoundedRectangle(r, 5.f);
-        g.setColour(juce::Colour(0xff3b3e36));
-        g.drawRoundedRectangle(r, 5.f, 1.f);
-
-        g.setColour(colour);
-        g.setFont(juce::FontOptions(10.f));
-        g.drawText(title, (int)r.getX() + 8, (int)r.getY() + 6,
-                   140, 16, juce::Justification::left);
-
-        juce::Path p;
-        for (int i = 0; i <= 300; ++i)
-        {
-            const float t = i / 300.f;
-            const float x = r.getX() + 7.f + t * (r.getWidth() - 14.f);
-            const float env = 0.22f + 0.78f *
-                (0.5f + 0.5f * std::sin(t * 15.5f + phase));
-            const float y = r.getCentreY() -
-                std::sin(t * 42.f + phase) * r.getHeight() * 0.23f * env * scale;
-
-            if (i == 0) p.startNewSubPath(x, y);
-            else p.lineTo(x, y);
-        }
-        g.strokePath(p, juce::PathStrokeType(1.35f));
-    };
-
-    wavePanel({ graph.getX() + 4.f, lowerY, waveW, panelH },
-              "ORIGINAL INPUT", juce::Colour(0xffddd6c6), 0.f, 1.f);
-    wavePanel({ graph.getX() + 4.f + waveW + gap, lowerY, waveW, panelH },
-              "DE-ESSED OUTPUT", juce::Colour(0xff64c9a7), 0.7f,
-              1.f - parameterValue("DEESS_AMOUNT") / 250.f);
-
-    g.setColour(juce::Colour(0xff8f9189));
+    g.setColour(juce::Colour(0xffddd8c8));
     g.setFont(juce::FontOptions(10.f));
-    g.drawText("FFT → REFERENCE FILTER → IFFT",
-               (int)graph.getX() + 8, (int)graph.getBottom() - 15,
-               (int)graph.getWidth() - 16, 14, juce::Justification::left);
+    g.drawText(voice == 0 ? "MALE VOCAL  12.5 kHz" : "FEMALE VOCAL  13.5 kHz",
+               (int)plot.getX() + 8, (int)plot.getY() + 8,
+               180, 16, juce::Justification::left);
 }
 
 void VVChainAudioProcessorEditor::drawMixGraph(juce::Graphics& g,
@@ -858,7 +823,7 @@ void VVChainAudioProcessorEditor::drawParameterPanel(juce::Graphics& g,
                    16, (int)area.getY() + 8, 180, 16, juce::Justification::left);
     }
 
-    const bool de = moduleIndex == 3;
+    deEssVoice.setVisible(moduleIndex == 3);
     if (de)
     {
         g.setColour(juce::Colour(0xff8f8878));
@@ -930,6 +895,9 @@ void VVChainAudioProcessorEditor::resized()
 
     ottClipper.setVisible(moduleIndex == 1);
     ottClipper.setBounds(width - 205, h - 335, 82, 26);
+
+    deEssVoice.setVisible(moduleIndex == 3);
+    deEssVoice.setBounds(24, h - 314, 190, 28);
     if (auto* clipParam = audioProcessor.apvts.getParameter("OTT_CLIPPER"))
         ottClipper.setToggleState(clipParam->getValue() > 0.5f,
                                   juce::dontSendNotification);
