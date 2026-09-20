@@ -8,36 +8,51 @@ class VVChainDSP
 public:
     struct Parameters
     {
+        // Analog prototype EQ
         std::array<float, 4> freq { 80.f, 350.f, 2500.f, 10000.f };
         std::array<float, 4> gain { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> q { 0.707f, 0.707f, 0.707f, 0.707f };
         float eqColor = 35.f;
         float hfCornerHz = 70.f;
 
-        std::array<float, 4> ottAmount { 50.f, 50.f, 50.f, 50.f };
-        float ottMix = 50.f;
-        float ottThreshold = -24.f;
-        float ottUpRatio = 4.f;
-        float ottDownRatio = 20.f;
-        float ottAttackMs = 2.5f;
-        float ottReleaseMs = 80.f;
-        float ottX1 = 88.f;
-        float ottX2 = 2500.f;
-        float ottX3 = 8500.f;
-        float ottInputGainDb = 5.2f;
-        float ottPostGainDb = 0.f;
+        // OTT / PunkOTT-MB style: gate -> 4-band split -> lifter -> compressor -> band level
+        // -> sum -> limiter -> optional clipper -> output.
+        std::array<float, 4> ottDegree { 100.f, 100.f, 100.f, 100.f };
+        std::array<float, 4> ottLifterThreshold { -40.f, -40.f, -40.f, -40.f };
+        std::array<float, 4> ottLifterAttack { 50.f, 50.f, 50.f, 50.f };
+        std::array<float, 4> ottLifterRelease { 50.f, 50.f, 50.f, 50.f };
+        std::array<float, 4> ottLifterMix { 100.f, 100.f, 100.f, 100.f };
 
-        std::array<float, 4> atypeAmount { 0.f, 20.f, 70.f, 55.f };
-        std::array<float, 4> atypeGainDb { 0.f, 0.f, 1.f, 1.f };
+        std::array<float, 4> ottCompThreshold { -12.f, -12.f, -12.f, -12.f };
+        std::array<float, 4> ottCompAttack { 15.f, 15.f, 15.f, 15.f };
+        std::array<float, 4> ottCompRelease { 60.f, 60.f, 60.f, 60.f };
+        std::array<float, 4> ottCompMix { 100.f, 100.f, 100.f, 100.f };
+        std::array<float, 4> ottBandLevelDb { 0.f, 0.f, 0.f, 0.f };
+
+        float ottX1 = 350.f;
+        float ottX2 = 1000.f;
+        float ottX3 = 9000.f;
+        float ottInputGainDb = 5.2f;
+        float ottGateThresholdDb = -80.f;
+        float ottMix = 100.f;
+        bool ottClipper = true;
+        float ottOutputGainDb = -6.f;
+
+        // Type-A / Dolby A style 4-band encoder-inspired enhancement.
+        std::array<float, 4> atypeDegree { 0.f, 20.f, 70.f, 55.f };
+        std::array<float, 4> atypeBandLevelDb { 0.f, 0.f, 1.f, 1.f };
         float atypeAttackMs = 10.f;
         float atypeReleaseMs = 120.f;
         float atypeMix = 100.f;
+        float atypeInputGainDb = 0.f;
+        float atypeOutputGainDb = 0.f;
 
+        // Split-band de-esser with two direct crossover controls.
         float deessLowHz = 4500.f;
         float deessHighHz = 10500.f;
         float deessRangeDb = 10.f;
         float deessStrength = 75.f;
-        float deessAttackMs = 1.0f;
+        float deessAttackMs = 1.f;
         float deessReleaseMs = 80.f;
         bool deessListen = false;
 
@@ -69,28 +84,75 @@ private:
         }
     };
 
-    static Biquad makePeak(double fs, double f0, double gainDb, double q);
+    struct Crossover4th
+    {
+        Biquad lp1, lp2, hp1, hp2;
+
+        void reset()
+        {
+            lp1.reset(); lp2.reset();
+            hp1.reset(); hp2.reset();
+        }
+
+        inline float low(float x, bool right)
+        {
+            return lp2.process(lp1.process(x, right), right);
+        }
+
+        inline float high(float x, bool right)
+        {
+            return hp2.process(hp1.process(x, right), right);
+        }
+    };
+
+    struct BandDynamics
+    {
+        std::array<float, 2> lifterEnv { 1.f, 1.f };
+        std::array<float, 2> compEnvDb { 0.f, 0.f };
+    };
+
+    static Biquad makeAnalogPeak(double fs, double f0, double gainDb, double q);
+    static Biquad makeAnalogHighPass(double fs, double f0, double q);
     static Biquad makeLowPass(double fs, double f0, double q);
     static Biquad makeHighPass(double fs, double f0, double q);
-    static float analogColor(float x, float amount01) noexcept;
+
     static float dbToGain(float db) noexcept;
     static float gainToDb(float gain) noexcept;
+    static float timeCoeff(double sampleRate, float ms) noexcept;
+    static float softColor(float x, float amount01) noexcept;
+
+    static float applyLifter(float input, float& env, float thresholdDb,
+                             float attackMs, float releaseMs, float mix,
+                             double sampleRate);
+
+    static float applyCompressor(float input, float& envDb, float thresholdDb,
+                                 float attackMs, float releaseMs, float mix,
+                                 double sampleRate, float ratio = 8.f);
+
+    static float applyGate(float input, float& envDb, float thresholdDb,
+                           double sampleRate);
+
+    static float applyLimiter(float input, float& envDb, double sampleRate);
 
     std::array<Biquad, 4> eq {};
     Biquad hp {};
 
-    Biquad ottLP1 {}, ottHP1 {}, ottLP2 {}, ottHP2 {}, ottLP3 {}, ottHP3 {};
-    std::array<float, 4> ottEnvL {};
-    std::array<float, 4> ottEnvR {};
+    Crossover4th ottXover1 {};
+    Crossover4th ottXover2 {};
+    Crossover4th ottXover3 {};
+    std::array<BandDynamics, 4> ottDynamics {};
 
-    Biquad typeLP80 {}, typeHP80 {}, typeLP3k {}, typeHP3k {}, typeHP9k {};
-    std::array<float, 4> typeEnvL {};
-    std::array<float, 4> typeEnvR {};
+    Crossover4th typeXover1 {};
+    Crossover4th typeXover2 {};
+    Biquad typeHP9k {};
+    std::array<std::array<float, 2>, 4> typeEnv {};
 
     Biquad deessHP {};
     Biquad deessLP {};
-    float deessEnvL = 0.f;
-    float deessEnvR = 0.f;
+    std::array<float, 2> deessEnv {};
+
+    std::array<float, 2> gateEnvDb {};
+    std::array<float, 2> limiterEnvDb {};
 
     double sr = 48000.0;
     int channels = 2;
