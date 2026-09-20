@@ -277,7 +277,8 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
                         (thresholdDb - levelDb) * (1.f - 1.f / 4.f) * amount);
 
                 const float gainDb = boostDb + p.atypeGainDb[(size_t)band];
-                enhanced += bands[band] * dbToGain(gainDb);
+                const float bandGain = dbToGain(gainDb);
+                enhanced += bands[band] * (bandGain - 1.0f);
             }
 
             d[n] = x + mix * enhanced;
