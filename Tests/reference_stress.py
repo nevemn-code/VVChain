@@ -236,7 +236,7 @@ def structure_checks():
 
     for token in [
         "EqBand1", "OttDegree1", "OttX1", "TypeDegree1",
-        "mouseDown", "mouseDrag", "FFT SIZE", "12500", "4096",
+        "mouseDown", "mouseDrag", "FFT SIZE", "12.5 kHz", "4096",
     ]:
         assert token in ui, token
 
