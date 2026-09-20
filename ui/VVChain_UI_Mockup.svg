@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<rect width="1600" height="900" fill="#11100d"/>
+<rect width="1600" height="70" fill="#2a2924"/>
+<text x="25" y="43" fill="white" font-family="Arial" font-size="20" font-weight="700">VVChain</text>
+<rect x="50" y="100" width="1500" height="480" rx="14" fill="#171510"/>
+<g stroke="#524d40" stroke-width="1" opacity=".7">
+<path d="M50 100V580M200 100V580M350 100V580M500 100V580M650 100V580M800 100V580M950 100V580M1100 100V580M1250 100V580M1400 100V580M1550 100V580"/>
+<path d="M50 100H1550M50 160H1550M50 220H1550M50 280H1550M50 340H1550M50 400H1550M50 460H1550M50 520H1550M50 580H1550"/>
+</g>
+<text x="58" y="155" fill="#d8d0bc" font-family="Arial" font-size="15">20 Hz</text>
+<text x="1460" y="155" fill="#d8d0bc" font-family="Arial" font-size="15">20 kHz</text>
+<path d="M50 540 C180 500 250 525 360 470 S600 510 730 450 S980 500 1110 420 S1370 480 1550 400 V580 H50Z" fill="#6d3040" opacity=".28"/>
+<circle cx="230" cy="335" r="10" fill="#30a7ff" stroke="white" stroke-width="2"/>
+<circle cx="575" cy="335" r="10" fill="#26d0c8" stroke="white" stroke-width="2"/>
+<circle cx="980" cy="335" r="10" fill="#d95fff" stroke="white" stroke-width="2"/>
+<circle cx="1310" cy="335" r="10" fill="#83d44d" stroke="white" stroke-width="2"/>
+<rect x="50" y="610" width="1500" height="245" rx="14" fill="#211f1b"/>
+<g fill="white" font-family="Arial" font-size="14">
+<text x="75" y="642">EQ</text><text x="235" y="642">OTT</text><text x="395" y="642">A-TYPE</text>
+<text x="555" y="642">DE-ESSER</text><text x="715" y="642">MIX</text><text x="875" y="642">LEVEL</text>
+</g>
+</svg>
