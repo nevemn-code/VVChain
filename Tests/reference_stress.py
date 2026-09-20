@@ -214,8 +214,8 @@ def test_web_surface():
     html=Path("docs/index.html").read_text(encoding="utf-8")
     required=(
         "LOAD AUDIO","DROP AUDIO FILE HERE","selectionStart","selectionEnd",
-        "source.loop","loopStart","loopEnd","BAND 1","OTT_THRESHOLD",
-        "ATYPE_DRIVE","DEESS_LISTEN","requestAnimationFrame"
+        "source.loop","loopStart","loopEnd","BAND 1","ottThreshold","atypeDrive",
+        "deessListen","requestAnimationFrame"
     )
     missing=[x for x in required if x not in html]
     if missing:
