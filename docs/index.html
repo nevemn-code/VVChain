@@ -332,7 +332,7 @@ async function loadAudioFile(file){
     stopPlayback();
     $("#fileName").textContent=file.name; $("#loopStart").value=0; $("#loopEnd").value=1000;
     $("#dropZone").style.display="none"; $("#status").textContent="READY"; updateRangeLabels(); draw();
-  }catch(e){console.error(e);$("#status").textContent="LOAD ERROR";}
+  }catch(e){console.error(e);$("#status").textContent="LOAD ERROR: "+(e?.message||"decode failed");}
 }
 function stopPlayback(){
   if(source){try{source.stop()}catch(_){}try{source.disconnect()}catch(_){}source=null}
@@ -343,24 +343,24 @@ function stopPlayback(){
 async function startPlayback(){
   if(!audioBuffer){$("#status").textContent="先 LOAD AUDIO";return}
   await ensureAudioGraph(); await audioCtx.resume(); stopPlayback();
-  playStartSeconds=(+$("rangeStart").value/1000)*audioBuffer.duration;
-  playEndSeconds=Math.max(playStartSeconds+.001,(+$("rangeEnd").value/1000)*audioBuffer.duration);
+  playStartSeconds=(+$("#rangeStart").value/1000)*audioBuffer.duration;
+  playEndSeconds=Math.max(playStartSeconds+.001,(+$("#rangeEnd").value/1000)*audioBuffer.duration);
   workletNode.port.postMessage({type:"params",state});
-  source=audioCtx.createBufferSource(); source.buffer=audioBuffer; source.loop=$("loopToggle").checked;
+  source=audioCtx.createBufferSource(); source.buffer=audioBuffer; source.loop=$("#loopToggle").checked;
   source.loopStart=playStartSeconds; source.loopEnd=playEndSeconds; source.connect(inputAnalyser); inputAnalyser.connect(workletNode);
   source.onended=()=>{if(source&&!source.loop)playing=false};
   source.start(0,playStartSeconds); playing=true; playStartedAt=audioCtx.currentTime; $("#status").textContent="PLAYING"; animateTransport();
 }
 function animateTransport(){cancelAnimationFrame(anim);const tick=()=>{if(!playing||!audioCtx||!audioBuffer)return;let t=playStartSeconds+(audioCtx.currentTime-playStartedAt);if($("#loopToggle").checked&&playEndSeconds>playStartSeconds){const len=playEndSeconds-playStartSeconds;t=playStartSeconds+((t-playStartSeconds)%len+len)%len}else t=Math.min(t,audioBuffer.duration);$("#cursorTime").textContent=sec(t);anim=requestAnimationFrame(tick)};tick()}
 function updateLoopNow(){
-  if(!audioBuffer)return; let a=+$("rangeStart").value,b=+$("rangeEnd").value;
-  if(a>=b){if(document.activeElement===$("rangeStart"))$("rangeStart").value=Math.max(0,b-1);else $("rangeEnd").value=Math.min(1000,a+1)}
+  if(!audioBuffer)return; let a=+$("#rangeStart").value,b=+$("#rangeEnd").value;
+  if(a>=b){if(document.activeElement===$("#rangeStart"))$("#rangeStart").value=Math.max(0,b-1);else $("#rangeEnd").value=Math.min(1000,a+1)}
   updateRangeLabels(); if(playing) startPlayback().catch(()=>{});
 }
 $("#audioFileInput").addEventListener("change",e=>loadAudioFile(e.target.files[0]));
 $("#playBtn").addEventListener("click",()=>startPlayback().catch(e=>{console.error(e);$("#status").textContent="PLAY ERROR"}));
 $("#stopBtn").addEventListener("click",stopPlayback);
-$("#resetBtn").addEventListener("click",()=>{Object.assign(state,JSON.parse(JSON.stringify(defaults)));sendParams();renderControls();draw()});
+$("#resetBtn").addEventListener("click",()=>{Object.assign(state,JSON.parse(JSON.stringify(defaults)));sendParams();renderControls();$("#dropZone").style.display=audioBuffer?"none":"flex";draw()});
 $("#loopStart").addEventListener("input",updateLoopNow); $("#loopEnd").addEventListener("input",updateLoopNow);
 $("#loopToggle").addEventListener("change",()=>{if(playing)startPlayback().catch(()=>{})});
 window.addEventListener("dragenter",e=>{e.preventDefault();document.body.classList.add("dragover")});
