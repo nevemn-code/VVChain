@@ -63,6 +63,7 @@ public:
 private:
     static constexpr int kDeessBlockSize = 4096;
     static constexpr int kDeessHopSize = 1365;
+    static constexpr int kDeessFrameShift = 2730;
     static constexpr int kDeessDelay = kDeessBlockSize - kDeessHopSize;
 
     struct Biquad
