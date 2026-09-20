@@ -472,7 +472,7 @@ void VVChainDSP::fft(std::array<std::complex<double>, kDeessBlockSize>& data, bo
     }
 }
 
-void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters&)
+void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters& p)
 {
     constexpr int count = kDeessBlockSize;
     constexpr int hop = kDeessHopSize;
@@ -480,35 +480,63 @@ void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters&)
 
     const float* input = state.input.data();
 
-    // Exact reference detector:
-    // getAvg() compares (0,1), (2,3), ... and divides by count / 2.
+    // Reference detector:
+    // compare adjacent samples in pairs and average their absolute difference.
     double sum = 0.0;
     for (int i = 0; i < count - 2; i += 2)
         sum += std::abs(input[i + 1] - input[i]);
 
-    const float average = static_cast<float>(sum / (count / 2));
+    const float sensitivity = juce::jlimit(0.5f, 2.0f, p.deessSensitivity);
+    const float average = static_cast<float>(sum / (count / 2)) * sensitivity;
 
     int countMore = 0;
     for (int i = 0; i < count - 1; ++i)
         if (std::abs(input[i + 1] - input[i]) > average)
             ++countMore;
 
+    if (p.deessBypass)
+    {
+        // Real bypass: keep the exact same streaming delay as the active DeEsser,
+        // but do not run any detection or spectral attenuation.
+        for (int i = 0; i < hop; ++i)
+            state.queue[(size_t)state.queueWrite] = input[hop + i],
+            state.queueWrite = (state.queueWrite + 1) % static_cast<int>(state.queue.size());
+
+        state.queueCount = std::min(
+            state.queueCount + hop, static_cast<int>(state.queue.size()));
+
+        std::copy(state.input.begin() + frameShift, state.input.end(), state.input.begin());
+        state.inputCount = count - frameShift;
+        return;
+    }
+
     for (int i = 0; i < count; ++i)
         deessFft[(size_t)i] = std::complex<double>(static_cast<double>(input[i]), 0.0);
 
-    if (countMore > 10)
+    if (countMore > juce::jmax(1, p.deessTriggerCount))
     {
         fft(deessFft, false);
+
+        const double referenceHz =
+            juce::jlimit(4000.0, 16000.0, static_cast<double>(p.deessReferenceHz));
+        const double amount =
+            juce::jlimit(0.0, 1.0, static_cast<double>(p.deessAmount) / 100.0);
+        const double mix =
+            juce::jlimit(0.0, 1.0, static_cast<double>(p.deessMix) / 100.0);
 
         for (int i = 1; i < count / 2; ++i)
         {
             const double freq = kReferenceSampleRate * static_cast<double>(i)
                               / static_cast<double>(count);
-            const double coeff = freq < 1250.0
+            const double baseCoeff = freq < 1250.0
                 ? 0.5
-                : (freq >= 12500.0
-                    ? 10.0 * 12500.0 / freq
-                    : 1.0 + 9.0 * std::pow(freq / 12500.0, 3.0));
+                : (freq >= referenceHz
+                    ? 10.0 * referenceHz / std::max(freq, 1.0)
+                    : 1.0 + 9.0 * std::pow(freq / referenceHz, 3.0));
+
+            // amount=100% is the reference attenuation. Lower values interpolate
+            // continuously to unity, while retaining the same FFT/filter/IFFT core.
+            const double coeff = std::pow(std::max(baseCoeff, 1.0e-9), amount);
 
             deessFft[(size_t)i] /= coeff;
             deessFft[(size_t)(count - i)] /= coeff;
@@ -517,12 +545,19 @@ void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters&)
         fft(deessFft, true);
     }
 
-    // Reference process() returns only the middle 1/3 from each overlapped frame.
-    // This produces a continuous output stream after a fixed delay of N - hop.
     for (int i = 0; i < hop; ++i)
-        state.queue[(size_t)state.queueWrite] = static_cast<float>(
-            countMore > 10 ? deessFft[(size_t)(hop + i)].real() : input[hop + i]),
-        state.queueWrite = (state.queueWrite + 1) % static_cast<int>(state.queue.size());
+    {
+        float y = countMore > juce::jmax(1, p.deessTriggerCount)
+            ? static_cast<float>(deessFft[(size_t)(hop + i)].real())
+            : input[hop + i];
+
+        const float mix = juce::jlimit(0.f, 1.f, p.deessMix / 100.f);
+        y = input[hop + i] * (1.f - mix) + y * mix;
+
+        state.queue[(size_t)state.queueWrite] = y;
+        state.queueWrite =
+            (state.queueWrite + 1) % static_cast<int>(state.queue.size());
+    }
 
     state.queueCount = std::min(
         state.queueCount + hop, static_cast<int>(state.queue.size()));
@@ -584,21 +619,32 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
         dryDelayWrite = (dryDelayWrite + 1) % kDeessBlockSize;
     }
 
-    applyEq(buffer, p);
-    applyOtt(buffer, p);
-    applyAType(buffer, p);
+    if (!p.eqBypass)
+        applyEq(buffer, p);
+
+    if (!p.ottBypass)
+        applyOtt(buffer, p);
+
+    if (!p.atypeBypass)
+        applyAType(buffer, p);
+
+    // Always execute the streaming stage so bypass has the same reported
+    // latency and remains sample-aligned with the rest of the chain.
     processDeEsser(buffer, p);
 
-    const float mix = juce::jlimit(0.f, 1.f, p.dryWet / 100.f);
-    const float out = dbToGain(juce::jlimit(-24.f, 12.f, p.outputDb));
-
-    for (int ch = 0; ch < nCh; ++ch)
+    if (!p.mixBypass)
     {
-        auto* wet = buffer.getWritePointer(ch);
-        const auto* delayedDry = dry.getReadPointer(ch);
+        const float mix = juce::jlimit(0.f, 1.f, p.dryWet / 100.f);
+        const float out = dbToGain(juce::jlimit(-24.f, 12.f, p.outputDb));
 
-        for (int n = 0; n < buffer.getNumSamples(); ++n)
-            wet[n] = (delayedDry[n] + mix * (wet[n] - delayedDry[n])) * out;
+        for (int ch = 0; ch < nCh; ++ch)
+        {
+            auto* wet = buffer.getWritePointer(ch);
+            const auto* delayedDry = dry.getReadPointer(ch);
+
+            for (int n = 0; n < buffer.getNumSamples(); ++n)
+                wet[n] = (delayedDry[n] + mix * (wet[n] - delayedDry[n])) * out;
+        }
     }
 
     for (int ch = nCh; ch < buffer.getNumChannels(); ++ch)
