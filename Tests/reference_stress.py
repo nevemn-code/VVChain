@@ -224,13 +224,13 @@ def structure_checks():
         assert token in pp, token
 
     for token in [
-        "8192", "targetFreq", "countMore", "fft(deessFft, false)",
-        "fft(deessFft, true)", "processDeEsser",
+        "4096", "12500.0", "countMore", "kDeessHopSize",
+        "fft(deessFft, false)", "fft(deessFft, true)", "processDeEsser",
     ]:
         assert token in (dsp + dh), token
 
     for token in [
-        "copySpectrumTo", "analyzerFFT", "kFFTSize", "setLatencySamples(8192)",
+        "copySpectrumTo", "analyzerFFT", "kFFTSize", "setLatencySamples(2731)",
     ]:
         assert token in (pp + ph), token
 
