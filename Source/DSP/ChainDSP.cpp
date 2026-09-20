@@ -144,6 +144,10 @@ void VVChainDSP::reset()
         state.inputCount = 0;
         state.outputRead = 0;
         state.outputReady = 0;
+        state.queue.fill(0.f);
+        state.queueRead = 0;
+        state.queueWrite = 0;
+        state.queueCount = 0;
     }
 
     for (auto& channel : dryDelay)
