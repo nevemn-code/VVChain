@@ -21,7 +21,7 @@ node = subprocess.run(
 )
 assert node.returncode == 0, node.stderr
 
-wm = re.search(r"const WORKLET_SOURCE\s*=\s*("(?:\\.|[^"])*")\s*;", script, re.S)
+wm = re.search(r'''const WORKLET_SOURCE\s*=\s*("(?:\\.|[^"])*")\s*;''', script, re.S)
 assert wm, "missing WORKLET_SOURCE"
 worklet = json.loads(wm.group(1))
 
