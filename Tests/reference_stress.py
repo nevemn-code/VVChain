@@ -190,7 +190,7 @@ def run():
     for i in range(COUNTS["planning"]):
         s=random_state(rng)
         try:
-            if not finite(signature(s)): raise AssertionError("non-finite state")
+            if not math.isfinite(signature(s)): raise AssertionError("non-finite state")
             if not (80<=s.ott_x[0]<s.ott_x[1]<s.ott_x[2]<=12000): raise AssertionError("OTT xover ordering")
             if not (2500<=s.deess_low<s.deess_high<=15000): raise AssertionError("De-Esser ordering")
         except AssertionError as e: failures.append(("planning",i,str(e)))
