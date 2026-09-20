@@ -74,8 +74,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     f("ATYPE_MIX", "Type-A Mix", 0.f, 100.f, 100.f);
     f("ATYPE_OUTPUT", "Type-A Output Gain", -24.f, 24.f, 0.f);
 
-    // DeEsser reference controls. These intentionally mirror the public reference:
-    // male/female target choice, intensity and average-threshold offset.
+    // Legacy DeEsser parameter slots are retained for preset compatibility.
+    // The DSP now uses the reference-fixed values: 4096 FFT / 12.5 kHz / overlap 2/3.
     p.push_back(std::make_unique<juce::AudioParameterChoice>(
         "DEESS_VOICE", "DeEsser Voice",
         juce::StringArray { "Male Vocal", "Female Vocal" }, 0));
@@ -97,7 +97,7 @@ void VVChainAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock
         value.store(-120.0f, std::memory_order_relaxed);
 
     dsp.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
-    setLatencySamples(8192);
+    setLatencySamples(2731);
 }
 
 bool VVChainAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
