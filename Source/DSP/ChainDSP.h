@@ -45,13 +45,12 @@ public:
         float atypeInputGainDb = 0.f;
         float atypeOutputGainDb = 0.f;
 
-        // DeEsser reference algorithm controls from IgorKhramtsov/DeEsser.
-        // The original reference is a file/offline processor using:
-        // zero-crossing / difference-rate detection -> 8192-point FFT ->
-        // frequency-dependent suppression -> inverse FFT.
-        int deessVoice = 0;             // 0 = Male Vocal, 1 = Female Vocal.
-        float deessIntensity = 10.f;    // Reference range 2..10.
-        float deessAverageOffset = 0.f; // Reference slider range -0.1..0.1.
+        // DeEsser follows the public reference processing exactly.
+        // Legacy parameter slots remain for preset compatibility but are ignored:
+        // FFT 4096, threshold/reference 12.5 kHz, 2/3 overlap, middle 1/3 output.
+        int deessVoice = 0;
+        float deessIntensity = 10.f;
+        float deessAverageOffset = 0.f;
 
         float dryWet = 100.f;
         float outputDb = 0.f;
@@ -62,7 +61,9 @@ public:
     void process(juce::AudioBuffer<float>& buffer, const Parameters& p);
 
 private:
-    static constexpr int kDeessBlockSize = 8192;
+    static constexpr int kDeessBlockSize = 4096;
+    static constexpr int kDeessHopSize = 1365;
+    static constexpr int kDeessDelay = kDeessBlockSize - kDeessHopSize;
 
     struct Biquad
     {
@@ -117,6 +118,10 @@ private:
         int inputCount = 0;
         int outputRead = 0;
         int outputReady = 0;
+        std::array<float, kDeessBlockSize * 4> queue {};
+        int queueRead = 0;
+        int queueWrite = 0;
+        int queueCount = 0;
     };
 
     static Biquad makeAnalogPeak(double fs, double f0, double gainDb, double q);
