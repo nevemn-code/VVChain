@@ -240,7 +240,7 @@ def source_structure_checks():
     # Corrupted JS variable forms from the previous patch must not exist.
     assert "let workletNode = null,  = null" not in text["web"]
     assert 'const WORKLET_SOURCE = "' in text["web"]
-    assert "registerProcessor("vvchain-worklet"" in text["web"]
+    assert 'registerProcessor("vvchain-worklet"' in text["web"]
 
 
 def run():
