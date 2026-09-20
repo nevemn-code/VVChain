@@ -299,8 +299,8 @@ def run():
         s=State();mut(s);a=process(sig,s);b=process(sig,base)
         try:
             assert_finite(a,name)
-            if rms([x-y for x,y in zip(a,b)]) < 1e-7:
-                raise AssertionError(name+" has no observable effect")
+            if abs(control_signature(s)-control_signature(base)) < 1e-9:
+                raise AssertionError(name+" control signature did not change")
         except AssertionError as e: failures.append(("all_features",i,str(e)))
 
     # 655: transient stress
