@@ -9,6 +9,12 @@ class VVChainDSP
 public:
     struct Parameters
     {
+        bool eqBypass = false;
+        bool ottBypass = false;
+        bool atypeBypass = false;
+        bool deessBypass = false;
+        bool mixBypass = false;
+
         // Four-band analogue-coloured parametric EQ.
         std::array<float, 4> freq { 80.f, 350.f, 2500.f, 10000.f };
         std::array<float, 4> gain { 0.f, 0.f, 0.f, 0.f };
@@ -45,12 +51,12 @@ public:
         float atypeInputGainDb = 0.f;
         float atypeOutputGainDb = 0.f;
 
-        // DeEsser follows the public reference processing exactly.
-        // Legacy parameter slots remain for preset compatibility but are ignored:
-        // FFT 4096, threshold/reference 12.5 kHz, 2/3 overlap, middle 1/3 output.
-        int deessVoice = 0;
-        float deessIntensity = 10.f;
-        float deessAverageOffset = 0.f;
+        // Reference-based DeEsser controls. Defaults preserve the reference behaviour.
+        float deessReferenceHz = 12500.f;
+        float deessSensitivity = 1.f;
+        int deessTriggerCount = 10;
+        float deessAmount = 100.f;
+        float deessMix = 100.f;
 
         float dryWet = 100.f;
         float outputDb = 0.f;
