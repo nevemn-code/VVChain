@@ -42,13 +42,13 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     {
         sliders[i].setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
         sliders[i].setTextBoxStyle(juce::Slider::TextBoxBelow, false, 78, 18);
-        sliders[i].setDoubleClickReturnValue(true, 0.0);
         labels[i].setJustificationType(juce::Justification::centred);
         labels[i].setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.85f));
         addAndMakeVisible(sliders[i]);
         addAndMakeVisible(labels[i]);
     }
 
+    selectBand(0);
     selectModule(0);
     startTimerHz(30);
 }
