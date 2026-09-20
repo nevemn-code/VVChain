@@ -164,7 +164,7 @@ function renderControls(){
      c.innerHTML='<div class="ct"><span>'+label+'</span><span>switch</span></div><label class="check"><input type="checkbox" '+(state[key]?'checked':'')+'><b>'+format(state[key]?1:0)+'</b></label>';
      c.querySelector('input').onchange=e=>setKey(key,e.target.checked);
    }else{
-     c.innerHTML='<div class="ct"><span>'+label+'</span><span>'+format(state[key==='freq'?key:key])+'</span></div><input class="range" type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+(key==='freq'?state.freq[state.selected]:state[key])+'"><div class="cv">'+format(key==='freq'?state.freq[state.selected]:state[key])+'</div>';
+     c.innerHTML='<div class="ct"><span>'+label+'</span><span>'+format(key==='freq'?state.freq[state.selected]:state[key])+'</span></div><input class="range" type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+(key==='freq'?state.freq[state.selected]:state[key])+'"><div class="cv">'+format(key==='freq'?state.freq[state.selected]:state[key])+'</div>';
      const r=c.querySelector('input'), head=c.querySelector('.ct span:last-child'), val=c.querySelector('.cv');
      r.oninput=e=>{setKey(key,+e.target.value);head.textContent=format(+e.target.value);val.textContent=format(+e.target.value)}
    }
