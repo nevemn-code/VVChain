@@ -7,8 +7,6 @@ VVChainAudioProcessor::VVChainAudioProcessor()
         .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       apvts(*this, nullptr, "STATE", createParameterLayout())
 {
-    for (auto& value : analyzerSpectrumDb)
-        value.store(-120.0f, std::memory_order_relaxed);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::createParameterLayout()
@@ -22,7 +20,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
             id, name, juce::NormalisableRange<float>(lo, hi, 0.01f, skew), def));
     };
 
-    // Four-band analogue-coloured EQ.
+    // Every chain section has a real DSP bypass parameter.
+    p.push_back(std::make_unique<juce::AudioParameterBool>("EQ_BYPASS", "EQ / Analog Bypass", false));
+    p.push_back(std::make_unique<juce::AudioParameterBool>("OTT_BYPASS", "OTT Bypass", false));
+    p.push_back(std::make_unique<juce::AudioParameterBool>("ATYPE_BYPASS", "Type-A Bypass", false));
+    p.push_back(std::make_unique<juce::AudioParameterBool>("DEESS_BYPASS", "DeEsser Bypass", false));
+    p.push_back(std::make_unique<juce::AudioParameterBool>("MIX_BYPASS", "Mix / Out Bypass", false));
+
+    // Four-band analogue-coloured parametric EQ.
     for (int i = 0; i < 4; ++i)
     {
         const juce::String n = juce::String(i + 1);
@@ -74,13 +79,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     f("ATYPE_MIX", "Type-A Mix", 0.f, 100.f, 100.f);
     f("ATYPE_OUTPUT", "Type-A Output Gain", -24.f, 24.f, 0.f);
 
-    // Legacy DeEsser parameter slots are retained for preset compatibility.
-    // The DSP now uses the reference-fixed values: 4096 FFT / 12.5 kHz / overlap 2/3.
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(
-        "DEESS_VOICE", "DeEsser Voice",
-        juce::StringArray { "Male Vocal", "Female Vocal" }, 0));
-    f("DEESS_INTENSITY", "DeEsser Intensity", 2.f, 10.f, 10.f);
-    f("DEESS_OFFSET", "DeEsser Threshold Offset", -0.1f, 0.1f, 0.f);
+    // Reference-based DeEsser controls. Defaults preserve the reference core.
+    f("DEESS_FREQ", "DeEsser Reference Frequency", 4000.f, 16000.f, 12500.f, 0.65f);
+    f("DEESS_SENS", "DeEsser Threshold Sensitivity", 0.5f, 2.0f, 1.0f);
+    f("DEESS_TRIGGER", "DeEsser Trigger Count", 1.f, 50.f, 10.f);
+    f("DEESS_AMOUNT", "DeEsser Amount", 0.f, 100.f, 100.f);
+    f("DEESS_MIX", "DeEsser Mix", 0.f, 100.f, 100.f);
 
     f("DRY_WET", "Dry / Wet", 0.f, 100.f, 100.f);
     f("OUTPUT_LEVEL", "Output Level", -24.f, 12.f, 0.f);
@@ -90,13 +94,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
 
 void VVChainAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
-    analyzerSampleRate = sampleRate;
-    analyzerFifoIndex = 0;
-    analyzerFftData.fill(0.0f);
-    for (auto& value : analyzerSpectrumDb)
-        value.store(-120.0f, std::memory_order_relaxed);
-
     dsp.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    // The reference DeEsser uses a 4096-frame streaming window and reports the
+    // corresponding realtime delay through the host.
     setLatencySamples(2731);
 }
 
@@ -110,49 +110,6 @@ bool VVChainAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) c
         && mainOut == mainIn;
 }
 
-void VVChainAudioProcessor::pushAnalyzerSamples(const juce::AudioBuffer<float>& buffer) noexcept
-{
-    const int channels = buffer.getNumChannels();
-    const int samples = buffer.getNumSamples();
-    if (channels <= 0 || samples <= 0)
-        return;
-
-    const auto* left = buffer.getReadPointer(0);
-    const auto* right = channels > 1 ? buffer.getReadPointer(1) : left;
-
-    for (int n = 0; n < samples; ++n)
-    {
-        analyzerFftData[(size_t)analyzerFifoIndex] = 0.5f * (left[n] + right[n]);
-        ++analyzerFifoIndex;
-
-        if (analyzerFifoIndex == kFFTSize)
-        {
-            for (int i = 0; i < kFFTSize; ++i)
-                analyzerFftData[(size_t)i] *= 1.0f;
-
-            analyzerWindow.multiplyWithWindowingTable(analyzerFftData.data(), kFFTSize);
-            std::fill(analyzerFftData.begin() + kFFTSize, analyzerFftData.end(), 0.0f);
-            analyzerFFT.performRealOnlyForwardTransform(analyzerFftData.data());
-
-            for (int bin = 1; bin < kSpectrumBins; ++bin)
-            {
-                const float re = analyzerFftData[(size_t)(2 * bin)];
-                const float im = analyzerFftData[(size_t)(2 * bin + 1)];
-                const float mag = std::sqrt(re * re + im * im) / static_cast<float>(kFFTSize);
-                const float db = juce::jlimit(-120.0f, 12.0f,
-                    juce::Decibels::gainToDecibels(std::max(mag, 1.0e-9f)));
-                analyzerSpectrumDb[(size_t)bin].store(db, std::memory_order_relaxed);
-            }
-            analyzerSpectrumDb[0].store(-120.0f, std::memory_order_relaxed);
-            analyzerFifoIndex = 0;
-        }
-
-        // Keep the FFT overlap-free and deterministic.
-        if (analyzerFifoIndex >= kFFTSize)
-            analyzerFifoIndex = 0;
-    }
-}
-
 void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                                          juce::MidiBuffer& midi)
 {
@@ -161,33 +118,39 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     VVChainDSP::Parameters p;
 
-    for (int i = 0; i < 4; ++i)
-    {
-        const juce::String n = juce::String(i + 1);
-        p.freq[(size_t)i] = apvts.getRawParameterValue("EQ" + n + "_FREQ")->load();
-        p.gain[(size_t)i] = apvts.getRawParameterValue("EQ" + n + "_GAIN")->load();
-        p.q[(size_t)i] = apvts.getRawParameterValue("EQ" + n + "_Q")->load();
-
-        p.ottDegree[(size_t)i] = apvts.getRawParameterValue("OTT_DEGREE" + n)->load();
-        p.ottLifterThreshold[(size_t)i] = apvts.getRawParameterValue("OTT_LIFT_T" + n)->load();
-        p.ottLifterAttack[(size_t)i] = apvts.getRawParameterValue("OTT_LIFT_A" + n)->load();
-        p.ottLifterRelease[(size_t)i] = apvts.getRawParameterValue("OTT_LIFT_R" + n)->load();
-        p.ottLifterMix[(size_t)i] = apvts.getRawParameterValue("OTT_LIFT_M" + n)->load();
-
-        p.ottCompThreshold[(size_t)i] = apvts.getRawParameterValue("OTT_COMP_T" + n)->load();
-        p.ottCompAttack[(size_t)i] = apvts.getRawParameterValue("OTT_COMP_A" + n)->load();
-        p.ottCompRelease[(size_t)i] = apvts.getRawParameterValue("OTT_COMP_R" + n)->load();
-        p.ottCompMix[(size_t)i] = apvts.getRawParameterValue("OTT_COMP_M" + n)->load();
-        p.ottBandLevelDb[(size_t)i] = apvts.getRawParameterValue("OTT_LEVEL" + n)->load();
-
-        p.atypeDegree[(size_t)i] = apvts.getRawParameterValue("ATYPE_DEGREE" + n)->load();
-        p.atypeBandLevelDb[(size_t)i] = apvts.getRawParameterValue("ATYPE_LEVEL" + n)->load();
-    }
-
     auto value = [this](const juce::String& id)
     {
         return apvts.getRawParameterValue(id)->load();
     };
+
+    p.eqBypass = value("EQ_BYPASS") > 0.5f;
+    p.ottBypass = value("OTT_BYPASS") > 0.5f;
+    p.atypeBypass = value("ATYPE_BYPASS") > 0.5f;
+    p.deessBypass = value("DEESS_BYPASS") > 0.5f;
+    p.mixBypass = value("MIX_BYPASS") > 0.5f;
+
+    for (int i = 0; i < 4; ++i)
+    {
+        const juce::String n = juce::String(i + 1);
+        p.freq[(size_t)i] = value("EQ" + n + "_FREQ");
+        p.gain[(size_t)i] = value("EQ" + n + "_GAIN");
+        p.q[(size_t)i] = value("EQ" + n + "_Q");
+
+        p.ottDegree[(size_t)i] = value("OTT_DEGREE" + n);
+        p.ottLifterThreshold[(size_t)i] = value("OTT_LIFT_T" + n);
+        p.ottLifterAttack[(size_t)i] = value("OTT_LIFT_A" + n);
+        p.ottLifterRelease[(size_t)i] = value("OTT_LIFT_R" + n);
+        p.ottLifterMix[(size_t)i] = value("OTT_LIFT_M" + n);
+
+        p.ottCompThreshold[(size_t)i] = value("OTT_COMP_T" + n);
+        p.ottCompAttack[(size_t)i] = value("OTT_COMP_A" + n);
+        p.ottCompRelease[(size_t)i] = value("OTT_COMP_R" + n);
+        p.ottCompMix[(size_t)i] = value("OTT_COMP_M" + n);
+        p.ottBandLevelDb[(size_t)i] = value("OTT_LEVEL" + n);
+
+        p.atypeDegree[(size_t)i] = value("ATYPE_DEGREE" + n);
+        p.atypeBandLevelDb[(size_t)i] = value("ATYPE_LEVEL" + n);
+    }
 
     p.eqColor = value("EQ_COLOR");
     p.hfCornerHz = value("HF_CORNER");
@@ -199,7 +162,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.ottX2 = value("OTT_X2");
     p.ottX3 = value("OTT_X3");
     p.ottOutputGainDb = value("OTT_OUTPUT");
-    p.ottClipper = apvts.getRawParameterValue("OTT_CLIPPER")->load() > 0.5f;
+    p.ottClipper = value("OTT_CLIPPER") > 0.5f;
 
     p.atypeAttackMs = value("ATYPE_ATTACK");
     p.atypeReleaseMs = value("ATYPE_RELEASE");
@@ -207,25 +170,16 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.atypeMix = value("ATYPE_MIX");
     p.atypeOutputGainDb = value("ATYPE_OUTPUT");
 
-    p.deessVoice = static_cast<int>(std::round(value("DEESS_VOICE")));
-    p.deessIntensity = value("DEESS_INTENSITY");
-    p.deessAverageOffset = value("DEESS_OFFSET");
+    p.deessReferenceHz = value("DEESS_FREQ");
+    p.deessSensitivity = value("DEESS_SENS");
+    p.deessTriggerCount = static_cast<int>(std::lround(value("DEESS_TRIGGER")));
+    p.deessAmount = value("DEESS_AMOUNT");
+    p.deessMix = value("DEESS_MIX");
 
     p.dryWet = value("DRY_WET");
     p.outputDb = value("OUTPUT_LEVEL");
 
     dsp.process(buffer, p);
-    pushAnalyzerSamples(buffer);
-}
-
-void VVChainAudioProcessor::copySpectrumTo(float* destination, int numberOfBins) const noexcept
-{
-    if (destination == nullptr || numberOfBins <= 0)
-        return;
-
-    const int count = std::min(numberOfBins, kSpectrumBins);
-    for (int i = 0; i < count; ++i)
-        destination[i] = analyzerSpectrumDb[(size_t)i].load(std::memory_order_relaxed);
 }
 
 void VVChainAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
