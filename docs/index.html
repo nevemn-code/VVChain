@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VVChain — Web Preview</title>
+<style>
+:root{--bg:#11100d;--top:#2a2924;--panel:#211f1b;--panel2:#171510;--grid:#514d3f;--text:#f4f1e8;--muted:#aaa397;--accent:#d5a62f;--blue:#30a7ff;--cyan:#26d0c8;--mag:#d95fff;--green:#83d44d}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}body{min-height:100vh;overflow-x:hidden}
+button,input{font:inherit}button{color:inherit;border:0;cursor:pointer}.app{min-height:100vh}
+.top{height:62px;background:var(--top);display:flex;align-items:center;padding:0 20px;gap:20px;position:sticky;top:0;z-index:10;border-bottom:1px solid #3b3933}.brand{font-size:20px;font-weight:700;letter-spacing:.3px}.sub{color:#8f8a7d;font-size:11px;letter-spacing:1.6px}
+.tabs{display:flex;gap:8px;margin-left:auto}.tab{height:34px;padding:0 15px;border-radius:7px;background:#3a3833;color:#d8d3c8;font-size:12px}.tab.active{background:#5b564b;color:#fff}
+.wrap{padding:18px 20px 24px;max-width:1560px;margin:auto}.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}.btn{background:#2e2c26;border:1px solid #4a463d;border-radius:7px;padding:8px 12px;font-size:12px}.btn:hover{background:#3b3931}.btn.active{background:#665a30;border-color:#9c8130}.file{position:relative;overflow:hidden}.file input{position:absolute;inset:0;opacity:0;cursor:pointer}.status{margin-left:auto;color:#8e897e;font-size:11px}
+.graph{height:min(53vw,560px);min-height:360px;background:var(--panel2);border:1px solid #302d27;border-radius:12px;position:relative;overflow:hidden;box-shadow:0 16px 50px #0004}.grid{position:absolute;inset:0;background-image:linear-gradient(to right,rgba(81,77,63,.5) 1px,transparent 1px),linear-gradient(to bottom,rgba(81,77,63,.4) 1px,transparent 1px);background-size:10% 12.5%}.labels{position:absolute;left:10px;right:10px;top:10px;display:flex;justify-content:space-between;color:#bdb6a7;font-size:11px}.ylabels{position:absolute;left:10px;top:35px;bottom:20px;display:flex;flex-direction:column;justify-content:space-between;color:#8f897c;font-size:10px}.canvas{position:absolute;inset:0;width:100%;height:100%}.node{position:absolute;width:18px;height:18px;border-radius:50%;transform:translate(-50%,-50%);border:2px solid rgba(255,255,255,.75);box-shadow:0 0 0 4px rgba(255,255,255,.06),0 4px 14px #0009;cursor:grab}.node:active{cursor:grabbing}.node.n0{background:var(--blue)}.node.n1{background:var(--cyan)}.node.n2{background:var(--mag)}.node.n3{background:var(--green)}.node.sel{box-shadow:0 0 0 5px rgba(213,166,47,.28),0 5px 18px #000b}
+.graphInfo{position:absolute;right:12px;top:12px;background:#0b0a08b8;border:1px solid #464137;border-radius:7px;padding:7px 9px;font-size:10px;line-height:1.45;color:#c9c2b4}
+.modulebar{background:var(--panel);border:1px solid #302d27;border-radius:12px;margin-top:14px;padding:12px}.moduletabs{display:flex;gap:8px;overflow:auto}.module{background:#2e2c26;border:1px solid #3e3b33;border-radius:7px;padding:7px 14px;font-size:11px;white-space:nowrap}.module.active{background:#4a463d}.controls{display:grid;grid-template-columns:repeat(8,minmax(90px,1fr));gap:12px;margin-top:12px}.control{background:#171510;border:1px solid #302e29;border-radius:10px;padding:10px}.ct{font-size:10px;color:#a7a093;margin-bottom:8px;display:block;text-transform:uppercase;letter-spacing:.5px}.val{font-size:15px;margin-top:8px;color:#fff}.range{width:100%;accent-color:var(--accent)}.mini{font-size:9px;color:#716d64;margin-top:4px}.row{display:flex;align-items:center;justify-content:space-between;gap:8px}.bandBadge{font-size:10px;color:#8f8a7f}.footer{margin-top:12px;color:#6f6b63;font-size:10px;text-align:center}@media(max-width:920px){.tabs{order:3;width:100%;overflow:auto}.top{height:auto;min-height:62px;flex-wrap:wrap}.status{margin-left:0}.controls{grid-template-columns:repeat(4,minmax(90px,1fr))}}@media(max-width:600px){.wrap{padding:12px}.graph{height:460px;min-height:0}.controls{grid-template-columns:repeat(2,minmax(100px,1fr))}.top{padding:12px}.brand{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+  <div class="brand">VVChain</div><div class="sub">WEB PREVIEW · VST3 / AAX CONCEPT</div>
+  <nav class="tabs" id="modeTabs">
+    <button class="tab active" data-mode="GENERAL">GENERAL</button><button class="tab" data-mode="OTT">OTT</button><button class="tab" data-mode="A-TYPE">A-TYPE</button><button class="tab" data-mode="DE-ESSER">DE-ESSER</button><button class="tab" data-mode="ANALYZER">ANALYZER</button>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div class="toolbar">
+    <label class="btn file">LOAD AUDIO<input id="fileInput" type="file" accept="audio/*"></label>
+    <button class="btn" id="playBtn">PLAY</button><button class="btn" id="stopBtn">STOP</button>
+    <button class="btn" id="bypassBtn">BYPASS</button><button class="btn" id="abBtn">A/B</button>
+    <button class="btn" id="resetBtn">RESET</button>
+    <span class="status" id="status">Browser DSP idle · 48 kHz preview model</span>
+  </div>
+
+  <section class="graph" id="graph">
+    <div class="grid"></div>
+    <canvas class="canvas" id="spectrum"></canvas>
+    <div class="labels"><span>20 Hz</span><span>50 Hz</span><span>100 Hz</span><span>500 Hz</span><span>1 kHz</span><span>5 kHz</span><span>10 kHz</span><span>20 kHz</span></div>
+    <div class="ylabels"><span>+18 dB</span><span>+12</span><span>+6</span><span>0</span><span>-6</span><span>-12</span><span>-18</span></div>
+    <div class="graphInfo">拖曳四個節點：X＝頻率、Y＝Gain<br>雙擊節點＝選取 Band<br><span id="graphReadout">Band 1 · 80 Hz · 0.0 dB · Q 0.71</span></div>
+    <div class="node n0" data-band="0"></div><div class="node n1" data-band="1"></div><div class="node n2" data-band="2"></div><div class="node n3" data-band="3"></div>
+  </section>
+
+  <section class="modulebar">
+    <div class="moduletabs">
+      <button class="module active" data-focus="EQ">EQ</button><button class="module" data-focus="OTT">OTT</button><button class="module" data-focus="A-TYPE">A-TYPE</button><button class="module" data-focus="DE-ESSER">DE-ESSER</button><button class="module" data-focus="MIX">MIX</button><button class="module" data-focus="LEVEL">LEVEL</button>
+    </div>
+    <div class="controls">
+      <div class="control"><span class="ct">Band</span><div class="row"><b id="bandName">BAND 1</b><span class="bandBadge" id="bandColor">BLUE</span></div><div class="val">Parametric Peak</div></div>
+      <div class="control"><span class="ct">Freq</span><input class="range" id="freq" type="range" min="20" max="20000" step="1"><div class="val" id="freqV"></div></div>
+      <div class="control"><span class="ct">Gain</span><input class="range" id="gain" type="range" min="-18" max="18" step=".1"><div class="val" id="gainV"></div></div>
+      <div class="control"><span class="ct">Q</span><input class="range" id="q" type="range" min=".1" max="10" step=".01"><div class="val" id="qV"></div></div>
+      <div class="control"><span class="ct">OTT Depth</span><input class="range" id="ottDepth" type="range" min="0" max="100" step="1"><div class="val" id="ottDepthV"></div></div>
+      <div class="control"><span class="ct">A-Type</span><input class="range" id="atype" type="range" min="0" max="100" step="1"><div class="val" id="atypeV"></div></div>
+      <div class="control"><span class="ct">De-Esser</span><input class="range" id="deess" type="range" min="2000" max="12000" step="10"><div class="val" id="deessV"></div></div>
+      <div class="control"><span class="ct">Dry / Wet</span><input class="range" id="mix" type="range" min="0" max="100" step="1"><div class="val" id="mixV"></div></div>
+    </div>
+  </section>
+
+  <div class="footer">VVChain browser preview · UI/DSP interaction test only · Native JUCE VST3/AAX remains the production target</div>
+</main>
+</div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const nodes=[...document.querySelectorAll('.node')];
+  const colors=['BLUE','CYAN','MAGENTA','GREEN'];
+  const state={
+    freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.71,.71,.71,.71],
+    hf:70,ott:50,atype:20,deess:6500,mix:100,selected:0,bypass:false,ab:false,
+    playing:false
+  };
+  const defaults=JSON.parse(JSON.stringify(state));
+  const graph=$('#graph'), canvas=$('#spectrum'), ctx=canvas.getContext('2d');
+  let audioCtx=null, source=null, audioEl=null, analyser=null, chain=[];
+  function logMap(v,a,b){return Math.log(v/a)/Math.log(b/a)}
+  function freqX(f){return logMap(f,20,20000)}
+  function xFreq(x){return 20*Math.pow(1000,Math.max(0,Math.min(1,x)))}
+  function gainY(db){return .5-db/36}
+  function yGain(y){return (0.5-y)*36}
+  function renderNodes(){
+    const r=graph.getBoundingClientRect(), pad=12;
+    nodes.forEach((n,i)=>{
+      const x=(pad+(r.width-pad*2)*freqX(state.freq[i]))/r.width*100;
+      const y=(pad+(r.height-pad*2)*gainY(state.gain[i]))/r.height*100;
+      n.style.left=x+'%';n.style.top=y+'%';n.classList.toggle('sel',i===state.selected);
+    });
+    syncControls();
+  }
+  function syncControls(){
+    const i=state.selected;
+    $('#bandName').textContent='BAND '+(i+1);$('#bandColor').textContent=colors[i];
+    $('#freq').value=state.freq[i];$('#gain').value=state.gain[i];$('#q').value=state.q[i];
+    $('#freqV').textContent=fmtFreq(state.freq[i]);$('#gainV').textContent=state.gain[i].toFixed(1)+' dB';$('#qV').textContent=state.q[i].toFixed(2);
+    $('#ottDepth').value=state.ott;$('#atype').value=state.atype;$('#deess').value=state.deess;$('#mix').value=state.mix;
+    $('#ottDepthV').textContent=state.ott+'%';$('#atypeV').textContent=state.atype+'%';$('#deessV').textContent=fmtFreq(state.deess);$('#mixV').textContent=state.mix+'%';
+    $('#graphReadout').textContent='Band '+(i+1)+' · '+fmtFreq(state.freq[i])+' · '+state.gain[i].toFixed(1)+' dB · Q '+state.q[i].toFixed(2);
+  }
+  function fmtFreq(v){return v>=1000?(v/1000).toFixed(v>=10000?1:2)+' kHz':Math.round(v)+' Hz'}
+  function selectBand(i){state.selected=i;renderNodes()}
+  nodes.forEach((n,i)=>{
+    n.addEventListener('dblclick',()=>selectBand(i));
+    n.addEventListener('pointerdown',e=>{
+      e.preventDefault();selectBand(i);n.setPointerCapture(e.pointerId);
+      const move=ev=>{
+        const r=graph.getBoundingClientRect(), x=Math.max(12,Math.min(r.width-12,ev.clientX-r.left)), y=Math.max(12,Math.min(r.height-12,ev.clientY-r.top));
+        state.freq[i]=Math.round(xFreq((x-12)/(r.width-24)));state.gain[i]=Math.max(-18,Math.min(18,Math.round(yGain((y-12)/(r.height-24))*10)/10));
+        renderNodes();updateAudio();
+      };
+      const up=()=>{n.removeEventListener('pointermove',move);n.removeEventListener('pointerup',up)};
+      n.addEventListener('pointermove',move);n.addEventListener('pointerup',up);
+    });
+  });
+  function bindRange(id,fn){$(id).addEventListener('input',e=>{fn(+e.target.value);renderNodes();updateAudio()})}
+  bindRange('#freq',v=>state.freq[state.selected]=v);bindRange('#gain',v=>state.gain[state.selected]=v);bindRange('#q',v=>state.q[state.selected]=v);
+  bindRange('#ottDepth',v=>state.ott=v);bindRange('#atype',v=>state.atype=v);bindRange('#deess',v=>state.deess=v);bindRange('#mix',v=>state.mix=v);
+  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.module').forEach(x=>x.classList.toggle('active',x.dataset.focus===b.dataset.mode))});
+  document.querySelectorAll('.module').forEach(b=>b.onclick=()=>{document.querySelectorAll('.module').forEach(x=>x.classList.remove('active'));b.classList.add('active')});
+  $('#resetBtn').onclick=()=>{Object.assign(state,JSON.parse(JSON.stringify(defaults)));state.selected=0;state.bypass=false;renderNodes();updateAudio()};
+  $('#bypassBtn').onclick=()=>{state.bypass=!state.bypass;$('#bypassBtn').classList.toggle('active',state.bypass);updateAudio()};
+  $('#abBtn').onclick=()=>{state.ab=!state.ab;$('#abBtn').classList.toggle('active',state.ab);$('#status').textContent=state.ab?'A/B = B snapshot':'A/B = A snapshot'};
+  
+  async function setupAudio(){
+    if(audioCtx)return;
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(!audioEl){
+      audioEl=document.createElement('audio');audioEl.controls=false;audioEl.crossOrigin='anonymous';audioEl.style.display='none';document.body.appendChild(audioEl);
+    }
+    source=audioCtx.createMediaElementSource(audioEl);analyser=audioCtx.createAnalyser();analyser.fftSize=2048;
+    buildChain();
+  }
+  function buildChain(){
+    if(!source)return;
+    chain.forEach(n=>{try{n.disconnect()}catch(e){}});
+    const filters=state.freq.map((f,i)=>{const n=audioCtx.createBiquadFilter();n.type='peaking';n.frequency.value=f;n.Q.value=state.q[i];n.gain.value=state.gain[i];return n});
+    const hp=audioCtx.createBiquadFilter();hp.type='highpass';hp.frequency.value=state.hf;hp.Q.value=.707;
+    const comp=audioCtx.createDynamicsCompressor();comp.threshold.value=-24;comp.ratio.value=3+state.ott*.05;comp.attack.value=.0025;comp.release.value=.08;
+    const sh=audioCtx.createWaveShaper();sh.curve=makeCurve(state.atype);sh.oversample='2x';
+    let prev=source;prev.connect(hp);prev=hp;filters.forEach(n=>{prev.connect(n);prev=n});prev.connect(comp);prev.connect(sh);sh.connect(analyser);analyser.connect(audioCtx.destination);chain=[hp,...filters,comp,sh];
+  }
+  function makeCurve(amount){const c=new Float32Array(1024),k=1+amount/28;for(let i=0;i<c.length;i++){let x=i*2/(c.length-1)-1;c[i]=Math.tanh(x*k)/Math.tanh(k)}return c}
+  function updateAudio(){
+    if(!audioCtx||!chain.length)return;
+    if(state.bypass){chain[0].frequency.value=10;chain.slice(1,5).forEach(n=>n.gain.value=0);chain[5].threshold.value=0;chain[6].curve=makeCurve(0);return}
+    chain[0].frequency.value=state.hf;
+    for(let i=0;i<4;i++){chain[i+1].frequency.value=state.freq[i];chain[i+1].gain.value=state.gain[i];chain[i+1].Q.value=state.q[i]}
+    chain[5].ratio.value=3+state.ott*.05;chain[6].curve=makeCurve(state.atype);
+  }
+  $('#fileInput').onchange=async e=>{
+    const f=e.target.files?.[0];if(!f)return;
+    await setupAudio();audioEl.src=URL.createObjectURL(f);await audioEl.load();$('#status').textContent='Loaded · '+f.name;
+  };
+  $('#playBtn').onclick=async()=>{if(!audioEl){$('#status').textContent='先載入 WAV / MP3 / AAC 音檔';return}await setupAudio();await audioCtx.resume();audioEl.paused?audioEl.play():audioEl.pause();state.playing=!audioEl.paused;$('#playBtn').textContent=state.playing?'PAUSE':'PLAY'};
+  $('#stopBtn').onclick=()=>{if(audioEl){audioEl.pause();audioEl.currentTime=0;state.playing=false;$('#playBtn').textContent='PLAY'}};
+  
+  function resize(){const d=window.devicePixelRatio||1,r=canvas.getBoundingClientRect();canvas.width=r.width*d;canvas.height=r.height*d;ctx.setTransform(d,0,0,d,0,0);renderNodes()}
+  function draw(){
+    const r=canvas.getBoundingClientRect();ctx.clearRect(0,0,r.width,r.height);
+    const mid=r.height*.5, x0=0, w=r.width;
+    ctx.beginPath();ctx.moveTo(0,mid);
+    for(let i=0;i<=500;i++){const t=i/500,xx=t*w,yy=mid-5*Math.sin(t*11+performance.now()/1200)-18*Math.abs(Math.sin(t*47))-12*Math.abs(Math.sin(t*113));ctx.lineTo(xx,Math.max(30,Math.min(r.height-25,yy)))}
+    ctx.lineTo(w,r.height);ctx.lineTo(0,r.height);ctx.closePath();ctx.fillStyle='rgba(109,48,64,.20)';ctx.fill();
+    ctx.lineWidth=2;
+    const cols=['#30a7ff','#26d0c8','#d95fff','#83d44d'];
+    state.freq.forEach((f,i)=>{const p=freqX(f);ctx.beginPath();for(let x=0;x<=500;x++){const t=x/500, dx=t-p, bump=state.gain[i]*Math.exp(-(dx*dx)/.014);const y=mid-2.0*bump-3*Math.sin(t*7+i);ctx.lineTo(t*w,y)}ctx.strokeStyle=cols[i];ctx.globalAlpha=.9;ctx.stroke()});
+    ctx.globalAlpha=1;
+    if(analyser&&state.playing){const data=new Uint8Array(analyser.frequencyBinCount);analyser.getByteFrequencyData(data);ctx.beginPath();for(let i=0;i<data.length;i++){const t=i/(data.length-1);const x=t*w;const y=r.height-22-(data[i]/255)*(r.height*.35);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.lineTo(w,r.height-12);ctx.lineTo(0,r.height-12);ctx.closePath();ctx.fillStyle='rgba(213,166,47,.10)';ctx.fill()}
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize',resize);renderNodes();resize();draw();
+})();
+</script>
+</body>
+</html>
