@@ -17,6 +17,7 @@ node = subprocess.run(
     ["node", "-e", "const fs=require('fs'); const s=fs.readFileSync(0,'utf8'); new Function(s);"],
     input=script,
     text=True,
+    encoding="utf-8",
     capture_output=True,
 )
 assert node.returncode == 0, node.stderr
@@ -29,6 +30,7 @@ node = subprocess.run(
     ["node", "-e", "const fs=require('fs'); const s=fs.readFileSync(0,'utf8'); new Function(s);"],
     input=worklet,
     text=True,
+    encoding="utf-8",
     capture_output=True,
 )
 assert node.returncode == 0, node.stderr
