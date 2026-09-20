@@ -198,6 +198,11 @@ void VVChainAudioProcessor::setStateInformation(const void* data, int sizeInByte
             apvts.replaceState(juce::ValueTree::fromXml(*xml));
 }
 
+juce::AudioProcessorEditor* VVChainAudioProcessor::createEditor()
+{
+    return new VVChainAudioProcessorEditor(*this);
+}
+
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new VVChainAudioProcessor();
