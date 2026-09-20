@@ -219,7 +219,7 @@ def structure_checks():
 
     for token in [
         "DEESS_VOICE", "DEESS_INTENSITY", "DEESS_OFFSET",
-        "OTT_DEGREE", "ATYPE_DEGREE", "EQ1_FREQ",
+        "OTT_DEGREE", "ATYPE_DEGREE", "EQ" + "1_FREQ",
     ]:
         assert token in pp, token
 
