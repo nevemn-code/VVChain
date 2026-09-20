@@ -4,8 +4,8 @@ namespace
 {
 struct ControlDef
 {
-    const char* id;
-    const char* label;
+    juce::String id;
+    juce::String label;
 };
 
 juce::Rectangle<float> graphBounds(const juce::Component& c)
@@ -18,7 +18,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     : AudioProcessorEditor(&p), audioProcessor(p)
 {
     setResizable(true, true);
-    setSize(1280, 760);
+    setSize(1280, 820);
 
     const char* modules[] = { "EQ", "OTT", "A-TYPE", "DE-ESSER", "MIX", "ANALYZER" };
     for (int i = 0; i < (int)moduleButtons.size(); ++i)
@@ -104,9 +104,9 @@ void VVChainAudioProcessorEditor::rebuildControls()
     {
         const auto n = juce::String(bandIndex + 1);
         defs = {
-            { ("EQ" + n + "_FREQ").toRawUTF8(), "FREQ" },
-            { ("EQ" + n + "_GAIN").toRawUTF8(), "GAIN" },
-            { ("EQ" + n + "_Q").toRawUTF8(), "Q" },
+            { "EQ" + n + "_FREQ", "FREQ" },
+            { "EQ" + n + "_GAIN", "GAIN" },
+            { "EQ" + n + "_Q", "Q" },
             { "HF_CORNER", "HF / HPF" }
         };
     }
@@ -162,8 +162,7 @@ void VVChainAudioProcessorEditor::rebuildControls()
         labels[i].setVisible(true);
         labels[i].setText(defs[i].label, juce::dontSendNotification);
 
-        const auto id = juce::String(defs[i].id);
-        attachments[i] = std::make_unique<Attachment>(audioProcessor.apvts, id, sliders[i]);
+        attachments[i] = std::make_unique<Attachment>(audioProcessor.apvts, defs[i].id, sliders[i]);
     }
 }
 
@@ -239,8 +238,8 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                (int)graph.getX() + 10, (int)graph.getBottom() - 24,
                (int)graph.getWidth() - 20, 18, juce::Justification::centredLeft);
 
-    auto panel = juce::Rectangle<float>(24.f, (float)getHeight() - 196.f,
-                                        (float)getWidth() - 48.f, 176.f);
+    auto panel = juce::Rectangle<float>(24.f, (float)getHeight() - 226.f,
+                                        (float)getWidth() - 48.f, 206.f);
     g.setColour(juce::Colour(0xff211f1b));
     g.fillRoundedRectangle(panel, 12.f);
 }
@@ -262,7 +261,7 @@ void VVChainAudioProcessorEditor::resized()
         bx += 88;
     }
 
-    const int panelTop = getHeight() - 178;
+    const int panelTop = getHeight() - 212;
     const int margin = 28;
     const int cols = 6;
     const int gap = 8;
