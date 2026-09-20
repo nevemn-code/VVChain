@@ -80,10 +80,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     f("ATYPE_OUTPUT", "Type-A Output Gain", -24.f, 24.f, 0.f);
 
     // Reference-based DeEsser controls. Defaults preserve the reference core.
-    f("DEESS_FREQ", "DeEsser Reference Frequency", 4000.f, 16000.f, 12500.f, 0.65f);
-    f("DEESS_SENS", "DeEsser Threshold Sensitivity", 0.5f, 2.0f, 1.0f);
+    p.push_back(std::make_unique<juce::AudioParameterChoice>(
+        "DEESS_VOICE", "DeEsser Voice",
+        juce::StringArray { "Male Vocal", "Female Vocal" }, 0));
+    f("DEESS_INTENSITY", "DeEsser Intensity", 2.f, 10.f, 10.f);
+    f("DEESS_OFFSET", "DeEsser Average Offset", -0.1f, 0.1f, 0.f);
     f("DEESS_TRIGGER", "DeEsser Trigger Count", 1.f, 50.f, 10.f);
-    f("DEESS_AMOUNT", "DeEsser Amount", 0.f, 100.f, 100.f);
     f("DEESS_MIX", "DeEsser Mix", 0.f, 100.f, 100.f);
 
     f("DRY_WET", "Dry / Wet", 0.f, 100.f, 100.f);
@@ -97,7 +99,7 @@ void VVChainAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock
     dsp.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
     // The reference DeEsser uses a 4096-frame streaming window and reports the
     // corresponding realtime delay through the host.
-    setLatencySamples(2731);
+    setLatencySamples(8192);
 }
 
 bool VVChainAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
@@ -170,10 +172,10 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.atypeMix = value("ATYPE_MIX");
     p.atypeOutputGainDb = value("ATYPE_OUTPUT");
 
-    p.deessReferenceHz = value("DEESS_FREQ");
-    p.deessSensitivity = value("DEESS_SENS");
+    p.deessReferenceHz = value("DEESS_VOICE") > 0.5f ? 13500.f : 12500.f;
+    p.deessIntensity = value("DEESS_INTENSITY");
+    p.deessAverageOffset = value("DEESS_OFFSET");
     p.deessTriggerCount = static_cast<int>(std::lround(value("DEESS_TRIGGER")));
-    p.deessAmount = value("DEESS_AMOUNT");
     p.deessMix = value("DEESS_MIX");
 
     p.dryWet = value("DRY_WET");
