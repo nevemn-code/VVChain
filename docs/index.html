@@ -306,6 +306,7 @@ async function ensureAudioGraph() {
   }
 }
 function sendParams(){ if(workletNode) workletNode.port.postMessage({type:"params",state}); }
+function scheduleProcess(){ sendParams(); }
 function startAnalyzerTimer(){
   cancelAnimationFrame(analyzerTimer);
   const tick=()=>{
