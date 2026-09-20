@@ -85,8 +85,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         juce::StringArray { "Male Vocal", "Female Vocal" }, 0));
     f("DEESS_INTENSITY", "DeEsser Intensity", 2.f, 10.f, 10.f);
     f("DEESS_OFFSET", "DeEsser Average Offset", -0.1f, 0.1f, 0.f);
-    f("DEESS_TRIGGER", "DeEsser Trigger Count", 1.f, 50.f, 10.f);
-    f("DEESS_MIX", "DeEsser Mix", 0.f, 100.f, 100.f);
 
     f("DRY_WET", "Dry / Wet", 0.f, 100.f, 100.f);
     f("OUTPUT_LEVEL", "Output Level", -24.f, 12.f, 0.f);
@@ -175,8 +173,6 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.deessReferenceHz = value("DEESS_VOICE") > 0.5f ? 13500.f : 12500.f;
     p.deessIntensity = value("DEESS_INTENSITY");
     p.deessAverageOffset = value("DEESS_OFFSET");
-    p.deessTriggerCount = static_cast<int>(std::lround(value("DEESS_TRIGGER")));
-    p.deessMix = value("DEESS_MIX");
 
     p.dryWet = value("DRY_WET");
     p.outputDb = value("OUTPUT_LEVEL");
