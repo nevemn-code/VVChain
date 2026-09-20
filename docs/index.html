@@ -46,7 +46,7 @@ input[type=number],select{background:#10120f;color:#eee;border:1px solid #3a3d36
 .analyzer-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:7px}
 .analyzer-tools label{font-size:10px;color:var(--muted)}
 #dropZone{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8d9085;font-size:14px;pointer-events:none}
-body.dragging #dropZone{display:flex;background:rgba(35,40,33,.62)}
+body.dragover #dropZone{display:flex;background:rgba(35,40,33,.62)}
 @media(max-width:1100px){.transport{grid-template-columns:auto minmax(120px,1fr) auto auto auto auto}.transport .range{display:none}.knob-grid{grid-template-columns:repeat(6,minmax(84px,1fr))}}
 @media(max-width:760px){.knob-grid{grid-template-columns:repeat(3,minmax(84px,1fr))}.workspace{grid-template-rows:380px auto}.tabs{grid-template-columns:repeat(3,1fr);height:auto}.transport{grid-template-columns:auto 1fr auto auto}.transport .loop{display:none}}
 </style>
@@ -92,8 +92,8 @@ body.dragging #dropZone{display:flex;background:rgba(35,40,33,.62)}
 <script>
 const $=s=>document.querySelector(s);
 const graph=$('#graph'),ctx2=graph.getContext('2d');
-let audioCtx=null,audioBuffer=null,processedBuffer=null,sourceNode=null,masterGain=null,analyser=null;
-let playStartedAt=0,playOffset=0,raf=0,processTimer=0,dirty=false;
+let audioCtx=null,audioBuffer=null,processedBuffer=null,source=null,masterGain=null,analyser=null;
+let playStartedAt=0,playOffset=0,anim=0,processTimer=0,dirty=false,playing=false;
 let moduleIndex=0,bandIndex=0;
 const state={
   eq:{freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:35,hp:70},
@@ -330,8 +330,8 @@ async function loadAudioFile(file){
     const data=await file.arrayBuffer();
     audioBuffer=await audioCtx.decodeAudioData(data);
     stopPlayback();
-    $("#fileName").textContent=file.name; $("#rangeStart").value=0; $("#rangeEnd").value=1000;
-    $("#dropZone").classList.remove("visible"); $("#status").textContent="READY"; updateRangeLabels(); draw();
+    $("#fileName").textContent=file.name; $("#loopStart").value=0; $("#loopEnd").value=1000;
+    $("#dropZone").style.display="none"; $("#status").textContent="READY"; updateRangeLabels(); draw();
   }catch(e){console.error(e);$("#status").textContent="LOAD ERROR";}
 }
 function stopPlayback(){
@@ -361,7 +361,7 @@ $("#audioFileInput").addEventListener("change",e=>loadAudioFile(e.target.files[0
 $("#playBtn").addEventListener("click",()=>startPlayback().catch(e=>{console.error(e);$("#status").textContent="PLAY ERROR"}));
 $("#stopBtn").addEventListener("click",stopPlayback);
 $("#resetBtn").addEventListener("click",()=>{Object.assign(state,JSON.parse(JSON.stringify(defaults)));sendParams();renderControls();draw()});
-$("#rangeStart").addEventListener("input",updateLoopNow); $("#rangeEnd").addEventListener("input",updateLoopNow);
+$("#loopStart").addEventListener("input",updateLoopNow); $("#loopEnd").addEventListener("input",updateLoopNow);
 $("#loopToggle").addEventListener("change",()=>{if(playing)startPlayback().catch(()=>{})});
 window.addEventListener("dragenter",e=>{e.preventDefault();document.body.classList.add("dragover")});
 window.addEventListener("dragover",e=>{e.preventDefault();document.body.classList.add("dragover")});
