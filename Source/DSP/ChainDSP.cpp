@@ -1,20 +1,56 @@
 #include "ChainDSP.h"
 
-VVChainDSP::Biquad VVChainDSP::makePeak(double fs, double f0, double gainDb, double q)
+namespace
+{
+static constexpr float kLifterRatio = 6.0f;
+static constexpr float kCompressorRatio = 8.0f;
+static constexpr float kGateRatio = 6.0f;
+static constexpr float kLifterKneeDb = 6.0f;
+static constexpr float kCompressorKneeDb = 6.0f;
+static constexpr float kGateKneeDb = 9.0f;
+
+static float gainDbFromState(float v) noexcept
+{
+    return juce::Decibels::gainToDecibels(std::max(v, 1.0e-5f));
+}
+}
+
+VVChainDSP::Biquad VVChainDSP::makeAnalogPeak(double fs, double f0, double gainDb, double q)
 {
     Biquad c;
     const double safeF = juce::jlimit(20.0, fs * 0.45, f0);
     const double A = std::pow(10.0, gainDb / 40.0);
-    const double w0 = 2.0 * juce::MathConstants<double>::pi * safeF / fs;
-    const double alpha = std::sin(w0) / (2.0 * std::max(0.05, q));
-    const double cw = std::cos(w0);
+    const double K = std::tan(juce::MathConstants<double>::pi * safeF / fs);
+    const double Q = std::max(0.05, q);
 
-    const double bb0 = 1.0 + alpha * A;
-    const double bb1 = -2.0 * cw;
-    const double bb2 = 1.0 - alpha * A;
-    const double aa0 = 1.0 + alpha / A;
-    const double aa1 = -2.0 * cw;
-    const double aa2 = 1.0 - alpha / A;
+    const double bb0 = K * K + (A / Q) * K + 1.0;
+    const double bb1 = 2.0 * (K * K - 1.0);
+    const double bb2 = K * K - (A / Q) * K + 1.0;
+    const double aa0 = K * K + (1.0 / (A * Q)) * K + 1.0;
+    const double aa1 = 2.0 * (K * K - 1.0);
+    const double aa2 = K * K - (1.0 / (A * Q)) * K + 1.0;
+
+    c.b0 = bb0 / aa0;
+    c.b1 = bb1 / aa0;
+    c.b2 = bb2 / aa0;
+    c.a1 = aa1 / aa0;
+    c.a2 = aa2 / aa0;
+    return c;
+}
+
+VVChainDSP::Biquad VVChainDSP::makeAnalogHighPass(double fs, double f0, double q)
+{
+    Biquad c;
+    const double safeF = juce::jlimit(10.0, fs * 0.45, f0);
+    const double K = std::tan(juce::MathConstants<double>::pi * safeF / fs);
+    const double Q = std::max(0.05, q);
+
+    const double bb0 = 1.0;
+    const double bb1 = -2.0;
+    const double bb2 = 1.0;
+    const double aa0 = 1.0 + K / Q + K * K;
+    const double aa1 = 2.0 * (K * K - 1.0);
+    const double aa2 = 1.0 - K / Q + K * K;
 
     c.b0 = bb0 / aa0;
     c.b1 = bb1 / aa0;
@@ -28,16 +64,15 @@ VVChainDSP::Biquad VVChainDSP::makeLowPass(double fs, double f0, double q)
 {
     Biquad c;
     const double safeF = juce::jlimit(10.0, fs * 0.45, f0);
-    const double w0 = 2.0 * juce::MathConstants<double>::pi * safeF / fs;
-    const double alpha = std::sin(w0) / (2.0 * std::max(0.05, q));
-    const double cw = std::cos(w0);
+    const double K = std::tan(juce::MathConstants<double>::pi * safeF / fs);
+    const double Q = std::max(0.05, q);
 
-    const double bb0 = (1.0 - cw) * 0.5;
-    const double bb1 = 1.0 - cw;
-    const double bb2 = bb0;
-    const double aa0 = 1.0 + alpha;
-    const double aa1 = -2.0 * cw;
-    const double aa2 = 1.0 - alpha;
+    const double bb0 = K * K;
+    const double bb1 = 2.0 * K * K;
+    const double bb2 = K * K;
+    const double aa0 = 1.0 + K / Q + K * K;
+    const double aa1 = 2.0 * (K * K - 1.0);
+    const double aa2 = 1.0 - K / Q + K * K;
 
     c.b0 = bb0 / aa0;
     c.b1 = bb1 / aa0;
@@ -49,25 +84,7 @@ VVChainDSP::Biquad VVChainDSP::makeLowPass(double fs, double f0, double q)
 
 VVChainDSP::Biquad VVChainDSP::makeHighPass(double fs, double f0, double q)
 {
-    Biquad c;
-    const double safeF = juce::jlimit(10.0, fs * 0.45, f0);
-    const double w0 = 2.0 * juce::MathConstants<double>::pi * safeF / fs;
-    const double alpha = std::sin(w0) / (2.0 * std::max(0.05, q));
-    const double cw = std::cos(w0);
-
-    const double bb0 = (1.0 + cw) * 0.5;
-    const double bb1 = -(1.0 + cw);
-    const double bb2 = bb0;
-    const double aa0 = 1.0 + alpha;
-    const double aa1 = -2.0 * cw;
-    const double aa2 = 1.0 - alpha;
-
-    c.b0 = bb0 / aa0;
-    c.b1 = bb1 / aa0;
-    c.b2 = bb2 / aa0;
-    c.a1 = aa1 / aa0;
-    c.a2 = aa2 / aa0;
-    return c;
+    return makeAnalogHighPass(fs, f0, q);
 }
 
 float VVChainDSP::dbToGain(float db) noexcept
@@ -77,17 +94,22 @@ float VVChainDSP::dbToGain(float db) noexcept
 
 float VVChainDSP::gainToDb(float gain) noexcept
 {
-    return juce::Decibels::gainToDecibels(std::max(gain, 1.0e-9f));
+    return gainDbFromState(gain);
 }
 
-float VVChainDSP::analogColor(float x, float amount01) noexcept
+float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
+{
+    return std::exp(-1.0f / (0.001f * std::max(ms, 0.1f) * static_cast<float>(sampleRate)));
+}
+
+float VVChainDSP::softColor(float x, float amount01) noexcept
 {
     const float a = juce::jlimit(0.f, 1.f, amount01);
-    const float drive = 1.0f + 0.95f * a;
-    const float asymmetric = x + 0.018f * a * x * x;
-    const float shaped = std::tanh(asymmetric * drive);
+    const float drive = 1.0f + 1.35f * a;
+    const float asym = x + 0.012f * a * x * x;
+    const float shaped = std::tanh(asym * drive);
     const float ref = std::tanh(drive);
-    return ref > 0.f ? shaped / ref : x;
+    return ref > 0.0f ? shaped / ref : x;
 }
 
 void VVChainDSP::prepare(double sampleRate, int, int numChannels)
@@ -102,36 +124,149 @@ void VVChainDSP::reset()
     for (auto& b : eq) b.reset();
     hp.reset();
 
-    ottLP1.reset();
-    ottHP1.reset();
-    ottLP2.reset();
-    ottHP2.reset();
-    ottLP3.reset();
-    ottHP3.reset();
-    ottEnvL.fill(0.f);
-    ottEnvR.fill(0.f);
+    ottXover1.reset();
+    ottXover2.reset();
+    ottXover3.reset();
+    for (auto& b : ottDynamics)
+    {
+        b.lifterEnv = { 1.f, 1.f };
+        b.compEnvDb = { 0.f, 0.f };
+    }
 
-    typeLP80.reset();
-    typeHP80.reset();
-    typeLP3k.reset();
-    typeHP3k.reset();
+    typeXover1.reset();
+    typeXover2.reset();
     typeHP9k.reset();
-    typeEnvL.fill(0.f);
-    typeEnvR.fill(0.f);
+    for (auto& e : typeEnv)
+        e = { 0.f, 0.f };
 
     deessHP.reset();
     deessLP.reset();
-    deessEnvL = deessEnvR = 0.f;
+    deessEnv = { 0.f, 0.f };
+
+    gateEnvDb = { 0.f, 0.f };
+    limiterEnvDb = { 0.f, 0.f };
+}
+
+float VVChainDSP::applyLifter(float input, float& env, float thresholdDb,
+                              float attackMs, float releaseMs, float mix,
+                              double sampleRate)
+{
+    const float slope = 1.0f - (1.0f / kLifterRatio);
+    const float kneeStart = thresholdDb - kLifterKneeDb * 0.5f;
+    const float kneeEnd = thresholdDb + kLifterKneeDb * 0.5f;
+
+    const float magnitude = std::max(std::abs(input), 0.0001f);
+    const float inputDb = juce::Decibels::gainToDecibels(magnitude);
+
+    float targetGainDb = 0.f;
+
+    if (inputDb < kneeStart)
+    {
+        targetGainDb = (thresholdDb - inputDb) * slope;
+    }
+    else if (inputDb < kneeEnd)
+    {
+        const float x = kneeEnd - inputDb;
+        targetGainDb = slope / (2.0f * kLifterKneeDb) * x * x;
+    }
+
+    const float targetLinear = dbToGain(juce::jlimit(0.f, 30.f, targetGainDb));
+    const float attack = timeCoeff(sampleRate, attackMs);
+    const float release = timeCoeff(sampleRate, releaseMs);
+    const float alpha = targetLinear > env ? attack : release;
+
+    env = alpha * env + (1.0f - alpha) * targetLinear;
+
+    const float wet = input * env;
+    const float m = juce::jlimit(0.f, 1.f, mix / 100.f);
+    return wet * m + input * (1.0f - m);
+}
+
+float VVChainDSP::applyCompressor(float input, float& envDb, float thresholdDb,
+                                  float attackMs, float releaseMs, float mix,
+                                  double sampleRate, float ratio)
+{
+    const float slope = 1.0f - (1.0f / ratio);
+    const float kneeStart = thresholdDb - kCompressorKneeDb * 0.5f;
+    const float kneeEnd = thresholdDb + kCompressorKneeDb * 0.5f;
+
+    const float magnitude = std::max(std::abs(input), 0.00001f);
+    const float inputDb = juce::Decibels::gainToDecibels(magnitude);
+
+    float targetReductionDb = 0.f;
+
+    if (inputDb > kneeEnd)
+        targetReductionDb = (inputDb - thresholdDb) * slope;
+    else if (inputDb > kneeStart)
+    {
+        const float x = inputDb - kneeStart;
+        targetReductionDb = slope / (2.0f * kCompressorKneeDb) * x * x;
+    }
+
+    const float targetReductionSignedDb = -targetReductionDb;
+    const float currentReductionDb = -envDb;
+    const float alpha = targetReductionDb > currentReductionDb
+        ? timeCoeff(sampleRate, attackMs)
+        : timeCoeff(sampleRate, releaseMs);
+
+    const float smoothedReduction = alpha * currentReductionDb
+        + (1.0f - alpha) * targetReductionDb;
+
+    envDb = -juce::jlimit(0.f, 60.f, smoothedReduction);
+
+    const float gain = dbToGain(envDb);
+    const float wet = input * gain;
+    const float m = juce::jlimit(0.f, 1.f, mix / 100.f);
+    juce::ignoreUnused(targetReductionSignedDb);
+    return wet * m + input * (1.0f - m);
+}
+
+float VVChainDSP::applyGate(float input, float& envDb, float thresholdDb,
+                            double sampleRate)
+{
+    const float knee = kGateKneeDb;
+    const float ratioSlope = kGateRatio - 1.f;
+    const float kneeStart = thresholdDb - knee * 0.5f;
+    const float kneeEnd = thresholdDb + knee * 0.5f;
+
+    const float magnitude = std::max(std::abs(input), 0.000001f);
+    const float inputDb = juce::Decibels::gainToDecibels(magnitude);
+
+    float targetGainDb = 0.f;
+    if (inputDb < kneeStart)
+        targetGainDb = (inputDb - thresholdDb) * ratioSlope;
+    else if (inputDb < kneeEnd)
+    {
+        const float x = inputDb - kneeEnd;
+        targetGainDb = ratioSlope / (2.f * knee) * x * x;
+    }
+
+    const float attack = timeCoeff(sampleRate, 100.f);
+    const float release = timeCoeff(sampleRate, 30.f);
+    const float alpha = targetGainDb < envDb ? attack : release;
+    envDb = alpha * envDb + (1.f - alpha) * targetGainDb;
+
+    const float gain = dbToGain(envDb);
+    return input * (0.90f * gain + 0.10f);
+}
+
+float VVChainDSP::applyLimiter(float input, float& envDb, double sampleRate)
+{
+    return applyCompressor(input, envDb, -3.f, 30.f, 100.f, 100.f, sampleRate, 20.f);
 }
 
 void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    hp = makeHighPass(sr, juce::jlimit(40.0f, 120.0f, p.hfCornerHz), 0.707);
+    hp = makeAnalogHighPass(sr, juce::jlimit(40.f, 120.f, p.hfCornerHz), 0.707);
 
     for (size_t i = 0; i < eq.size(); ++i)
-        eq[i] = makePeak(sr, p.freq[i], p.gain[i], p.q[i]);
+        eq[i] = makeAnalogPeak(
+            sr,
+            juce::jlimit(20.f, static_cast<float>(sr * 0.45), p.freq[i]),
+            juce::jlimit(-24.f, 24.f, p.gain[i]),
+            juce::jlimit(0.1f, 18.f, p.q[i]));
 
-    const float color = juce::jlimit(0.f, 100.f, p.eqColor) / 100.f;
+    const float colorAmount = juce::jlimit(0.f, 100.f, p.eqColor) / 100.f;
 
     for (int ch = 0; ch < channels; ++ch)
     {
@@ -142,10 +277,10 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         {
             float y = hp.process(d[n], right);
 
-            for (size_t band = 0; band < eq.size(); ++band)
+            for (auto& band : eq)
             {
-                y = eq[band].process(y, right);
-                y = analogColor(y, 0.16f + 0.84f * color);
+                y = band.process(y, right);
+                y = softColor(y, 0.20f + 0.80f * colorAmount);
             }
 
             d[n] = y;
@@ -155,107 +290,122 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
 void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    const float x1 = juce::jlimit(60.f, 900.f, p.ottX1);
+    const float x1 = juce::jlimit(80.f, 900.f, p.ottX1);
     const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.ottX2);
-    const float x3 = juce::jlimit(x2 + 150.f, static_cast<float>(sr * 0.42), p.ottX3);
+    const float x3 = juce::jlimit(x2 + 200.f, static_cast<float>(sr * 0.42), p.ottX3);
 
-    ottLP1 = makeLowPass(sr, x1, 0.707);
-    ottHP1 = makeHighPass(sr, x1, 0.707);
-    ottLP2 = makeLowPass(sr, x2, 0.707);
-    ottHP2 = makeHighPass(sr, x2, 0.707);
-    ottLP3 = makeLowPass(sr, x3, 0.707);
-    ottHP3 = makeHighPass(sr, x3, 0.707);
+    ottXover1.lp1 = makeLowPass(sr, x1, 0.707);
+    ottXover1.lp2 = makeLowPass(sr, x1, 0.707);
+    ottXover1.hp1 = makeHighPass(sr, x1, 0.707);
+    ottXover1.hp2 = makeHighPass(sr, x1, 0.707);
 
-    const float threshold = juce::jlimit(-60.f, 0.f, p.ottThreshold);
-    const float upRatio = juce::jlimit(1.f, 8.f, p.ottUpRatio);
-    const float downRatio = juce::jlimit(1.f, 80.f, p.ottDownRatio);
-    const float attack = juce::jlimit(0.0002f, 0.100f, p.ottAttackMs / 1000.f);
-    const float release = juce::jlimit(0.005f, 1.000f, p.ottReleaseMs / 1000.f);
-    const float aA = std::exp(-1.f / (static_cast<float>(sr) * attack));
-    const float aR = std::exp(-1.f / (static_cast<float>(sr) * release));
-    const float inputGain = dbToGain(juce::jlimit(-12.f, 12.f, p.ottInputGainDb));
-    const float mix = juce::jlimit(0.f, 1.f, p.ottMix / 100.f);
-    const float postGain = dbToGain(juce::jlimit(-18.f, 18.f, p.ottPostGainDb));
+    ottXover2.lp1 = makeLowPass(sr, x2, 0.707);
+    ottXover2.lp2 = makeLowPass(sr, x2, 0.707);
+    ottXover2.hp1 = makeHighPass(sr, x2, 0.707);
+    ottXover2.hp2 = makeHighPass(sr, x2, 0.707);
+
+    ottXover3.lp1 = makeLowPass(sr, x3, 0.707);
+    ottXover3.lp2 = makeLowPass(sr, x3, 0.707);
+    ottXover3.hp1 = makeHighPass(sr, x3, 0.707);
+    ottXover3.hp2 = makeHighPass(sr, x3, 0.707);
 
     for (int ch = 0; ch < channels; ++ch)
     {
         auto* d = buffer.getWritePointer(ch);
-        auto& env = (ch == 0 ? ottEnvL : ottEnvR);
         const bool right = ch == 1;
 
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
-            const float input = d[n];
-            const float driven = input * inputGain;
+            const float x = applyGate(d[n], gateEnvDb[(size_t)ch], p.ottGateThresholdDb, sr)
+                * dbToGain(juce::jlimit(-24.f, 24.f, p.ottInputGainDb));
 
-            const float low = ottLP1.process(driven, right);
-            const float high1 = ottHP1.process(driven, right);
-            const float lowMid = ottLP2.process(high1, right);
-            const float high2 = ottHP2.process(high1, right);
-            const float midHigh = ottLP3.process(high2, right);
-            const float top = ottHP3.process(high2, right);
-            const float bands[4] = { low, lowMid, midHigh, top };
+            const float low = ottXover1.low(x, right);
+            const float x1High = ottXover1.high(x, right);
+            const float lowMid = ottXover2.low(x1High, right);
+            const float x2High = ottXover2.high(x1High, right);
+            const float midHigh = ottXover3.low(x2High, right);
+            const float top = ottXover3.high(x2High, right);
 
-            float wet = 0.f;
+            float bands[4] = { low, lowMid, midHigh, top };
 
             for (int band = 0; band < 4; ++band)
             {
-                const float amount = juce::jlimit(0.f, 1.f, p.ottAmount[(size_t)band] / 100.f);
-                const float level = std::abs(bands[band]);
-                const float coeff = level > env[(size_t)band] ? (1.f - aA) : (1.f - aR);
-                env[(size_t)band] += coeff * (level - env[(size_t)band]);
+                const float degree = juce::jlimit(0.f, 100.f, p.ottDegree[(size_t)band]);
+                const float lifterMix = juce::jlimit(0.f, 100.f,
+                    p.ottLifterMix[(size_t)band] * degree / 100.f);
+                const float compMix = juce::jlimit(0.f, 100.f,
+                    p.ottCompMix[(size_t)band] * degree / 100.f);
 
-                const float levelDb = gainToDb(env[(size_t)band]);
-                float deltaDown = 0.f;
-                float deltaUp = 0.f;
+                float& lifterEnv = ottDynamics[(size_t)band].lifterEnv[(size_t)ch];
+                float& compEnv = ottDynamics[(size_t)band].compEnvDb[(size_t)ch];
 
-                if (levelDb > threshold)
-                    deltaDown = (threshold - levelDb) * (1.f - 1.f / downRatio);
+                bands[band] = applyLifter(
+                    bands[band],
+                    lifterEnv,
+                    p.ottLifterThreshold[(size_t)band],
+                    p.ottLifterAttack[(size_t)band],
+                    p.ottLifterRelease[(size_t)band],
+                    lifterMix,
+                    sr);
 
-                const float afterDownDb = levelDb + deltaDown;
+                bands[band] = applyCompressor(
+                    bands[band],
+                    compEnv,
+                    p.ottCompThreshold[(size_t)band],
+                    p.ottCompAttack[(size_t)band],
+                    p.ottCompRelease[(size_t)band],
+                    compMix,
+                    sr,
+                    kCompressorRatio);
 
-                if (afterDownDb < threshold)
-                    deltaUp = (threshold - afterDownDb) * (1.f - 1.f / upRatio);
-
-                const float totalDeltaDb = juce::jlimit(-36.f, 24.f,
-                    (deltaDown + deltaUp) * amount);
-
-                wet += bands[band] * dbToGain(totalDeltaDb);
+                bands[band] *= dbToGain(juce::jlimit(-24.f, 12.f, p.ottBandLevelDb[(size_t)band]));
             }
 
-            d[n] = input + mix * ((wet * postGain) - input);
+            float y = bands[0] + bands[1] + bands[2] + bands[3];
+            y = applyLimiter(y, limiterEnvDb[(size_t)ch], sr);
+
+            if (p.ottClipper)
+                y = std::tanh(y * 1.7f);
+
+            const float mix = juce::jlimit(0.f, 1.f, p.ottMix / 100.f);
+            d[n] = d[n] + mix * (y - d[n]);
+            d[n] *= dbToGain(juce::jlimit(-24.f, 24.f, p.ottOutputGainDb));
         }
     }
 }
 
 void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    typeLP80 = makeLowPass(sr, 80.f, 0.707);
-    typeHP80 = makeHighPass(sr, 80.f, 0.707);
-    typeLP3k = makeLowPass(sr, 3000.f, 0.707);
-    typeHP3k = makeHighPass(sr, 3000.f, 0.707);
+    // Dolby A-style four control bands: LP80, 80-3k, HP3k and HP9k.
+    typeXover1.lp1 = makeLowPass(sr, 80.f, 0.707);
+    typeXover1.lp2 = makeLowPass(sr, 80.f, 0.707);
+    typeXover1.hp1 = makeHighPass(sr, 80.f, 0.707);
+    typeXover1.hp2 = makeHighPass(sr, 80.f, 0.707);
+
+    typeXover2.lp1 = makeLowPass(sr, 3000.f, 0.707);
+    typeXover2.lp2 = makeLowPass(sr, 3000.f, 0.707);
+    typeXover2.hp1 = makeHighPass(sr, 3000.f, 0.707);
+    typeXover2.hp2 = makeHighPass(sr, 3000.f, 0.707);
+
     typeHP9k = makeHighPass(sr, 9000.f, 0.707);
 
-    const float attack = juce::jlimit(0.0005f, 0.250f, p.atypeAttackMs / 1000.f);
-    const float release = juce::jlimit(0.005f, 1.000f, p.atypeReleaseMs / 1000.f);
-    const float aA = std::exp(-1.f / (static_cast<float>(sr) * attack));
-    const float aR = std::exp(-1.f / (static_cast<float>(sr) * release));
-    const float mix = juce::jlimit(0.f, 1.f, p.atypeMix / 100.f);
+    const float inputGain = dbToGain(juce::jlimit(-24.f, 24.f, p.atypeInputGainDb));
+    const float outputGain = dbToGain(juce::jlimit(-24.f, 24.f, p.atypeOutputGainDb));
+    const float attack = timeCoeff(sr, p.atypeAttackMs);
+    const float release = timeCoeff(sr, p.atypeReleaseMs);
 
     for (int ch = 0; ch < channels; ++ch)
     {
         auto* d = buffer.getWritePointer(ch);
-        auto& env = (ch == 0 ? typeEnvL : typeEnvR);
         const bool right = ch == 1;
 
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
-            const float x = d[n];
-
-            const float b1 = typeLP80.process(x, right);
-            const float hp80 = typeHP80.process(x, right);
-            const float b2 = typeLP3k.process(hp80, right);
-            const float b3 = typeHP3k.process(hp80, right);
+            const float x = d[n] * inputGain;
+            const float b1 = typeXover1.low(x, right);
+            const float x1High = typeXover1.high(x, right);
+            const float b2 = typeXover2.low(x1High, right);
+            const float b3 = typeXover2.high(x1High, right);
             const float b4 = typeHP9k.process(b3, right);
             const float bands[4] = { b1, b2, b3, b4 };
 
@@ -263,25 +413,29 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
 
             for (int band = 0; band < 4; ++band)
             {
-                const float amount = juce::jlimit(0.f, 1.f, p.atypeAmount[(size_t)band] / 100.f);
-                const float level = std::abs(bands[band]);
-                const float coeff = level > env[(size_t)band] ? (1.f - aA) : (1.f - aR);
-                env[(size_t)band] += coeff * (level - env[(size_t)band]);
+                const float degree = juce::jlimit(0.f, 100.f, p.atypeDegree[(size_t)band]);
+                const float levelTrim = dbToGain(
+                    juce::jlimit(-6.f, 6.f, p.atypeBandLevelDb[(size_t)band]));
 
-                const float levelDb = gainToDb(env[(size_t)band]);
-                const float thresholdDb = -30.f;
+                float& env = typeEnv[(size_t)band][(size_t)ch];
+                env += (std::abs(bands[band]) > env ? (1.f - attack) : (1.f - release))
+                    * (std::abs(bands[band]) - env);
+
+                const float levelDb = gainToDb(env);
+                const float thresholdDb = -40.f;
                 float boostDb = 0.f;
 
                 if (levelDb < thresholdDb)
-                    boostDb = juce::jlimit(0.f, 18.f,
-                        (thresholdDb - levelDb) * (1.f - 1.f / 4.f) * amount);
+                    boostDb = juce::jlimit(0.f, 10.f,
+                        (thresholdDb - levelDb) * 0.5f * degree / 100.f);
 
-                const float gainDb = boostDb + p.atypeGainDb[(size_t)band];
-                const float bandGain = dbToGain(gainDb);
+                const float bandGain = dbToGain(boostDb) * levelTrim;
                 enhanced += bands[band] * (bandGain - 1.0f);
             }
 
-            d[n] = x + mix * enhanced;
+            const float mix = juce::jlimit(0.f, 1.f, p.atypeMix / 100.f);
+            d[n] = x / inputGain + mix * enhanced;
+            d[n] *= outputGain;
         }
     }
 }
@@ -295,38 +449,34 @@ void VVChainDSP::applyDeEsser(juce::AudioBuffer<float>& buffer, const Parameters
     deessHP = makeHighPass(sr, low, 0.707);
     deessLP = makeLowPass(sr, high, 0.707);
 
+    const float attack = timeCoeff(sr, p.deessAttackMs);
+    const float release = timeCoeff(sr, p.deessReleaseMs);
     const float thresholdDb = -36.f;
-    const float range = juce::jlimit(0.f, 24.f, p.deessRangeDb);
     const float strength = juce::jlimit(0.f, 1.f, p.deessStrength / 100.f);
-    const float attack = juce::jlimit(0.0002f, 0.050f, p.deessAttackMs / 1000.f);
-    const float release = juce::jlimit(0.005f, 0.500f, p.deessReleaseMs / 1000.f);
-    const float aA = std::exp(-1.f / (static_cast<float>(sr) * attack));
-    const float aR = std::exp(-1.f / (static_cast<float>(sr) * release));
+    const float range = juce::jlimit(0.f, 24.f, p.deessRangeDb);
 
     for (int ch = 0; ch < channels; ++ch)
     {
         auto* d = buffer.getWritePointer(ch);
-        float& env = ch == 0 ? deessEnvL : deessEnvR;
         const bool right = ch == 1;
+        float& env = deessEnv[(size_t)ch];
 
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
             const float x = d[n];
             const float band = deessLP.process(deessHP.process(x, right), right);
-            const float level = std::abs(band);
-            const float coeff = level > env ? (1.f - aA) : (1.f - aR);
-            env += coeff * (level - env);
-
-            const float levelDb = gainToDb(env);
-            const float reductionDb = levelDb > thresholdDb
+            const float magnitude = std::max(std::abs(band), 0.00001f);
+            const float levelDb = gainToDb(magnitude);
+            const float targetGainDb = levelDb > thresholdDb
                 ? -juce::jlimit(0.f, range, (levelDb - thresholdDb) * strength)
                 : 0.f;
-            const float reductionGain = dbToGain(reductionDb);
 
-            if (p.deessListen)
-                d[n] = band * reductionGain;
-            else
-                d[n] = x + band * (reductionGain - 1.f);
+            const float targetGain = dbToGain(targetGainDb);
+            env += targetGain > env ? (1.f - attack) * (targetGain - env)
+                                     : (1.f - release) * (targetGain - env);
+
+            const float wetBand = band * env;
+            d[n] = p.deessListen ? wetBand : x + (wetBand - band);
         }
     }
 }
