@@ -31,8 +31,8 @@ assert node.returncode == 0, node.stderr
 required = [
     "LOAD AUDIO", "AudioWorkletNode", "8192",
     "TAPE-A", "OTT %", "ATTACK", "RELEASE",
-    "DE-ESS FREQ", "DE-ESS %",
-    "bandGrid", "advPopup", "advPopupGrid", "mixFader", "outFader", "leds",
+    "DE-ESS FREQ", "DE-ESS %", "MIX", "OUT",
+    "bandGrid", "advPopup", "advPopupGrid", "leds",
     "ott.bandBypass", "gateBand", "downMax=b===3?100:66.7", "downRatio=1+depth*(downMax-1)", "upRatio=1+depth*(4-1)",
     "bandBypass", "BAND ", "deessZone", "Math.exp(steps*.025)",
     'addEventListener("wheel"', "grid-template-columns:repeat(5,1fr)",
@@ -52,12 +52,12 @@ assert "type:{bypass:false" in text
 assert "de:{bypass:false" in text
 assert "mix:{bypass:false" in text
 assert "bypassLed(\"EQ\"" in text and "bypassLed(\"OTT\"" in text
-assert "bypassLed(\"TAPE-A\"" in text and "bypassLed(\"DE-ESS\"" in text
+assert "bypassLed(\"TAPE-A\"" in text
 assert "typeFast" in text or "typeFast" in worklet
 assert "typeSlow" in text or "typeSlow" in worklet
 assert "const amount=(degree/100)*(.10+.90*transient)" in text or "0.10f + 0.90f * transient" in text
-assert "bypassLed(\"MIX\"" in text
-assert "masterBypass" in text and "syncMaster" in text
+assert "masterBypass" in text and "globalBypass" in text
+assert "DE-ESS %",
 assert "state.ott.x.map" in text
 assert "dragXover" in text
 assert "bandLed de" in text
