@@ -210,6 +210,8 @@ def analog_color(x: float, amount01: float, solid_state: bool = False,
     a = clamp(amount01, 0.0, 1.0)
     if a <= 0.0:
         return x, x, even_dc
+    if abs(x) < 1.0e-5 and abs(previous) < 1.0e-5:
+        return x, x, even_dc
     drive = 1.0 + (5.0 if solid_state else 2.4) * a
     dx = x - previous
     def log_cosh(v):
