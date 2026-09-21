@@ -112,9 +112,9 @@ assert "headerControls" in text
 assert ">BYPASS</button>" in text
 assert 'bypassLed("EQ"' in text and 'bypassLed("OTT"' in text
 assert 'bypassLed("TAPE-A"' in text and 'bypassLed("DE-ESS"' in text and 'bypassLed("MIX"' in text
-assert ".bandLed.ott{top:181px}" in text
-assert ".bandLed.type{top:334px}" in text
-assert ".modeSwitch{position:absolute;left:50%;top:-6px" in text
+assert ".bandLed.ott{top:175px}" in text
+assert ".bandLed.type{top:328px}" in text
+assert ".modeSwitch{position:absolute;left:50%;top:-11px" in text
 assert "x+amount*harmonic" in worklet
 assert ".015*t3(z)" in worklet and "analogPower" in worklet
 print("header_and_analogue_layout: PASS")
