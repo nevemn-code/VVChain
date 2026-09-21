@@ -57,7 +57,7 @@ assert "typeFast" in text or "typeFast" in worklet
 assert "typeSlow" in text or "typeSlow" in worklet
 assert "const amount=(degree/100)*(.10+.90*transient)" in text or "0.10f + 0.90f * transient" in text
 assert "masterBypass" in text and "globalBypass" in text
-assert "DE-ESS %",
+assert "DE-ESS %" in text
 assert "state.ott.x.map" in text
 assert "dragXover" in text
 assert "bandLed de" in text
