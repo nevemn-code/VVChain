@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include <array>
 #include <memory>
+#include <vector>
 #include "PluginProcessor.h"
 
 class VVChainAudioProcessorEditor final : public juce::AudioProcessorEditor
@@ -13,70 +14,91 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
-    void mouseDown(const juce::MouseEvent&) override;
-    void mouseDrag(const juce::MouseEvent&) override;
-    void mouseUp(const juce::MouseEvent&) override;
 
 private:
     using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using BoolAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
     using ComboAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
 
-    enum class DragTarget
+    class MetalLookAndFeel final : public juce::LookAndFeel_V4
     {
-        None,
-        EqBand1, EqBand2, EqBand3, EqBand4,
-        OttDegree1, OttDegree2, OttDegree3, OttDegree4,
-        OttX1, OttX2, OttX3,
-        TypeDegree1, TypeDegree2, TypeDegree3, TypeDegree4,
-        MixDryWet, MixOutput
+    public:
+        void drawRotarySlider(juce::Graphics&, int x, int y, int width, int height,
+                              float sliderPosProportional, float rotaryStartAngle,
+                              float rotaryEndAngle, juce::Slider&) override;
+        void drawToggleButton(juce::Graphics&, juce::ToggleButton&, bool shouldDrawButtonAsHighlighted,
+                              bool shouldDrawButtonAsDown) override;
     };
 
-    void selectModule(int index);
-    void selectBand(int index);
-    void rebuildControls();
+    class Page final : public juce::Component
+    {
+    public:
+        explicit Page(VVChainAudioProcessorEditor& ownerRef) : owner(ownerRef) {}
+        void paint(juce::Graphics&) override;
+        void mouseDown(const juce::MouseEvent&) override;
+        void mouseDrag(const juce::MouseEvent&) override;
+        void mouseUp(const juce::MouseEvent&) override;
 
-    void hideControl(int index);
-    void setControl(int index, const juce::String& parameterId, const juce::String& title);
-    void setControlRangeForDisplay(int index, double minimum, double maximum,
-                                   double step, const juce::String& suffix);
+    private:
+        VVChainAudioProcessorEditor& owner;
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Page)
+    };
 
-    void drawTopBar(juce::Graphics&, juce::Rectangle<float>);
-    void drawGraph(juce::Graphics&, juce::Rectangle<float>);
-    void drawParameterPanel(juce::Graphics&, juce::Rectangle<float>);
+    struct Knob
+    {
+        int group = 0;
+        int slot = 0;
+        juce::Colour accent;
+        std::unique_ptr<juce::Slider> slider;
+        std::unique_ptr<juce::Label> label;
+        std::unique_ptr<Attachment> attachment;
+    };
 
-    void drawGrid(juce::Graphics&, juce::Rectangle<float>, float minDb, float maxDb);
-    void drawEqGraph(juce::Graphics&, juce::Rectangle<float>);
-    void drawOttGraph(juce::Graphics&, juce::Rectangle<float>);
-    void drawTypeAGraph(juce::Graphics&, juce::Rectangle<float>);
-    void drawDeEsserGraph(juce::Graphics&, juce::Rectangle<float>);
-    void drawMixGraph(juce::Graphics&, juce::Rectangle<float>);
+    void addKnob(const juce::String& id, const juce::String& title,
+                 double min, double max, double step, double defaultValue,
+                 const juce::String& suffix, int group, int slot, juce::Colour accent);
 
-    float graphFrequencyToX(const juce::Rectangle<float>&, float hz) const;
-    float graphXToFrequency(const juce::Rectangle<float>&, float x) const;
-    float graphPercentToY(const juce::Rectangle<float>&, float percent) const;
-    float graphYToPercent(const juce::Rectangle<float>&, float y) const;
+    void addBypass(int moduleIndex, const juce::String& parameterId, const juce::String& title);
+    void addSectionLabel(const juce::String& text, int group);
 
     float parameterValue(const juce::String& id) const;
     void setParameter(const juce::String& id, float value);
 
+    juce::Rectangle<float> graphBounds() const;
+    float graphFrequencyToX(const juce::Rectangle<float>&, float hz) const;
+    float graphXToFrequency(const juce::Rectangle<float>&, float x) const;
+    float eqDbToY(const juce::Rectangle<float>&, float db) const;
+
+    void paintPage(juce::Graphics&, juce::Rectangle<float>);
+    void drawEqGraph(juce::Graphics&, juce::Rectangle<float>);
+    void drawOttOverview(juce::Graphics&, juce::Rectangle<float>);
+    void drawTypeOverview(juce::Graphics&, juce::Rectangle<float>);
+    void drawDeEsserOverview(juce::Graphics&, juce::Rectangle<float>);
+    void drawMixOverview(juce::Graphics&, juce::Rectangle<float>);
+
+    void pageMouseDown(const juce::MouseEvent&);
+    void pageMouseDrag(const juce::MouseEvent&);
+    void pageMouseUp();
+
+    void placeGroup(int group, juce::Rectangle<int> area, int columns, int knobWidth = 86,
+                    int knobHeight = 96, int gapX = 10, int gapY = 8);
+
     VVChainAudioProcessor& audioProcessor;
-    int moduleIndex = 0;
-    int bandIndex = 0;
-    DragTarget dragTarget = DragTarget::None;
+    MetalLookAndFeel metalLook;
+    juce::Viewport viewport;
+    Page page;
 
-    std::array<juce::TextButton, 5> moduleButtons;
-    std::array<juce::ToggleButton, 5> bypassButtons;
+    std::vector<Knob> knobs;
+    std::array<std::unique_ptr<juce::ToggleButton>, 5> bypassButtons;
     std::array<std::unique_ptr<BoolAttachment>, 5> bypassAttachments;
+    std::unique_ptr<juce::ToggleButton> ottClipper;
+    std::unique_ptr<BoolAttachment> ottClipperAttachment;
 
-    std::array<juce::TextButton, 4> bandButtons;
-    std::array<juce::Slider, 18> controls;
-    std::array<juce::Label, 18> controlLabels;
-    std::array<std::unique_ptr<Attachment>, 18> attachments;
-
-    juce::ToggleButton ottClipper { "CLIP" };
     juce::ComboBox deEssVoice;
     std::unique_ptr<ComboAttachment> deEssVoiceAttachment;
+
+    int selectedBand = 0;
+    int dragBand = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VVChainAudioProcessorEditor)
 };
