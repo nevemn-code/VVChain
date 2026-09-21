@@ -190,8 +190,11 @@ private:
     static float gainToDb(float gain) noexcept;
     static float timeCoeff(double sampleRate, float ms) noexcept;
     static float analogColor(float x, float amount01, bool solidState,
-                             float& previousInput, float& evenDc,
-                             float& levelPower, double sampleRate) noexcept;
+                             float& previousInput,
+                             float& dcLastInput,
+                             float& dcLastOutput,
+                             float& levelPower,
+                             double sampleRate) noexcept;
 
     static float rmsDetectPDR(float input,
                                float& fastPower,
