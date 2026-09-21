@@ -172,13 +172,15 @@ def simple_chain_probe(src: list[float], s: State, sr: int) -> list[float]:
         y = [math.tanh(v * mul) * colour for v in y]
 
     if not s.ott_bypass:
-        degree = sum(s.ott_degree) / 400
+        active_ott = [s.ott_degree[i] for i in range(4) if not s.ott_band_bypass[i]]
+        degree = sum(active_ott) / 400
         mix = s.ott_mix / 100
         gain = 10 ** (s.ott_output / 20)
         y = [a * (1 - mix) + math.tanh(a * (1 - 0.3 * degree) * 1.5) * gain * mix for a in y]
 
     if not s.atype_bypass:
-        d = sum(s.atype_degree) / 400
+        active_type = [s.atype_degree[i] for i in range(4) if not s.atype_band_bypass[i]]
+        d = sum(active_type) / 400
         y = [v * (1 + 0.1 * d * s.atype_mix / 100) * 10 ** (s.atype_output / 20) for v in y]
 
     # Reference DeEsser transfer probe. Actual FFT/filter/IFFT is checked by
@@ -399,7 +401,6 @@ def run():
         except AssertionError as exc:
             failures.append(("band_bypass", i, str(exc)))
 
- = sum(COUNTS.values())
     total = sum(COUNTS.values())
     print("VVChain requested validation")
     print("seed:", SEED)
