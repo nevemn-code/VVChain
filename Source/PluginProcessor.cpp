@@ -179,7 +179,6 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.atypeBandLevelDb[(size_t)i] = value("ATYPE_LEVEL" + n);
     }
 
-    p.eqColor = value("EQ_COLOR");
 
     p.ottInputGainDb = value("OTT_INPUT");
     p.ottGateThresholdDb = value("OTT_GATE");
