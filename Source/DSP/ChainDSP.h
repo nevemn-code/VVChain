@@ -112,6 +112,7 @@ private:
     struct BandDynamics
     {
         // Independent state for each OTT band / channel.
+        // Gate, upward and downward envelopes never share detector state.
         std::array<float, 2> gateEnvDb { 0.f, 0.f };
         std::array<float, 2> lifterEnv { 1.f, 1.f };
         std::array<float, 2> compEnvDb { 0.f, 0.f };
