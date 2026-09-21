@@ -150,7 +150,7 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
     // the analytically anti-aliased x^2 transfer function. The very slow DC
     // tracker removes the static offset before it is mixed back.
     const float even = (x * x + x * x0 + x0 * x0) / 3.0f;
-    const float dcAlpha = timeCoeff(sr, 80.0f);
+    constexpr float dcAlpha = 0.99974f; // ~80 ms at 48 kHz
     evenDc = dcAlpha * evenDc + (1.0f - dcAlpha) * even;
     const float evenAc = even - evenDc;
 
