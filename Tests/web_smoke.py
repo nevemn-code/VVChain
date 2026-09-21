@@ -18,9 +18,10 @@ node = subprocess.run(
 )
 assert node.returncode == 0, node.stderr
 
-wm = re.search(r"const WORKLET_SOURCE=(\"(?:\\\\.|[^\"\\\\])*\")\s*;", script, re.S)
-assert wm, "missing WORKLET_SOURCE"
-worklet = json.loads(wm.group(1))
+ws_start = script.index("const WORKLET_SOURCE=") + len("const WORKLET_SOURCE=")
+ws_end = script.index(";\nfunction makeWorkletUrl", ws_start) + 1
+worklet_literal = script[ws_start:ws_end]
+worklet = json.loads(worklet_literal)
 node = subprocess.run(
     ["node", "-e", "new Function(require('fs').readFileSync(0,'utf8'));"],
     input=worklet, text=True, encoding="utf-8", capture_output=True,
