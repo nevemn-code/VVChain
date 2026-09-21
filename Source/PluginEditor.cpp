@@ -1018,10 +1018,11 @@ void VVChainAudioProcessorEditor::drawGraphDragHint(
 
     const float paddingX = 9.0f;
     const float paddingY = 6.0f;
+    // JUCE 9 no longer exposes the old Font string-width helpers used by
+    // the previous hint box. Keep the hint box width deterministic and let
+    // drawText centre/clip the text inside it.
     const float boxW =
-        juce::jlimit(175.0f, graph.getWidth() - 12.0f,
-                     static_cast<float>(g.getCurrentFont().getStringWidth(graphDragHint))
-                         + paddingX * 2.0f);
+        juce::jmin(260.0f, juce::jmax(175.0f, graph.getWidth() - 12.0f));
     const float boxH = 28.0f;
 
     float bx = graphDragHintPosition.x + 14.0f;
@@ -1402,7 +1403,7 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
         dragBand = -1;
         showGraphDragHint = true;
         graphDragHintPosition = pos;
-        const hz = parameterValue(
+        const float hz = parameterValue(
             dragXover == 0 ? "OTT_X1"
             : dragXover == 1 ? "OTT_X2" : "OTT_X3");
         graphDragHint = "X" + juce::String(dragXover + 1)
@@ -1473,7 +1474,6 @@ void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
     if (dragBand < 0)
         return;
 
-    const auto graph = eqGraphBounds();
     const auto n = juce::String(dragBand + 1);
 
     const float hz = juce::jlimit(
