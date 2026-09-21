@@ -15,7 +15,7 @@ static constexpr int kMasterBypassRampSamples = 64;
 float crossoverQFromOverlap(float overlap)
 {
     const float t = juce::jlimit(0.f, 100.f, overlap) / 100.f;
-    return 0.55f + 0.32f * t;
+    return 0.90f - 0.35f * t;
 }
 }
 
