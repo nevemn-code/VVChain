@@ -82,6 +82,12 @@ void VVChainDSP::updateCrossover(Crossover4th& xover, double fs, double f0, doub
     updateHighPass(xover.hp2, fs, f0, q);
 }
 
+void VVChainDSP::updateCrossover2nd(Crossover2nd& xover, double fs, double f0, double q)
+{
+    updateLowPass(xover.lp, fs, f0, q);
+    updateHighPass(xover.hp, fs, f0, q);
+}
+
 float VVChainDSP::dbToGain(float db) noexcept
 {
     return juce::Decibels::decibelsToGain(db);
@@ -556,9 +562,9 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
     const float ax3 = 9000.f;
     const float typeQ = 0.70710678f;
 
-    updateCrossover(typeXover1, sr, ax1, typeQ);
-    updateCrossover(typeXover2, sr, ax2, typeQ);
-    updateCrossover(typeXover3, sr, ax3, typeQ);
+    updateCrossover2nd(typeXover1, sr, ax1, typeQ);
+    updateCrossover2nd(typeXover2, sr, ax2, typeQ);
+    updateCrossover2nd(typeXover3, sr, ax3, typeQ);
 
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.atypeInputGainDb));
