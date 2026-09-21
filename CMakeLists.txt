@@ -45,8 +45,6 @@ target_sources(VVChain PRIVATE
     Source/PluginProcessor.h
     Source/PluginEditor.cpp
     Source/PluginEditor.h
-    Source/SpectrumAnalyzer.cpp
-    Source/SpectrumAnalyzer.h
     Source/DSP/ChainDSP.cpp
     Source/DSP/ChainDSP.h
 )
