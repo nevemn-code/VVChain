@@ -944,7 +944,7 @@ void VVChainAudioProcessorEditor::resized()
         for (int i = 0; i < 7; ++i)
             placeKnob(bandAdv[(size_t)i] + n, p(i));
         for (int i = 0; i < 8; ++i)
-            placeKnob(sharedAdv[(size_t)i], p(i + 7));
+            placeKnob(sharedAdv[(size_t)i], p(i + 8));
 
         if (ottClipper)
             ottClipper->setBounds(innerX, popupY + popupH - 34, 82, 24);
