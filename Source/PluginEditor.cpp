@@ -1079,7 +1079,7 @@ void VVChainAudioProcessorEditor::resized()
         if (analogModeButtons[(size_t) b])
             analogModeButtons[(size_t) b]->setBounds(
                 colorCell.getX() + (colorCell.getWidth() - 36) / 2,
-                colorCell.getY() - 5, 36, 12);
+                colorCell.getY() - 10, 36, 12);
 
         placeKnob("OTT_DEGREE" + n, pos(4));
         placeKnob("OTT_COMP_A" + n, pos(5));
@@ -1091,7 +1091,7 @@ void VVChainAudioProcessorEditor::resized()
             {
                 const auto r = knob->slider->getBounds();
                 ottBandBypassButtons[(size_t) b]->setBounds(
-                    r.getRight() - 11, r.getY() - 4, 12, 12);
+                    r.getRight() - 11, r.getY() - 10, 12, 12);
             }
 
         if (atypeBandBypassButtons[(size_t) b])
