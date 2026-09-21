@@ -366,7 +366,7 @@ def source_structure_checks():
         "OTT_BAND_BYPASS1", "OTT_BAND_BYPASS2", "OTT_BAND_BYPASS3", "OTT_BAND_BYPASS4",
         "ATYPE_BAND_BYPASS1", "ATYPE_BAND_BYPASS2", "ATYPE_BAND_BYPASS3", "ATYPE_BAND_BYPASS4",
     ]:
-        assert token in processor_cpp or token in editor_cpp, token
+        assert token in text["processor_cpp"] or token in text["editor_cpp"], token
 
     assert "std::array<bool, 4> ottBandBypass { false, false, false, false }" in text["dsp_h"]
     assert "std::array<bool, 4> atypeBandBypass { false, false, false, false }" in text["dsp_h"]
@@ -952,20 +952,20 @@ def run():
     processor_cpp = (root / "Source/PluginProcessor.cpp").read_text(encoding="utf-8")
     chain_cpp = (root / "Source/DSP/ChainDSP.cpp").read_text(encoding="utf-8")
     try:
-        assert 'addKnob("EQ_COLOR_B" + n' in text["editor_cpp"]
-        assert '"EQ_COLOR" + n' in text["editor_cpp"]
-        assert '"EQ_COLOR_BYPASS" + n' in text["editor_cpp"]
-        assert '"EQ_COLOR_MODE" + n' in text["editor_cpp"]
-        assert 'p.eqColor[(size_t)i] = value("EQ_COLOR" + n);' in text["processor_cpp"]
-        assert 'p.eqColorBypass[(size_t)i] = value("EQ_COLOR_BYPASS" + n)' in text["processor_cpp"]
-        assert 'p.eqColorSolidState[(size_t)i] =' in text["processor_cpp"]
-        assert '"EQ_BYPASS", "EQ Bypass"' in text["processor_cpp"]
-        assert '"EQ_COLOR_GLOBAL_BYPASS", "Analog Color Global Bypass"' in text["processor_cpp"]
+        assert 'addKnob("EQ_COLOR_B" + n' in editor_cpp
+        assert '"EQ_COLOR" + n' in editor_cpp
+        assert '"EQ_COLOR_BYPASS" + n' in editor_cpp
+        assert '"EQ_COLOR_MODE" + n' in editor_cpp
+        assert 'p.eqColor[(size_t)i] = value("EQ_COLOR" + n);' in processor_cpp
+        assert 'p.eqColorBypass[(size_t)i] = value("EQ_COLOR_BYPASS" + n)' in processor_cpp
+        assert 'p.eqColorSolidState[(size_t)i] =' in processor_cpp
+        assert '"EQ_BYPASS", "EQ Bypass"' in processor_cpp
+        assert '"EQ_COLOR_GLOBAL_BYPASS", "Analog Color Global Bypass"' in processor_cpp
         assert 'if (p.eqColorGlobalBypass)' in chain_cpp
-        assert 'if (p.eqBypass || p.eqColorGlobalBypass)' not in text["chain_cpp"]
-        assert 'addKnob("OTT_LIFT_T" + n' in text["editor_cpp"]
-        assert 'addKnob("OTT_COMP_T" + n' in text["editor_cpp"]
-        assert 'addKnob("OTT_LEVEL" + n' in text["editor_cpp"]
+        assert 'if (p.eqBypass || p.eqColorGlobalBypass)' not in chain_cpp
+        assert 'addKnob("OTT_LIFT_T" + n' in editor_cpp
+        assert 'addKnob("OTT_COMP_T" + n' in editor_cpp
+        assert 'addKnob("OTT_LEVEL" + n' in editor_cpp
     except AssertionError as exc:
         failures.append(("ui_linkage", 0, str(exc)))
 
