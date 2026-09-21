@@ -38,6 +38,7 @@ required = [
     'addEventListener("wheel"', "grid-template-columns:repeat(5,1fr)",
     "OTT：亮=啟用；按下=BYPASS", "TYPE-A：亮=啟用；按下=BYPASS",
     "NO PAGE SCROLL", "s.freq", "typeFast", "typeSlow", "typeDc", "transientRatio",
+    "masterBypass", "state.ott.overlap", "SHARED X-OVER", "dryQueue", "typeLp", "bandLed de",
 
 ]
 for token in required:
@@ -56,6 +57,10 @@ assert "typeFast" in text or "typeFast" in worklet
 assert "typeSlow" in text or "typeSlow" in worklet
 assert "const amount=(degree/100)*(.10+.90*transient)" in text or "0.10f + 0.90f * transient" in text
 assert "bypassLed(\"MIX\"" in text
+assert "masterBypass" in text and "syncMaster" in text
+assert "state.ott.x.map" in text
+assert "dragXover" in text
+assert "bandLed de" in text
 
 for forbidden in [
     "ANALYZER", "analyzer", "createAnalyser", "AnalyserNode",
