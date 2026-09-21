@@ -192,6 +192,9 @@ void VVChainDSP::reset()
     ottXover1.reset();
     ottXover2.reset();
     ottXover3.reset();
+    ottPhase2_B1.reset();
+    ottPhase3_B1.reset();
+    ottPhase3_B2.reset();
 
     for (auto& b : ottDynamics)
     {
@@ -404,6 +407,12 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
     updateCrossover(ottXover2, sr, x2, xoverQ);
     updateCrossover(ottXover3, sr, x3, xoverQ);
 
+    // Equalize the number of crossover sections traversed by each branch.
+    // B1: X1 -> add all-pass X2 + X3. B2: X1+X2 -> add all-pass X3.
+    updateCrossover(ottPhase2_B1, sr, x2, xoverQ);
+    updateCrossover(ottPhase3_B1, sr, x3, xoverQ);
+    updateCrossover(ottPhase3_B2, sr, x3, xoverQ);
+
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.ottInputGainDb));
     const float globalMix =
@@ -421,12 +430,18 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
             const float original = data[n];
             const float x = original * inputGain;
 
-            const float low = ottXover1.low(x, right);
+            float low = ottXover1.low(x, right);
             const float x1High = ottXover1.high(x, right);
-            const float lowMid = ottXover2.low(x1High, right);
+            float lowMid = ottXover2.low(x1High, right);
             const float x2High = ottXover2.high(x1High, right);
             const float midHigh = ottXover3.low(x2High, right);
             const float top = ottXover3.high(x2High, right);
+
+            // LP4 + HP4 compensation restores the phase path for skipped
+            // crossovers without adding host/plugin latency.
+            low = ottPhase2_B1.allPass(low, right);
+            low = ottPhase3_B1.allPass(low, right);
+            lowMid = ottPhase3_B2.allPass(lowMid, right);
 
             float bands[4] = { low, lowMid, midHigh, top };
 
