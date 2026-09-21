@@ -196,11 +196,20 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
         alpha * levelPower
         + (1.0f - alpha) * (x * x);
 
+    // Below this level there is no meaningful programme content to colour.
+    // Keep the stage exactly unity so silence and ultra-low probes remain bit
+    // transparent instead of creating a residual from even-order polynomials.
+    if (levelPower < 1.0e-12f)
+    {
+        previousInput = x;
+        return x;
+    }
+
     const float level =
-        std::max(0.03f,
+        std::max(1.0e-6f,
                   std::sqrt(std::max(
                       levelPower * 2.0f,
-                      1.0e-10f)));
+                      1.0e-12f)));
 
     const float amount =
         std::pow(amount01Clamped, 0.90f);
