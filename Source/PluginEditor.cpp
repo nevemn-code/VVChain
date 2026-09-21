@@ -1440,7 +1440,7 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
         const float hz = parameterValue("EQ" + n + "_FREQ");
         const float db = parameterValue("EQ" + n + "_GAIN");
         const float q = parameterValue("EQ" + n + "_Q");
-        const String prefix = "BAND " + n + "   ";
+        const juce::String prefix = "BAND " + n + "   ";
         graphDragHint = prefix
             + formatGraphFrequency(hz)
             + "   " + juce::String(db >= 0.f ? "+" : "")
