@@ -4,24 +4,29 @@
 
 | Stage | Cases | Validation |
 |---|---:|---|
-| Planning / parameter-space | 280 | Parameter ranges, crossover ordering, finite state values |
-| Boundary / debug | 120 | Min/max settings, zero settings, ratios, timing, output |
-| All-feature mapping | 180 | Each exposed EQ / OTT / Type-A / De-Esser / Mix control changes the state signature and remains finite |
-| Transient | 655 | Impulse, double hit, alternating burst, decaying burst, mixed transients |
-| Full-chain | 820 | Full chain across 44.1 / 48 / 88.2 / 96 / 192 kHz and 16–1024 sample blocks, including loop-range geometry |
-| **Total** | **2,055** | |
+| Planning / parameter-space | 280 | Parameter ranges and crossover ordering |
+| Boundary / debug continuity | 500 | 8192-sample stream continuity and finite values |
+| All-feature mapping | 180 | EQ / OTT / TAPE-A / De-Esser / Mix controls remain finite |
+| Transient | 155 | Impulse and transient handling |
+| Full-chain | 220 | 44.1 / 48 / 88.2 / 96 / 192 kHz and 16–1024 sample blocks |
+| Independent band bypass | 50 | OTT and TAPE-A per-band bypass independence |
+| Analog color unity | 50 | Small-signal unity across 0–100% color |
+| TT / SS saturation | 500 | 500 deterministic mode/amount sweeps |
+| Type-A exciter | 50 | Four-band dynamic harmonic model |
+| OTT four-band | 500 | Ratio, detector and gate behavior |
+| **Total** | **2,485** | |
 
 ## Architecture-specific checks
 
-- Four OTT bands exist and have independent degree controls.
-- OTT has three crossover frequencies.
-- OTT implements downward compression followed by upward compression.
-- Type-A has four fixed Dolby-A-style bands with overlapping upper bands.
-- Type-A band degree can independently be reduced to zero.
-- De-esser uses two crossover edges.
-- De-esser range and strength are independent.
-- EQ has a nonlinear analog-style coloration stage that remains active at default color.
-- Web preview contains AudioWorklet DSP, range selection, loopStart, and loopEnd.
+- Four OTT bands with independent degree and bypass.
+- Three Shared X-Over frequencies.
+- TAPE-A follows the same Shared X-Over.
+- Each EQ band has its own Analog Color amount.
+- Each EQ band has TT / SS mode selection.
+- De-Esser Maximum Reduction is 0–8 dB with 0 dB default.
+- Visual FFT analyzer is intentionally absent from the current Native editor.
+- De-Esser may use internal FFT processing when the effect is enabled.
+- Master BYPASS must reach DSP and output the fixed-PDC delayed dry path.
 
 ## Host validation
 
@@ -29,9 +34,7 @@ Still required before release:
 
 - JUCE/CMake build
 - pluginval
-- REAPER
-- Cubase
-- Pro Tools for AAX
+- REAPER / Cubase / Pro Tools
 - mono and stereo
 - 44.1 / 48 / 88.2 / 96 / 192 kHz
 - small and large blocks
