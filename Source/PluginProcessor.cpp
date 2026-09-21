@@ -40,28 +40,29 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     f("HF_CORNER", "EQ High-pass Corner", 40.f, 120.f, 70.f);
 
     // Four-band OTT / PunkOTT-MB style controls.
-    f("OTT_INPUT", "OTT Input Gain", -24.f, 24.f, 5.2f);
+    f("OTT_INPUT", "OTT Input Gain", -24.f, 24.f, 0.f);
     f("OTT_GATE", "OTT Gate", -90.f, 0.f, -80.f);
-    f("OTT_MIX", "OTT Mix", 0.f, 100.f, 100.f);
-    p.push_back(std::make_unique<juce::AudioParameterBool>("OTT_CLIPPER", "OTT Clipper", true));
-    f("OTT_OUTPUT", "OTT Output Gain", -24.f, 24.f, -6.f);
-    f("OTT_X1", "OTT Crossover 1", 80.f, 600.f, 350.f, 1.5f);
+    f("OTT_MIX", "OTT Mix", 0.f, 100.f, 25.f);
+    p.push_back(std::make_unique<juce::AudioParameterBool>("OTT_CLIPPER", "OTT Clipper", false));
+    f("OTT_OUTPUT", "OTT Output Gain", -24.f, 24.f, 0.f);
+    f("OTT_X1", "OTT Crossover 1", 80.f, 600.f, 120.f, 1.5f);
     f("OTT_X2", "OTT Crossover 2", 750.f, 3000.f, 1000.f, 0.8f);
-    f("OTT_X3", "OTT Crossover 3", 6000.f, 12000.f, 9000.f, 0.65f);
+    f("OTT_X3", "OTT Crossover 3", 6000.f, 12000.f, 7000.f, 0.65f);
 
     for (int i = 0; i < 4; ++i)
     {
         const juce::String n = juce::String(i + 1);
         p.push_back(std::make_unique<juce::AudioParameterBool>(
             "OTT_BAND_BYPASS" + n, "OTT Band " + n + " Bypass", false));
-        f("OTT_DEGREE" + n, "OTT Band " + n + " Degree", 0.f, 100.f, 100.f);
-        f("OTT_LIFT_T" + n, "OTT Band " + n + " Lifter Threshold", -80.f, 0.f, -40.f);
-        f("OTT_LIFT_A" + n, "OTT Band " + n + " Lifter Attack", 1.f, 500.f, 50.f, 0.35f);
+        const float ottDegreeDefaults[4] = { 35.f, 35.f, 30.f, 25.f };
+        f("OTT_DEGREE" + n, "OTT Band " + n + " Degree", 0.f, 100.f, ottDegreeDefaults[i]);
+        f("OTT_LIFT_T" + n, "OTT Band " + n + " Lifter Threshold", -80.f, 0.f, -35.f);
+        f("OTT_LIFT_A" + n, "OTT Band " + n + " Lifter Attack", 1.f, 500.f, 1.f, 0.35f);
         f("OTT_LIFT_R" + n, "OTT Band " + n + " Lifter Release", 10.f, 2500.f, 50.f, 0.35f);
         f("OTT_LIFT_M" + n, "OTT Band " + n + " Lifter Mix", 0.f, 100.f, 100.f);
-        f("OTT_COMP_T" + n, "OTT Band " + n + " Compressor Threshold", -24.f, 0.f, -12.f);
-        f("OTT_COMP_A" + n, "OTT Band " + n + " Compressor Attack", 0.1f, 250.f, 15.f, 0.35f);
-        f("OTT_COMP_R" + n, "OTT Band " + n + " Compressor Release", 10.f, 2500.f, 60.f, 0.35f);
+        f("OTT_COMP_T" + n, "OTT Band " + n + " Compressor Threshold", -40.f, 0.f, -18.f);
+        f("OTT_COMP_A" + n, "OTT Band " + n + " Compressor Attack", 0.1f, 250.f, 1.f, 0.35f);
+        f("OTT_COMP_R" + n, "OTT Band " + n + " Compressor Release", 10.f, 2500.f, 50.f, 0.35f);
         f("OTT_COMP_M" + n, "OTT Band " + n + " Compressor Mix", 0.f, 100.f, 100.f);
         f("OTT_LEVEL" + n, "OTT Band " + n + " Level", -24.f, 12.f, 0.f);
     }
