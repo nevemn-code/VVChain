@@ -52,9 +52,9 @@ assert 'bypassLed("OTT"' in text
 assert 'bypassLed("TAPE-A"' in text
 assert 'bypassLed("DE-ESS"' in text
 assert "this.N=512" in text
-assert "native/reference DE-ESSER remains 8192-sample PDC" in text
-assert "fft(" in worklet
-assert "dryQueue" in worklet
+assert "DE-ESSER no longer uses FFT/block buffering" in text
+assert "fft(re,im,inv)" not in worklet and "this.fft(" not in worklet
+assert "dryQueue" not in worklet
 
 for forbidden in [
     "ANALYZER", "createAnalyser", "AnalyserNode",
@@ -67,3 +67,14 @@ print("worklet_js_parse: PASS")
 print("no_page_scroll: PASS")
 print("four_band_compact_chain: PASS")
 print("stable_web_preview: PASS")
+
+assert "bypassGlobalLed(\"ANALOG\"" in text
+assert "bypassLed(\"DE-ESS\"" in text
+assert "deessLedRefs.push(deLed)" in text
+assert "SOLO POST" in text
+assert "Math.min(targetSolo" in worklet
+assert "yL=yL*(1-this.soloBlend)+soloL*this.soloBlend" in worklet
+print("zero_latency_deesser: PASS")
+print("solo_pre_post_crossfade: PASS")
+print("analog_global_bypass: PASS")
+print("deesser_top_bottom_sync: PASS")
