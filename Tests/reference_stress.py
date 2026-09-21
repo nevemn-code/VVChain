@@ -910,24 +910,24 @@ def run():
                 xref.append(x)
                 y.append(v)
 
-        def proj(sig, phase):
-            s = sum(v * math.sin(phase0 + omega * k)
+        def proj(sig):
+            s = sum(v * math.sin(phase0 + omega * (k + warm))
                     for k, v in enumerate(sig))
-            c0 = sum(v * math.cos(phase0 + omega * k)
+            c0 = sum(v * math.cos(phase0 + omega * (k + warm))
                      for k, v in enumerate(sig))
             return math.hypot(s, c0)
 
-        ref = max(proj(xref, phase0), 1.0e-12)
-        out = proj(y, phase0)
+        ref = max(proj(xref), 1.0e-12)
+        out = proj(y)
         ratio = out / ref
         phase_delta = 0.0
-        s_ref = sum(v * math.sin(phase0 + omega * k)
+        s_ref = sum(v * math.sin(phase0 + omega * (k + warm))
                     for k, v in enumerate(xref))
-        c_ref = sum(v * math.cos(phase0 + omega * k)
+        c_ref = sum(v * math.cos(phase0 + omega * (k + warm))
                     for k, v in enumerate(xref))
-        s_out = sum(v * math.sin(phase0 + omega * k)
+        s_out = sum(v * math.sin(phase0 + omega * (k + warm))
                     for k, v in enumerate(y))
-        c_out = sum(v * math.cos(phase0 + omega * k)
+        c_out = sum(v * math.cos(phase0 + omega * (k + warm))
                     for k, v in enumerate(y))
         phase_delta = math.atan2(s_out, c_out) - math.atan2(s_ref, c_ref)
         while phase_delta > math.pi:
@@ -953,6 +953,10 @@ def run():
         assert 'p.eqColor[(size_t)i] = value("EQ_COLOR" + n);' in text["processor_cpp"]
         assert 'p.eqColorBypass[(size_t)i] = value("EQ_COLOR_BYPASS" + n)' in text["processor_cpp"]
         assert 'p.eqColorSolidState[(size_t)i] =' in text["processor_cpp"]
+        assert '"EQ_BYPASS", "EQ Bypass"' in text["processor_cpp"]
+        assert '"EQ_COLOR_GLOBAL_BYPASS", "Analog Color Global Bypass"' in text["processor_cpp"]
+        assert 'if (p.eqColorGlobalBypass)' in text["chain_cpp"]
+        assert 'if (p.eqBypass || p.eqColorGlobalBypass)' not in text["chain_cpp"]
         assert 'addKnob("OTT_LIFT_T" + n' in text["editor_cpp"]
         assert 'addKnob("OTT_COMP_T" + n' in text["editor_cpp"]
         assert 'addKnob("OTT_LEVEL" + n' in text["editor_cpp"]
