@@ -388,7 +388,6 @@ def source_structure_checks():
     assert "(x + phaseAlignedHarmonics * mix)" in cpp
     assert "harmonicBands[0] + b1" not in cpp
     assert "harmonicBands[1] + b2" not in cpp
-    assert "const float eqDelta" not in cpp
     # Flat EQ must not feed the full-band signal through Analog Color.
     assert "const float eqDelta =\n                        eqOutput - eqBandInput;" in cpp
     assert "analogColor(\n                            eqDelta," in cpp
