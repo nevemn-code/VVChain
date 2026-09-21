@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "SpectrumAnalyzer.h"
 
 VVChainAudioProcessor::VVChainAudioProcessor()
     : AudioProcessor(BusesProperties()
@@ -107,6 +108,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
 void VVChainAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     dsp.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
+    spectrumAnalyzer.prepare(sampleRate);
     // The realtime DeEsser processes complete 8192-sample blocks.
     setLatencySamples(8192);
 }
@@ -193,6 +195,15 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.outputDb = value("OUTPUT_LEVEL");
 
     dsp.process(buffer, p);
+
+    if (buffer.getNumChannels() > 0 && buffer.getNumSamples() > 0)
+        spectrumAnalyzer.pushSamples(
+            buffer.getReadPointer(0), buffer.getNumSamples());
+}
+
+float VVChainAudioProcessor::getSpectrumMagnitudeDb(int bin) const noexcept
+{
+    return spectrumAnalyzer.getMagnitudeDb(bin);
 }
 
 void VVChainAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
