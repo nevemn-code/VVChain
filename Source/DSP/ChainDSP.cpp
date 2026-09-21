@@ -1,11 +1,3 @@
-void VVChainDSP::updateCrossover(Crossover4th& xover, double fs, double f0, double q)
-{
-    updateLowPass(xover.lp1, fs, f0, q);
-    updateLowPass(xover.lp2, fs, f0, q);
-    updateHighPass(xover.hp1, fs, f0, q);
-    updateHighPass(xover.hp2, fs, f0, q);
-}
-
 #include "ChainDSP.h"
 
 namespace
