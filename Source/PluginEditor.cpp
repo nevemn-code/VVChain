@@ -178,25 +178,27 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     setResizable(false, false);
     setSize(1500, 930);
 
-    const std::array<juce::String, 4> bypassIds
+    const std::array<juce::String, 5> bypassIds
     {
-        "EQ_BYPASS", "OTT_BYPASS", "ATYPE_BYPASS", "DEESS_BYPASS"
+        "EQ_BYPASS", "OTT_BYPASS", "EQ_COLOR_GLOBAL_BYPASS",
+        "ATYPE_BYPASS", "DEESS_BYPASS"
     };
 
-    const std::array<juce::String, 4> bypassLabels
+    const std::array<juce::String, 5> bypassLabels
     {
-        "EQ", "OTT", "TAPE-A", "DE-ESS"
+        "EQ", "OTT", "ANALOG", "TAPE-A", "DE-ESS"
     };
 
-    const std::array<juce::Colour, 4> bypassColours
+    const std::array<juce::Colour, 5> bypassColours
     {
         juce::Colour(0xff38bdf8),
         juce::Colour(0xfffacc15),
+        juce::Colour(0xff60a5fa),
         juce::Colour(0xfff472b6),
         juce::Colour(0xff67d3aa)
     };
 
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 5; ++i)
         addBypass(i, bypassIds[(size_t) i], bypassLabels[(size_t) i],
                   bypassColours[(size_t) i]);
 
@@ -869,15 +871,16 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
                            uiColour(k.accent.brighter(.35f)));
     }
 
-    const std::array<juce::Colour, 4> moduleColours
+    const std::array<juce::Colour, 5> moduleColours
     {{
         juce::Colour(0xff38bdf8),
         juce::Colour(0xfffacc15),
+        juce::Colour(0xff60a5fa),
         juce::Colour(0xfff472b6),
         juce::Colour(0xff67d3aa)
     }};
 
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 5; ++i)
         if (bypassButtons[(size_t) i])
             bypassButtons[(size_t) i]->setColour(
                 juce::ToggleButton::tickColourId,
@@ -885,7 +888,7 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
 
     if (deessBypassButton)
         deessBypassButton->setColour(
-            juce::ToggleButton::tickColourId, uiColour(moduleColours[3]));
+            juce::ToggleButton::tickColourId, uiColour(moduleColours[4]));
 
     if (masterBypassButton)
         masterBypassButton->setColour(
@@ -952,6 +955,17 @@ void VVChainAudioProcessorEditor::timerCallback()
     if (soloModeButton)
         soloModeButton->setButtonText(
             parameterValue("SOLO_MODE") > 0.5f ? "SOLO POST" : "SOLO PRE");
+
+    // Both DE-ESSER bypass controls read the exact same APVTS parameter.
+    // Keep an explicit UI sync in addition to their attachments so automation
+    // or host state recall cannot leave the upper/lower indicators different.
+    const bool deessBypassed = parameterValue("DEESS_BYPASS") > 0.5f;
+    if (deessBypassButton)
+        deessBypassButton->setToggleState(deessBypassed,
+                                          juce::dontSendNotification);
+    if (bypassButtons[4])
+        bypassButtons[4]->setToggleState(deessBypassed,
+                                         juce::dontSendNotification);
 }
 
 void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
@@ -1098,7 +1112,7 @@ void VVChainAudioProcessorEditor::resized()
     const int cardCount = 5;
     const int cardW = (w - left * 2 - gap * (cardCount - 1)) / cardCount;
 
-    const std::array<int, 4> moduleWidths { 50, 52, 66, 62 };
+    const std::array<int, 5> moduleWidths { 50, 52, 64, 66, 62 };
     constexpr int topGap = 5;
     constexpr int masterW = 78;
     int total = masterW;
@@ -1115,7 +1129,7 @@ void VVChainAudioProcessorEditor::resized()
         soloModeButton->setBounds(topX + masterW + topGap, topY, soloModeW, 25);
 
     int xTop = topX + masterW + topGap + soloModeW + topGap;
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 5; ++i)
     {
         if (bypassButtons[(size_t) i])
             bypassButtons[(size_t) i]->setBounds(
