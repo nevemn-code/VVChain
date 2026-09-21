@@ -223,6 +223,7 @@ private:
     void alignDryPhaseBuffer(int numSamples, const Parameters& p);
 
     void applyEq(juce::AudioBuffer<float>&, const Parameters&);
+    void applyAnalogColor(juce::AudioBuffer<float>&, const Parameters&);
     void applyOtt(juce::AudioBuffer<float>&, const Parameters&);
     void applyAType(juce::AudioBuffer<float>&, const Parameters&);
 
@@ -233,6 +234,15 @@ private:
     std::array<std::array<float, 2>, 4> analogPreviousInput {};
     std::array<std::array<float, 2>, 4> analogEvenDc {};
     std::array<std::array<float, 2>, 4> analogLevelPower {};
+
+    // Analog Color crossover bank. These only feed the harmonic generator;
+    // the original programme path remains completely direct.
+    Crossover4th analogXover1 {};
+    Crossover4th analogXover2 {};
+    Crossover4th analogXover3 {};
+    Crossover4th analogPhase2_B1 {};
+    Crossover4th analogPhase3_B1 {};
+    Crossover4th analogPhase3_B2 {};
 
     Crossover4th ottXover1 {};
     Crossover4th ottXover2 {};
