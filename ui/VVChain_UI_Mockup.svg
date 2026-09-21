@@ -48,7 +48,7 @@
   <g fill="#171a1f" stroke="#70757e"><circle cx="1238" cy="500" r="24"/><circle cx="1325" cy="500" r="24"/><circle cx="1412" cy="500" r="24"/></g>
   <text x="1510" y="500" class="label" fill="#67d3aa" text-anchor="end">DE-ESS FREQ</text><text x="1510" y="518" class="ui muted tiny" text-anchor="end">12.5 kHz</text>
   <text x="1510" y="570" class="label" fill="#67d3aa" text-anchor="end">DE-ESS %</text><text x="1510" y="588" class="ui muted tiny" text-anchor="end">10 %</text>
-  <g class="label muted"><text x="1218" y="560">ANALOG</text><text x="1305" y="560">HP/CORNER</text><text x="1392" y="560">OTT %</text><text x="1218" y="650">ATTACK</text><text x="1305" y="650">RELEASE</text><text x="1392" y="650">TAPE-A+</text></g>
+  <g class="label muted"><text x="1218" y="560">ANALOG</text><text x="1305" y="560">HP/CORNER</text><text x="1392" y="560">OTT %</text><text x="1218" y="650">ATTACK</text><text x="1305" y="650">RELEASE</text><text x="1392" y="650">TAPE-A+</text></g><circle cx="1460" cy="552" r="7" fill="#facc15" stroke="#fff" stroke-width="1"/><circle cx="1460" cy="642" r="7" fill="#f472b6" stroke="#fff" stroke-width="1"/>
   <g fill="#171a1f" stroke="#70757e"><circle cx="1238" cy="590" r="24"/><circle cx="1325" cy="590" r="24"/><circle cx="1412" cy="590" r="24"/><circle cx="1238" cy="680" r="24"/><circle cx="1325" cy="680" r="24"/><circle cx="1412" cy="680" r="24"/></g>
   <rect x="1130" y="448" width="50" height="20" rx="4" fill="#17191d" stroke="#a3e635"/><text x="1155" y="462" fill="#d6dbe1" font-size="8" text-anchor="middle">+ ADV</text>
   <rect x="739" y="448" width="50" height="20" rx="4" fill="#17191d" stroke="#22d3ee"/><text x="764" y="462" fill="#d6dbe1" font-size="8" text-anchor="middle">+ ADV</text>
