@@ -493,6 +493,7 @@ void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters& p)
     for (int i = 0; i < count; ++i)
         deessFft[(size_t)i] = std::complex<double>(static_cast<double>(input[i]), 0.0);
 
+    // Reference trigger condition: COUNT > 10.
     constexpr int trigger = 10;
 
     if (!p.deessBypass && countMore > trigger)
