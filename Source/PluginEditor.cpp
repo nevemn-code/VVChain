@@ -955,6 +955,17 @@ void VVChainAudioProcessorEditor::timerCallback()
     if (soloModeButton)
         soloModeButton->setButtonText(
             parameterValue("SOLO_MODE") > 0.5f ? "SOLO POST" : "SOLO PRE");
+
+    // Both DE-ESSER bypass controls read the exact same APVTS parameter.
+    // Keep an explicit UI sync in addition to their attachments so automation
+    // or host state recall cannot leave the upper/lower indicators different.
+    const bool deessBypassed = parameterValue("DEESS_BYPASS") > 0.5f;
+    if (deessBypassButton)
+        deessBypassButton->setToggleState(deessBypassed,
+                                          juce::dontSendNotification);
+    if (bypassButtons[4])
+        bypassButtons[4]->setToggleState(deessBypassed,
+                                         juce::dontSendNotification);
 }
 
 void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
