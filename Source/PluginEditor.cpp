@@ -368,7 +368,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     addKnob("DEESS_FREQ", "DE-ESS FREQ", 6000, 18000, 10,
             parameterValue("DEESS_FREQ"), " Hz", 4, 0,
             juce::Colour(0xff67d3aa));
-    addKnob("DEESS_INTENSITY", "MAXIMUM REDUCTION", 0, 8, .1,
+    addKnob("DEESS_INTENSITY", "MAXIMUM REDUCTION", 0, 24, .1,
             parameterValue("DEESS_INTENSITY"), " dB", 4, 1,
             juce::Colour(0xff67d3aa));
 
