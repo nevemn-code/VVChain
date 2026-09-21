@@ -133,6 +133,27 @@ private:
         }
     };
 
+    struct Crossover2nd
+    {
+        Biquad lp, hp;
+
+        void reset()
+        {
+            lp.reset();
+            hp.reset();
+        }
+
+        inline float low(float x, bool right)
+        {
+            return lp.process(x, right);
+        }
+
+        inline float high(float x, bool right)
+        {
+            return hp.process(x, right);
+        }
+    };
+
     struct BandDynamics
     {
         // Independent state for each OTT band / channel.
@@ -158,6 +179,7 @@ private:
     static void updateLowPass(Biquad& filter, double fs, double f0, double q);
     static void updateHighPass(Biquad& filter, double fs, double f0, double q);
     static void updateCrossover(Crossover4th& xover, double fs, double f0, double q);
+    static void updateCrossover2nd(Crossover2nd& xover, double fs, double f0, double q);
 
     static float dbToGain(float db) noexcept;
     static float gainToDb(float gain) noexcept;
@@ -213,9 +235,9 @@ private:
     // Four independent Type-A exciter bands.
     // Fixed crossovers follow a practical 4-band exciter layout:
     // ~20-200 Hz / 200-2 kHz / 2-7.8 kHz / 7.8-20 kHz.
-    Crossover4th typeXover1 {};
-    Crossover4th typeXover2 {};
-    Crossover4th typeXover3 {};
+    Crossover2nd typeXover1 {};
+    Crossover2nd typeXover2 {};
+    Crossover2nd typeXover3 {};
     std::array<std::array<float, 2>, 4> typeFastEnv {};
     std::array<std::array<float, 2>, 4> typeSlowEnv {};
     std::array<std::array<float, 2>, 4> typeDc {};
