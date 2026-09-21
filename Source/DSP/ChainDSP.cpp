@@ -781,17 +781,6 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     juce::AudioBuffer<float> dry;
     dry.makeCopyOf(buffer, true);
 
-    // The supplied reference uses complete 8192-sample blocks. The dry path uses the same fixed delay so MIX remains sample-aligned.
-    for (int n = 0; n < buffer.getNumSamples(); ++n)
-    {
-        for (int ch = 0; ch < nCh; ++ch)
-        {
-            dry.getWritePointer(ch)[n] = dryDelay[(size_t)ch][(size_t)dryDelayWrite];
-            dryDelay[(size_t)ch][(size_t)dryDelayWrite] = buffer.getReadPointer(ch)[n];
-        }
-        dryDelayWrite = (dryDelayWrite + 1) % kDeessBlockSize;
-    }
-
     if (!p.eqBypass)
         applyEq(buffer, p);
 
@@ -801,8 +790,7 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     if (!p.atypeBypass)
         applyAType(buffer, p);
 
-    // Always execute the streaming stage so bypass has the same reported
-    // latency and remains sample-aligned with the rest of the chain.
+    // Zero-latency DeEsser. No block buffering and no FFT PDC.
     processDeEsser(buffer, p);
 
     if (!p.mixBypass)
@@ -813,17 +801,109 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
         for (int ch = 0; ch < nCh; ++ch)
         {
             auto* wet = buffer.getWritePointer(ch);
-            const auto* delayedDry = dry.getReadPointer(ch);
+            const auto* original = dry.getReadPointer(ch);
 
             for (int n = 0; n < buffer.getNumSamples(); ++n)
-                wet[n] = (delayedDry[n] + mix * (wet[n] - delayedDry[n])) * out;
+                wet[n] = (original[n] + mix * (wet[n] - original[n])) * out;
         }
     }
 
-    // Master bypass: same 8192-sample PDC on both paths, with a 64-sample
-    // source crossfade so switching does not mute, restart, or click.
+    const float soloX1 = juce::jlimit(40.f, 1000.f, p.ottX1);
+    const float soloX2 = juce::jlimit(soloX1 + 80.f, 5000.f, p.ottX2);
+    const float soloX3 = juce::jlimit(
+        soloX2 + 200.f,
+        static_cast<float>(sr * 0.42),
+        p.ottX3);
+    const float soloQ = crossoverQFromOverlap(p.ottXoverOverlap);
+
+    auto configureSolo = [&](Crossover4th& x1, Crossover4th& x2, Crossover4th& x3)
+    {
+        x1.lp1 = makeLowPass(sr, soloX1, soloQ);
+        x1.lp2 = makeLowPass(sr, soloX1, soloQ);
+        x1.hp1 = makeHighPass(sr, soloX1, soloQ);
+        x1.hp2 = makeHighPass(sr, soloX1, soloQ);
+
+        x2.lp1 = makeLowPass(sr, soloX2, soloQ);
+        x2.lp2 = makeLowPass(sr, soloX2, soloQ);
+        x2.hp1 = makeHighPass(sr, soloX2, soloQ);
+        x2.hp2 = makeHighPass(sr, soloX2, soloQ);
+
+        x3.lp1 = makeLowPass(sr, soloX3, soloQ);
+        x3.lp2 = makeLowPass(sr, soloX3, soloQ);
+        x3.hp1 = makeHighPass(sr, soloX3, soloQ);
+        x3.hp2 = makeHighPass(sr, soloX3, soloQ);
+    };
+
+    configureSolo(soloPreXover1, soloPreXover2, soloPreXover3);
+    configureSolo(soloPostXover1, soloPostXover2, soloPostXover3);
+
+    const bool soloEnabled = p.soloBand >= 0 && p.soloBand < 4;
+    if (p.soloBand != lastSoloBand || p.soloPost != lastSoloPost)
+    {
+        soloBlend = 0.f;
+        lastSoloBand = p.soloBand;
+        lastSoloPost = p.soloPost;
+    }
+
+    auto splitBand = [](float x,
+                        Crossover4th& x1,
+                        Crossover4th& x2,
+                        Crossover4th& x3,
+                        int band,
+                        bool right)
+    {
+        const float low = x1.low(x, right);
+        const float high1 = x1.high(x, right);
+        const float lowMid = x2.low(high1, right);
+        const float high2 = x2.high(high1, right);
+        const float midHigh = x3.low(high2, right);
+        const float top = x3.high(high2, right);
+
+        switch (band)
+        {
+            case 0: return low;
+            case 1: return lowMid;
+            case 2: return midHigh;
+            default: return top;
+        }
+    };
+
+    for (int ch = 0; ch < nCh; ++ch)
+    {
+        auto* wet = buffer.getWritePointer(ch);
+        const auto* original = dry.getReadPointer(ch);
+        const bool right = ch == 1;
+
+        for (int n = 0; n < buffer.getNumSamples(); ++n)
+        {
+            const float preSolo = splitBand(
+                original[n],
+                soloPreXover1, soloPreXover2, soloPreXover3,
+                juce::jlimit(0, 3, p.soloBand), right);
+
+            const float postSolo = splitBand(
+                wet[n],
+                soloPostXover1, soloPostXover2, soloPostXover3,
+                juce::jlimit(0, 3, p.soloBand), right);
+
+            if (soloEnabled)
+                soloBlend = std::min(1.f, soloBlend + 1.f / 64.f);
+            else
+                soloBlend = std::max(0.f, soloBlend - 1.f / 64.f);
+
+            if (soloEnabled)
+            {
+                const float solo = p.soloPost ? postSolo : preSolo;
+                wet[n] = wet[n] * (1.f - soloBlend) + solo * soloBlend;
+            }
+        }
+    }
+
+    // Master bypass remains the highest-priority bypass. It uses the same
+    // current-sample dry path, so there is no extra delay or phase offset.
     const float target = p.masterBypass ? 1.f : 0.f;
     const float step = 1.f / static_cast<float>(kMasterBypassRampSamples);
+
     for (int n = 0; n < buffer.getNumSamples(); ++n)
     {
         if (masterBypassBlend < target)
@@ -832,20 +912,20 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
             masterBypassBlend = std::max(target, masterBypassBlend - step);
 
         const float blend = masterBypassBlend;
+
         for (int ch = 0; ch < nCh; ++ch)
         {
             auto* wet = buffer.getWritePointer(ch);
-            const auto* delayedDry = dry.getReadPointer(ch);
-                const float processed = wet[n];
+            const auto* original = dry.getReadPointer(ch);
+
             if (p.masterBypass)
-                wet[n] = delayedDry[n];
-            else
-                wet[n] = blend <= 0.000001f
-                    ? processed
-                    : processed * (1.f - blend) + delayedDry[n] * blend;
+                wet[n] = original[n];
+            else if (blend > 0.000001f)
+                wet[n] = wet[n] * (1.f - blend) + original[n] * blend;
         }
     }
 
     for (int ch = nCh; ch < buffer.getNumChannels(); ++ch)
         buffer.clear(ch, 0, buffer.getNumSamples());
 }
+
