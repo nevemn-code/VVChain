@@ -382,7 +382,7 @@ void VVChainAudioProcessorEditor::setParameter(const juce::String& id, float val
 juce::Rectangle<float> VVChainAudioProcessorEditor::eqGraphBounds() const
 {
     // Intentionally large: the EQ response is the visual focus at the top.
-    return { 18.f, 78.f, (float) getWidth() - 36.f, 320.f };
+    return { 18.f, 78.f, (float) getWidth() - 36.f, 315.f };
 }
 
 float VVChainAudioProcessorEditor::graphFrequencyToX(
@@ -681,8 +681,8 @@ void VVChainAudioProcessorEditor::setExpandedBand(int band)
 void VVChainAudioProcessorEditor::resized()
 {
     const int w = getWidth();
-    const int cardY = 404;
-    const int cardH = 510;
+    const int cardY = 399;
+    const int cardH = 500;
     const int gap = 8;
     const int left = 18;
     const int cardW = (w - left * 2 - gap * 3) / 4;
