@@ -536,8 +536,10 @@ def realtime_safety_checks():
         assert token in phase_cpp or token in (root / "Source/DSP/ChainDSP.h").read_text(encoding="utf-8"), token
 
     assert "jlimit(0.f, 24.f, p.deessIntensity)" in phase_cpp
-    assert 'NormalisableRange<float>(0.f, 24.f, 0.1f), 3.f' in text["processor_cpp"]
-    assert 'addKnob("DEESS_INTENSITY", "MAXIMUM REDUCTION", 0, 24, .1' in text["editor_cpp"]
+    processor_cpp = (root / "Source/PluginProcessor.cpp").read_text(encoding="utf-8")
+    editor_cpp = (root / "Source/PluginEditor.cpp").read_text(encoding="utf-8")
+    assert 'NormalisableRange<float>(0.f, 24.f, 0.1f), 3.f' in processor_cpp
+    assert 'addKnob("DEESS_INTENSITY", "MAXIMUM REDUCTION", 0, 24, .1' in editor_cpp
 
     # Master bypass must always be the 64-sample interpolation path.
     process_master = cpp[cpp.index("processMasterLimiter(")
