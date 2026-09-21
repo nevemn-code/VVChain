@@ -1,3 +1,11 @@
+void VVChainDSP::updateCrossover(Crossover4th& xover, double fs, double f0, double q)
+{
+    updateLowPass(xover.lp1, fs, f0, q);
+    updateLowPass(xover.lp2, fs, f0, q);
+    updateHighPass(xover.hp1, fs, f0, q);
+    updateHighPass(xover.hp2, fs, f0, q);
+}
+
 #include "ChainDSP.h"
 
 namespace
@@ -19,9 +27,8 @@ float crossoverQFromOverlap(float overlap)
 }
 }
 
-VVChainDSP::Biquad VVChainDSP::makeAnalogPeak(double fs, double f0, double gainDb, double q)
+void VVChainDSP::updateAnalogPeak(Biquad& filter, double fs, double f0, double gainDb, double q)
 {
-    Biquad c;
     const double safeF = juce::jlimit(20.0, fs * 0.45, f0);
     const double A = std::pow(10.0, gainDb / 40.0);
     const double K = std::tan(juce::MathConstants<double>::pi * safeF / fs);
@@ -34,61 +41,45 @@ VVChainDSP::Biquad VVChainDSP::makeAnalogPeak(double fs, double f0, double gainD
     const double a1 = 2.0 * (K * K - 1.0);
     const double a2 = K * K - (1.0 / (A * Q)) * K + 1.0;
 
-    c.b0 = b0 / a0;
-    c.b1 = b1 / a0;
-    c.b2 = b2 / a0;
-    c.a1 = a1 / a0;
-    c.a2 = a2 / a0;
-    return c;
+    filter.updateCoefficients(b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0);
 }
 
-VVChainDSP::Biquad VVChainDSP::makeAnalogHighPass(double fs, double f0, double q)
+void VVChainDSP::updateAnalogHighPass(Biquad& filter, double fs, double f0, double q)
 {
-    Biquad c;
     const double safeF = juce::jlimit(10.0, fs * 0.45, f0);
     const double K = std::tan(juce::MathConstants<double>::pi * safeF / fs);
     const double Q = std::max(0.05, q);
 
+    const double a0 = 1.0 + K / Q + K * K;
     const double b0 = 1.0;
     const double b1 = -2.0;
     const double b2 = 1.0;
-    const double a0 = 1.0 + K / Q + K * K;
     const double a1 = 2.0 * (K * K - 1.0);
     const double a2 = 1.0 - K / Q + K * K;
 
-    c.b0 = b0 / a0;
-    c.b1 = b1 / a0;
-    c.b2 = b2 / a0;
-    c.a1 = a1 / a0;
-    c.a2 = a2 / a0;
-    return c;
+    filter.updateCoefficients(b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0);
 }
 
-VVChainDSP::Biquad VVChainDSP::makeLowPass(double fs, double f0, double q)
+void VVChainDSP::updateLowPass(Biquad& filter, double fs, double f0, double q)
 {
-    Biquad c;
     const double safeF = juce::jlimit(10.0, fs * 0.45, f0);
     const double K = std::tan(juce::MathConstants<double>::pi * safeF / fs);
+    const double K2 = K * K;
     const double Q = std::max(0.05, q);
 
-    const double b0 = K * K;
-    const double b1 = 2.0 * K * K;
-    const double b2 = K * K;
-    const double a0 = 1.0 + K / Q + K * K;
-    const double a1 = 2.0 * (K * K - 1.0);
-    const double a2 = 1.0 - K / Q + K * K;
+    const double a0 = 1.0 + K / Q + K2;
+    const double b0 = K2;
+    const double b1 = 2.0 * K2;
+    const double b2 = K2;
+    const double a1 = 2.0 * (K2 - 1.0);
+    const double a2 = 1.0 - K / Q + K2;
 
-    c.b0 = b0 / a0;
-    c.b1 = b1 / a0;
-    c.b2 = b2 / a0;
-    c.a1 = a1 / a0;
-    c.a2 = a2 / a0;
-    return c;
+    filter.updateCoefficients(b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0);
 }
 
-VVChainDSP::Biquad VVChainDSP::makeHighPass(double fs, double f0, double q)
+void VVChainDSP::updateHighPass(Biquad& filter, double fs, double f0, double q)
 {
-    return makeAnalogHighPass(fs, f0, q);
+    updateAnalogHighPass(filter, fs, f0, q);
 }
 
 float VVChainDSP::dbToGain(float db) noexcept
@@ -362,8 +353,7 @@ float VVChainDSP::applyLimiter(float input, float& envDb, double sampleRate)
 void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
     for (size_t i = 0; i < eq.size(); ++i)
-        eq[i] = makeAnalogPeak(
-            sr,
+        updateAnalogPeak(eq[i], sr,
             juce::jlimit(20.f, static_cast<float>(sr * 0.45), p.freq[i]),
             juce::jlimit(-24.f, 24.f, p.gain[i]),
             juce::jlimit(0.1f, 18.f, p.q[i]));
@@ -562,20 +552,9 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
     const float tx3 = juce::jlimit(tx2 + 200.f, static_cast<float>(sr * 0.42), p.ottX3);
     const float typeQ = crossoverQFromOverlap(p.ottXoverOverlap);
 
-    typeXover1.lp1 = makeLowPass(sr, tx1, typeQ);
-    typeXover1.lp2 = makeLowPass(sr, tx1, typeQ);
-    typeXover1.hp1 = makeHighPass(sr, tx1, typeQ);
-    typeXover1.hp2 = makeHighPass(sr, tx1, typeQ);
-
-    typeXover2.lp1 = makeLowPass(sr, tx2, typeQ);
-    typeXover2.lp2 = makeLowPass(sr, tx2, typeQ);
-    typeXover2.hp1 = makeHighPass(sr, tx2, typeQ);
-    typeXover2.hp2 = makeHighPass(sr, tx2, typeQ);
-
-    typeXover3.lp1 = makeLowPass(sr, tx3, typeQ);
-    typeXover3.lp2 = makeLowPass(sr, tx3, typeQ);
-    typeXover3.hp1 = makeHighPass(sr, tx3, typeQ);
-    typeXover3.hp2 = makeHighPass(sr, tx3, typeQ);
+    updateCrossover(typeXover1, sr, tx1, typeQ);
+    updateCrossover(typeXover2, sr, tx2, typeQ);
+    updateCrossover(typeXover3, sr, tx3, typeQ);
 
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.atypeInputGainDb));
@@ -745,7 +724,7 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
         auto* data = buffer.getWritePointer(ch);
         auto& state = deess[(size_t) ch];
 
-        state.sidechainHP = makeHighPass(sr, referenceHz, detectionQ);
+        updateHighPass(state.sidechainHP, sr, referenceHz, detectionQ);
         const bool right = ch == 1;
 
         for (int n = 0; n < buffer.getNumSamples(); ++n)
@@ -798,14 +777,21 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
 
 void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
+    juce::ScopedNoDenormals noDenormals;
+
     if (buffer.getNumSamples() == 0 || buffer.getNumChannels() == 0)
         return;
 
     const int nCh = std::min(buffer.getNumChannels(), channels);
     const int numSamples = buffer.getNumSamples();
 
-    if (dryBuffer.getNumChannels() != nCh || dryBuffer.getNumSamples() < numSamples)
-        dryBuffer.setSize(nCh, numSamples, false, false, true);
+    jassert(nCh <= dryBuffer.getNumChannels());
+    jassert(numSamples <= dryBuffer.getNumSamples());
+
+    // prepareToPlay() owns all DSP memory allocation. The host contract supplies
+    // blocks no larger than the prepared maximum; never resize on the audio thread.
+    if (nCh > dryBuffer.getNumChannels() || numSamples > dryBuffer.getNumSamples())
+        return;
 
     for (int ch = 0; ch < nCh; ++ch)
         dryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
@@ -843,24 +829,12 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
         p.ottX3);
     const float soloQ = crossoverQFromOverlap(p.ottXoverOverlap);
 
-    auto configureSolo = [&](Crossover4th& x1, Crossover4th& x2, Crossover4th& x3)
-    {
-        x1.lp1 = makeLowPass(sr, soloX1, soloQ);
-        x1.lp2 = makeLowPass(sr, soloX1, soloQ);
-        x1.hp1 = makeHighPass(sr, soloX1, soloQ);
-        x1.hp2 = makeHighPass(sr, soloX1, soloQ);
-        x2.lp1 = makeLowPass(sr, soloX2, soloQ);
-        x2.lp2 = makeLowPass(sr, soloX2, soloQ);
-        x2.hp1 = makeHighPass(sr, soloX2, soloQ);
-        x2.hp2 = makeHighPass(sr, soloX2, soloQ);
-        x3.lp1 = makeLowPass(sr, soloX3, soloQ);
-        x3.lp2 = makeLowPass(sr, soloX3, soloQ);
-        x3.hp1 = makeHighPass(sr, soloX3, soloQ);
-        x3.hp2 = makeHighPass(sr, soloX3, soloQ);
-    };
-
-    configureSolo(soloPreXover1, soloPreXover2, soloPreXover3);
-    configureSolo(soloPostXover1, soloPostXover2, soloPostXover3);
+    updateCrossover(soloPreXover1, sr, soloX1, soloQ);
+    updateCrossover(soloPreXover2, sr, soloX2, soloQ);
+    updateCrossover(soloPreXover3, sr, soloX3, soloQ);
+    updateCrossover(soloPostXover1, sr, soloX1, soloQ);
+    updateCrossover(soloPostXover2, sr, soloX2, soloQ);
+    updateCrossover(soloPostXover3, sr, soloX3, soloQ);
 
     const bool soloEnabled = p.soloBand >= 0 && p.soloBand < 4;
     if (p.soloBand != lastSoloBand || p.soloPost != lastSoloPost)
