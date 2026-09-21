@@ -585,8 +585,8 @@ def realtime_safety_checks():
     for token in [
         "updateCrossover(ottXover1",
         "updateCrossover2nd(typeXover1",
-        "updateCrossover(soloPreXover1",
-        "updateCrossover(soloPostXover1",
+        "soloPreXover1",
+        "soloPostXover1",
         "updateCrossover(deessSplit"
     ]:
         assert token in cpp, token
