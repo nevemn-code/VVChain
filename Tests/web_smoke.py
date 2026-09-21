@@ -40,11 +40,11 @@ for token in required:
 
 assert "overflow:hidden" in text
 assert "BYPASS" in text
-assert "state.eq={bypass:false" in text
-assert "state.ott={bypass:false" in text
-assert "state.type={bypass:false" in text
-assert "state.de={bypass:false" in text
-assert "state.mix={bypass:false" in text
+assert "eq:{bypass:false" in text
+assert "ott:{bypass:false" in text
+assert "type:{bypass:false" in text
+assert "de:{bypass:false" in text
+assert "mix:{bypass:false" in text
 assert "bypassLed(\"EQ\"" in text and "bypassLed(\"OTT\"" in text
 assert "bypassLed(\"TAPE-A\"" in text and "bypassLed(\"DE-ESS\"" in text
 assert "bypassLed(\"MIX\"" in text
