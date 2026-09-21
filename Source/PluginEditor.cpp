@@ -494,7 +494,7 @@ void VVChainAudioProcessorEditor::addKnob(
     k.band = band;
     k.slot = slot;
     k.tapeDisplayDb = tapeDisplayDb;
-    k.slider = std::make_unique<juce::Slider>();
+    k.slider = std::make_unique<WheelSlider>();
     k.label = std::make_unique<juce::Label>();
 
     k.slider->setLookAndFeel(&metalLook);
