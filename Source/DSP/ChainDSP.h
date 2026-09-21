@@ -15,6 +15,7 @@ public:
         bool atypeBypass = false;
         bool deessBypass = false;
         bool mixBypass = false;
+        bool eqColorGlobalBypass = false;
 
         // Four-band analogue-coloured parametric EQ.
         std::array<float, 4> freq { 80.f, 350.f, 2500.f, 10000.f };
@@ -128,9 +129,10 @@ private:
 
     struct DeEssState
     {
-        float detectorLp = 0.f;
-        float detectorEnv = 0.f;
-        float detectorAvg = 0.f;
+        Biquad sidechainHP {};
+        float fastEnv = 0.f;
+        float slowEnv = 0.f;
+        float gainDb = 0.f;
     };
 
     static Biquad makeAnalogPeak(double fs, double f0, double gainDb, double q);
@@ -193,6 +195,7 @@ private:
     std::array<std::array<float, 2>, 4> typeDc {};
 
     std::array<DeEssState, 2> deess {};
+    juce::AudioBuffer<float> dryBuffer;
 
     Crossover4th soloPreXover1 {}, soloPreXover2 {}, soloPreXover3 {};
     Crossover4th soloPostXover1 {}, soloPostXover2 {}, soloPostXover3 {};
