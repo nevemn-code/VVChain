@@ -620,32 +620,32 @@ float VVChainDSP::masteringSoftClipper(float input,
     const float driven = input * safeDrive;
     const float absDriven = std::abs(driven);
 
-    // Keep the low-level region exactly linear. The knee uses a quintic
-    // smoothstep so both slope and curvature transition continuously.
-    constexpr float threshold = 0.95f;
-    const float kneeWidth =
-        safeDrive - threshold > 0.02f
-            ? safeDrive - threshold
-            : 0.02f;
+    // Below the knee the waveform is exactly linear. Inside the knee,
+    // a cubic Hermite transition has unity slope at the entry point and
+    // zero slope at the ceiling, so there is no hard corner.
+    const float span =
+        juce::jmax(0.02f, safeDrive - 0.95f);
+    const float threshold =
+        safeDrive - span * safeKnee;
 
     if (absDriven <= threshold)
         return input;
 
     const float t =
-        juce::jlimit(
-            0.f, 1.f,
-            (absDriven - threshold) / (kneeWidth / safeKnee));
+        juce::jlimit(0.f, 1.f,
+                     (absDriven - threshold)
+                         / juce::jmax(0.02f, safeDrive - threshold));
 
-    const float smooth =
-        t * t * t
-        * (t * (t * 6.f - 15.f) + 10.f);
+    // H(0)=0, H(1)=1, H'(0)=1, H'(1)=0.
+    const float hermite =
+        t + t * t - t * t * t;
 
     const float shaped =
         threshold
-        + (kneeWidth / safeKnee) * smooth;
+        + (safeDrive - threshold) * hermite;
 
     return std::copysign(
-        shaped / safeDrive,
+        juce::jmin(1.0f, shaped / safeDrive),
         input);
 }
 float VVChainDSP::applyLifterFromDetectorDb(float input, float detectorDb,
