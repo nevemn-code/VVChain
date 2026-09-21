@@ -232,8 +232,7 @@ def type_a_band_process(signal: list[float], degree: float, band_level_db: float
         transient = clamp((ratio - 1.0) * 3.5, 0.0, 1.0)
         level_db = 20.0 * math.log10(max(slow, 1e-7))
         level_factor = clamp((level_db + 48.0) / 36.0, 0.0, 1.25)
-        amount = (degree / 100.0) * (0.18 + 0.82 * transient) * (0.20 + 0.80 * level_factor)
-
+        amount = (degree / 100.0) * (0.10 + 0.90 * transient)
         if amount <= 1e-9:
             out.append(x)
             continue
@@ -246,7 +245,8 @@ def type_a_band_process(signal: list[float], degree: float, band_level_db: float
         dc = edc * dc + (1.0 - edc) * even_raw
         harmonic = (1.0 - even_weight) * (odd_shape - norm) + even_weight * (even_raw - dc)
         harmonic = math.tanh(harmonic * 1.5) / 1.5
-        harmonic *= slow * amount * (10.0 ** (clamp(band_level_db, -6.0, 6.0) / 20.0))
+        harmonic *= abs(x) * amount * (0.20 + 0.80 * level_factor) \
+                   * (10.0 ** (clamp(band_level_db, -6.0, 6.0) / 20.0))
         out.append(x + harmonic)
 
     return out
