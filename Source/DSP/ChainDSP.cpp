@@ -10,6 +10,13 @@ static constexpr float kCompressorKneeDb = 6.0f;
 static constexpr float kGateKneeDb = 9.0f;
 static constexpr double kReferenceSampleRate = 44100.0;
 static constexpr double kTwoPi = 6.28318530717958647692;
+static constexpr int kMasterBypassRampSamples = 64;
+
+float crossoverQFromOverlap(float overlap)
+{
+    const float t = juce::jlimit(0.f, 100.f, overlap) / 100.f;
+    return 0.55f + 0.32f * t;
+}
 }
 
 VVChainDSP::Biquad VVChainDSP::makeAnalogPeak(double fs, double f0, double gainDb, double q)
@@ -143,7 +150,9 @@ void VVChainDSP::reset()
 
     typeXover1.reset();
     typeXover2.reset();
-    typeHP7k8.reset();
+    typeXover3.reset();
+
+    masterBypassBlend = 0.f;
     for (size_t band = 0; band < 4; ++band)
     {
         typeFastEnv[band] = { 0.f, 0.f };
@@ -340,20 +349,22 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
     const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.ottX2);
     const float x3 = juce::jlimit(x2 + 200.f, static_cast<float>(sr * 0.42), p.ottX3);
 
-    ottXover1.lp1 = makeLowPass(sr, x1, 0.707);
-    ottXover1.lp2 = makeLowPass(sr, x1, 0.707);
-    ottXover1.hp1 = makeHighPass(sr, x1, 0.707);
-    ottXover1.hp2 = makeHighPass(sr, x1, 0.707);
+    const float xoverQ = crossoverQFromOverlap(p.ottXoverOverlap);
 
-    ottXover2.lp1 = makeLowPass(sr, x2, 0.707);
-    ottXover2.lp2 = makeLowPass(sr, x2, 0.707);
-    ottXover2.hp1 = makeHighPass(sr, x2, 0.707);
-    ottXover2.hp2 = makeHighPass(sr, x2, 0.707);
+    ottXover1.lp1 = makeLowPass(sr, x1, xoverQ);
+    ottXover1.lp2 = makeLowPass(sr, x1, xoverQ);
+    ottXover1.hp1 = makeHighPass(sr, x1, xoverQ);
+    ottXover1.hp2 = makeHighPass(sr, x1, xoverQ);
 
-    ottXover3.lp1 = makeLowPass(sr, x3, 0.707);
-    ottXover3.lp2 = makeLowPass(sr, x3, 0.707);
-    ottXover3.hp1 = makeHighPass(sr, x3, 0.707);
-    ottXover3.hp2 = makeHighPass(sr, x3, 0.707);
+    ottXover2.lp1 = makeLowPass(sr, x2, xoverQ);
+    ottXover2.lp2 = makeLowPass(sr, x2, xoverQ);
+    ottXover2.hp1 = makeHighPass(sr, x2, xoverQ);
+    ottXover2.hp2 = makeHighPass(sr, x2, xoverQ);
+
+    ottXover3.lp1 = makeLowPass(sr, x3, xoverQ);
+    ottXover3.lp2 = makeLowPass(sr, x3, xoverQ);
+    ottXover3.hp1 = makeHighPass(sr, x3, xoverQ);
+    ottXover3.hp2 = makeHighPass(sr, x3, xoverQ);
 
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.ottInputGainDb));
@@ -485,21 +496,25 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
     // B2 200-2000 Hz
     // B3 2000-7800 Hz
     // B4 7800-20 kHz
-    constexpr float x1 = 200.f;
-    constexpr float x2 = 2000.f;
-    constexpr float x3 = 7800.f;
+    const float tx1 = juce::jlimit(40.f, 1000.f, p.ottX1);
+    const float tx2 = juce::jlimit(tx1 + 80.f, 5000.f, p.ottX2);
+    const float tx3 = juce::jlimit(tx2 + 200.f, static_cast<float>(sr * 0.42), p.ottX3);
+    const float typeQ = crossoverQFromOverlap(p.ottXoverOverlap);
 
-    typeXover1.lp1 = makeLowPass(sr, x1, 0.707);
-    typeXover1.lp2 = makeLowPass(sr, x1, 0.707);
-    typeXover1.hp1 = makeHighPass(sr, x1, 0.707);
-    typeXover1.hp2 = makeHighPass(sr, x1, 0.707);
+    typeXover1.lp1 = makeLowPass(sr, tx1, typeQ);
+    typeXover1.lp2 = makeLowPass(sr, tx1, typeQ);
+    typeXover1.hp1 = makeHighPass(sr, tx1, typeQ);
+    typeXover1.hp2 = makeHighPass(sr, tx1, typeQ);
 
-    typeXover2.lp1 = makeLowPass(sr, x2, 0.707);
-    typeXover2.lp2 = makeLowPass(sr, x2, 0.707);
-    typeXover2.hp1 = makeHighPass(sr, x2, 0.707);
-    typeXover2.hp2 = makeHighPass(sr, x2, 0.707);
+    typeXover2.lp1 = makeLowPass(sr, tx2, typeQ);
+    typeXover2.lp2 = makeLowPass(sr, tx2, typeQ);
+    typeXover2.hp1 = makeHighPass(sr, tx2, typeQ);
+    typeXover2.hp2 = makeHighPass(sr, tx2, typeQ);
 
-    typeHP7k8 = makeHighPass(sr, x3, 0.707);
+    typeXover3.lp1 = makeLowPass(sr, tx3, typeQ);
+    typeXover3.lp2 = makeLowPass(sr, tx3, typeQ);
+    typeXover3.hp1 = makeHighPass(sr, tx3, typeQ);
+    typeXover3.hp2 = makeHighPass(sr, tx3, typeQ);
 
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.atypeInputGainDb));
@@ -533,9 +548,9 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
             const float b1 = typeXover1.low(x, right);
             const float x1High = typeXover1.high(x, right);
             const float b2 = typeXover2.low(x1High, right);
-            const float b3Input = typeXover2.high(x1High, right);
-            const float b3 = b3Input;
-            const float b4 = typeHP7k8.process(b3Input, right);
+            const float x2High = typeXover2.high(x1High, right);
+            const float b3 = typeXover3.low(x2High, right);
+            const float b4 = typeXover3.high(x2High, right);
             const float bands[4] = { b1, b2, b3, b4 };
 
             float harmonicSum = 0.f;
@@ -851,6 +866,29 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
             for (int n = 0; n < buffer.getNumSamples(); ++n)
                 wet[n] = (delayedDry[n] + mix * (wet[n] - delayedDry[n])) * out;
+        }
+    }
+
+    // Master bypass: same 8192-sample PDC on both paths, with a 64-sample
+    // source crossfade so switching does not mute, restart, or click.
+    const float target = p.masterBypass ? 1.f : 0.f;
+    const float step = 1.f / static_cast<float>(kMasterBypassRampSamples);
+    for (int n = 0; n < buffer.getNumSamples(); ++n)
+    {
+        if (masterBypassBlend < target)
+            masterBypassBlend = std::min(target, masterBypassBlend + step);
+        else if (masterBypassBlend > target)
+            masterBypassBlend = std::max(target, masterBypassBlend - step);
+
+        const float blend = masterBypassBlend;
+        for (int ch = 0; ch < nCh; ++ch)
+        {
+            auto* wet = buffer.getWritePointer(ch);
+            const auto* delayedDry = dry.getReadPointer(ch);
+            const float processed = wet[n];
+            wet[n] = blend >= 0.999999f
+                ? delayedDry[n]
+                : processed * (1.f - blend) + delayedDry[n] * blend;
         }
     }
 
