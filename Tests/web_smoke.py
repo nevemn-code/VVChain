@@ -71,6 +71,12 @@ assert "this.analog(" in worklet
 assert "const shaped=ceiling+excess/(1+20*excess)" in worklet
 assert "grid-template-rows:.8fr .8fr 1fr 1fr" in text
 assert "dragXover" in text
+assert 'sensitivity:.20' in text
+assert "knobRefreshers=[]" in text and "knobRefreshers.push(render)" in text
+assert "knobRefreshers.forEach(fn=>fn())" in text
+assert "this.N=1024" in text
+assert "native/reference DE-ESSER remains 8192-sample PDC" in text
+assert "if(this.s&&was!==now)" in text
 assert "bandLed de" in text
 
 for forbidden in [
@@ -111,7 +117,9 @@ print("continuous_deesser_stream: 8192-block")
 assert "headerControls" in text
 assert ">BYPASS</button>" in text
 assert 'bypassLed("EQ"' in text and 'bypassLed("OTT"' in text
-assert 'bypassLed("TAPE-A"' in text and 'bypassLed("DE-ESS"' in text and 'bypassLed("MIX"' in text
+assert 'bypassLed("TAPE-A"' in text and 'bypassLed("DE-ESS"' in text
+assert 'bypassLed("MIX"' not in text
+assert 'label:"MIX"' in text
 assert ".bandLed.ott{top:175px}" in text
 assert ".bandLed.type{top:328px}" in text
 assert ".modeSwitch{position:absolute;left:50%;top:-11px" in text
