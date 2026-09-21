@@ -575,7 +575,7 @@ void VVChainAudioProcessorEditor::paintPage(
     {
         auto card = juce::Rectangle<int>(
             30 + b * ((width - 86) / 4), 878, (width - 96) / 4, 285);
-        drawCard(g, card, kBandColours[(size_t)b]);
+        drawCard(g, card.toFloat(), kBandColours[(size_t)b]);
         g.setColour(kBandColours[(size_t)b]);
         g.setFont(juce::FontOptions(10.f).withStyle("Bold"));
         g.drawText("BAND " + juce::String(b + 1),
