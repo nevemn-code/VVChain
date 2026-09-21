@@ -159,15 +159,15 @@ private:
 
     struct BandDynamics
     {
-        // Independent state for each OTT band / channel.
-        // Gate, upward and downward envelopes never share detector state.
-        std::array<float, 2> gateEnvDb { 0.f, 0.f };
-        std::array<float, 2> lifterEnv { 1.f, 1.f };
-        std::array<float, 2> compEnvDb { 0.f, 0.f };
-        std::array<float, 2> upRmsPower { 0.f, 0.f };
-        std::array<float, 2> upSlowRmsPower { 0.f, 0.f };
-        std::array<float, 2> downRmsPower { 0.f, 0.f };
-        std::array<float, 2> downSlowRmsPower { 0.f, 0.f };
+        // One shared detector / gain envelope per frequency band.
+        // L/R therefore receive exactly the same gain change.
+        float gateEnvDb = 0.f;
+        float lifterEnv = 1.f;
+        float compEnvDb = 0.f;
+        float upRmsPower = 0.f;
+        float upSlowRmsPower = 0.f;
+        float downRmsPower = 0.f;
+        float downSlowRmsPower = 0.f;
     };
 
     struct DeEssState
@@ -201,6 +201,42 @@ private:
                                double sampleRate,
                                float& programReleaseMs) noexcept;
 
+    static float rmsDetectLinkedPDR(float left,
+                                    float right,
+                                    Biquad& sidechainHP,
+                                    float& fastPower,
+                                    float& slowPower,
+                                    float attackMs,
+                                    float releaseMs,
+                                    double sampleRate,
+                                    float& programReleaseMs) noexcept;
+
+    static float linkedGateGain(float left,
+                                float right,
+                                float& envDb,
+                                float thresholdDb,
+                                double sampleRate) noexcept;
+
+    static float linkedCompressorGain(float detectorDb,
+                                      float& envDb,
+                                      float thresholdDb,
+                                      float attackMs,
+                                      float releaseMs,
+                                      double sampleRate,
+                                      float ratio) noexcept;
+
+    static float linkedLifterGain(float detectorDb,
+                                  float& env,
+                                  float thresholdDb,
+                                  float attackMs,
+                                  float releaseMs,
+                                  double sampleRate,
+                                  float ratio) noexcept;
+
+    static float masteringSoftClipper(float input,
+                                      float drive,
+                                      float knee) noexcept;
+
     static float applyLifterFromDetectorDb(float input, float detectorDb,
                                             float& env, float thresholdDb,
                                             float attackMs, float releaseMs,
@@ -230,7 +266,8 @@ private:
 
     std::array<Biquad, 4> eq {};
     std::array<std::array<float, 2>, 4> analogPreviousInput {};
-    std::array<std::array<float, 2>, 4> analogEvenDc {};
+    std::array<std::array<float, 2>, 4> analogDcLastInput {};
+    std::array<std::array<float, 2>, 4> analogDcLastOutput {};
     std::array<std::array<float, 2>, 4> analogLevelPower {};
 
     Crossover4th ottXover1 {};
@@ -244,6 +281,8 @@ private:
     Crossover4th ottPhase3_B2 {};
 
     std::array<BandDynamics, 4> ottDynamics {};
+    std::array<Biquad, 4> ottDownDetectorHP {};
+    std::array<Biquad, 4> ottUpDetectorHP {};
 
     // Four independent Type-A exciter bands.
     // Fixed crossovers follow a practical 4-band exciter layout:
@@ -251,9 +290,10 @@ private:
     Crossover2nd typeXover1 {};
     Crossover2nd typeXover2 {};
     Crossover2nd typeXover3 {};
-    std::array<std::array<float, 2>, 4> typeFastEnv {};
-    std::array<std::array<float, 2>, 4> typeSlowEnv {};
-    std::array<std::array<float, 2>, 4> typeDc {};
+    std::array<float, 4> typeFastEnv {};
+    std::array<float, 4> typeSlowEnv {};
+    std::array<float, 4> typeDc {};
+    std::array<Biquad, 4> typeDetectorHP {};
 
     std::array<DeEssState, 2> deess {};
     Crossover4th deessSplit {};
