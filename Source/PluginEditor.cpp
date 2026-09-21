@@ -704,19 +704,6 @@ void VVChainAudioProcessorEditor::drawCard(
     g.setColour(accent.withAlpha(.28f));
     g.drawRoundedRectangle(r.reduced(2.f), 6.f, 1.f);
 
-    if (title == "DE-ESSER")
-    {
-        g.setColour(uiColour(juce::Colour(0xff67d3aa)).withAlpha(.55f));
-        for (int i = 0; i < 3; ++i)
-        {
-            const float y = r.getY() + 132.f + i * 88.f;
-            juce::Path chevron;
-            chevron.startNewSubPath(r.getCentreX() - 4.f, y);
-            chevron.lineTo(r.getCentreX(), y + 4.f);
-            chevron.lineTo(r.getCentreX() + 4.f, y);
-            g.strokePath(chevron, juce::PathStrokeType(1.1f));
-        }
-    }
 }
 
 void VVChainAudioProcessorEditor::drawPanel(
