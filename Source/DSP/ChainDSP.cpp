@@ -102,11 +102,23 @@ float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
 float VVChainDSP::softColor(float x, float amount01) noexcept
 {
     const float a = juce::jlimit(0.f, 1.f, amount01);
+    if (a <= 0.0f)
+        return x;
+
     const float drive = 1.0f + 1.35f * a;
     const float asym = x + 0.012f * a * x * x;
-    const float shaped = std::tanh(asym * drive);
-    const float ref = std::tanh(drive);
-    return ref > 0.0f ? shaped / ref : x;
+
+    // Unity-gain analogue coloration:
+    // 1) normalize the saturator by drive so small signals remain 0 dB;
+    // 2) calculate a makeup gain at a fixed calibration level so the
+    //    coloration does not become an accidental volume control.
+    const float calibration = 0.25f;
+    const float pos = std::tanh((calibration + 0.012f * a * calibration * calibration) * drive) / drive;
+    const float neg = std::tanh((-calibration + 0.012f * a * calibration * calibration) * drive) / drive;
+    const float calibrationRms = std::sqrt(0.5f * (pos * pos + neg * neg));
+    const float makeup = calibrationRms > 1.0e-6f ? calibration / calibrationRms : 1.0f;
+
+    return std::tanh(asym * drive) / drive * makeup;
 }
 
 void VVChainDSP::prepare(double sampleRate, int, int numChannels)
@@ -279,10 +291,11 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         {
             float y = hp.process(data[n], right);
             for (auto& band : eq)
-            {
                 y = band.process(y, right);
-                y = softColor(y, 0.20f + 0.80f * colorAmount);
-            }
+
+            // Apply analogue coloration once after the four EQ bands.
+            // This prevents four separate nonlinear gain stages from stacking.
+            y = softColor(y, colorAmount);
             data[n] = y;
         }
     }
