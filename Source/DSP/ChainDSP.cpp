@@ -106,21 +106,65 @@ float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
     return std::exp(-1.0f / (0.001f * std::max(ms, 0.1f) * static_cast<float>(sampleRate)));
 }
 
-float VVChainDSP::softColor(float x, float amount01) noexcept
+float VVChainDSP::analogColor(float x, float amount01, bool solidState,
+                                    float& previousInput, float& evenDc) noexcept
 {
     const float a = juce::jlimit(0.f, 1.f, amount01);
     if (a <= 0.0f)
+    {
+        previousInput = x;
         return x;
+    }
 
-    const float drive = 1.0f + 1.35f * a;
-    const float asym = x + 0.012f * a * x * x;
+    // First-order ADAA for tanh keeps the nonlinear stage lightweight while
+    // reducing aliasing without adding an extra plugin latency stage.
+    // This follows the open-source ADAA approach documented by Chowdhury et al.
+    const float drive = solidState
+        ? (1.0f + 5.0f * a)   // SS: steeper, harder odd-order saturation
+        : (1.0f + 2.4f * a);  // TT: softer tube-like transition
 
-    // Exact small-signal gain compensation:
-    // tanh(drive * x) has a linear gain of "drive" around 0 dBFS.
-    // Applying the reciprocal makeup keeps the analog color from becoming
-    // an accidental level boost while retaining harmonic saturation.
-    const float makeupGain = 1.0f / drive;
-    return std::tanh(asym * drive) * makeupGain;
+    const float x0 = previousInput;
+    const float dx = x - x0;
+
+    const auto logCosh = [](float v) noexcept
+    {
+        const float av = std::abs(v);
+        if (av > 12.0f)
+            return av - std::log(2.0f);
+        return std::log(std::cosh(v));
+    };
+
+    const auto antiTanhNormalised = [drive, &logCosh](float v) noexcept
+    {
+        // Integral of tanh(d*x)/d, normalised to unity small-signal gain.
+        return logCosh(drive * v) / (drive * drive);
+    };
+
+    float odd = 0.0f;
+    if (std::abs(dx) > 1.0e-5f)
+        odd = (antiTanhNormalised(x) - antiTanhNormalised(x0)) / dx;
+    else
+        odd = std::tanh(drive * (x + x0) * 0.5f) / drive;
+
+    // TT intentionally introduces a controlled even-order component using
+    // the analytically anti-aliased x^2 transfer function. The very slow DC
+    // tracker removes the static offset before it is mixed back.
+    const float even = (x * x + x * x0 + x0 * x0) / 3.0f;
+    const float dcAlpha = timeCoeff(sr, 80.0f);
+    evenDc = dcAlpha * evenDc + (1.0f - dcAlpha) * even;
+    const float evenAc = even - evenDc;
+
+    const float oddSaturated = odd;
+    const float tubeEven = evenAc * (0.10f + 0.22f * a);
+    const float shaped = solidState
+        ? oddSaturated
+        : oddSaturated + tubeEven;
+
+    previousInput = x;
+
+    // At zero colour this is exact unity. Increasing colour moves gradually
+    // from the original signal toward the selected analogue transfer.
+    return x + a * (shaped - x);
 }
 
 void VVChainDSP::prepare(double sampleRate, int, int numChannels)
@@ -133,6 +177,10 @@ void VVChainDSP::prepare(double sampleRate, int, int numChannels)
 void VVChainDSP::reset()
 {
     for (auto& b : eq) b.reset();
+    for (auto& state : analogPreviousInput)
+        state = { 0.f, 0.f };
+    for (auto& state : analogEvenDc)
+        state = { 0.f, 0.f };
     ottXover1.reset();
     ottXover2.reset();
     ottXover3.reset();
@@ -314,8 +362,6 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             juce::jlimit(-24.f, 24.f, p.gain[i]),
             juce::jlimit(0.1f, 18.f, p.q[i]));
 
-    const float colorAmount = juce::jlimit(0.f, 100.f, p.eqColor) / 100.f;
-
     for (int ch = 0; ch < channels; ++ch)
     {
         auto* data = buffer.getWritePointer(ch);
@@ -324,12 +370,20 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
             float y = data[n];
-            for (auto& band : eq)
-                y = band.process(y, right);
 
-            // Apply analogue coloration once after the four EQ bands.
-            // This prevents four separate nonlinear gain stages from stacking.
-            y = softColor(y, colorAmount);
+            for (size_t band = 0; band < eq.size(); ++band)
+            {
+                y = eq[band].process(y, right);
+
+                const float amount =
+                    juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
+
+                y = analogColor(
+                    y, amount, p.eqColorSolidState[band],
+                    analogPreviousInput[band][(size_t) ch],
+                    analogEvenDc[band][(size_t) ch]);
+            }
+
             data[n] = y;
         }
     }
@@ -729,22 +783,28 @@ void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters& p)
 
         const double referenceHz = juce::jlimit(6000.0, 18000.0,
             static_cast<double>(p.deessReferenceHz));
-        const double intensity =
-            juce::jlimit(0.0, 10.0, static_cast<double>(p.deessIntensity));
+        const double maximumReductionDb =
+            juce::jlimit(0.0, 8.0, static_cast<double>(p.deessIntensity));
+        const double nyquist =
+            std::max(referenceHz + 100.0, sr * 0.45);
 
         for (int i = 1; i < count / 2; ++i)
         {
-            const double freq = kReferenceSampleRate * static_cast<double>(i)
+            const double freq = sr * static_cast<double>(i)
                               / static_cast<double>(count);
 
-            const double coeff = freq < referenceHz / 10.0
-                ? 0.5
-                : (freq >= referenceHz
-                    ? intensity * referenceHz / std::max(freq, 1.0)
-                    : 1.0 + (intensity - 1.0) * std::pow(freq / referenceHz, 3.0));
+            const double t = freq <= referenceHz
+                ? 0.0
+                : juce::jlimit(0.0, 1.0,
+                    (freq - referenceHz) / (nyquist - referenceHz));
 
-            deessFft[(size_t)i] /= coeff;
-            deessFft[(size_t)(count - i)] /= coeff;
+            const double reductionDb =
+                maximumReductionDb * std::pow(t, 0.70);
+            const double gain =
+                std::pow(10.0, reductionDb / 20.0);
+
+            deessFft[(size_t)i] /= gain;
+            deessFft[(size_t)(count - i)] /= gain;
         }
 
         fft(deessFft, true);
@@ -878,10 +938,13 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
         {
             auto* wet = buffer.getWritePointer(ch);
             const auto* delayedDry = dry.getReadPointer(ch);
-            const float processed = wet[n];
-            wet[n] = blend >= 0.999999f
-                ? delayedDry[n]
-                : processed * (1.f - blend) + delayedDry[n] * blend;
+                const float processed = wet[n];
+            if (p.masterBypass)
+                wet[n] = delayedDry[n];
+            else
+                wet[n] = blend <= 0.000001f
+                    ? processed
+                    : processed * (1.f - blend) + delayedDry[n] * blend;
         }
     }
 
