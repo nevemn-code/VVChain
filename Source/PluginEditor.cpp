@@ -824,7 +824,7 @@ void VVChainAudioProcessorEditor::drawParameterPanel(juce::Graphics& g,
     }
 
     deEssVoice.setVisible(moduleIndex == 3);
-    if (de)
+    if (moduleIndex == 3)
     {
         g.setColour(juce::Colour(0xff8f8878));
         g.setFont(juce::FontOptions(10.f));
