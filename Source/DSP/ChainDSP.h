@@ -260,7 +260,7 @@ private:
     juce::dsp::Oversampling<float> eqOversampler
     {
         2, 2,
-        juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR,
+        juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple,
         true, true
     };
     juce::dsp::Oversampling<float> limiterOversampler
