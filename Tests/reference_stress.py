@@ -281,6 +281,21 @@ def source_structure_checks():
     assert "0.20f + 0.80f * colorAmount" not in cpp
     assert ".2+.8*s.eq.color/100" not in text["web"]
     assert "y=this.color(y,s.eq.color/100)" in text["web"]
+    # UI interaction / layout regression checks.
+    editor = text["editor_cpp"]
+    editor_h = text["editor_h"]
+    assert "Path ring" in editor
+    assert "rotaryStartAngle, rotaryEndAngle" in editor
+    assert "const float pointerLength" in editor
+    assert "void VVChainAudioProcessorEditor::mouseWheelMove" in editor
+    assert "std::exp(-wheel.deltaY * 0.25f)" in editor
+    assert "k.label->setFont(juce::FontOptions(8.8f)" in editor
+    assert "TextBoxBelow, false, 68, 17" in editor
+    assert "cardCount = 5" in editor
+    assert "DE-ESSER" in editor
+    assert "addKnob("DEESS_FREQ", "DE-ESS FREQ"" in editor
+    assert ", 4, 0" in editor
+    assert "void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;" in editor_h
     assert "亮 = 啟用；按下 = BYPASS" in text["editor_cpp"]
 
 
