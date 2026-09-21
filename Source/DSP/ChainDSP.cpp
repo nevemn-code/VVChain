@@ -140,9 +140,13 @@ void VVChainDSP::reset()
 
     typeXover1.reset();
     typeXover2.reset();
-    typeHP9k.reset();
-    for (auto& e : typeEnv)
-        e = { 0.f, 0.f };
+    typeHP7k8.reset();
+    for (size_t band = 0; band < 4; ++band)
+    {
+        typeFastEnv[band] = { 0.f, 0.f };
+        typeSlowEnv[band] = { 0.f, 0.f };
+        typeDc[band] = { 0.f, 0.f };
+    }
 
     for (auto& state : deess)
     {
@@ -386,23 +390,50 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
 void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    // Compact Type-A / TAPE-A stage:
-    // each band amount is an immediately audible additive enhancement control.
-    typeXover1.lp1 = makeLowPass(sr, 80.f, 0.707);
-    typeXover1.lp2 = makeLowPass(sr, 80.f, 0.707);
-    typeXover1.hp1 = makeHighPass(sr, 80.f, 0.707);
-    typeXover1.hp2 = makeHighPass(sr, 80.f, 0.707);
+    // Type-A is a four-band harmonic exciter, not a multiband EQ.
+    // Each band has its own sidechain detector + nonlinear generator.
+    // The original band signal remains intact; only newly generated
+    // harmonic content is mixed back at a controlled level.
+    //
+    // Band layout:
+    // B1 20-200 Hz
+    // B2 200-2000 Hz
+    // B3 2000-7800 Hz
+    // B4 7800-20 kHz
+    constexpr float x1 = 200.f;
+    constexpr float x2 = 2000.f;
+    constexpr float x3 = 7800.f;
 
-    typeXover2.lp1 = makeLowPass(sr, 3000.f, 0.707);
-    typeXover2.lp2 = makeLowPass(sr, 3000.f, 0.707);
-    typeXover2.hp1 = makeHighPass(sr, 3000.f, 0.707);
-    typeXover2.hp2 = makeHighPass(sr, 3000.f, 0.707);
-    typeHP9k = makeHighPass(sr, 9000.f, 0.707);
+    typeXover1.lp1 = makeLowPass(sr, x1, 0.707);
+    typeXover1.lp2 = makeLowPass(sr, x1, 0.707);
+    typeXover1.hp1 = makeHighPass(sr, x1, 0.707);
+    typeXover1.hp2 = makeHighPass(sr, x1, 0.707);
 
-    const float inputGain = dbToGain(juce::jlimit(-24.f, 24.f, p.atypeInputGainDb));
-    const float outputGain = dbToGain(juce::jlimit(-24.f, 24.f, p.atypeOutputGainDb));
-    const float attack = timeCoeff(sr, p.atypeAttackMs);
-    const float release = timeCoeff(sr, p.atypeReleaseMs);
+    typeXover2.lp1 = makeLowPass(sr, x2, 0.707);
+    typeXover2.lp2 = makeLowPass(sr, x2, 0.707);
+    typeXover2.hp1 = makeHighPass(sr, x2, 0.707);
+    typeXover2.hp2 = makeHighPass(sr, x2, 0.707);
+
+    typeHP7k8 = makeHighPass(sr, x3, 0.707);
+
+    const float inputGain =
+        dbToGain(juce::jlimit(-24.f, 24.f, p.atypeInputGainDb));
+    const float outputGain =
+        dbToGain(juce::jlimit(-24.f, 24.f, p.atypeOutputGainDb));
+    const float attackCoeff =
+        timeCoeff(sr, juce::jlimit(1.f, 100.f, p.atypeAttackMs));
+    const float releaseCoeff =
+        timeCoeff(sr, juce::jlimit(20.f, 500.f, p.atypeReleaseMs));
+    const float slowCoeff =
+        timeCoeff(sr, juce::jlimit(10.f, 1000.f, p.atypeReleaseMs * 1.75f));
+    const float dcCoeff = timeCoeff(sr, 20.f);
+
+    // Fixed internal timbre profile. Lower bands favour even-order warmth;
+    // higher bands progressively favour odd-order presence.
+    constexpr std::array<float, 4> evenWeight
+    {
+        0.68f, 0.54f, 0.34f, 0.18f
+    };
 
     for (int ch = 0; ch < channels; ++ch)
     {
@@ -411,56 +442,119 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
 
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
-            const float x = data[n] * inputGain;
+            const float original = data[n];
+            const float x = original * inputGain;
+
             const float b1 = typeXover1.low(x, right);
             const float x1High = typeXover1.high(x, right);
             const float b2 = typeXover2.low(x1High, right);
-            const float b3 = typeXover2.high(x1High, right);
-            const float b4 = typeHP9k.process(b3, right);
+            const float b3Input = typeXover2.high(x1High, right);
+            const float b3 = b3Input;
+            const float b4 = typeHP7k8.process(b3Input, right);
             const float bands[4] = { b1, b2, b3, b4 };
 
-            float enhanced = 0.f;
-            float averageAmount = 0.f;
+            float harmonicSum = 0.f;
 
             for (int band = 0; band < 4; ++band)
             {
-                // Band-level bypass skips only this Type-A band contribution.
                 if (p.atypeBandBypass[(size_t) band])
                     continue;
 
-                const float degree = juce::jlimit(0.f, 100.f, p.atypeDegree[(size_t) band]);
-                const float trim = dbToGain(juce::jlimit(-6.f, 6.f,
-                                                          p.atypeBandLevelDb[(size_t) band]));
-                float& env = typeEnv[(size_t) band][(size_t) ch];
+                const float degree =
+                    juce::jlimit(0.f, 100.f, p.atypeDegree[(size_t) band]);
+                if (degree <= 0.0f)
+                    continue;
 
-                env += (std::abs(bands[band]) > env ? (1.f - attack) : (1.f - release))
-                       * (std::abs(bands[band]) - env);
+                const float input = bands[band];
+                const float magnitude = std::abs(input);
 
-                // Direct amount: 0..100 -> 0..6 dB, so any non-zero setting acts immediately.
-                const float directDb = degree * 0.06f;
-                const float levelDb = gainToDb(env);
-                const float lowLevelAssist =
-                    juce::jlimit(0.f, 1.5f, (-18.f - levelDb) * 0.08f) * (degree / 100.f);
-                const float boostDb = juce::jlimit(0.f, 6.0f, directDb + lowLevelAssist);
+                float& fastEnv = typeFastEnv[(size_t) band][(size_t) ch];
+                float& slowEnv = typeSlowEnv[(size_t) band][(size_t) ch];
+                float& dc = typeDc[(size_t) band][(size_t) ch];
 
-                enhanced += bands[band] * (dbToGain(boostDb) * trim - 1.f);
-                averageAmount += degree;
+                const float fastAlpha = magnitude > fastEnv
+                    ? attackCoeff
+                    : releaseCoeff;
+                fastEnv = fastAlpha * fastEnv
+                    + (1.f - fastAlpha) * magnitude;
+
+                slowEnv = slowCoeff * slowEnv
+                    + (1.f - slowCoeff) * magnitude;
+
+                // Aphex's transient-discriminate principle:
+                // strong initial energy creates more harmonics; steady-state
+                // material retains a smaller baseline harmonic contribution.
+                const float transientRatio =
+                    fastEnv / std::max(slowEnv, 1.0e-7f);
+                const float transient =
+                    juce::jlimit(0.f, 1.f, (transientRatio - 1.f) * 3.5f);
+
+                // Harmonic generation is also level-dependent.
+                // Very quiet material generates less; louder material generates
+                // more, without directly changing the dry-band gain.
+                const float levelDb = gainToDb(std::max(slowEnv, 1.0e-7f));
+                const float levelFactor =
+                    juce::jlimit(0.f, 1.25f, (levelDb + 48.f) / 36.f);
+
+                const float amount = (degree / 100.f)
+                    * (0.18f + 0.82f * transient)
+                    * (0.20f + 0.80f * levelFactor);
+
+                if (amount <= 1.0e-6f)
+                    continue;
+
+                // Normalize only the generator input. The final harmonic
+                // amplitude is restored from the tracked envelope below.
+                const float norm =
+                    input / std::max(slowEnv, 1.0e-5f);
+
+                // Saturating transfer creates the odd-order family.
+                const float drive =
+                    1.10f + 4.20f * (degree / 100.f)
+                    * (0.35f + 0.65f * levelFactor);
+
+                const float linearRef =
+                    std::tanh(drive);
+                const float oddShape =
+                    linearRef > 1.0e-6f
+                        ? std::tanh(norm * drive) / linearRef
+                        : norm;
+
+                // Add an asymmetric second-order component for even harmonics.
+                // Its slow DC component is removed before summing.
+                const float evenRaw = 0.5f * norm * norm;
+                dc = dcCoeff * dc + (1.f - dcCoeff) * evenRaw;
+                const float evenShape = evenRaw - dc;
+
+                const float oddResidual = oddShape - norm;
+                const float evenResidual = evenShape;
+
+                const float ew = evenWeight[(size_t) band];
+                const float ow = 1.f - ew;
+                float harmonic = ow * oddResidual + ew * evenResidual;
+
+                // Gentle harmonic-only containment prevents pathological peaks
+                // while leaving the dry band untouched.
+                harmonic = std::tanh(harmonic * 1.5f) / 1.5f;
+
+                const float bandTrim =
+                    dbToGain(juce::jlimit(-6.f, 6.f,
+                                          p.atypeBandLevelDb[(size_t) band]));
+
+                harmonicSum += harmonic
+                    * slowEnv
+                    * amount
+                    * bandTrim;
             }
 
-            const float base = x / inputGain;
-            const float mix = juce::jlimit(0.f, 1.f, p.atypeMix / 100.f);
-            const float amount = juce::jlimit(0.f, 1.f, (averageAmount / 4.f) / 100.f);
+            const float mix =
+                juce::jlimit(0.f, 1.f, p.atypeMix / 100.f);
 
-            float processed = base + enhanced * mix;
-
-            // TAPE-A: very light soft saturation tied to the same amount controls.
-            if (amount > 0.0001f)
-            {
-                const float drive = 1.f + amount * 0.55f;
-                const float saturated =
-                    std::tanh(processed * drive) / std::tanh(drive);
-                processed = processed + (saturated - processed) * (0.10f + amount * 0.20f);
-            }
+            // Crucial distinction from the previous implementation:
+            // there is NO direct per-band gain boost and NO global saturation
+            // of the full-band signal. Only newly generated harmonics are added.
+            const float processed =
+                x + harmonicSum * mix;
 
             data[n] = processed * outputGain;
         }
