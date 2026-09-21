@@ -493,7 +493,7 @@ void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters& p)
     for (int i = 0; i < count; ++i)
         deessFft[(size_t)i] = std::complex<double>(static_cast<double>(input[i]), 0.0);
 
-    const int trigger = juce::jmax(1, p.deessTriggerCount);
+    constexpr int trigger = 10;
 
     if (!p.deessBypass && countMore > trigger)
     {
@@ -521,7 +521,7 @@ void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters& p)
         fft(deessFft, true);
     }
 
-    const float mix = juce::jlimit(0.f, 1.f, p.deessMix / 100.f);
+    constexpr float mix = 1.0f;
 
     for (int i = 0; i < count; ++i)
     {
