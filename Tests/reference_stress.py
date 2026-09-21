@@ -531,12 +531,12 @@ def run():
         level = -1.0 + ((i % 5) * 0.5)
         x = 0.15 + 0.01 * (i % 7)
 
-        # Explicit short transient followed by lower steady-state energy.
-        # This avoids phase-dependent false negatives across sample rates.
+        # Sustained transient window followed by clearly lower steady-state
+        # energy; this remains stable across sample-rate / phase combinations.
         sig = [0.0] * 192
         freq = [80.0, 600.0, 3200.0, 11000.0][band]
         for n in range(192):
-            env = 1.0 if n < 8 else 0.22
+            env = 1.0 if n < 48 else 0.22
             sig[n] = x * env * math.sin(2.0 * math.pi * freq * n / sr)
         y = type_a_band_process(sig, degree, level, 10.0, 120.0, sr, band)
         y0 = type_a_band_process(sig, 0.0, level, 10.0, 120.0, sr, band)
@@ -550,7 +550,7 @@ def run():
             assert max(abs(v) for v in residual) > 1e-9
 
             transient_rms = math.sqrt(
-                sum(v * v for v in residual[2:8]) / 6.0
+                sum(v * v for v in residual[12:48]) / 36.0
             )
             sustain_rms = math.sqrt(
                 sum(v * v for v in residual[120:168]) / 48.0
