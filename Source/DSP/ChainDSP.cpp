@@ -520,40 +520,63 @@ float VVChainDSP::applyLimiter(float input, float& envDb, double sampleRate)
 
 void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    for (size_t i = 0; i < eq.size(); ++i)
-        updateAnalogPeak(eq[i], sr,
-            juce::jlimit(20.f, static_cast<float>(sr * 0.45), p.freq[i]),
-            juce::jlimit(-24.f, 24.f, p.gain[i]),
-            juce::jlimit(0.1f, 18.f, p.q[i]));
+    juce::dsp::AudioBlock<const float> inputBlock(buffer);
+    juce::dsp::AudioBlock<float> outputBlock(buffer);
+    auto osBlock = eqOversampler.processSamplesUp(inputBlock);
+
+    const double osSr =
+        sr * static_cast<double>(eqOversampler.getOversamplingFactor());
+
+    if (!p.eqBypass)
+    {
+        for (size_t i = 0; i < eq.size(); ++i)
+        {
+            updateAnalogPeak(
+                eq[i], osSr,
+                juce::jlimit(20.0, osSr * 0.45, static_cast<double>(p.freq[i])),
+                juce::jlimit(-24.0, 24.0, static_cast<double>(p.gain[i])),
+                juce::jlimit(0.1, 18.0, static_cast<double>(p.q[i])));
+        }
+    }
 
     for (int ch = 0; ch < channels; ++ch)
     {
-        auto* data = buffer.getWritePointer(ch);
+        auto* data = osBlock.getChannelPointer(static_cast<size_t>(ch));
         const bool right = ch == 1;
 
-        for (int n = 0; n < buffer.getNumSamples(); ++n)
+        for (size_t n = 0; n < osBlock.getNumSamples(); ++n)
         {
             float y = data[n];
 
-            for (size_t band = 0; band < eq.size(); ++band)
+            if (!p.eqBypass)
             {
-                y = eq[band].process(y, right);
+                for (size_t band = 0; band < eq.size(); ++band)
+                {
+                    y = eq[band].process(y, right);
 
-                const float amount =
-                    juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
+                    if (!p.eqColorGlobalBypass && !p.eqColorBypass[band])
+                    {
+                        const float amount =
+                            juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
 
-                if (!p.eqColorGlobalBypass && !p.eqColorBypass[band])
-                    y = analogColor(
-                    y, amount, p.eqColorSolidState[band],
-                    analogPreviousInput[band][(size_t) ch],
-                    analogEvenDc[band][(size_t) ch],
-                    analogLevelPower[band][(size_t) ch],
-                    sr);
+                        y = analogColor(
+                            y,
+                            amount,
+                            p.eqColorSolidState[band],
+                            analogPreviousInput[band][static_cast<size_t>(ch)],
+                            analogEvenDc[band][static_cast<size_t>(ch)],
+                            analogLevelPower[band][static_cast<size_t>(ch)],
+                            osSr);
+                    }
+                }
             }
 
             data[n] = y;
         }
     }
+
+    // Even when EQ is bypassed, keep the fixed oversampling latency stable.
+    eqOversampler.processSamplesDown(outputBlock);
 }
 
 void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
