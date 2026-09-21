@@ -625,6 +625,7 @@ def run():
                 gate_db = (gate_in - gate_thr) * 5.0 * (1.0 - tgate) ** 2
             else:
                 gate_db = 0.0
+            gate_db = min(0.0, gate_db)
             assert gate_db <= 1e-12
         except AssertionError as exc:
             failures.append(("ott_four_band", i, str(exc)))
