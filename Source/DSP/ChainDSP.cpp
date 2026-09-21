@@ -32,6 +32,12 @@ void VVChainDSP::updateAnalogPeak(Biquad& filter, double fs, double f0, double g
         juce::MathConstants<double>::pi * 0.98,
         w0 / safeQ);
 
+    if (std::abs(gainDb) < 1.0e-5)
+    {
+        filter.updateCoefficients(1.0, 0.0, 0.0, 0.0, 0.0);
+        return;
+    }
+
     const double G0 = 1.0;
     const double G = std::pow(10.0, gainDb / 20.0);
     const double GB = std::sqrt(std::max(1.0e-12, G));
