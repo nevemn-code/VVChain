@@ -287,7 +287,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         soloButtons[(size_t) b]->onClick = [this, b]
         {
             const int requested = parameterValue("SOLO_BAND") >= 0.5f
-                ? static_cast<int>(std::lround(parameterValue("SOLO_BAND")))
+                ? static_cast<int>(juce::roundToInt(parameterValue("SOLO_BAND")))
                 : 0;
             const int next = (requested == b + 1) ? 0 : b + 1;
             if (auto* parameter = audioProcessor.apvts.getParameter("SOLO_BAND"))
