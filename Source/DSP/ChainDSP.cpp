@@ -116,6 +116,14 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
         return x;
     }
 
+    // Below this level, forcing exact unity avoids meaningless floating-point
+    // coloration/denormal noise while preserving the nonlinear curve above it.
+    if (std::abs(x) < 1.0e-5f && std::abs(previousInput) < 1.0e-5f)
+    {
+        previousInput = x;
+        return x;
+    }
+
     // First-order ADAA for tanh keeps the nonlinear stage lightweight while
     // reducing aliasing without adding an extra plugin latency stage.
     // This follows the open-source ADAA approach documented by Chowdhury et al.
