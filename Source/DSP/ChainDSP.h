@@ -220,6 +220,7 @@ private:
     static float applyLimiter(float input, float& envDb, double sampleRate);
 
     void processDeEsser(juce::AudioBuffer<float>& buffer, const Parameters& p);
+    void alignDryPhaseBuffer(int numSamples, const Parameters& p);
 
     void applyEq(juce::AudioBuffer<float>&, const Parameters&);
     void applyOtt(juce::AudioBuffer<float>&, const Parameters&);
@@ -236,6 +237,13 @@ private:
     Crossover4th ottXover1 {};
     Crossover4th ottXover2 {};
     Crossover4th ottXover3 {};
+
+    // Independent dry-path all-pass states. These must never share IIR state
+    // with the live OTT/De-Esser processing paths.
+    Crossover4th dryOttPhase1 {};
+    Crossover4th dryOttPhase2 {};
+    Crossover4th dryOttPhase3 {};
+    Crossover4th dryDeEssPhase {};
 
     // Phase-alignment dummy crossovers for the unequal-depth OTT branches:
     // Band 1 skips X2/X3; Band 2 skips X3.
@@ -274,6 +282,7 @@ private:
     juce::dsp::DelayLine<float> masterDryDelay { 8192 };
     juce::AudioBuffer<float> dryBuffer;
     juce::AudioBuffer<float> alignedDryBuffer;
+    juce::AudioBuffer<float> phaseAlignedDryBuffer;
 
     Crossover4th soloPreXover1 {}, soloPreXover2 {}, soloPreXover3 {};
     Crossover4th soloPostXover1 {}, soloPostXover2 {}, soloPostXover3 {};
