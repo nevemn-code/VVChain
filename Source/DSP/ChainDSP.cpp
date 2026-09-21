@@ -21,19 +21,80 @@ float crossoverQFromOverlap(float overlap)
 
 void VVChainDSP::updateAnalogPeak(Biquad& filter, double fs, double f0, double gainDb, double q)
 {
+    // Orfanidis de-cramped parametric EQ. G0 is unity at DC; G1 is
+    // calculated to match the equivalent analog response at Nyquist.
+    // Q is mapped to the familiar ~3 dB bandwidth convention.
     const double safeF = juce::jlimit(20.0, fs * 0.45, f0);
-    const double A = std::pow(10.0, gainDb / 40.0);
-    const double K = std::tan(juce::MathConstants<double>::pi * safeF / fs);
-    const double Q = std::max(0.05, q);
+    const double safeQ = std::max(0.1, q);
+    const double w0 = juce::MathConstants<double>::twoPi * safeF / fs;
+    const double dw = juce::jlimit(
+        1.0e-5,
+        juce::MathConstants<double>::pi * 0.98,
+        w0 / safeQ);
 
-    const double b0 = K * K + (A / Q) * K + 1.0;
-    const double b1 = 2.0 * (K * K - 1.0);
-    const double b2 = K * K - (A / Q) * K + 1.0;
-    const double a0 = K * K + (1.0 / (A * Q)) * K + 1.0;
-    const double a1 = 2.0 * (K * K - 1.0);
-    const double a2 = K * K - (1.0 / (A * Q)) * K + 1.0;
+    const double G0 = 1.0;
+    const double G = std::pow(10.0, gainDb / 20.0);
+    const double GB = std::sqrt(std::max(1.0e-12, G));
 
-    filter.updateCoefficients(b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0);
+    const double G2 = G * G;
+    const double G0_2 = G0 * G0;
+    const double GB2 = GB * GB;
+
+    const double F = std::abs(G2 - GB2);
+    const double F00 = std::abs(GB2 - G0_2);
+    const double F00safe = std::max(F00, 1.0e-12);
+    const double Fsafe = std::max(F, 1.0e-12);
+
+    const double w0pi = w0 * w0 - juce::MathConstants<double>::pi
+                                      * juce::MathConstants<double>::pi;
+
+    const double numerator =
+        G0_2 * w0pi * w0pi
+        + G2 * F00 * juce::MathConstants<double>::pi
+            * juce::MathConstants<double>::pi * dw * dw / Fsafe;
+    const double denominator =
+        w0pi * w0pi
+        + F00 * juce::MathConstants<double>::pi
+            * juce::MathConstants<double>::pi * dw * dw / Fsafe;
+
+    const double G1 = std::sqrt(std::max(1.0e-18, numerator
+                                                     / std::max(1.0e-18, denominator)));
+
+    const double G01 = std::abs(G2 - G0 * G1);
+    const double G11 = std::abs(G2 - G1 * G1);
+    const double F01 = std::abs(GB2 - G0 * G1);
+    const double F11 = std::abs(GB2 - G1 * G1);
+
+    const double tanHalf = std::tan(w0 * 0.5);
+    const double W2 = std::sqrt(std::max(1.0e-18, G11
+                                           / F00safe)) * tanHalf * tanHalf;
+
+    const double DW =
+        (1.0 + std::sqrt(std::max(1.0e-18, F00safe / std::max(F11, 1.0e-12))) * W2)
+        * std::tan(dw * 0.5);
+
+    const double C =
+        F11 * DW * DW
+        - 2.0 * W2
+            * (F01 - std::sqrt(std::max(0.0, F00safe * std::max(F11, 0.0))));
+    const double D =
+        2.0 * W2
+        * (G01 - std::sqrt(std::max(0.0, F00safe * std::max(G11, 0.0))));
+
+    const double A =
+        std::sqrt(std::max(1.0e-18, (C + D) / Fsafe));
+    const double B =
+        std::sqrt(std::max(1.0e-18, (G2 * C + GB2 * D) / Fsafe));
+
+    const double norm = 1.0 / std::max(1.0e-12, 1.0 + W2 + A);
+    const double b0 = (G1 + G0 * W2 + B) * norm;
+    const double b1 = -2.0 * (G1 - G0 * W2) * norm;
+    const double b2 = (G1 - B + G0 * W2) * norm;
+    const double a1 = -2.0 * (1.0 - W2) * norm;
+    const double a2 = (1.0 + W2 - A) * norm;
+
+    // Orfanidis reduces continuously to the conventional design when G1=G0.
+    filter.updateCoefficients(b0, b1, b2, a1, a2);
 }
 
 void VVChainDSP::updateAnalogHighPass(Biquad& filter, double fs, double f0, double q)
@@ -241,15 +302,46 @@ void VVChainDSP::reset()
     dryBuffer.clear();
 }
 
-float VVChainDSP::rmsDetect(float input, float& power, float attackMs,
-                                    float releaseMs, double sampleRate) noexcept
+float VVChainDSP::rmsDetectPDR(float input,
+                                  float& fastPower,
+                                  float& slowPower,
+                                  float attackMs,
+                                  float releaseMs,
+                                  double sampleRate,
+                                  float& programReleaseMs) noexcept
 {
     const float target = input * input;
-    const float alpha = target > power
-        ? timeCoeff(sampleRate, attackMs)
-        : timeCoeff(sampleRate, releaseMs);
-    power = alpha * power + (1.f - alpha) * target;
-    return std::sqrt(std::max(power, 1.0e-12f));
+
+    const float fastAttack = timeCoeff(sampleRate, attackMs);
+    const float fastRelease =
+        timeCoeff(sampleRate, juce::jmax(0.5f, releaseMs * 0.35f));
+    const float slowAttack =
+        timeCoeff(sampleRate, juce::jmax(attackMs * 4.0f, 5.0f));
+    const float slowRelease =
+        timeCoeff(sampleRate, juce::jmax(releaseMs * 1.75f, 20.0f));
+
+    fastPower = (target > fastPower ? fastAttack : fastRelease) * fastPower
+              + (1.0f - (target > fastPower ? fastAttack : fastRelease)) * target;
+
+    slowPower = (target > slowPower ? slowAttack : slowRelease) * slowPower
+              + (1.0f - (target > slowPower ? slowAttack : slowRelease)) * target;
+
+    const float fastDb = gainToDb(std::sqrt(std::max(fastPower, 1.0e-12f)));
+    const float slowDb = gainToDb(std::sqrt(std::max(slowPower, 1.0e-12f)));
+    const float crestDb = fastDb - slowDb;
+
+    const float transientBlend =
+        juce::jlimit(0.0f, 1.0f, (crestDb - 1.0f) / 8.0f);
+
+    // Large crest / transient -> short release. Sustained programme -> longer release.
+    programReleaseMs = releaseMs
+        * juce::jlimit(0.20f, 2.0f, 2.0f - 1.80f * transientBlend);
+
+    const float finalPower =
+        fastPower * transientBlend
+        + slowPower * (1.0f - transientBlend);
+
+    return gainToDb(std::sqrt(std::max(finalPower, 1.0e-12f)));
 }
 
 float VVChainDSP::applyLifterFromDetectorDb(float input, float detectorDb,
