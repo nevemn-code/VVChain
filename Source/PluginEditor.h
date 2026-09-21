@@ -88,8 +88,8 @@ private:
     MetalLookAndFeel metalLook;
 
     std::vector<Knob> knobs;
-    std::array<std::unique_ptr<juce::ToggleButton>, 4> bypassButtons;
-    std::array<std::unique_ptr<BoolAttachment>, 4> bypassAttachments;
+    std::array<std::unique_ptr<juce::ToggleButton>, 5> bypassButtons;
+    std::array<std::unique_ptr<BoolAttachment>, 5> bypassAttachments;
     std::unique_ptr<juce::ToggleButton> masterBypassButton;
     std::unique_ptr<BoolAttachment> masterBypassAttachment;
     std::unique_ptr<juce::ToggleButton> deessBypassButton;
