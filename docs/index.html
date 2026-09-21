@@ -76,14 +76,13 @@ card.append(ottLed,typeLed);g.className="knobGrid";body.appendChild(g);
 makeKnob(g,{label:"FREQ",get:()=>state.eq.freq[n],set:v=>state.eq.freq[n]=v,min:20,max:20000,suffix:" Hz",accent:cols[n],formatDigits:0,sensitivity:.20});
 makeKnob(g,{label:"GAIN",get:()=>state.eq.gain[n],set:v=>state.eq.gain[n]=v,min:-24,max:24,suffix:" dB",accent:cols[n],formatDigits:1});
 makeKnob(g,{label:"Q",get:()=>state.eq.q[n],set:v=>state.eq.q[n]=v,min:.1,max:18,accent:cols[n],formatDigits:2});
+makeKnob(g,{label:"OTT %",get:()=>state.ott.degree[n],set:v=>state.ott.degree[n]=v,min:0,max:100,suffix:" %",accent:"#facc15"});
+makeKnob(g,{label:"ATTACK",get:()=>state.ott.compA[n],set:v=>state.ott.compA[n]=v,min:.1,max:250,suffix:" ms",accent:"#facc15",formatDigits:1});
+makeKnob(g,{label:"RELEASE",get:()=>state.ott.compR[n],set:v=>state.ott.compR[n]=v,min:10,max:2500,suffix:" ms",accent:"#facc15",formatDigits:0});
 const analogKnob=makeKnob(g,{label:"ANALOG COLOR",get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:100,suffix:" %",accent:"#60a5fa"});
 analogKnob.classList.add("analogKnob");
 const mode=document.createElement("button");mode.className="modeSwitch";mode.title="TT = Tube Saturation；SS = Solid-State Saturation";mode.innerHTML="<span>TT</span><i></i><span>SS</span>";
 const syncMode=()=>mode.classList.toggle("ss",!!state.eq.mode[n]);mode.onclick=()=>{state.eq.mode[n]=!state.eq.mode[n];syncMode();sendParams();drawEQ()};syncMode();analogKnob.appendChild(mode);
-
-makeKnob(g,{label:"OTT %",get:()=>state.ott.degree[n],set:v=>state.ott.degree[n]=v,min:0,max:100,suffix:" %",accent:"#facc15"});
-makeKnob(g,{label:"ATTACK",get:()=>state.ott.compA[n],set:v=>state.ott.compA[n]=v,min:.1,max:250,suffix:" ms",accent:"#facc15",formatDigits:1});
-makeKnob(g,{label:"RELEASE",get:()=>state.ott.compR[n],set:v=>state.ott.compR[n]=v,min:10,max:2500,suffix:" ms",accent:"#facc15",formatDigits:0});
 makeKnob(g,{label:"TAPE-A +",get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:100,accent:cols[n],formatValue:tape});
 const placeLed=(led,dial,up=0)=>{const rr=dial.getBoundingClientRect(),cr=card.getBoundingClientRect();led.style.right="auto";led.style.left=(rr.right-cr.left-13)+"px";led.style.top=(rr.top-cr.top+1-up)+"px"};const dials=g.querySelectorAll(".dial");placeLed(ottLed,dials[4],24);placeLed(typeLed,dials[7],24);card.querySelector(".advBtn").onclick=()=>openAdvanced(n)
 }
