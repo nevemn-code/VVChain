@@ -96,7 +96,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         "DEESS_VOICE", "Legacy DeEsser Voice",
         juce::StringArray { "Male Vocal", "Female Vocal" }, 0));
     f("DEESS_FREQ", "DeEsser Frequency", 6000.f, 18000.f, 12500.f);
-    f("DEESS_INTENSITY", "DeEsser Intensity", 2.f, 10.f, 10.f);
+    f("DEESS_INTENSITY", "DeEsser Intensity", 0.f, 10.f, 0.f);
     f("DEESS_OFFSET", "DeEsser Average Offset", -0.1f, 0.1f, 0.f);
 
     f("DRY_WET", "Dry / Wet", 0.f, 100.f, 100.f);
@@ -169,7 +169,6 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     }
 
     p.eqColor = value("EQ_COLOR");
-    p.hfCornerHz = value("HF_CORNER");
 
     p.ottInputGainDb = value("OTT_INPUT");
     p.ottGateThresholdDb = value("OTT_GATE");
