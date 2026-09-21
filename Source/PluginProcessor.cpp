@@ -56,7 +56,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
             "OTT_BAND_BYPASS" + n, "OTT Band " + n + " Bypass", false));
         const float ottDegreeDefaults[4] = { 35.f, 35.f, 30.f, 25.f };
         f("OTT_DEGREE" + n, "OTT Band " + n + " Degree", 0.f, 100.f, ottDegreeDefaults[i]);
-        f("OTT_LIFT_T" + n, "OTT Band " + n + " Lifter Threshold", -80.f, 0.f, -35.f);
+        f("OTT_LIFT_T" + n, "OTT Band " + n + " Lifter Threshold", -80.f, 0.f, -45.f);
         f("OTT_LIFT_A" + n, "OTT Band " + n + " Lifter Attack", 1.f, 500.f, 1.f, 0.35f);
         f("OTT_LIFT_R" + n, "OTT Band " + n + " Lifter Release", 10.f, 2500.f, 50.f, 0.35f);
         f("OTT_LIFT_M" + n, "OTT Band " + n + " Lifter Mix", 0.f, 100.f, 100.f);
