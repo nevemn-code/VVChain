@@ -18,6 +18,7 @@ COUNTS = {
     "full_chain": 220,
     "band_bypass": 50,
     "eq_color_gain": 50,
+    "analog_modes": 500,
     "type_a_exciter": 50,
     "ott_four_band": 500,
 }
@@ -37,8 +38,8 @@ class State:
     eq_freq: list[float] = field(default_factory=lambda: [80, 350, 2500, 10000])
     eq_gain: list[float] = field(default_factory=lambda: [0, 0, 0, 0])
     eq_q: list[float] = field(default_factory=lambda: [.707] * 4)
-    eq_color: float = 35
-    hp: float = 70
+    eq_color: list[float] = field(default_factory=lambda: [35,35,35,35])
+    eq_mode: list[bool] = field(default_factory=lambda: [False]*4)
 
     ott_band_bypass: list[bool] = field(default_factory=lambda: [False] * 4)
     ott_degree: list[float] = field(default_factory=lambda: [35, 35, 30, 25])
@@ -72,8 +73,10 @@ def sanitize(s: State) -> State:
     s.eq_freq = [clamp(v, 20, 20000) for v in s.eq_freq]
     s.eq_gain = [clamp(v, -24, 24) for v in s.eq_gain]
     s.eq_q = [clamp(v, .1, 18) for v in s.eq_q]
-    s.eq_color = clamp(s.eq_color, 0, 100)
-    s.hp = clamp(s.hp, 40, 120)
+    s.eq_color = [clamp(v, 0, 100) for v in s.eq_color]
+    s.eq_color += [35.0] * (4 - len(s.eq_color))
+    s.eq_mode = [bool(v) for v in s.eq_mode][:4]
+    s.eq_mode += [False] * (4 - len(s.eq_mode))
 
     s.ott_band_bypass = [bool(v) for v in s.ott_band_bypass][:4]
     s.ott_band_bypass += [False] * (4 - len(s.ott_band_bypass))
@@ -107,12 +110,12 @@ def finite(values):
     return all(math.isfinite(float(v)) for v in values)
 
 
-def safe_filter_coeff(freq: float, reference: float, intensity: float) -> float:
-    if freq < reference / 10:
-        return 0.5
-    if freq >= reference:
-        return intensity * reference / max(freq, 1e-12)
-    return 1 + (intensity - 1) * (freq / reference) ** 3
+def safe_filter_coeff(freq: float, reference: float, intensity_db: float, nyquist: float = 22050.0) -> float:
+    if intensity_db <= 0.0 or freq <= reference:
+        return 1.0
+    t = clamp((freq - reference) / max(100.0, nyquist - reference), 0.0, 1.0)
+    reduction_db = intensity_db * (t ** 0.70)
+    return 10 ** (reduction_db / 20.0)
 
 
 def reference_block_decision(block: list[float], state: State) -> tuple[bool, float]:
@@ -171,7 +174,7 @@ def simple_chain_probe(src: list[float], s: State, sr: int) -> list[float]:
 
     if not s.eq_bypass:
         mul = 10 ** (sum(s.eq_gain) / 4 / 20)
-        colour = 1.0 + 0.02 * s.eq_color / 100
+        colour = 1.0 + 0.02 * sum(s.eq_color) / 400
         y = [math.tanh(v * mul) * colour for v in y]
 
     if not s.ott_bypass:
@@ -202,14 +205,22 @@ def simple_chain_probe(src: list[float], s: State, sr: int) -> list[float]:
     return y
 
 
-def analog_color(x: float, amount01: float) -> float:
+def analog_color(x: float, amount01: float, solid_state: bool = False,
+                previous: float = 0.0, even_dc: float = 0.0):
     a = clamp(amount01, 0.0, 1.0)
     if a <= 0.0:
-        return x
-    drive = 1.0 + 1.35 * a
-    z = x + 0.012 * a * x * x
-    makeup = 1.0 / drive
-    return math.tanh(z * drive) * makeup
+        return x, x, even_dc
+    drive = 1.0 + (5.0 if solid_state else 2.4) * a
+    dx = x - previous
+    def log_cosh(v):
+        av = abs(v)
+        return av - math.log(2.0) if av > 12.0 else math.log(math.cosh(v))
+    F = lambda v: log_cosh(drive * v) / (drive * drive)
+    odd = (F(x) - F(previous)) / dx if abs(dx) > 1e-5 else math.tanh(drive * (x + previous) * .5) / drive
+    even = (x*x + x*previous + previous*previous) / 3.0
+    even_dc = .99974 * even_dc + .00026 * even
+    shape = odd if solid_state else odd + (even - even_dc) * (.10 + .22 * a)
+    return x + a * (shape - x), x, even_dc
 def type_a_amount(transient: float, level_factor: float, degree: float) -> float:
     return (degree / 100.0) * (0.10 + 0.90 * clamp(transient, 0.0, 1.0))            * (0.20 + 0.80 * clamp(level_factor, 0.0, 1.25))
 
@@ -310,8 +321,6 @@ def source_structure_checks():
         "DEESS_OFFSET",
         "COUNT > 10",
         "DEESS_INTENSITY",
-        "VVChainSpectrumAnalyzer",
-        "kFftOrder = 11",
         "Male Vocal",
         "Female Vocal",
     ]:
@@ -342,14 +351,24 @@ def source_structure_checks():
     assert "if (p.atypeBandBypass[(size_t) band])" in text["dsp_cpp"]
     assert "ottBandBypassButtons" in text["editor_h"]
     assert "atypeBandBypassButtons" in text["editor_h"]
-    assert "const float makeupGain = 1.0f / drive;" in cpp
-    assert "return std::tanh(asym * drive) * makeupGain;" in cpp
-    assert "y = softColor(y, colorAmount);" in cpp
+    assert "std::array<float, 4> eqColor" in text["dsp_h"]
+    assert "std::array<bool, 4> eqColorSolidState" in text["dsp_h"]
+    assert "float VVChainDSP::analogColor" in cpp
+    assert "First-order ADAA" in cpp
+    assert "EQ_COLOR_MODE" in text["processor_cpp"]
+    assert "ANALOG_MODE" in editor
+    assert "Maximum Reduction" in text["processor_cpp"]
+    assert "p.eqColor[(size_t)i]" in text["processor_cpp"]
+    assert "p.eqColorSolidState[(size_t)i]" in text["processor_cpp"]
+    assert "SpectrumAnalyzer" not in text["processor_cpp"]
+    assert "SpectrumAnalyzer" not in text["processor_h"]
+    assert "VVChainSpectrumAnalyzer" not in combined
     assert "p.hfCornerHz" not in cpp
     assert "hfCornerHz" not in text["dsp_h"]
     assert "0.20f + 0.80f * colorAmount" not in cpp
     assert ".2+.8*s.eq.color/100" not in text["web"]
-    assert "y=this.color(y,s.eq.color/100)" in text["web"]
+    assert "y=this.analog(y,Number(s.eq.color[b]||0)/100,!!s.eq.mode[b],c,b)" in text["web"]
+    assert "modeSwitch" in text["web"]
     # UI interaction / layout regression checks.
     editor = text["editor_cpp"]
     editor_h = text["editor_h"]
@@ -368,7 +387,7 @@ def source_structure_checks():
     assert "XOVER_OVERLAP" in editor
     assert "SHARED X-OVER" in editor
     assert 'addKnob("DEESS_FREQ", "DE-ESS FREQ"' in editor
-    assert 'addKnob("DEESS_INTENSITY", "DE-ESS %", 0, 10' in editor
+    assert 'addKnob("DEESS_INTENSITY", "MAXIMUM REDUCTION", 0, 8, .1' in editor
     assert 'addKnob("DRY_WET", "MIX"' in editor
     assert 'addKnob("OUTPUT_LEVEL", "OUT"' in editor
     assert "void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;" in editor_h
@@ -415,14 +434,14 @@ def run():
             ott_degree=[rng.uniform(0, 100) for _ in range(4)],
             atype_degree=[rng.uniform(0, 100) for _ in range(4)],
             de_voice=i % 2,
-            de_intensity=rng.uniform(2, 10),
+            de_intensity=rng.uniform(0, 8),
             de_offset=rng.uniform(-0.1, 0.1),
             drywet=rng.uniform(0, 100),
             output=rng.uniform(-24, 12),
         )
         sanitize(s)
         try:
-            assert 2 <= s.de_intensity <= 10
+            assert 0 <= s.de_intensity <= 8
             assert -0.1 <= s.de_offset <= 0.1
             assert s.de_voice in (0, 1)
         except AssertionError as exc:
@@ -474,7 +493,7 @@ def run():
         sr = SAMPLE_RATES[i % len(SAMPLE_RATES)]
         s = State(
             de_voice=i % 2,
-            de_intensity=2 + (i % 9) * 1.0,
+            de_intensity=(i % 81) / 10.0,
             de_offset=-0.1 + (i % 21) / 100,
             ott_degree=[i % 101] * 4,
             atype_degree=[(100 - i) % 101] * 4,
@@ -504,7 +523,7 @@ def run():
             ott_degree=[rng.uniform(0, 100) for _ in range(4)],
             atype_degree=[rng.uniform(0, 100) for _ in range(4)],
             de_voice=i % 2,
-            de_intensity=rng.uniform(2, 10),
+            de_intensity=rng.uniform(0, 8),
             de_offset=rng.uniform(-0.1, 0.1),
             drywet=rng.uniform(0, 100),
             output=rng.uniform(-12, 6),
@@ -551,21 +570,36 @@ def run():
         except AssertionError as exc:
             failures.append(("band_bypass", i, str(exc)))
 
-    # 50 EQ analog-color gain-matching probes. These verify exact unity
-    # small-signal gain across the complete color range and finite saturation.
+    # 50 EQ analog-colour unity probes.
     for i in range(COUNTS["eq_color_gain"]):
         amount = (i % 51) / 50.0
         x = 1.0e-6
         try:
-            pos = analog_color(x, amount)
-            neg = analog_color(-x, amount)
+            pos, _, _ = analog_color(x, amount, False)
+            neg, _, _ = analog_color(-x, amount, False)
             assert math.isfinite(pos) and math.isfinite(neg)
             assert abs(pos / x - 1.0) < 1.0e-6
             assert abs(neg / -x - 1.0) < 1.0e-6
-            assert math.isfinite(analog_color(0.9, amount))
-            assert math.isfinite(analog_color(-0.9, amount))
         except AssertionError as exc:
             failures.append(("eq_color_gain", i, str(exc)))
+
+    # 500 deterministic TT/SS saturation sweeps.
+    for i in range(COUNTS["analog_modes"]):
+        amount = (i % 101) / 100.0
+        solid = bool(i & 1)
+        x = math.sin(i * 0.173) * 0.95
+        prev = math.sin((i - 1) * 0.173) * 0.95
+        dc = 0.0
+        try:
+            y, prev, dc = analog_color(x, amount, solid, prev, dc)
+            assert math.isfinite(y) and math.isfinite(prev) and math.isfinite(dc)
+            assert abs(y) < 2.0
+            # At 0%, both modes are sample-accurate unity.
+            if amount == 0:
+                assert abs(y - x) < 1e-12
+            assert y == y
+        except AssertionError as exc:
+            failures.append(("analog_modes", i, str(exc)))
 
     # 50 Type-A four-band formula probes.
     for i in range(COUNTS["type_a_exciter"]):
