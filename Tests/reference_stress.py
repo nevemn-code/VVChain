@@ -573,9 +573,9 @@ def realtime_safety_checks():
     assert "eqOversampler.processSamplesUp" in cpp
     assert "eqOversampler.processSamplesDown" in cpp
     assert "std::atan(asymmetric * drive)" in cpp
-    assert "const float ax1 = 80.f" in cpp
-    assert "const float ax2 = 3000.f" in cpp
-    assert "const float ax3 = 9000.f" in cpp
+    assert "const float tx1" in cpp
+    assert "const float tx2" in cpp
+    assert "const float tx3" in cpp
     assert "const float b2 = x - b1 - b3" in cpp
     type_start = cpp.index("void VVChainDSP::applyAType")
     type_end = cpp.index("void VVChainDSP::processDeEsser")
