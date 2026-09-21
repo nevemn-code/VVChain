@@ -52,6 +52,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     for (int i = 0; i < 4; ++i)
     {
         const juce::String n = juce::String(i + 1);
+        p.push_back(std::make_unique<juce::AudioParameterBool>(
+            "OTT_BAND_BYPASS" + n, "OTT Band " + n + " Bypass", false));
         f("OTT_DEGREE" + n, "OTT Band " + n + " Degree", 0.f, 100.f, 100.f);
         f("OTT_LIFT_T" + n, "OTT Band " + n + " Lifter Threshold", -80.f, 0.f, -40.f);
         f("OTT_LIFT_A" + n, "OTT Band " + n + " Lifter Attack", 1.f, 500.f, 50.f, 0.35f);
@@ -70,6 +72,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         const juce::String n = juce::String(i + 1);
         const float defaults[4] = { 0.f, 20.f, 70.f, 55.f };
         const float levels[4] = { 0.f, 0.f, 1.f, 1.f };
+        p.push_back(std::make_unique<juce::AudioParameterBool>(
+            "ATYPE_BAND_BYPASS" + n, "Type-A Band " + n + " Bypass", false));
         f("ATYPE_DEGREE" + n, "Type-A Band " + n + " Degree", 0.f, 100.f, defaults[i]);
         f("ATYPE_LEVEL" + n, "Type-A Band " + n + " Level", -6.f, 6.f, levels[i]);
     }
@@ -140,6 +144,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.gain[(size_t)i] = value("EQ" + n + "_GAIN");
         p.q[(size_t)i] = value("EQ" + n + "_Q");
 
+        p.ottBandBypass[(size_t)i] = value("OTT_BAND_BYPASS" + n) > 0.5f;
         p.ottDegree[(size_t)i] = value("OTT_DEGREE" + n);
         p.ottLifterThreshold[(size_t)i] = value("OTT_LIFT_T" + n);
         p.ottLifterAttack[(size_t)i] = value("OTT_LIFT_A" + n);
@@ -152,6 +157,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.ottCompMix[(size_t)i] = value("OTT_COMP_M" + n);
         p.ottBandLevelDb[(size_t)i] = value("OTT_LEVEL" + n);
 
+        p.atypeBandBypass[(size_t)i] = value("ATYPE_BAND_BYPASS" + n) > 0.5f;
         p.atypeDegree[(size_t)i] = value("ATYPE_DEGREE" + n);
         p.atypeBandLevelDb[(size_t)i] = value("ATYPE_LEVEL" + n);
     }
