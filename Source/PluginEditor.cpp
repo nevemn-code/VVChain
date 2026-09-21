@@ -74,6 +74,36 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
 {
     juce::ignoreUnused(shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
 
+    if (button.getComponentID() == "MODULE_BYPASS")
+    {
+        const auto r = button.getLocalBounds().toFloat().reduced(1.0f);
+        const auto accent = monochrome
+            ? button.findColour(juce::ToggleButton::tickColourId).withSaturation(0.0f)
+            : button.findColour(juce::ToggleButton::tickColourId);
+        const bool active = !button.getToggleState();
+
+        g.setColour(juce::Colour(0xff171a1f));
+        g.fillRoundedRectangle(r, 5.0f);
+        g.setColour(accent.withAlpha(active ? .78f : .28f));
+        g.drawRoundedRectangle(r, 5.0f, 1.0f);
+
+        const float cy = r.getCentreY();
+        const float ledD = 9.0f;
+        const float ledX = r.getX() + 7.0f;
+        g.setColour(juce::Colours::black.withAlpha(.75f));
+        g.fillEllipse(ledX - 1.5f, cy - ledD * 0.5f - 1.5f, ledD + 3.0f, ledD + 3.0f);
+        g.setColour(active ? accent : juce::Colour(0xff5d636b));
+        g.fillEllipse(ledX, cy - ledD * 0.5f, ledD, ledD);
+
+        g.setColour(juce::Colour(0xffe2e7ec));
+        g.setFont(juce::FontOptions(8.0f).withStyle("Bold"));
+        g.drawText(button.getButtonText(),
+                   juce::Rectangle<int>((int) r.getX() + 21, (int) r.getY(),
+                                        (int) r.getWidth() - 23, (int) r.getHeight()),
+                   juce::Justification::centred);
+        return;
+    }
+
     if (button.getComponentID() == "ANALOG_MODE")
     {
         auto r = button.getLocalBounds().toFloat().reduced(1.0f);
@@ -153,17 +183,23 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         "EQ_BYPASS", "OTT_BYPASS", "ATYPE_BYPASS", "DEESS_BYPASS", "MIX_BYPASS"
     };
 
+    const std::array<juce::String, 5> bypassLabels
+    {
+        "EQ", "OTT", "TAPE-A", "DE-ESS", "MIX"
+    };
+
+    const std::array<juce::Colour, 5> bypassColours
+    {
+        juce::Colour(0xff38bdf8),
+        juce::Colour(0xfffacc15),
+        juce::Colour(0xfff472b6),
+        juce::Colour(0xff67d3aa),
+        juce::Colour(0xff9ed85c)
+    };
+
     for (int i = 0; i < 5; ++i)
-        addBypass(i, bypassIds[(size_t) i],
-                  i == 0 ? "EQ / ANALOG" :
-                  i == 1 ? "OTT" :
-                  i == 2 ? "TAPE-A" :
-                  i == 3 ? "DE-ESSER" : "MIX / OUT",
-                  i == 0 ? juce::Colour(0xff38bdf8) :
-                  i == 1 ? juce::Colour(0xfffacc15) :
-                  i == 2 ? juce::Colour(0xfff472b6) :
-                  i == 3 ? juce::Colour(0xff67d3aa) :
-                           juce::Colour(0xff9ed85c));
+        addBypass(i, bypassIds[(size_t) i], bypassLabels[(size_t) i],
+                  bypassColours[(size_t) i]);
 
     masterBypassButton = std::make_unique<juce::ToggleButton>("BYPASS");
     masterBypassButton->setLookAndFeel(&metalLook);
@@ -452,7 +488,8 @@ void VVChainAudioProcessorEditor::addBypass(
 {
     auto b = std::make_unique<juce::ToggleButton>();
     b->setLookAndFeel(&metalLook);
-    b->setButtonText("");
+    b->setComponentID("MODULE_BYPASS");
+    b->setButtonText(tooltip);
     b->setColour(juce::ToggleButton::tickColourId, accent);
     b->setTooltip(tooltip + "：亮 = 運作，暗 = BYPASS");
     bypassAttachments[(size_t) index] =
@@ -986,13 +1023,26 @@ void VVChainAudioProcessorEditor::resized()
     const int cardCount = 5;
     const int cardW = (w - left * 2 - gap * (cardCount - 1)) / cardCount;
 
-    const int ledStart = w - 250;
-    for (int i = 0; i < 5; ++i)
-        if (bypassButtons[(size_t) i])
-            bypassButtons[(size_t) i]->setBounds(ledStart + i * 46, 10, 28, 28);
+    const std::array<int, 5> moduleWidths { 50, 52, 66, 62, 50 };
+    constexpr int topGap = 5;
+    constexpr int masterW = 78;
+    int total = masterW;
+    for (auto mw : moduleWidths)
+        total += topGap + mw;
 
+    const int topX = w - 18 - total;
+    constexpr int topY = 17;
     if (masterBypassButton)
-        masterBypassButton->setBounds(w - 338, 9, 76, 25);
+        masterBypassButton->setBounds(topX, topY, masterW, 25);
+
+    int xTop = topX + masterW + topGap;
+    for (int i = 0; i < 5; ++i)
+    {
+        if (bypassButtons[(size_t) i])
+            bypassButtons[(size_t) i]->setBounds(
+                xTop, topY, moduleWidths[(size_t) i], 25);
+        xTop += moduleWidths[(size_t) i] + topGap;
+    }
 
     for (int b = 0; b < 4; ++b)
     {
@@ -1024,12 +1074,12 @@ void VVChainAudioProcessorEditor::resized()
 
         const auto colorCell = pos(3);
         placeKnob("EQ_COLOR_B" + n,
-                  { colorCell.getX(), colorCell.getY() + 12,
-                    colorCell.getWidth(), colorCell.getHeight() - 12 });
+                  { colorCell.getX(), colorCell.getY() + 17,
+                    colorCell.getWidth(), colorCell.getHeight() - 17 });
         if (analogModeButtons[(size_t) b])
             analogModeButtons[(size_t) b]->setBounds(
                 colorCell.getX() + (colorCell.getWidth() - 36) / 2,
-                colorCell.getY(), 36, 12);
+                colorCell.getY() - 5, 36, 12);
 
         placeKnob("OTT_DEGREE" + n, pos(4));
         placeKnob("OTT_COMP_A" + n, pos(5));
@@ -1041,7 +1091,7 @@ void VVChainAudioProcessorEditor::resized()
             {
                 const auto r = knob->slider->getBounds();
                 ottBandBypassButtons[(size_t) b]->setBounds(
-                    r.getCentreX() + 15, r.getY() + 2, 12, 12);
+                    r.getRight() - 11, r.getY() - 4, 12, 12);
             }
 
         if (atypeBandBypassButtons[(size_t) b])
@@ -1049,7 +1099,7 @@ void VVChainAudioProcessorEditor::resized()
             {
                 const auto r = knob->slider->getBounds();
                 atypeBandBypassButtons[(size_t) b]->setBounds(
-                    r.getCentreX() + 15, r.getY() + 2, 12, 12);
+                    r.getRight() - 11, r.getY() - 4, 12, 12);
             }
     }
 
