@@ -331,6 +331,11 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
             for (int band = 0; band < 4; ++band)
             {
+                // Band-level bypass leaves this crossover band untouched while
+                // the other OTT bands continue processing normally.
+                if (p.ottBandBypass[(size_t)band])
+                    continue;
+
                 const float degree = juce::jlimit(0.f, 100.f, p.ottDegree[(size_t)band]);
                 const float lifterMix = juce::jlimit(0.f, 100.f,
                     p.ottLifterMix[(size_t)band] * degree / 100.f);
@@ -411,6 +416,10 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
 
             for (int band = 0; band < 4; ++band)
             {
+                // Band-level bypass skips only this Type-A band contribution.
+                if (p.atypeBandBypass[(size_t) band])
+                    continue;
+
                 const float degree = juce::jlimit(0.f, 100.f, p.atypeDegree[(size_t) band]);
                 const float trim = dbToGain(juce::jlimit(-6.f, 6.f,
                                                           p.atypeBandLevelDb[(size_t) band]));
