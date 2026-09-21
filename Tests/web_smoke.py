@@ -38,7 +38,7 @@ required = [
     'addEventListener("wheel"', "grid-template-columns:repeat(5,1fr)",
     "OTT：亮=啟用；按下=BYPASS", "TYPE-A：亮=啟用；按下=BYPASS",
     "NO PAGE SCROLL", "s.freq", "typeFast", "typeSlow", "typeDc", "transientRatio",
-    "masterBypass", "state.ott.overlap", "SHARED X-OVER", "dryQueue", "typeLp", "bandLed de",
+    "masterBypass", "headerControls", "state.ott.overlap", "SHARED X-OVER", "dryQueue", "typeLp", "bandLed de",
     "audioFileInput", "decodeAudioData", "onprocessorerror", "deActive", "modeSwitch", "Solid-State Saturation", "Tube Saturation",
     "grid-template-rows:.8fr .8fr 1fr 1fr", 'label:"MIX"', 'label:"OUT"',
 
@@ -107,3 +107,14 @@ print("tape_a_active_amount: PASS")
 print("band4_selectable_deesser_frequency: PASS")
 print("led_bypass_controls: PASS")
 print("continuous_deesser_stream: 8192-block")
+
+assert "headerControls" in text
+assert ">BYPASS</button>" in text
+assert 'bypassLed("EQ"' in text and 'bypassLed("OTT"' in text
+assert 'bypassLed("TAPE-A"' in text and 'bypassLed("DE-ESS"' in text and 'bypassLed("MIX"' in text
+assert ".bandLed.ott{top:181px}" in text
+assert ".bandLed.type{top:334px}" in text
+assert ".modeSwitch{position:absolute;left:50%;top:-6px" in text
+assert "x+amount*harmonic" in worklet
+assert ".015*(i3(z)-i3(z0))" in worklet
+print("header_and_analogue_layout: PASS")
