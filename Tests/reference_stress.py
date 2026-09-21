@@ -18,6 +18,7 @@ COUNTS = {
     "full_chain": 220,
     "band_bypass": 50,
     "eq_color_gain": 50,
+    "type_a_exciter": 50,
 }
 
 SAMPLE_RATES = [44100, 48000, 88200, 96000, 192000]
@@ -208,6 +209,49 @@ def analog_color(x: float, amount01: float) -> float:
     z = x + 0.012 * a * x * x
     makeup = 1.0 / drive
     return math.tanh(z * drive) * makeup
+def type_a_band_process(signal: list[float], degree: float, band_level_db: float,
+                         attack_ms: float, release_ms: float, sr: int,
+                         band_index: int) -> list[float]:
+    """Deterministic model of the rewritten independent Type-A exciter band."""
+    fast = 0.0
+    slow = 0.0
+    dc = 0.0
+    out = []
+    ea = math.exp(-1.0 / (0.001 * max(1.0, attack_ms) * sr))
+    er = math.exp(-1.0 / (0.001 * max(20.0, release_ms) * sr))
+    es = math.exp(-1.0 / (0.001 * max(10.0, release_ms * 1.75) * sr))
+    edc = math.exp(-1.0 / (0.001 * 20.0 * sr))
+    even_weight = [0.68, 0.54, 0.34, 0.18][band_index]
+
+    for x in signal:
+        mag = abs(x)
+        alpha = ea if mag > fast else er
+        fast = alpha * fast + (1.0 - alpha) * mag
+        slow = es * slow + (1.0 - es) * mag
+        ratio = fast / max(slow, 1e-7)
+        transient = clamp((ratio - 1.0) * 3.5, 0.0, 1.0)
+        level_db = 20.0 * math.log10(max(slow, 1e-7))
+        level_factor = clamp((level_db + 48.0) / 36.0, 0.0, 1.25)
+        amount = (degree / 100.0) * (0.18 + 0.82 * transient) * (0.20 + 0.80 * level_factor)
+
+        if amount <= 1e-9:
+            out.append(x)
+            continue
+
+        norm = x / max(slow, 1e-5)
+        drive = 1.10 + 4.20 * (degree / 100.0) * (0.35 + 0.65 * level_factor)
+        linear_ref = math.tanh(drive)
+        odd_shape = math.tanh(norm * drive) / linear_ref if linear_ref > 1e-6 else norm
+        even_raw = 0.5 * norm * norm
+        dc = edc * dc + (1.0 - edc) * even_raw
+        harmonic = (1.0 - even_weight) * (odd_shape - norm) + even_weight * (even_raw - dc)
+        harmonic = math.tanh(harmonic * 1.5) / 1.5
+        harmonic *= slow * amount * (10.0 ** (clamp(band_level_db, -6.0, 6.0) / 20.0))
+        out.append(x + harmonic)
+
+    return out
+
+
 def source_structure_checks():
     root = Path(__file__).resolve().parents[1]
     files = {
@@ -296,6 +340,22 @@ def source_structure_checks():
     assert 'addKnob("DEESS_FREQ", "DE-ESS FREQ"' in editor
     assert ", 4, 0" in editor
     assert "void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;" in editor_h
+    # Rewritten four-band Type-A exciter structure.
+    assert "constexpr float x1 = 200.f;" in cpp
+    assert "constexpr float x2 = 2000.f;" in cpp
+    assert "constexpr float x3 = 7800.f;" in cpp
+    assert "typeFastEnv" in text["dsp_h"]
+    assert "typeSlowEnv" in text["dsp_h"]
+    assert "typeDc" in text["dsp_h"]
+    assert "const float harmonicSum" in cpp
+    assert "const float transientRatio" in cpp
+    assert "const float levelFactor" in cpp
+    assert "std::tanh(norm * drive)" in cpp
+    assert "0.18f + 0.82f * transient" in cpp
+    assert "if (p.atypeBandBypass[(size_t) band])" in cpp
+    assert "directDb" not in cpp
+    assert "averageAmount" not in cpp
+    assert "processed = base + enhanced * mix" not in cpp
     assert "亮 = 啟用；按下 = BYPASS" in text["editor_cpp"]
 
 
@@ -461,6 +521,48 @@ def run():
             assert math.isfinite(analog_color(-0.9, amount))
         except AssertionError as exc:
             failures.append(("eq_color_gain", i, str(exc)))
+
+    # 50 four-band Type-A exciter probes. Each pass keeps the four band
+    # controls independent and checks transient/level-dependent harmonic creation.
+    for i in range(COUNTS["type_a_exciter"]):
+        sr = SAMPLE_RATES[i % len(SAMPLE_RATES)]
+        band = i % 4
+        degree = 5.0 + (i * 17) % 96
+        level = -1.0 + ((i % 5) * 0.5)
+        x = 0.15 + 0.01 * (i % 7)
+
+        # Low-level steady tone plus a transient onset.
+        sig = [0.0] * 192
+        freq = [80.0, 600.0, 3200.0, 11000.0][band]
+        for n in range(192):
+            env = 1.0 if n < 48 else 0.35
+            sig[n] = x * env * math.sin(2.0 * math.pi * freq * n / sr)
+        y = type_a_band_process(sig, degree, level, 10.0, 120.0, sr, band)
+        y0 = type_a_band_process(sig, 0.0, level, 10.0, 120.0, sr, band)
+
+        try:
+            assert finite(y)
+            assert finite(y0)
+            assert y0 == sig
+
+            residual = [a - b for a, b in zip(y, sig)]
+            assert max(abs(v) for v in residual) > 1e-9
+
+            transient_rms = math.sqrt(
+                sum(v * v for v in residual[12:48]) / 36.0
+            )
+            sustain_rms = math.sqrt(
+                sum(v * v for v in residual[120:168]) / 48.0
+            )
+            assert transient_rms >= sustain_rms
+
+            # Higher input level must not reduce the generated harmonic energy.
+            high_sig = [v * 1.8 for v in sig]
+            hy = type_a_band_process(high_sig, degree, level, 10.0, 120.0, sr, band)
+            hres = [a - b for a, b in zip(hy, high_sig)]
+            assert math.sqrt(sum(v * v for v in hres) / len(hres)) >=                    math.sqrt(sum(v * v for v in residual) / len(residual))
+        except AssertionError as exc:
+            failures.append(("type_a_exciter", i, str(exc)))
 
     total = sum(COUNTS.values())
     print("VVChain requested validation")
