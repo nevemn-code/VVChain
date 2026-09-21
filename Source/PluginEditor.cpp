@@ -31,7 +31,9 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
     const float cx = area.getCentreX();
     const float cy = area.getCentreY() - 3.f;
     const float radius = juce::jmin(area.getWidth(), area.getHeight()) * 0.5f - 6.f;
-    const auto accent = slider.findColour(juce::Slider::rotarySliderFillColourId);
+    const auto accent = monochrome
+        ? slider.findColour(juce::Slider::rotarySliderFillColourId).withSaturation(0.0f)
+        : slider.findColour(juce::Slider::rotarySliderFillColourId);
     const float angle = juce::jmap(sliderPosProportional, rotaryStartAngle, rotaryEndAngle);
 
     g.setColour(juce::Colours::black.withAlpha(0.92f));
@@ -77,7 +79,9 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
         const float d = juce::jmin(button.getWidth(), button.getHeight()) - 10.f;
         const float cx = button.getLocalBounds().getCentreX();
         const float cy = button.getLocalBounds().getCentreY();
-        const auto accent = button.findColour(juce::ToggleButton::tickColourId);
+        const auto accent = monochrome
+            ? button.findColour(juce::ToggleButton::tickColourId).withSaturation(0.0f)
+            : button.findColour(juce::ToggleButton::tickColourId);
         const bool active = !button.getToggleState();
 
         g.setColour(juce::Colours::black.withAlpha(.8f));
@@ -99,7 +103,9 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
 
     auto r = button.getLocalBounds().toFloat().reduced(1.f);
     const bool on = button.getToggleState();
-    const auto accent = button.findColour(juce::ToggleButton::tickColourId);
+    const auto accent = monochrome
+        ? button.findColour(juce::ToggleButton::tickColourId).withSaturation(0.0f)
+        : button.findColour(juce::ToggleButton::tickColourId);
 
     g.setColour(on ? juce::Colour(0xff353a42) : juce::Colour(0xff23262b));
     g.fillRoundedRectangle(r, 5.f);
@@ -117,33 +123,20 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     setResizable(false, false);
     setSize(1500, 930);
 
-    const std::array<juce::String, 5> bypassIds
+    const std::array<juce::String, 3> bypassIds
     {
-        "EQ_BYPASS", "OTT_BYPASS", "ATYPE_BYPASS", "DEESS_BYPASS", "MIX_BYPASS"
+        "EQ_BYPASS", "OTT_BYPASS", "ATYPE_BYPASS"
     };
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 3; ++i)
         addBypass(i, bypassIds[(size_t) i],
                   i == 0 ? "EQ / ANALOG" :
-                  i == 1 ? "OTT" :
-                  i == 2 ? "TAPE-A" :
-                  i == 3 ? "DE-ESSER" : "MIX / OUT",
+                  i == 1 ? "OTT" : "TAPE-A",
                   i == 0 ? juce::Colour(0xff38bdf8) :
                   i == 1 ? juce::Colour(0xfffacc15) :
                   i == 2 ? juce::Colour(0xfff472b6) :
                   i == 3 ? juce::Colour(0xff67d3aa) :
                            juce::Colour(0xff9ed85c));
-
-    masterBypassButton = std::make_unique<juce::ToggleButton>("BYPASS");
-    masterBypassButton->setLookAndFeel(&metalLook);
-    masterBypassButton->setButtonText("BYPASS");
-    masterBypassButton->setColour(juce::ToggleButton::tickColourId,
-                                  juce::Colour(0xffdfe7ef));
-    masterBypassButton->setTooltip(
-        "整個 VVCHAIN 完全旁通；固定 PDC，切換使用短交叉淡化避免斷音/爆音");
-    masterBypassAttachment = std::make_unique<BoolAttachment>(
-        audioProcessor.apvts, "MASTER_BYPASS", *masterBypassButton);
-    addAndMakeVisible(*masterBypassButton);
 
     for (int b = 0; b < 4; ++b)
     {
@@ -163,20 +156,16 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addKnob("EQ_COLOR_B" + n, "ANALOG COLOR", 0, 100, .1,
                 parameterValue("EQ_COLOR"), " %", b, 3,
                 juce::Colour(0xff60a5fa), false, "EQ_COLOR");
-        addKnob("HF_CORNER_B" + n, "HP / CORNER", 40, 120, 1,
-                parameterValue("HF_CORNER"), " Hz", b, 4,
-                juce::Colour(0xff60a5fa), false, "HF_CORNER");
-
         // Main screen intentionally keeps only the three OTT performance knobs.
         addKnob("OTT_DEGREE" + n, "OTT %", 0, 100, .1,
-                parameterValue("OTT_DEGREE" + n), " %", b, 5, juce::Colour(0xfffacc15));
+                parameterValue("OTT_DEGREE" + n), " %", b, 4, juce::Colour(0xfffacc15));
         addKnob("OTT_COMP_A" + n, "ATTACK", .1, 250, .1,
-                parameterValue("OTT_COMP_A" + n), " ms", b, 6, juce::Colour(0xfffacc15));
+                parameterValue("OTT_COMP_A" + n), " ms", b, 5, juce::Colour(0xfffacc15));
         addKnob("OTT_COMP_R" + n, "RELEASE", 10, 2500, 1,
-                parameterValue("OTT_COMP_R" + n), " ms", b, 7, juce::Colour(0xfffacc15));
+                parameterValue("OTT_COMP_R" + n), " ms", b, 6, juce::Colour(0xfffacc15));
 
         addKnob("ATYPE_DEGREE" + n, "TAPE-A +", 0, 100, .1,
-                parameterValue("ATYPE_DEGREE" + n), "", b, 8, c, true);
+                parameterValue("ATYPE_DEGREE" + n), "", b, 7, c, true);
 
         // Independent per-band bypass LEDs. False = active/lit; true = bypass/dim.
         ottBandBypassButtons[(size_t) b] = std::make_unique<juce::ToggleButton>();
@@ -232,10 +221,10 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
     // Dedicated fifth zone: DE-ESSER is separate from BAND 4.
     addKnob("DEESS_FREQ", "DE-ESS FREQ", 6000, 18000, 10,
-            parameterValue("DEESS_FREQ"), " Hz", 4, 0,
+            parameterValue("DEESS_FREQ"), " Hz", -4, 0,
             juce::Colour(0xff67d3aa));
-    addKnob("DEESS_INTENSITY", "DE-ESS %", 2, 10, .01,
-            parameterValue("DEESS_INTENSITY"), " %", 4, 1,
+    addKnob("DEESS_INTENSITY", "DE-ESS %", 0, 10, .01,
+            parameterValue("DEESS_INTENSITY"), " %", -4, 1,
             juce::Colour(0xff67d3aa));
 
     deessBypassButton = std::make_unique<juce::ToggleButton>();
@@ -247,6 +236,19 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     deessBypassAttachment = std::make_unique<BoolAttachment>(
         audioProcessor.apvts, "DEESS_BYPASS", *deessBypassButton);
     addAndMakeVisible(*deessBypassButton);
+
+    // Full-plugin bypass stays in this final chain module.
+    masterBypassButton = std::make_unique<juce::ToggleButton>();
+    masterBypassButton->setLookAndFeel(&metalLook);
+    masterBypassButton->setButtonText("");
+    masterBypassButton->setColour(
+        juce::ToggleButton::tickColourId, juce::Colour(0xffdfe7ef));
+    masterBypassButton->setTooltip(
+        "MASTER BYPASS：整個 VVCHAIN 完全旁通；固定 PDC，切換無斷音");
+    masterBypassButton->onClick = [this] { updateBypassVisuals(); };
+    masterBypassAttachment = std::make_unique<BoolAttachment>(
+        audioProcessor.apvts, "MASTER_BYPASS", *masterBypassButton);
+    addAndMakeVisible(*masterBypassButton);
 
     // Shared OTT advanced controls appear inside the currently expanded BAND.
     addKnob("OTT_X1", "XOVER 1", 80, 600, 1,
@@ -279,22 +281,11 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     closeAdvanced->onClick = [this] { setExpandedBand(-1); };
     addAndMakeVisible(*closeAdvanced);
 
-    // MIX / OUT is deliberately tiny and horizontal.
+    // MIX / OUT are rotary controls in the DeEsser chain module.
     addKnob("DRY_WET", "MIX", 0, 100, .1,
-            parameterValue("DRY_WET"), " %", -3, 40, juce::Colour(0xff38bdf8));
+            parameterValue("DRY_WET"), " %", -4, 2, juce::Colour(0xff38bdf8));
     addKnob("OUTPUT_LEVEL", "OUT", -24, 12, .1,
-            parameterValue("OUTPUT_LEVEL"), " dB", -3, 41, juce::Colour(0xff9ed85c));
-
-    for (const auto& id : { juce::String("DRY_WET"), juce::String("OUTPUT_LEVEL") })
-    {
-        if (auto* k = findKnob(id))
-        {
-            k->slider->setSliderStyle(juce::Slider::LinearHorizontal);
-            k->slider->setTextBoxStyle(juce::Slider::TextBoxRight, false, 48, 14);
-            k->slider->setColour(juce::Slider::thumbColourId, k->accent);
-            k->slider->setColour(juce::Slider::trackColourId, k->accent.withAlpha(.65f));
-        }
-    }
+            parameterValue("OUTPUT_LEVEL"), " dB", -4, 3, juce::Colour(0xff9ed85c));
 
     setExpandedBand(-1);
 }
