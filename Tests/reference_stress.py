@@ -16,6 +16,7 @@ COUNTS = {
     "all_features": 180,
     "transient": 155,
     "full_chain": 220,
+    "band_bypass": 50,
 }
 
 SAMPLE_RATES = [44100, 48000, 88200, 96000, 192000]
@@ -36,6 +37,7 @@ class State:
     eq_color: float = 35
     hp: float = 70
 
+    ott_band_bypass: list[bool] = field(default_factory=lambda: [False] * 4)
     ott_degree: list[float] = field(default_factory=lambda: [100] * 4)
     ott_x: list[float] = field(default_factory=lambda: [350, 1000, 9000])
     ott_input: float = 5.2
@@ -43,6 +45,7 @@ class State:
     ott_mix: float = 100
     ott_output: float = -6
 
+    atype_band_bypass: list[bool] = field(default_factory=lambda: [False] * 4)
     atype_degree: list[float] = field(default_factory=lambda: [0, 20, 70, 55])
     atype_attack: float = 10
     atype_release: float = 120
@@ -69,6 +72,8 @@ def sanitize(s: State) -> State:
     s.eq_color = clamp(s.eq_color, 0, 100)
     s.hp = clamp(s.hp, 40, 120)
 
+    s.ott_band_bypass = [bool(v) for v in s.ott_band_bypass][:4]
+    s.ott_band_bypass += [False] * (4 - len(s.ott_band_bypass))
     s.ott_degree = [clamp(v, 0, 100) for v in s.ott_degree]
     s.ott_x[0] = clamp(s.ott_x[0], 80, 600)
     s.ott_x[1] = clamp(s.ott_x[1], max(750, s.ott_x[0] + 80), 3000)
@@ -78,6 +83,8 @@ def sanitize(s: State) -> State:
     s.ott_mix = clamp(s.ott_mix, 0, 100)
     s.ott_output = clamp(s.ott_output, -24, 24)
 
+    s.atype_band_bypass = [bool(v) for v in s.atype_band_bypass][:4]
+    s.atype_band_bypass += [False] * (4 - len(s.atype_band_bypass))
     s.atype_degree = [clamp(v, 0, 100) for v in s.atype_degree]
     s.atype_attack = clamp(s.atype_attack, 1, 100)
     s.atype_release = clamp(s.atype_release, 20, 500)
@@ -364,8 +371,35 @@ def run():
         except AssertionError as exc:
             failures.append(("full_chain", i, str(exc)))
 
-    source_structure_checks()
+    # 50 independent band-bypass probes. Each pass toggles exactly one
+    # OTT band and one Type-A band at a time; defaults remain active.
+    for i in range(COUNTS["band_bypass"]):
+        band = i % 4
+        s = State(
+            ott_degree=[100, 80, 60, 40],
+            atype_degree=[0, 20, 70, 55],
+        )
+        src = synthetic_input(256, SAMPLE_RATES[i % len(SAMPLE_RATES)], SEED + 20000 + i)
+        try:
+            baseline = simple_chain_probe(src, s, SAMPLE_RATES[i % len(SAMPLE_RATES)])
+            s_ott = State(**s.__dict__)
+            s_ott.ott_band_bypass = list(s.ott_band_bypass)
+            s_ott.ott_band_bypass[band] = True
+            ott_changed = simple_chain_probe(src, s_ott, SAMPLE_RATES[i % len(SAMPLE_RATES)])
+            assert finite(ott_changed)
+            assert ott_changed != baseline
 
+            s_type = State(**s.__dict__)
+            s_type.atype_band_bypass = list(s.atype_band_bypass)
+            type_band = 1 + (i % 3)
+            s_type.atype_band_bypass[type_band] = True
+            type_changed = simple_chain_probe(src, s_type, SAMPLE_RATES[i % len(SAMPLE_RATES)])
+            assert finite(type_changed)
+            assert type_changed != baseline
+        except AssertionError as exc:
+            failures.append(("band_bypass", i, str(exc)))
+
+ = sum(COUNTS.values())
     total = sum(COUNTS.values())
     print("VVChain requested validation")
     print("seed:", SEED)
