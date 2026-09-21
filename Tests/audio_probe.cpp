@@ -681,6 +681,8 @@ int main()
     csv.close();
 
     std::cout << std::fixed << std::setprecision(4)
+              << "audio_monitor_rounds: " << kRounds << "\n"
+              << "audio_monitor_cases_per_round: " << kCasesPerRound << "\n"
               << "audio_monitor_cases: " << totalChecks << "\n"
               << "audio_monitor_failures: " << failures << "\n"
               << "worst_declared_vs_measured_delay_error_samples: "
