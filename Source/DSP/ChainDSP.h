@@ -253,15 +253,19 @@ private:
 
     std::array<BandDynamics, 4> ottDynamics {};
 
-    // Four independent Type-A exciter bands.
-    // Fixed crossovers follow a practical 4-band exciter layout:
-    // ~20-200 Hz / 200-2 kHz / 2-7.8 kHz / 7.8-20 kHz.
-    Crossover2nd typeXover1 {};
-    Crossover2nd typeXover2 {};
-    Crossover2nd typeXover3 {};
+    // Four-band Type-A exciter using the same LR4 family as OTT.
+    // Each band gets the complete crossover path; skipped crossover stages
+    // are restored with independent all-pass states before reconstruction.
+    Crossover4th typeXover1 {};
+    Crossover4th typeXover2 {};
+    Crossover4th typeXover3 {};
+    Crossover4th typePhase2_B1 {};
+    Crossover4th typePhase3_B1 {};
+    Crossover4th typePhase3_B2 {};
     std::array<std::array<float, 2>, 4> typeFastEnv {};
     std::array<std::array<float, 2>, 4> typeSlowEnv {};
     std::array<std::array<float, 2>, 4> typeDc {};
+    std::array<std::array<float, 2>, 4> typeEvenDc {};
 
     std::array<DeEssState, 2> deess {};
     Crossover4th deessSplit {};
