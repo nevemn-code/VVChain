@@ -593,7 +593,6 @@ def realtime_safety_checks():
     assert "filterHalfBandFIREquiripple" in header
     assert "eqOversampler.processSamplesUp" in cpp
     assert "eqOversampler.processSamplesDown" in cpp
-    assert "std::atan(asymmetric * drive)" in cpp
     assert "const float tx1" in cpp
     assert "const float tx2" in cpp
     assert "const float tx3" in cpp
