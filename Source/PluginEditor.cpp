@@ -123,20 +123,34 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     setResizable(false, false);
     setSize(1500, 930);
 
-    const std::array<juce::String, 3> bypassIds
+    const std::array<juce::String, 5> bypassIds
     {
-        "EQ_BYPASS", "OTT_BYPASS", "ATYPE_BYPASS"
+        "EQ_BYPASS", "OTT_BYPASS", "ATYPE_BYPASS", "DEESS_BYPASS", "MIX_BYPASS"
     };
 
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 5; ++i)
         addBypass(i, bypassIds[(size_t) i],
                   i == 0 ? "EQ / ANALOG" :
-                  i == 1 ? "OTT" : "TAPE-A",
+                  i == 1 ? "OTT" :
+                  i == 2 ? "TAPE-A" :
+                  i == 3 ? "DE-ESSER" : "MIX / OUT",
                   i == 0 ? juce::Colour(0xff38bdf8) :
                   i == 1 ? juce::Colour(0xfffacc15) :
                   i == 2 ? juce::Colour(0xfff472b6) :
                   i == 3 ? juce::Colour(0xff67d3aa) :
                            juce::Colour(0xff9ed85c));
+
+    masterBypassButton = std::make_unique<juce::ToggleButton>("BYPASS");
+    masterBypassButton->setLookAndFeel(&metalLook);
+    masterBypassButton->setButtonText("BYPASS");
+    masterBypassButton->setColour(juce::ToggleButton::tickColourId,
+                                  juce::Colour(0xffdfe7ef));
+    masterBypassButton->setTooltip(
+        "整個 VVCHAIN 完全旁通；固定 PDC，切換使用短交叉淡化避免斷音/爆音");
+    masterBypassButton->onClick = [this] { updateBypassVisuals(); };
+    masterBypassAttachment = std::make_unique<BoolAttachment>(
+        audioProcessor.apvts, "MASTER_BYPASS", *masterBypassButton);
+    addAndMakeVisible(*masterBypassButton);
 
     for (int b = 0; b < 4; ++b)
     {
@@ -221,10 +235,10 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
     // Dedicated fifth zone: DE-ESSER is separate from BAND 4.
     addKnob("DEESS_FREQ", "DE-ESS FREQ", 6000, 18000, 10,
-            parameterValue("DEESS_FREQ"), " Hz", -4, 0,
+            parameterValue("DEESS_FREQ"), " Hz", 4, 0,
             juce::Colour(0xff67d3aa));
     addKnob("DEESS_INTENSITY", "DE-ESS %", 0, 10, .01,
-            parameterValue("DEESS_INTENSITY"), " %", -4, 1,
+            parameterValue("DEESS_INTENSITY"), " %", 4, 1,
             juce::Colour(0xff67d3aa));
 
     deessBypassButton = std::make_unique<juce::ToggleButton>();
@@ -236,19 +250,6 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     deessBypassAttachment = std::make_unique<BoolAttachment>(
         audioProcessor.apvts, "DEESS_BYPASS", *deessBypassButton);
     addAndMakeVisible(*deessBypassButton);
-
-    // Full-plugin bypass stays in this final chain module.
-    masterBypassButton = std::make_unique<juce::ToggleButton>();
-    masterBypassButton->setLookAndFeel(&metalLook);
-    masterBypassButton->setButtonText("");
-    masterBypassButton->setColour(
-        juce::ToggleButton::tickColourId, juce::Colour(0xffdfe7ef));
-    masterBypassButton->setTooltip(
-        "MASTER BYPASS：整個 VVCHAIN 完全旁通；固定 PDC，切換無斷音");
-    masterBypassButton->onClick = [this] { updateBypassVisuals(); };
-    masterBypassAttachment = std::make_unique<BoolAttachment>(
-        audioProcessor.apvts, "MASTER_BYPASS", *masterBypassButton);
-    addAndMakeVisible(*masterBypassButton);
 
     // Shared OTT advanced controls appear inside the currently expanded BAND.
     addKnob("OTT_X1", "XOVER 1", 80, 600, 1,
@@ -284,11 +285,22 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     startTimerHz(30);
     updateBypassVisuals();
 
-    // MIX / OUT are rotary controls in the DeEsser chain module.
+    // MIX / OUT stays tiny and horizontal in the title bar.
     addKnob("DRY_WET", "MIX", 0, 100, .1,
-            parameterValue("DRY_WET"), " %", -4, 2, juce::Colour(0xff38bdf8));
+            parameterValue("DRY_WET"), " %", -3, 40, juce::Colour(0xff38bdf8));
     addKnob("OUTPUT_LEVEL", "OUT", -24, 12, .1,
-            parameterValue("OUTPUT_LEVEL"), " dB", -4, 3, juce::Colour(0xff9ed85c));
+            parameterValue("OUTPUT_LEVEL"), " dB", -3, 41, juce::Colour(0xff9ed85c));
+
+    for (const auto& id : { juce::String("DRY_WET"), juce::String("OUTPUT_LEVEL") })
+    {
+        if (auto* k = findKnob(id))
+        {
+            k->slider->setSliderStyle(juce::Slider::LinearHorizontal);
+            k->slider->setTextBoxStyle(juce::Slider::TextBoxRight, false, 48, 14);
+            k->slider->setColour(juce::Slider::thumbColourId, k->accent);
+            k->slider->setColour(juce::Slider::trackColourId, k->accent.withAlpha(.65f));
+        }
+    }
 
     setExpandedBand(-1);
 }
