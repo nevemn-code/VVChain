@@ -68,11 +68,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         p.push_back(std::make_unique<juce::AudioParameterBool>(
             "OTT_BAND_BYPASS" + n, "OTT Band " + n + " Bypass", false));
         const float ottDegreeDefaults[4] = { 32.f, 30.f, 26.f, 22.f };
+        const float ottLifterMixDefaults[4] = { 80.f, 80.f, 70.f, 60.f };
         f("OTT_DEGREE" + n, "OTT Band " + n + " Degree", 0.f, 100.f, ottDegreeDefaults[i]);
         f("OTT_LIFT_T" + n, "OTT Band " + n + " Lifter Threshold", -80.f, 0.f, -40.f);
         f("OTT_LIFT_A" + n, "OTT Band " + n + " Lifter Attack", 1.f, 500.f, 1.f, 0.35f);
         f("OTT_LIFT_R" + n, "OTT Band " + n + " Lifter Release", 10.f, 2500.f, 80.f, 0.35f);
-        f("OTT_LIFT_M" + n, "OTT Band " + n + " Lifter Mix", 0.f, 100.f, 100.f);
+        f("OTT_LIFT_M" + n, "OTT Band " + n + " Lifter Mix", 0.f, 100.f, ottLifterMixDefaults[i]);
         f("OTT_COMP_T" + n, "OTT Band " + n + " Compressor Threshold", -40.f, 0.f, -18.f);
         f("OTT_COMP_A" + n, "OTT Band " + n + " Compressor Attack", 0.1f, 250.f, 1.f, 0.35f);
         f("OTT_COMP_R" + n, "OTT Band " + n + " Compressor Release", 10.f, 2500.f, 50.f, 0.35f);
