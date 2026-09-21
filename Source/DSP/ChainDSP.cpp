@@ -373,7 +373,8 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
 void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    // Type-A style four overlapping channels.
+    // Compact Type-A / TAPE-A stage:
+    // each band amount is an immediately audible additive enhancement control.
     typeXover1.lp1 = makeLowPass(sr, 80.f, 0.707);
     typeXover1.lp2 = makeLowPass(sr, 80.f, 0.707);
     typeXover1.hp1 = makeHighPass(sr, 80.f, 0.707);
@@ -406,28 +407,45 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
             const float bands[4] = { b1, b2, b3, b4 };
 
             float enhanced = 0.f;
+            float averageAmount = 0.f;
+
             for (int band = 0; band < 4; ++band)
             {
-                const float degree = juce::jlimit(0.f, 100.f, p.atypeDegree[(size_t)band]);
+                const float degree = juce::jlimit(0.f, 100.f, p.atypeDegree[(size_t) band]);
                 const float trim = dbToGain(juce::jlimit(-6.f, 6.f,
-                                                          p.atypeBandLevelDb[(size_t)band]));
-                float& env = typeEnv[(size_t)band][(size_t)ch];
+                                                          p.atypeBandLevelDb[(size_t) band]));
+                float& env = typeEnv[(size_t) band][(size_t) ch];
 
                 env += (std::abs(bands[band]) > env ? (1.f - attack) : (1.f - release))
                        * (std::abs(bands[band]) - env);
 
+                // Direct amount: 0..100 -> 0..6 dB, so any non-zero setting acts immediately.
+                const float directDb = degree * 0.06f;
                 const float levelDb = gainToDb(env);
-                float boostDb = 0.f;
-                if (levelDb < -40.f)
-                    boostDb = juce::jlimit(0.f, 10.f,
-                                           (-40.f - levelDb) * 0.5f * degree / 100.f);
+                const float lowLevelAssist =
+                    juce::jlimit(0.f, 1.5f, (-18.f - levelDb) * 0.08f) * (degree / 100.f);
+                const float boostDb = juce::jlimit(0.f, 6.0f, directDb + lowLevelAssist);
 
-                enhanced += bands[band] * (dbToGain(boostDb) * trim - 1.0f);
+                enhanced += bands[band] * (dbToGain(boostDb) * trim - 1.f);
+                averageAmount += degree;
             }
 
+            const float base = x / inputGain;
             const float mix = juce::jlimit(0.f, 1.f, p.atypeMix / 100.f);
-            data[n] = x / inputGain + enhanced * mix;
-            data[n] *= outputGain;
+            const float amount = juce::jlimit(0.f, 1.f, (averageAmount / 4.f) / 100.f);
+
+            float processed = base + enhanced * mix;
+
+            // TAPE-A: very light soft saturation tied to the same amount controls.
+            if (amount > 0.0001f)
+            {
+                const float drive = 1.f + amount * 0.55f;
+                const float saturated =
+                    std::tanh(processed * drive) / std::tanh(drive);
+                processed = processed + (saturated - processed) * (0.10f + amount * 0.20f);
+            }
+
+            data[n] = processed * outputGain;
         }
     }
 }
@@ -500,7 +518,8 @@ void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters& p)
     {
         fft(deessFft, false);
 
-        const double referenceHz = (p.deessReferenceHz >= 13000.f) ? 13500.0 : 12500.0;
+        const double referenceHz = juce::jlimit(6000.0, 18000.0,
+            static_cast<double>(p.deessReferenceHz));
         const double intensity =
             juce::jlimit(2.0, 10.0, static_cast<double>(p.deessIntensity));
 

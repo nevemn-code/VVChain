@@ -79,10 +79,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     f("ATYPE_MIX", "Type-A Mix", 0.f, 100.f, 100.f);
     f("ATYPE_OUTPUT", "Type-A Output Gain", -24.f, 24.f, 0.f);
 
-    // Reference-based DeEsser controls. Defaults preserve the reference core.
+    // Reference-based DeEsser controls. Frequency is now directly selectable.
+    // DEESS_VOICE is retained for legacy preset compatibility but is no longer
+    // used by the realtime processor.
     p.push_back(std::make_unique<juce::AudioParameterChoice>(
-        "DEESS_VOICE", "DeEsser Voice",
+        "DEESS_VOICE", "Legacy DeEsser Voice",
         juce::StringArray { "Male Vocal", "Female Vocal" }, 0));
+    f("DEESS_FREQ", "DeEsser Frequency", 6000.f, 18000.f, 12500.f);
     f("DEESS_INTENSITY", "DeEsser Intensity", 2.f, 10.f, 10.f);
     f("DEESS_OFFSET", "DeEsser Average Offset", -0.1f, 0.1f, 0.f);
 
@@ -95,8 +98,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
 void VVChainAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     dsp.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
-    // The reference DeEsser uses a 4096-frame streaming window and reports the
-    // corresponding realtime delay through the host.
+    // The realtime DeEsser processes complete 8192-sample blocks.
     setLatencySamples(8192);
 }
 
@@ -170,7 +172,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.atypeMix = value("ATYPE_MIX");
     p.atypeOutputGainDb = value("ATYPE_OUTPUT");
 
-    p.deessReferenceHz = value("DEESS_VOICE") > 0.5f ? 13500.f : 12500.f;
+    p.deessReferenceHz = value("DEESS_FREQ");
     p.deessIntensity = value("DEESS_INTENSITY");
     p.deessAverageOffset = value("DEESS_OFFSET");
 

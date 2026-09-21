@@ -10,6 +10,11 @@ const std::array<juce::Colour, 4> kBandColours
     juce::Colour(0xfff97316)
 };
 
+const std::array<juce::String, 5> kModuleNames
+{
+    "EQ / ANALOG", "OTT", "TAPE-A", "DE-ESSER", "MIX / OUT"
+};
+
 float logMap(float value, float min, float max)
 {
     return std::log(juce::jlimit(min, max, value) / min) / std::log(max / min);
@@ -19,50 +24,6 @@ float invLogMap(float t, float min, float max)
 {
     return min * std::pow(max / min, juce::jlimit(0.f, 1.f, t));
 }
-
-juce::Rectangle<float> inset(juce::Rectangle<float> r, float amount)
-{
-    return r.reduced(amount);
-}
-
-void drawCard(juce::Graphics& g, juce::Rectangle<float> r, juce::Colour accent)
-{
-    juce::ColourGradient bg(juce::Colour(0xff292c32), r.getX(), r.getY(),
-                            juce::Colour(0xff15171b), r.getRight(), r.getBottom(), false);
-    g.setGradientFill(bg);
-    g.fillRoundedRectangle(r, 7.f);
-
-    g.setColour(juce::Colours::black.withAlpha(0.95f));
-    g.drawRoundedRectangle(r, 7.f, 1.f);
-
-    g.setColour(accent.withAlpha(0.20f));
-    g.drawRoundedRectangle(inset(r, 2.f), 5.f, 1.f);
-}
-
-void drawSection(juce::Graphics& g, juce::Rectangle<float> r, juce::Colour accent,
-                 const juce::String& title, const juce::String& subtitle)
-{
-    juce::ColourGradient bg(juce::Colour(0xff25282e), r.getX(), r.getY(),
-                            juce::Colour(0xff111317), r.getX(), r.getBottom(), false);
-    g.setGradientFill(bg);
-    g.fillRoundedRectangle(r, 9.f);
-
-    g.setColour(juce::Colours::black.withAlpha(0.95f));
-    g.drawRoundedRectangle(r, 9.f, 1.f);
-
-    g.setColour(accent.withAlpha(0.85f));
-    g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
-
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::FontOptions(15.f).withStyle("Bold"));
-    g.drawText(title, (int)r.getX() + 18, (int)r.getY() + 9, 220, 22,
-               juce::Justification::left);
-
-    g.setColour(juce::Colour(0xff8f949e));
-    g.setFont(juce::FontOptions(9.f));
-    g.drawText(subtitle, (int)r.getX() + 18, (int)r.getY() + 31,
-               (int)r.getWidth() - 36, 16, juce::Justification::left);
-}
 }
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
@@ -70,46 +31,45 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
     float sliderPosProportional, float rotaryStartAngle, float rotaryEndAngle,
     juce::Slider& slider)
 {
-    const auto area = juce::Rectangle<float>((float)x, (float)y, (float)width, (float)height)
-        .reduced(5.f);
+    const auto area = juce::Rectangle<float>((float) x, (float) y,
+                                             (float) width, (float) height).reduced(4.f);
     const float cx = area.getCentreX();
-    const float cy = area.getCentreY();
-    const float radius = juce::jmin(area.getWidth(), area.getHeight()) * 0.5f - 4.f;
+    const float cy = area.getCentreY() - 2.f;
+    const float radius = juce::jmin(area.getWidth(), area.getHeight()) * 0.5f - 8.f;
     const auto accent = slider.findColour(juce::Slider::rotarySliderFillColourId);
-
     const float angle = juce::jmap(sliderPosProportional, rotaryStartAngle, rotaryEndAngle);
 
     g.setColour(juce::Colours::black.withAlpha(0.95f));
     g.fillEllipse(cx - radius - 3.f, cy - radius - 3.f,
-                  2.f * (radius + 3.f), 2.f * (radius + 3.f));
+                  (radius + 3.f) * 2.f, (radius + 3.f) * 2.f);
 
-    juce::ColourGradient rim(juce::Colour(0xff666a72), cx, cy - radius,
-                             juce::Colour(0xff1b1d21), cx, cy + radius, false);
+    juce::ColourGradient rim(juce::Colour(0xff6c7078), cx, cy - radius,
+                             juce::Colour(0xff1a1c21), cx, cy + radius, false);
     g.setGradientFill(rim);
-    g.fillEllipse(cx - radius, cy - radius, 2.f * radius, 2.f * radius);
+    g.fillEllipse(cx - radius, cy - radius, radius * 2.f, radius * 2.f);
 
-    juce::ColourGradient face(juce::Colour(0xff454952), cx, cy - radius * .8f,
-                              juce::Colour(0xff191b20), cx, cy + radius, false);
+    juce::ColourGradient face(juce::Colour(0xff4b4f58), cx, cy - radius * .8f,
+                              juce::Colour(0xff181a1f), cx, cy + radius, false);
     g.setGradientFill(face);
     g.fillEllipse(cx - radius + 4.f, cy - radius + 4.f,
-                  2.f * (radius - 4.f), 2.f * (radius - 4.f));
+                  (radius - 4.f) * 2.f, (radius - 4.f) * 2.f);
 
     juce::Path arcBg;
-    arcBg.addCentredArc(cx, cy, radius + 5.f, radius + 5.f, 0.f,
+    arcBg.addCentredArc(cx, cy, radius + 4.f, radius + 4.f, 0.f,
                         rotaryStartAngle, rotaryEndAngle, true);
-    g.setColour(juce::Colours::black.withAlpha(0.95f));
-    g.strokePath(arcBg, juce::PathStrokeType(2.5f));
+    g.setColour(juce::Colours::black.withAlpha(.9f));
+    g.strokePath(arcBg, juce::PathStrokeType(2.2f));
 
     juce::Path arc;
-    arc.addCentredArc(cx, cy, radius + 5.f, radius + 5.f, 0.f,
+    arc.addCentredArc(cx, cy, radius + 4.f, radius + 4.f, 0.f,
                       rotaryStartAngle, angle, true);
-    g.setColour(accent.withAlpha(0.92f));
-    g.strokePath(arc, juce::PathStrokeType(2.7f));
+    g.setColour(accent.withAlpha(.95f));
+    g.strokePath(arc, juce::PathStrokeType(2.6f));
 
-    const float tx = cx + std::cos(angle - juce::MathConstants<float>::halfPi) * (radius * .68f);
-    const float ty = cy + std::sin(angle - juce::MathConstants<float>::halfPi) * (radius * .68f);
+    const float tx = cx + std::cos(angle - juce::MathConstants<float>::halfPi) * radius * .66f;
+    const float ty = cy + std::sin(angle - juce::MathConstants<float>::halfPi) * radius * .66f;
     g.setColour(juce::Colours::black);
-    g.fillRoundedRectangle(cx - 1.6f, cy - radius + 8.f, 3.2f, radius * .32f, 1.5f);
+    g.fillRoundedRectangle(cx - 1.6f, cy - radius + 8.f, 3.2f, radius * .30f, 1.5f);
     g.setColour(accent);
     g.fillEllipse(tx - 2.f, ty - 2.f, 4.f, 4.f);
 }
@@ -118,188 +78,311 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
     juce::Graphics& g, juce::ToggleButton& button,
     bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown)
 {
+    juce::ignoreUnused(shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
+
+    if (button.getWidth() <= 36 && button.getHeight() <= 36)
+    {
+        const float d = juce::jmin(button.getWidth(), button.getHeight()) - 10.f;
+        const float cx = button.getLocalBounds().getCentreX();
+        const float cy = button.getLocalBounds().getCentreY();
+        const auto accent = button.findColour(juce::ToggleButton::tickColourId);
+        const bool active = !button.getToggleState();
+
+        g.setColour(juce::Colours::black.withAlpha(.8f));
+        g.fillEllipse(cx - d * .5f - 3.f, cy - d * .5f - 3.f, d + 6.f, d + 6.f);
+
+        juce::ColourGradient glow(active ? accent.withAlpha(.95f)
+                                          : juce::Colour(0xff4b5058),
+                                  cx, cy - d * .5f,
+                                  active ? accent.withAlpha(.18f)
+                                         : juce::Colour(0xff17191d),
+                                  cx, cy + d * .5f, false);
+        g.setGradientFill(glow);
+        g.fillEllipse(cx - d * .5f, cy - d * .5f, d, d);
+
+        g.setColour(active ? accent : juce::Colour(0xff666b74));
+        g.drawEllipse(cx - d * .5f, cy - d * .5f, d, d, 1.2f);
+
+        if (active)
+        {
+            g.setColour(accent.withAlpha(.28f));
+            g.fillEllipse(cx - d * .92f, cy - d * .92f, d * 1.84f, d * 1.84f);
+        }
+        return;
+    }
+
     auto r = button.getLocalBounds().toFloat().reduced(1.f);
     const bool on = button.getToggleState();
     const auto accent = button.findColour(juce::ToggleButton::tickColourId);
 
-    juce::ColourGradient bg(on ? juce::Colour(0xff3b4650) : juce::Colour(0xff292c31),
-                            r.getX(), r.getY(), juce::Colour(0xff111317),
-                            r.getX(), r.getBottom(), false);
-    g.setGradientFill(bg);
+    g.setColour(on ? juce::Colour(0xff353a42) : juce::Colour(0xff23262b));
     g.fillRoundedRectangle(r, 5.f);
-
-    g.setColour(accent.withAlpha(on ? 0.9f : 0.25f));
-    g.drawRoundedRectangle(r, 5.f, on ? 1.4f : 1.f);
-
-    g.setColour(on ? accent : juce::Colour(0xff8c919a));
-    g.setFont(juce::FontOptions(10.f).withStyle("Bold"));
+    g.setColour(accent.withAlpha(on ? .7f : .35f));
+    g.drawRoundedRectangle(r, 5.f, on ? 1.2f : 1.f);
+    g.setColour(juce::Colour(0xffbcc3cc));
+    g.setFont(juce::FontOptions(9.f).withStyle("Bold"));
     g.drawText(button.getButtonText(), r.toNearestInt(), juce::Justification::centred);
-
-    juce::ignoreUnused(shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
 }
 
 VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& p)
-    : AudioProcessorEditor(&p), audioProcessor(p), page(*this)
+    : AudioProcessorEditor(&p), audioProcessor(p)
 {
     setLookAndFeel(&metalLook);
-    setResizable(true, true);
-    setSize(1500, 1020);
-
-    viewport.setScrollBarsShown(true, false);
-    viewport.setScrollBarThickness(11);
-    viewport.setViewedComponent(&page, false);
-    addAndMakeVisible(viewport);
+    setResizable(false, false);
+    setSize(1500, 930);
 
     const std::array<juce::String, 5> bypassIds
     {
         "EQ_BYPASS", "OTT_BYPASS", "ATYPE_BYPASS", "DEESS_BYPASS", "MIX_BYPASS"
     };
-    const std::array<juce::String, 5> bypassNames
-    {
-        "EQ / ANALOG", "OTT", "TYPE-A", "DE-ESSER", "MIX / OUT"
-    };
 
     for (int i = 0; i < 5; ++i)
-        addBypass(i, bypassIds[(size_t)i], bypassNames[(size_t)i]);
+        addBypass(i, bypassIds[(size_t) i], kModuleNames[(size_t) i],
+                  i == 0 ? juce::Colour(0xff38bdf8)
+                  : i == 1 ? juce::Colour(0xfffacc15)
+                  : i == 2 ? juce::Colour(0xfff472b6)
+                  : i == 3 ? juce::Colour(0xff67d3aa)
+                            : juce::Colour(0xff9ed85c));
 
     for (int b = 0; b < 4; ++b)
     {
-        const int group = 10 + b;
-        const auto c = kBandColours[(size_t)b];
+        const auto colour = kBandColours[(size_t) b];
         const auto n = juce::String(b + 1);
-        addKnob("EQ" + n + "_FREQ", "FREQUENCY", 20, 20000, 1, parameterValue("EQ" + n + "_FREQ"), " Hz", group, 0, c);
-        addKnob("EQ" + n + "_GAIN", "GAIN", -24, 24, .1, parameterValue("EQ" + n + "_GAIN"), " dB", group, 1, c);
-        addKnob("EQ" + n + "_Q", "Q", .1, 18, .01, parameterValue("EQ" + n + "_Q"), "", group, 2, c);
+
+        addKnob("EQ" + n + "_FREQ", "FREQ", 20, 20000, 1,
+                parameterValue("EQ" + n + "_FREQ"), " Hz", b, 0, colour);
+        addKnob("EQ" + n + "_GAIN", "GAIN", -24, 24, .1,
+                parameterValue("EQ" + n + "_GAIN"), " dB", b, 1, colour);
+        addKnob("EQ" + n + "_Q", "Q", .1, 18, .01,
+                parameterValue("EQ" + n + "_Q"), "", b, 2, colour);
+
+        addKnob("OTT_DEGREE" + n, "OTT %", 0, 100, .1,
+                parameterValue("OTT_DEGREE" + n), " %", b, 3, colour);
+        addKnob("OTT_COMP_A" + n, "ATTACK", .1, 250, .1,
+                parameterValue("OTT_COMP_A" + n), " ms", b, 4,
+                juce::Colour(0xfffacc15));
+        addKnob("OTT_COMP_R" + n, "RELEASE", 10, 2500, 1,
+                parameterValue("OTT_COMP_R" + n), " ms", b, 5,
+                juce::Colour(0xfffacc15));
+
+        addKnob("ATYPE_DEGREE" + n, "TAPE-A +", 0, 100, .1,
+                parameterValue("ATYPE_DEGREE" + n), "", b, 6, colour, true);
+
+        if (b == 3)
+        {
+            addKnob("DEESS_FREQ", "DE-ESS FREQ", 6000, 18000, 10,
+                    parameterValue("DEESS_FREQ"), " Hz", b, 7,
+                    juce::Colour(0xff67d3aa));
+            addKnob("DEESS_INTENSITY", "DE-ESS INT", 2, 10, .01,
+                    parameterValue("DEESS_INTENSITY"), "", b, 8,
+                    juce::Colour(0xff67d3aa));
+        }
+
+        advancedButtons[(size_t) b] = std::make_unique<juce::TextButton>("+ ADV");
+        advancedButtons[(size_t) b]->setTooltip("開啟 Band " + n + " 的 OTT 進階設定");
+        advancedButtons[(size_t) b]->onClick = [this, b]
+        {
+            setExpandedBand(expandedBand == b ? -1 : b);
+        };
+        addAndMakeVisible(*advancedButtons[(size_t) b]);
     }
-    addKnob("EQ_COLOR", "ANALOG COLOR", 0, 100, .1, parameterValue("EQ_COLOR"), " %", 15, 0, juce::Colour(0xff60a5fa));
-    addKnob("HF_CORNER", "HP / CORNER", 40, 120, 1, parameterValue("HF_CORNER"), " Hz", 15, 1, juce::Colour(0xff60a5fa));
+
+    addKnob("EQ_COLOR", "ANALOG COLOR", 0, 100, .1,
+            parameterValue("EQ_COLOR"), " %", -1, 0,
+            juce::Colour(0xff60a5fa));
+    addKnob("HF_CORNER", "HP / CORNER", 40, 120, 1,
+            parameterValue("HF_CORNER"), " Hz", -1, 1,
+            juce::Colour(0xff60a5fa));
+
+    const std::array<std::tuple<juce::String, juce::String, double, double, double, juce::Colour>, 7> shared
+    {{
+        { "OTT_X1", "XOVER 1", 80, 600, 1, juce::Colour(0xfffacc15) },
+        { "OTT_X2", "XOVER 2", 750, 3000, 1, juce::Colour(0xfffacc15) },
+        { "OTT_X3", "XOVER 3", 6000, 12000, 1, juce::Colour(0xfffacc15) },
+        { "OTT_INPUT", "INPUT", -24, 24, .1, juce::Colour(0xfffacc15) },
+        { "OTT_GATE", "GATE", -90, 0, .1, juce::Colour(0xfffacc15) },
+        { "OTT_MIX", "MASTER MIX", 0, 100, .1, juce::Colour(0xfffacc15) },
+        { "OTT_OUTPUT", "OUTPUT", -24, 24, .1, juce::Colour(0xfffacc15) }
+    }};
+
+    for (const auto& item : shared)
+    {
+        const auto& id = std::get<0>(item);
+        addKnob(id, std::get<1>(item),
+                std::get<2>(item), std::get<3>(item), std::get<4>(item),
+                parameterValue(id), id == "OTT_MIX" ? " %" : " dB",
+                -2, -1, std::get<5>(item));
+    }
 
     for (int b = 0; b < 4; ++b)
     {
-        const int group = 20 + b;
-        const auto c = kBandColours[(size_t)b];
         const auto n = juce::String(b + 1);
-        addKnob("OTT_DEGREE" + n, "DEGREE", 0, 100, .1, parameterValue("OTT_DEGREE" + n), " %", group, 0, c);
-        addKnob("OTT_LIFT_T" + n, "LIFTER THRESH", -80, 0, .1, parameterValue("OTT_LIFT_T" + n), " dB", group, 1, c);
-        addKnob("OTT_LIFT_A" + n, "LIFTER ATT", 1, 500, .1, parameterValue("OTT_LIFT_A" + n), " ms", group, 2, c);
-        addKnob("OTT_LIFT_R" + n, "LIFTER REL", 10, 2500, 1, parameterValue("OTT_LIFT_R" + n), " ms", group, 3, c);
-        addKnob("OTT_LIFT_M" + n, "LIFTER MIX", 0, 100, .1, parameterValue("OTT_LIFT_M" + n), " %", group, 4, c);
-        addKnob("OTT_COMP_T" + n, "COMP THRESH", -24, 0, .1, parameterValue("OTT_COMP_T" + n), " dB", group, 5, c);
-        addKnob("OTT_COMP_A" + n, "COMP ATT", .1, 250, .1, parameterValue("OTT_COMP_A" + n), " ms", group, 6, c);
-        addKnob("OTT_COMP_R" + n, "COMP REL", 10, 2500, 1, parameterValue("OTT_COMP_R" + n), " ms", group, 7, c);
-        addKnob("OTT_COMP_M" + n, "COMP MIX", 0, 100, .1, parameterValue("OTT_COMP_M" + n), " %", group, 8, c);
-        addKnob("OTT_LEVEL" + n, "BAND LEVEL", -24, 12, .1, parameterValue("OTT_LEVEL" + n), " dB", group, 9, c);
+        const auto c = kBandColours[(size_t) b];
+        addKnob("OTT_LIFT_T" + n, "LIFT THRESH", -80, 0, .1,
+                parameterValue("OTT_LIFT_T" + n), " dB", b, 10, c);
+        addKnob("OTT_LIFT_A" + n, "LIFT ATT", 1, 500, .1,
+                parameterValue("OTT_LIFT_A" + n), " ms", b, 11, c);
+        addKnob("OTT_LIFT_R" + n, "LIFT REL", 10, 2500, 1,
+                parameterValue("OTT_LIFT_R" + n), " ms", b, 12, c);
+        addKnob("OTT_LIFT_M" + n, "LIFT MIX", 0, 100, .1,
+                parameterValue("OTT_LIFT_M" + n), " %", b, 13, c);
+        addKnob("OTT_COMP_T" + n, "COMP THRESH", -24, 0, .1,
+                parameterValue("OTT_COMP_T" + n), " dB", b, 14, c);
+        addKnob("OTT_COMP_M" + n, "COMP MIX", 0, 100, .1,
+                parameterValue("OTT_COMP_M" + n), " %", b, 15, c);
+        addKnob("OTT_LEVEL" + n, "BAND LEVEL", -24, 12, .1,
+                parameterValue("OTT_LEVEL" + n), " dB", b, 16, c);
     }
 
-    addKnob("OTT_X1", "XOVER 1", 80, 600, 1, parameterValue("OTT_X1"), " Hz", 25, 0, juce::Colour(0xfffacc15));
-    addKnob("OTT_X2", "XOVER 2", 750, 3000, 1, parameterValue("OTT_X2"), " Hz", 25, 1, juce::Colour(0xfffacc15));
-    addKnob("OTT_X3", "XOVER 3", 6000, 12000, 1, parameterValue("OTT_X3"), " Hz", 25, 2, juce::Colour(0xfffacc15));
-    addKnob("OTT_INPUT", "INPUT", -24, 24, .1, parameterValue("OTT_INPUT"), " dB", 25, 3, juce::Colour(0xfffacc15));
-    addKnob("OTT_GATE", "GATE", -90, 0, .1, parameterValue("OTT_GATE"), " dB", 25, 4, juce::Colour(0xfffacc15));
-    addKnob("OTT_MIX", "MASTER MIX", 0, 100, .1, parameterValue("OTT_MIX"), " %", 25, 5, juce::Colour(0xfffacc15));
-    addKnob("OTT_OUTPUT", "OUTPUT", -24, 24, .1, parameterValue("OTT_OUTPUT"), " dB", 25, 6, juce::Colour(0xfffacc15));
-
-    ottClipper = std::make_unique<juce::ToggleButton>("CLIP");
+    ottClipper = std::make_unique<juce::ToggleButton>("CLIPPER");
     ottClipper->setLookAndFeel(&metalLook);
-    ottClipperAttachment = std::make_unique<BoolAttachment>(
+    ottClipper->setColour(juce::ToggleButton::tickColourId,
+                          juce::Colour(0xfffacc15));
+    ottClipper->setTooltip("OTT Clipper");
+    addAndMakeVisible(*ottClipper);
+    auto clipAttach = std::make_unique<BoolAttachment>(
         audioProcessor.apvts, "OTT_CLIPPER", *ottClipper);
-    page.addAndMakeVisible(*ottClipper);
+    ottClipperAttachment = std::move(clipAttach);
 
-    for (int b = 0; b < 4; ++b)
+    closeAdvanced = std::make_unique<juce::TextButton>("CLOSE");
+    closeAdvanced->onClick = [this] { setExpandedBand(-1); };
+    addAndMakeVisible(*closeAdvanced);
+
+    // Global Mix / Out remains visible; Type-A global timing/trim stays at its
+    // tuned defaults so the band control is the only visible Tape-A amount.
+    addKnob("DRY_WET", "DRY / WET", 0, 100, .1,
+            parameterValue("DRY_WET"), " %", -3, 0,
+            juce::Colour(0xff38bdf8));
+    addKnob("OUTPUT_LEVEL", "OUTPUT", -24, 12, .1,
+            parameterValue("OUTPUT_LEVEL"), " dB", -3, 1,
+            juce::Colour(0xff9ed85c));
+
+    setExpandedBand(-1);
+}
+
+VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
+{
+    for (auto& k : knobs)
     {
-        const int group = 30 + b;
-        const auto c = kBandColours[(size_t)b];
-        const auto n = juce::String(b + 1);
-        addKnob("ATYPE_DEGREE" + n, "TYPE-A DEGREE", 0, 100, .1, parameterValue("ATYPE_DEGREE" + n), " %", group, 0, c);
-        addKnob("ATYPE_LEVEL" + n, "BAND LEVEL", -6, 6, .1, parameterValue("ATYPE_LEVEL" + n), " dB", group, 1, c);
+        k.attachment.reset();
+        if (k.slider)
+            k.slider->setLookAndFeel(nullptr);
+        if (k.label)
+            k.label->setLookAndFeel(nullptr);
     }
 
-    addKnob("ATYPE_ATTACK", "ATTACK", 1, 100, .1, parameterValue("ATYPE_ATTACK"), " ms", 35, 0, juce::Colour(0xfff472b6));
-    addKnob("ATYPE_RELEASE", "RELEASE", 20, 500, 1, parameterValue("ATYPE_RELEASE"), " ms", 35, 1, juce::Colour(0xfff472b6));
-    addKnob("ATYPE_INPUT", "INPUT", -24, 24, .1, parameterValue("ATYPE_INPUT"), " dB", 35, 2, juce::Colour(0xfff472b6));
-    addKnob("ATYPE_MIX", "MIX", 0, 100, .1, parameterValue("ATYPE_MIX"), " %", 35, 3, juce::Colour(0xfff472b6));
-    addKnob("ATYPE_OUTPUT", "OUTPUT", -24, 24, .1, parameterValue("ATYPE_OUTPUT"), " dB", 35, 4, juce::Colour(0xfff472b6));
+    for (auto& b : bypassButtons)
+        if (b) b->setLookAndFeel(nullptr);
+    if (ottClipper)
+        ottClipper->setLookAndFeel(nullptr);
+    ottClipperAttachment.reset();
 
-    deEssVoice.addItem("Male Vocal · 12.5 kHz", 1);
-    deEssVoice.addItem("Female Vocal · 13.5 kHz", 2);
-    deEssVoice.setLookAndFeel(&metalLook);
-    deEssVoiceAttachment = std::make_unique<ComboAttachment>(
-        audioProcessor.apvts, "DEESS_VOICE", deEssVoice);
-    page.addAndMakeVisible(deEssVoice);
-
-    addKnob("DEESS_INTENSITY", "INTENSITY", 2, 10, .01, parameterValue("DEESS_INTENSITY"), "", 40, 0, juce::Colour(0xff67d3aa));
-    addKnob("DEESS_OFFSET", "OFFSET", -.1, .1, .0001, parameterValue("DEESS_OFFSET"), "", 40, 1, juce::Colour(0xff67d3aa));
-
-    addKnob("DRY_WET", "DRY / WET", 0, 100, .1, parameterValue("DRY_WET"), " %", 50, 0, juce::Colour(0xff38bdf8));
-    addKnob("OUTPUT_LEVEL", "OUTPUT", -24, 12, .1, parameterValue("OUTPUT_LEVEL"), " dB", 50, 1, juce::Colour(0xff9ed85c));
-
-    page.setSize(1480, 2050);
+    setLookAndFeel(nullptr);
 }
 
 void VVChainAudioProcessorEditor::addKnob(
     const juce::String& id, const juce::String& title,
     double min, double max, double step, double defaultValue,
-    const juce::String& suffix, int group, int slot, juce::Colour accent)
+    const juce::String& suffix, int band, int slot,
+    juce::Colour accent, bool tapeDisplayDb)
 {
     Knob k;
-    k.group = group;
-    k.slot = slot;
+    k.id = id;
+    k.title = title;
+    k.suffix = suffix;
     k.accent = accent;
+    k.band = band;
+    k.slot = slot;
+    k.tapeDisplayDb = tapeDisplayDb;
     k.slider = std::make_unique<juce::Slider>();
     k.label = std::make_unique<juce::Label>();
 
     k.slider->setLookAndFeel(&metalLook);
     k.slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-    k.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 84, 18);
+    k.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 78, 16);
     k.slider->setRange(min, max, step);
     k.slider->setDoubleClickReturnValue(true, defaultValue);
-    k.slider->setTextValueSuffix(suffix);
     k.slider->setColour(juce::Slider::rotarySliderFillColourId, accent);
-    k.slider->setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colour(0xff0d0f12));
-    k.slider->setNumDecimalPlacesToDisplay(step < .001 ? 4 : step < .01 ? 3 : step < .1 ? 2 : step < 1 ? 1 : 0);
+    k.slider->setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colour(0xff08090b));
+    k.slider->setNumDecimalPlacesToDisplay(
+        step < .01 ? 3 : step < .1 ? 2 : step < 1 ? 1 : 0);
+    if (tapeDisplayDb)
+    {
+        k.slider->setTextFromValueFunction([](double value)
+        {
+            return juce::String(value * .06, 1) + " dB";
+        });
+        k.slider->setValueFromTextFunction([](const juce::String& text)
+        {
+            return text.retainCharacters("0123456789.-").getDoubleValue() / .06;
+        });
+    }
+    else
+    {
+        k.slider->setTextValueSuffix(suffix);
+    }
 
     k.label->setText(title, juce::dontSendNotification);
-    k.label->setColour(juce::Label::textColourId, juce::Colour(0xffc9cdd5));
+    k.label->setColour(juce::Label::textColourId, accent.brighter(.35f));
     k.label->setJustificationType(juce::Justification::centred);
-    k.label->setFont(juce::FontOptions(9.f).withStyle("Bold"));
+    k.label->setFont(juce::FontOptions(8.5f).withStyle("Bold"));
 
     k.attachment = std::make_unique<Attachment>(
         audioProcessor.apvts, id, *k.slider);
 
-    page.addAndMakeVisible(*k.slider);
-    page.addAndMakeVisible(*k.label);
+    addAndMakeVisible(*k.slider);
+    addAndMakeVisible(*k.label);
     knobs.push_back(std::move(k));
 }
 
-void VVChainAudioProcessorEditor::addBypass(int moduleIndex, const juce::String& parameterId,
-                                            const juce::String& title)
+void VVChainAudioProcessorEditor::addBypass(
+    int index, const juce::String& parameterId,
+    const juce::String& tooltip, juce::Colour accent)
 {
-    auto b = std::make_unique<juce::ToggleButton>("BYPASS");
+    auto b = std::make_unique<juce::ToggleButton>();
     b->setLookAndFeel(&metalLook);
-    b->setColour(juce::ToggleButton::tickColourId, kBandColours[(size_t)moduleIndex % 4]);
-    b->setTooltip(title);
-    bypassAttachments[(size_t)moduleIndex] = std::make_unique<BoolAttachment>(
-        audioProcessor.apvts, parameterId, *b);
-    page.addAndMakeVisible(*b);
-    bypassButtons[(size_t)moduleIndex] = std::move(b);
+    b->setButtonText("");
+    b->setColour(juce::ToggleButton::tickColourId, accent);
+    b->setTooltip(tooltip + "：亮 = 運作，暗 = BYPASS");
+    bypassAttachments[(size_t) index] =
+        std::make_unique<BoolAttachment>(audioProcessor.apvts, parameterId, *b);
+    addAndMakeVisible(*b);
+    bypassButtons[(size_t) index] = std::move(b);
+}
+
+VVChainAudioProcessorEditor::Knob* VVChainAudioProcessorEditor::findKnob(const juce::String& id)
+{
+    for (auto& k : knobs)
+        if (k.id == id)
+            return &k;
+    return nullptr;
+}
+
+void VVChainAudioProcessorEditor::placeKnob(const juce::String& id, juce::Rectangle<int> area)
+{
+    if (auto* k = findKnob(id))
+    {
+        k->label->setBounds(area.removeFromTop(13));
+        k->slider->setBounds(area);
+    }
 }
 
 float VVChainAudioProcessorEditor::parameterValue(const juce::String& id) const
 {
-    if (auto* p = audioProcessor.apvts.getRawParameterValue(id))
-        return p->load();
+    if (auto* value = audioProcessor.apvts.getRawParameterValue(id))
+        return value->load();
     return 0.f;
 }
 
 void VVChainAudioProcessorEditor::setParameter(const juce::String& id, float value)
 {
-    if (auto* p = audioProcessor.apvts.getParameter(id))
-        p->setValueNotifyingHost(p->convertTo0to1(value));
+    if (auto* parameter = audioProcessor.apvts.getParameter(id))
+        parameter->setValueNotifyingHost(parameter->convertTo0to1(value));
 }
 
-juce::Rectangle<float> VVChainAudioProcessorEditor::graphBounds() const
+juce::Rectangle<float> VVChainAudioProcessorEditor::eqGraphBounds() const
 {
-    return { 24.f, 86.f, (float)page.getWidth() - 48.f, 310.f };
+    return { 260.f, 72.f, (float) getWidth() - 280.f, 86.f };
 }
 
 float VVChainAudioProcessorEditor::graphFrequencyToX(
@@ -311,7 +394,7 @@ float VVChainAudioProcessorEditor::graphFrequencyToX(
 float VVChainAudioProcessorEditor::graphXToFrequency(
     const juce::Rectangle<float>& graph, float x) const
 {
-    const float t = juce::jlimit(0.f, 1.f, (x - graph.getX()) / graph.getWidth());
+    const float t = (x - graph.getX()) / juce::jmax(1.f, graph.getWidth());
     return invLogMap(t, 20.f, 20000.f);
 }
 
@@ -325,430 +408,429 @@ float VVChainAudioProcessorEditor::eqDbToY(
 void VVChainAudioProcessorEditor::drawEqGraph(
     juce::Graphics& g, juce::Rectangle<float> graph)
 {
-    juce::ColourGradient bg(juce::Colour(0xff101318), graph.getX(), graph.getY(),
+    juce::ColourGradient bg(juce::Colour(0xff111318), graph.getX(), graph.getY(),
                             juce::Colour(0xff1b1e24), graph.getRight(), graph.getBottom(), false);
     g.setGradientFill(bg);
-    g.fillRoundedRectangle(graph, 8.f);
+    g.fillRoundedRectangle(graph, 7.f);
+    g.setColour(juce::Colours::black.withAlpha(.95f));
+    g.drawRoundedRectangle(graph, 7.f, 1.f);
 
-    g.setColour(juce::Colours::black.withAlpha(0.95f));
-    g.drawRoundedRectangle(graph, 8.f, 1.f);
-
-    for (int i = 0; i < 9; ++i)
+    for (int i = 0; i <= 8; ++i)
     {
-        const float db = -18.f + i * 4.5f;
+        const float db = 18.f - i * 4.5f;
         const float y = eqDbToY(graph, db);
-        g.setColour(db == 0.f ? juce::Colours::white.withAlpha(0.55f)
-                              : juce::Colour(0xff56606b).withAlpha(0.45f));
-        g.drawHorizontalLine((int)y, graph.getX(), graph.getRight());
-        g.setColour(juce::Colour(0xff9aa0aa));
-        g.setFont(juce::FontOptions(9.f));
-        g.drawText(juce::String(db, db == 0.f ? 0 : 1) + " dB",
-                   (int)graph.getX() + 5, (int)y - 8, 42, 15,
-                   juce::Justification::left);
+        g.setColour(juce::Colour(0xff4b5360).withAlpha(.45f));
+        g.drawHorizontalLine((int) y, graph.getX(), graph.getRight());
     }
 
     for (float f : { 20.f, 50.f, 100.f, 200.f, 500.f, 1000.f, 2000.f, 5000.f, 10000.f, 20000.f })
     {
         const float x = graphFrequencyToX(graph, f);
-        g.setColour(juce::Colour(0xff56606b).withAlpha(0.5f));
-        g.drawVerticalLine((int)x, graph.getY(), graph.getBottom());
-        g.setColour(juce::Colour(0xff9aa0aa));
-        g.drawText(f >= 1000.f ? juce::String(f / 1000.f, f >= 10000.f ? 0 : 1) + "k"
-                               : juce::String((int)f),
-                   (int)x + 3, (int)graph.getBottom() - 18, 35, 14,
-                   juce::Justification::left);
+        g.setColour(juce::Colour(0xff56606b).withAlpha(.38f));
+        g.drawVerticalLine((int) x, graph.getY(), graph.getBottom());
     }
 
     juce::Path response;
-    for (int i = 0; i <= 300; ++i)
+    for (int i = 0; i <= 260; ++i)
     {
-        const float hz = invLogMap(i / 300.f, 20.f, 20000.f);
+        const float hz = invLogMap(i / 260.f, 20.f, 20000.f);
         float db = 0.f;
+
         for (int b = 0; b < 4; ++b)
         {
             const auto n = juce::String(b + 1);
             const float f0 = parameterValue("EQ" + n + "_FREQ");
             const float gain = parameterValue("EQ" + n + "_GAIN");
             const float q = juce::jmax(.1f, parameterValue("EQ" + n + "_Q"));
-            const float xx = std::log(std::max(hz, 20.f) / std::max(f0, 20.f));
             const float width = juce::jmax(.02f, 1.f / (q * 1.8f));
+            const float xx = std::log(std::max(hz, 20.f) / std::max(f0, 20.f));
             db += gain * std::exp(-(xx * xx) / (2.f * width * width));
         }
 
-        const juce::Point<float> pt(graphFrequencyToX(graph, hz), eqDbToY(graph, db));
+        const auto pt = juce::Point<float>(graphFrequencyToX(graph, hz), eqDbToY(graph, db));
         if (i == 0) response.startNewSubPath(pt);
         else response.lineTo(pt);
     }
 
-    g.setColour(juce::Colours::white.withAlpha(0.9f));
-    g.strokePath(response, juce::PathStrokeType(2.4f));
+    g.setColour(juce::Colours::white.withAlpha(.92f));
+    g.strokePath(response, juce::PathStrokeType(2.0f));
 
     for (int b = 0; b < 4; ++b)
     {
         const auto n = juce::String(b + 1);
-        const auto c = kBandColours[(size_t)b];
         const float x = graphFrequencyToX(graph, parameterValue("EQ" + n + "_FREQ"));
         const float y = eqDbToY(graph, parameterValue("EQ" + n + "_GAIN"));
+        const auto c = kBandColours[(size_t) b];
 
-        if (selectedBand == b)
-        {
-            g.setColour(c.withAlpha(0.15f));
-            g.fillEllipse(x - 16.f, y - 16.f, 32.f, 32.f);
-        }
+        g.setColour(c.withAlpha(.16f));
+        g.fillEllipse(x - 12.f, y - 12.f, 24.f, 24.f);
         g.setColour(c);
-        g.fillEllipse(x - 7.f, y - 7.f, 14.f, 14.f);
-        g.setColour(juce::Colours::black.withAlpha(0.85f));
-        g.drawEllipse(x - 7.f, y - 7.f, 14.f, 14.f, 1.f);
+        g.fillEllipse(x - 6.f, y - 6.f, 12.f, 12.f);
         g.setColour(juce::Colours::black);
-        g.setFont(juce::FontOptions(9.f).withStyle("Bold"));
-        g.drawText(juce::String(b + 1), (int)x - 6, (int)y - 6, 12, 12, juce::Justification::centred);
-    }
-}
-
-void VVChainAudioProcessorEditor::drawOttOverview(
-    juce::Graphics& g, juce::Rectangle<float> r)
-{
-    const float xs[3] = {
-        parameterValue("OTT_X1"), parameterValue("OTT_X2"), parameterValue("OTT_X3")
-    };
-    for (int i = 0; i < 3; ++i)
-    {
-        const float x = r.getX() + r.getWidth() * logMap(xs[i], 20.f, 20000.f);
-        g.setColour(juce::Colour(0xffffc75a).withAlpha(.55f));
-        g.drawVerticalLine((int)x, (int)r.getY() + 3, (int)r.getBottom() - 3);
+        g.setFont(juce::FontOptions(8.f).withStyle("Bold"));
+        g.drawText(juce::String(b + 1), (int) x - 5, (int) y - 5, 10, 10,
+                   juce::Justification::centred);
     }
 
-    const float centres[4] = {
-        std::sqrt(20.f * xs[0]),
-        std::sqrt(xs[0] * xs[1]),
-        std::sqrt(xs[1] * xs[2]),
-        std::sqrt(xs[2] * 18000.f)
-    };
-
-    for (int b = 0; b < 4; ++b)
-    {
-        const float degree = parameterValue("OTT_DEGREE" + juce::String(b + 1));
-        const float x = r.getX() + r.getWidth() * logMap(centres[b], 20.f, 20000.f);
-        const float y = r.getBottom() - 10.f - degree / 100.f * (r.getHeight() - 24.f);
-        g.setColour(kBandColours[(size_t)b].withAlpha(.8f));
-        g.fillEllipse(x - 5.f, y - 5.f, 10.f, 10.f);
-        g.drawLine(x, y, x, r.getBottom() - 12.f, 1.5f);
-    }
-
-    g.setColour(juce::Colour(0xffaeb4bd));
-    g.setFont(juce::FontOptions(9.f));
-    g.drawText("GATE 6:1  →  LIFTER 6:1  →  COMPRESSOR 8:1  →  LIMITER",
-               (int)r.getX() + 8, (int)r.getBottom() - 16,
-               (int)r.getWidth() - 16, 14, juce::Justification::left);
-}
-
-void VVChainAudioProcessorEditor::drawTypeOverview(
-    juce::Graphics& g, juce::Rectangle<float> r)
-{
-    for (float f : { 80.f, 3000.f, 9000.f })
-    {
-        const float x = r.getX() + r.getWidth() * logMap(f, 20.f, 20000.f);
-        g.setColour(juce::Colour(0xff9aa0aa).withAlpha(.45f));
-        g.drawVerticalLine((int)x, (int)r.getY() + 3, (int)r.getBottom() - 3);
-    }
-
-    const float centres[4] = { 40.f, 700.f, 5200.f, 12000.f };
-    for (int b = 0; b < 4; ++b)
-    {
-        const float degree = parameterValue("ATYPE_DEGREE" + juce::String(b + 1));
-        const float x = r.getX() + r.getWidth() * logMap(centres[b], 20.f, 20000.f);
-        const float y = r.getBottom() - 8.f - degree / 100.f * (r.getHeight() - 16.f);
-        g.setColour(kBandColours[(size_t)b].withAlpha(.82f));
-        g.drawLine(x, r.getBottom() - 8.f, x, y, 2.f);
-        g.fillEllipse(x - 4.f, y - 4.f, 8.f, 8.f);
-    }
-
-    g.setColour(juce::Colour(0xffaeb4bd));
-    g.setFont(juce::FontOptions(9.f));
-    g.drawText("TYPE-A  •  80 Hz LP  /  80 Hz–3 kHz  /  >3 kHz  /  >9 kHz",
-               (int)r.getX() + 8, (int)r.getBottom() - 16,
-               (int)r.getWidth() - 16, 14, juce::Justification::left);
-}
-
-void VVChainAudioProcessorEditor::drawDeEsserOverview(
-    juce::Graphics& g, juce::Rectangle<float> r)
-{
-    const int voice = parameterValue("DEESS_VOICE") > .5f ? 1 : 0;
-    const float ref = voice ? 13500.f : 12500.f;
-    const float x = r.getX() + r.getWidth() * logMap(ref, 20.f, 20000.f);
-
-    g.setColour(juce::Colour(0xff67d3aa).withAlpha(.08f));
-    g.fillRect(r);
-    g.setColour(juce::Colour(0xffffc75a));
-    g.drawVerticalLine((int)x, (int)r.getY() + 4, (int)r.getBottom() - 4);
-
-    g.setColour(juce::Colour(0xff67d3aa));
-    juce::Path p;
-    for (int i = 0; i <= 200; ++i)
-    {
-        const float hz = invLogMap(i / 200.f, 20.f, 20000.f);
-        const float intensity = parameterValue("DEESS_INTENSITY");
-        float att = 0.f;
-        if (hz >= ref)
-        {
-            const float c = intensity * ref / juce::jmax(hz, 1.f);
-            att = -12.f * juce::jlimit(0.f, 1.f, 1.f - 1.f / c);
-        }
-        const float xx = r.getX() + r.getWidth() * logMap(hz, 20.f, 20000.f);
-        const float yy = r.getBottom() - 12.f
-            - juce::jlimit(0.f, 1.f, (att + 12.f) / 12.f) * (r.getHeight() - 22.f);
-        if (i == 0) p.startNewSubPath(xx, yy);
-        else p.lineTo(xx, yy);
-    }
-    g.strokePath(p, juce::PathStrokeType(2.f));
-
-    g.setColour(juce::Colour(0xffc4c9d2));
-    g.setFont(juce::FontOptions(9.f));
-    g.drawText(voice ? "FEMALE 13.5 kHz" : "MALE 12.5 kHz",
-               (int)r.getX() + 8, (int)r.getY() + 7, 130, 14,
+    g.setColour(juce::Colour(0xffaab0ba));
+    g.setFont(juce::FontOptions(8.f));
+    g.drawText("20", (int) graph.getX() + 3, (int) graph.getBottom() - 13, 24, 12,
                juce::Justification::left);
+    g.drawText("20k", (int) graph.getRight() - 25, (int) graph.getBottom() - 13, 24, 12,
+               juce::Justification::right);
+    g.drawText("EQ RESPONSE · DRAG NODE", (int) graph.getX() + 8, (int) graph.getY() + 5,
+               190, 13, juce::Justification::left);
 }
 
-void VVChainAudioProcessorEditor::drawMixOverview(
-    juce::Graphics& g, juce::Rectangle<float> r)
+void VVChainAudioProcessorEditor::drawCard(
+    juce::Graphics& g, juce::Rectangle<float> r, juce::Colour accent,
+    const juce::String& title, const juce::String& subtitle)
 {
-    const float dry = parameterValue("DRY_WET") / 100.f;
-    const float out = juce::jmap(parameterValue("OUTPUT_LEVEL"), -24.f, 12.f, 0.f, 1.f);
-
-    g.setColour(juce::Colour(0xff38bdf8).withAlpha(.2f));
-    g.fillRect(r.getX() + r.getWidth() * .20f,
-               r.getY() + (1.f - dry) * r.getHeight(),
-               r.getWidth() * .24f, dry * r.getHeight());
-    g.setColour(juce::Colour(0xff9ed85c).withAlpha(.2f));
-    g.fillRect(r.getX() + r.getWidth() * .56f,
-               r.getY() + (1.f - out) * r.getHeight(),
-               r.getWidth() * .24f, out * r.getHeight());
-}
-
-void VVChainAudioProcessorEditor::paintPage(
-    juce::Graphics& g, juce::Rectangle<float> bounds)
-{
-    juce::ColourGradient bg(juce::Colour(0xff050608), 0.f, 0.f,
-                            juce::Colour(0xff111318), 0.f, bounds.getBottom(), false);
+    juce::ColourGradient bg(juce::Colour(0xff2d3036), r.getX(), r.getY(),
+                            juce::Colour(0xff15171b), r.getRight(), r.getBottom(), false);
     g.setGradientFill(bg);
-    g.fillRect(bounds);
+    g.fillRoundedRectangle(r, 8.f);
+
+    g.setColour(juce::Colours::black.withAlpha(.9f));
+    g.drawRoundedRectangle(r, 8.f, 1.f);
+    g.setColour(accent.withAlpha(.22f));
+    g.drawRoundedRectangle(r.reduced(2.f), 6.f, 1.f);
+
+    g.setColour(accent);
+    g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
 
     g.setColour(juce::Colours::white);
-    g.setFont(juce::FontOptions(23.f).withStyle("Bold"));
-    g.drawText("VVCHAIN", 20, 13, 220, 28, juce::Justification::left);
+    g.setFont(juce::FontOptions(13.f).withStyle("Bold"));
+    g.drawText(title, (int) r.getX() + 14, (int) r.getY() + 8, 84, 18,
+               juce::Justification::left);
 
-    g.setColour(juce::Colour(0xff5d6875));
-    g.setFont(juce::FontOptions(10.f));
-    g.drawText("FREQUALIZER ENGINE  •  EQ / ANALOG  •  OTT  •  TYPE-A  •  REFERENCE DE-ESSER  •  MIX / OUT",
-               20, 41, getWidth() - 40, 16, juce::Justification::left);
-
-    drawEqGraph(g, graphBounds());
-
-    const int width = getWidth();
-
-    const juce::Rectangle<float> eqSection(18.f, 410.f, width - 36.f, 300.f);
-    drawSection(g, eqSection, juce::Colour(0xff38bdf8),
-                "EQ / ANALOG", "4-band parametric EQ • metallic control cards • drag nodes on the spectrum");
-
-    for (int b = 0; b < 4; ++b)
-    {
-        auto card = juce::Rectangle<int>(
-            30 + b * ((width - 76) / 4), 455, (width - 86) / 4, 235);
-        drawCard(g, card.toFloat(), kBandColours[(size_t)b]);
-        g.setColour(kBandColours[(size_t)b]);
-        g.setFont(juce::FontOptions(11.f).withStyle("Bold"));
-        g.drawText("BAND " + juce::String(b + 1),
-                   card.getX() + 10, card.getY() + 8, 90, 18, juce::Justification::left);
-    }
-
-    auto eqShared = juce::Rectangle<float>(30.f, 600.f, 190.f, 90.f);
-    g.setColour(juce::Colour(0xffaab3bd));
-    g.setFont(juce::FontOptions(9.f));
-    g.drawText("GLOBAL", 235, 608, 70, 16, juce::Justification::left);
-
-    const juce::Rectangle<float> ottSection(18.f, 725.f, width - 36.f, 560.f);
-    drawSection(g, ottSection, juce::Colour(0xffffc75a),
-                "OTT / PUNKOTT-MB", "4-band multiband dynamics • all band controls and shared crossover/master controls visible");
-    drawOttOverview(g, { 32.f, 772.f, (float)width - 64.f, 96.f });
-
-    for (int b = 0; b < 4; ++b)
-    {
-        auto card = juce::Rectangle<int>(
-            30 + b * ((width - 86) / 4), 878, (width - 96) / 4, 285);
-        drawCard(g, card.toFloat(), kBandColours[(size_t)b]);
-        g.setColour(kBandColours[(size_t)b]);
-        g.setFont(juce::FontOptions(10.f).withStyle("Bold"));
-        g.drawText("BAND " + juce::String(b + 1),
-                   card.getX() + 10, card.getY() + 6, 100, 16, juce::Justification::left);
-    }
-
-    drawCard(g, { 30.f, 1172.f, 420.f, 92.f }, juce::Colour(0xffffc75a));
-    if (ottClipper)
-        ottClipper->setBounds(472, 1203, 82, 26);
-
-    const juce::Rectangle<float> typeSection(18.f, 1300.f, width - 36.f, 300.f);
-    drawSection(g, typeSection, juce::Colour(0xffff5fa2),
-                "TYPE-A", "4-band transient/enhancer stage • all degrees plus attack/release/input/mix/output");
-    drawTypeOverview(g, { 32.f, 1345.f, (float)width - 64.f, 80.f });
-
-    for (int b = 0; b < 4; ++b)
-    {
-        auto card = juce::Rectangle<int>(
-            30 + b * ((width - 86) / 4), 1438, (width - 96) / 4, 140);
-        drawCard(g, card.toFloat(), kBandColours[(size_t)b]);
-    }
-
-    const juce::Rectangle<float> deSection(18.f, 1615.f, width - 36.f, 260.f);
-    drawSection(g, deSection, juce::Colour(0xff67d3aa),
-                "REFERENCE DE-ESSER", "8192 FFT • paired-sample detector • >10 trigger • Male/Female target frequency");
-    drawDeEsserOverview(g, { 32.f, 1665.f, (float)width - 64.f, 86.f });
-
-    const juce::Rectangle<float> mixSection(18.f, 1890.f, width - 36.f, 150.f);
-    drawSection(g, mixSection, juce::Colour(0xff9ed85c),
-                "MIX / OUT", "Global dry/wet and output trim");
-    drawMixOverview(g, { 32.f, 1940.f, (float)width - 64.f, 70.f });
-
-    g.setColour(juce::Colour(0xff737984));
-    g.setFont(juce::FontOptions(9.f));
-    g.drawText("VVChain • ALL MODULES ON ONE PAGE • DOUBLE CLICK A KNOB TO RESET",
-               22, 2027, width - 44, 14, juce::Justification::centred);
+    g.setColour(juce::Colour(0xff747b86));
+    g.setFont(juce::FontOptions(8.f));
+    g.drawText(subtitle, (int) r.getX() + 14, (int) r.getY() + 25,
+               (int) r.getWidth() - 118, 13, juce::Justification::left);
 }
 
-void VVChainAudioProcessorEditor::Page::paint(juce::Graphics& g)
+void VVChainAudioProcessorEditor::drawPanel(
+    juce::Graphics& g, juce::Rectangle<float> r,
+    const juce::String& title, const juce::String& subtitle, juce::Colour accent)
 {
-    owner.paintPage(g, getLocalBounds().toFloat());
+    juce::ColourGradient bg(juce::Colour(0xff24272d), r.getX(), r.getY(),
+                            juce::Colour(0xff111318), r.getX(), r.getBottom(), false);
+    g.setGradientFill(bg);
+    g.fillRoundedRectangle(r, 8.f);
+    g.setColour(juce::Colours::black.withAlpha(.92f));
+    g.drawRoundedRectangle(r, 8.f, 1.f);
+    g.setColour(accent.withAlpha(.7f));
+    g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
+
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::FontOptions(12.f).withStyle("Bold"));
+    g.drawText(title, (int) r.getX() + 12, (int) r.getY() + 7, 280, 18,
+               juce::Justification::left);
+    g.setColour(juce::Colour(0xff7f8791));
+    g.setFont(juce::FontOptions(8.f));
+    g.drawText(subtitle, (int) r.getX() + 12, (int) r.getY() + 25,
+               (int) r.getWidth() - 100, 13, juce::Justification::left);
 }
 
-void VVChainAudioProcessorEditorEditor_placeholder() {}
-
-void VVChainAudioProcessorEditor::pageMouseDown(const juce::MouseEvent& e)
+void VVChainAudioProcessorEditor::drawModuleLeds(juce::Graphics& g)
 {
-    const auto graph = graphBounds();
-    if (!graph.contains(e.position))
-        return;
+    juce::ignoreUnused(g);
+}
 
-    dragBand = -1;
-    float best = 20.f;
+void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
+{
+    g.fillAll(juce::Colour(0xff080a0d));
+
+    juce::ColourGradient top(juce::Colour(0xff343840), 0.f, 0.f,
+                             juce::Colour(0xff17191e), 0.f, 70.f, false);
+    g.setGradientFill(top);
+    g.fillRect(0, 0, getWidth(), 70);
+
+    g.setColour(juce::Colours::black.withAlpha(.85f));
+    g.fillRect(0, 68, getWidth(), 2);
+
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::FontOptions(24.f).withStyle("Bold"));
+    g.drawText("VVCHAIN", 18, 10, 250, 28, juce::Justification::left);
+
+    g.setColour(juce::Colour(0xff85909c));
+    g.setFont(juce::FontOptions(8.5f));
+    g.drawText("FREQUALIZER ENGINE · 4-BAND COMPACT CHAIN", 20, 39, 330, 14,
+               juce::Justification::left);
+
+    g.setColour(juce::Colour(0xff79818c));
+    g.setFont(juce::FontOptions(8.f));
+    g.drawText("EQ → OTT / PUNKOTT-MB → TAPE-A → DE-ESSER → MIX / OUT",
+               350, 42, 560, 14, juce::Justification::left);
+
+    const auto graph = eqGraphBounds();
+    drawEqGraph(g, graph);
+
+    drawPanel(g, { 18.f, 72.f, 224.f, 86.f },
+              "EQ / ANALOG", "SHARED", juce::Colour(0xff60a5fa));
+
+    const auto bandsArea = juce::Rectangle<float>(
+        18.f, 168.f, (float) getWidth() - 36.f, 470.f);
+    const float gap = 8.f;
+    const float cw = (bandsArea.getWidth() - gap * 3.f) / 4.f;
 
     for (int b = 0; b < 4; ++b)
     {
-        const auto n = juce::String(b + 1);
-        const float f = parameterValue("EQ" + n + "_FREQ");
-        const float gain = parameterValue("EQ" + n + "_GAIN");
-        const juce::Point<float> p(
-            graphFrequencyToX(graph, f), eqDbToY(graph, gain));
+        const float x = bandsArea.getX() + b * (cw + gap);
+        drawCard(g, { x, bandsArea.getY(), cw, bandsArea.getHeight() },
+                 kBandColours[(size_t) b],
+                 "BAND " + juce::String(b + 1),
+                 b == 3 ? "EQ · OTT · TAPE-A · DE-ESSER" : "EQ · OTT · TAPE-A");
+    }
 
-        const float d = p.getDistanceFrom(e.position);
-        if (d < best)
+    const auto bottom = juce::Rectangle<float>(
+        18.f, 646.f, (float) getWidth() - 36.f, 264.f);
+    const auto mix = juce::Rectangle<float>(
+        bottom.getRight() - 290.f, bottom.getY(), 290.f, bottom.getHeight());
+    const auto adv = juce::Rectangle<float>(
+        bottom.getX(), bottom.getY(),
+        bottom.getWidth() - 300.f, bottom.getHeight());
+
+    if (expandedBand >= 0)
+    {
+        drawPanel(g, adv,
+                  "OTT ADVANCED · BAND " + juce::String(expandedBand + 1),
+                  "LIFTER + COMP DETAIL / CROSSOVERS / MASTER",
+                  juce::Colour(0xfffacc15));
+    }
+    else
+    {
+        drawPanel(g, adv,
+                  "OTT ADVANCED",
+                  "點 BAND 的 + ADV 開啟；預設最佳值已套用",
+                  juce::Colour(0xfffacc15));
+        g.setColour(juce::Colour(0xff757d88));
+        g.setFont(juce::FontOptions(9.f));
+        g.drawText("DEGREE / ATTACK / RELEASE 只有必要控制；其餘 OTT 參數集中於此。",
+                   (int) adv.getX() + 14, (int) adv.getY() + 56,
+                   (int) adv.getWidth() - 28, 18, juce::Justification::left);
+    }
+
+    drawPanel(g, mix, "MIX / OUT", "GLOBAL", juce::Colour(0xff9ed85c));
+
+    g.setColour(juce::Colour(0xff5f6670));
+    g.setFont(juce::FontOptions(7.5f));
+    g.drawText("DOUBLE-CLICK KNOB = RESET · NO PAGE SCROLL",
+               18, 916, 440, 10, juce::Justification::left);
+    drawModuleLeds(g);
+
+    if (expandedBand >= 0)
+    {
+        g.setColour(juce::Colour(0xfffacc15));
+        g.setFont(juce::FontOptions(8.f).withStyle("Bold"));
+        g.drawText("BAND " + juce::String(expandedBand + 1) + " OTT ADVANCED",
+                   (int) adv.getX() + 14, (int) adv.getY() + 41,
+                   210, 14, juce::Justification::left);
+    }
+}
+
+void VVChainAudioProcessorEditor::setExpandedBand(int band)
+{
+    expandedBand = band;
+
+    for (int b = 0; b < 4; ++b)
+    {
+        if (advancedButtons[(size_t) b])
         {
-            best = d;
-            dragBand = b;
-            selectedBand = b;
+            advancedButtons[(size_t) b]->setButtonText(expandedBand == b ? "- ADV" : "+ ADV");
+            advancedButtons[(size_t) b]->setColour(
+                juce::TextButton::buttonColourId,
+                expandedBand == b ? juce::Colour(0xff3e3517)
+                                  : juce::Colour(0xff17191d));
         }
     }
-    page.repaint();
-}
 
-void VVChainAudioProcessorEditor::pageMouseDrag(const juce::MouseEvent& e)
-{
-    if (dragBand < 0)
-        return;
+    if (closeAdvanced)
+        closeAdvanced->setVisible(expandedBand >= 0);
 
-    const auto graph = graphBounds();
-    const auto n = juce::String(dragBand + 1);
-    setParameter("EQ" + n + "_FREQ", graphXToFrequency(graph, e.position.x));
-
-    const float gain = juce::jlimit(
-        -24.f, 24.f,
-        -18.f + (graph.getBottom() - e.position.y) / graph.getHeight() * 36.f);
-    setParameter("EQ" + n + "_GAIN", gain);
-    page.repaint();
-}
-
-void VVChainAudioProcessorEditor::pageMouseUp()
-{
-    dragBand = -1;
-}
-
-void VVChainAudioProcessorEditor::Page::mouseDown(const juce::MouseEvent& e)
-{
-    owner.pageMouseDown(e);
-}
-
-void VVChainAudioProcessorEditor::Page::mouseDrag(const juce::MouseEvent& e)
-{
-    owner.pageMouseDrag(e);
-}
-
-void VVChainAudioProcessorEditor::Page::mouseUp(const juce::MouseEvent&)
-{
-    owner.pageMouseUp();
-}
-
-void VVChainAudioProcessorEditor::placeGroup(
-    int group, juce::Rectangle<int> area, int columns,
-    int knobWidth, int knobHeight, int gapX, int gapY)
-{
-    std::vector<Knob*> list;
     for (auto& k : knobs)
-        if (k.group == group)
-            list.push_back(&k);
-
-    for (size_t i = 0; i < list.size(); ++i)
     {
-        auto* k = list[i];
-        const int col = (int)(i % (size_t)columns);
-        const int row = (int)(i / (size_t)columns);
-        const int x = area.getX() + col * (knobWidth + gapX);
-        const int y = area.getY() + row * (knobHeight + gapY);
-
-        k->label->setBounds(x, y, knobWidth, 18);
-        k->slider->setBounds(x, y + 16, knobWidth, knobHeight);
+        if (k.band >= 0 && k.slot >= 10)
+            k.slider->setVisible(expandedBand >= 0 && k.band == expandedBand);
+        if (k.band >= 0 && k.slot >= 10)
+            k.label->setVisible(expandedBand >= 0 && k.band == expandedBand);
     }
+
+    const std::array<juce::String, 7> sharedIds
+    {
+        "OTT_X1", "OTT_X2", "OTT_X3", "OTT_INPUT", "OTT_GATE", "OTT_MIX", "OTT_OUTPUT"
+    };
+
+    for (const auto& id : sharedIds)
+        if (auto* k = findKnob(id))
+        {
+            k->slider->setVisible(expandedBand >= 0);
+            k->label->setVisible(expandedBand >= 0);
+        }
+
+    if (ottClipper)
+        ottClipper->setVisible(expandedBand >= 0);
+
+    resized();
+    repaint();
 }
 
 void VVChainAudioProcessorEditor::resized()
 {
-    viewport.setBounds(getLocalBounds());
-    page.setSize(viewport.getWidth() - 12, 2050);
+    const int w = getWidth();
+    const int cardY = 168;
+    const int cardH = 470;
+    const int gap = 8;
+    const int left = 18;
+    const int cardW = (w - left * 2 - gap * 3) / 4;
 
-    const int width = page.getWidth();
+    // Five status LEDs at the top-right. Bright = active; dark = bypass.
+    for (int i = 0; i < 5; ++i)
+    {
+        if (bypassButtons[(size_t) i])
+            bypassButtons[(size_t) i]->setBounds(w - 250 + i * 46, 12, 28, 28);
+    }
+
+    placeKnob("EQ_COLOR", { 30, 90, 90, 62 });
+    placeKnob("HF_CORNER", { 132, 90, 90, 62 });
 
     for (int b = 0; b < 4; ++b)
     {
-        const int cardX = 30 + b * ((width - 86) / 4);
-        const int cardW = (width - 96) / 4;
-        placeGroup(10 + b, { cardX + 8, 486, cardW - 16, 165 }, 3, 82, 82, 4, 3);
+        const int x = left + b * (cardW + gap);
+        if (advancedButtons[(size_t) b])
+            advancedButtons[(size_t) b]->setBounds(x + cardW - 62, cardY + 7, 54, 22);
+
+        const int innerX = x + 9;
+        const int cellW = (cardW - 30) / 3;
+
+        const std::array<juce::String, 9> ids =
+        {
+            "EQ" + juce::String(b + 1) + "_FREQ",
+            "EQ" + juce::String(b + 1) + "_GAIN",
+            "EQ" + juce::String(b + 1) + "_Q",
+            "OTT_DEGREE" + juce::String(b + 1),
+            "OTT_COMP_A" + juce::String(b + 1),
+            "OTT_COMP_R" + juce::String(b + 1),
+            "ATYPE_DEGREE" + juce::String(b + 1),
+            "DEESS_FREQ",
+            "DEESS_INTENSITY"
+        };
+
+        for (int slot = 0; slot < 7; ++slot)
+        {
+            const int row = slot / 3;
+            const int col = slot % 3;
+            placeKnob(ids[(size_t) slot],
+                      { innerX + col * (cellW + 5),
+                        cardY + 46 + row * 125,
+                        cellW, 108 });
+        }
+
+        if (b == 3)
+        {
+            placeKnob(ids[7], { innerX + 1 * (cellW + 5), cardY + 421, cellW, 0 });
+            placeKnob(ids[8], { innerX + 2 * (cellW + 5), cardY + 421, cellW, 0 });
+            // Third-row de-esser controls are deliberately compact and share the TAPE-A row.
+            placeKnob(ids[7], { innerX + cellW + 5, cardY + 305, cellW, 108 });
+            placeKnob(ids[8], { innerX + 2 * (cellW + 5), cardY + 305, cellW, 108 });
+        }
+        else
+        {
+            placeKnob(ids[6], { innerX + cellW, cardY + 305, cellW, 108 });
+        }
     }
 
-    placeGroup(15, { 235, 585, 190, 100 }, 2, 82, 82, 10, 5);
+    const int bottomY = 646;
+    const int bottomH = 264;
+    const int mixX = w - 290 - 18;
+
+    placeKnob("DRY_WET", { mixX + 18, bottomY + 65, 116, 140 });
+    placeKnob("OUTPUT_LEVEL", { mixX + 146, bottomY + 65, 116, 140 });
+
+    const int advX = 18;
+    const int advW = mixX - advX - 10;
+
+    if (closeAdvanced)
+        closeAdvanced->setBounds(mixX - 72, bottomY + 7, 58, 22);
+
+    if (expandedBand >= 0)
+    {
+        const int rowY = bottomY + 54;
+        const int cellW = (advW - 8 * 6) / 7;
+        const std::array<juce::String, 7> advIds
+        {
+            "OTT_LIFT_T", "OTT_LIFT_A", "OTT_LIFT_R", "OTT_LIFT_M",
+            "OTT_COMP_T", "OTT_COMP_M", "OTT_LEVEL"
+        };
+        for (int i = 0; i < 7; ++i)
+        {
+            const auto idBase = advIds[(size_t) i];
+            const auto id = idBase + juce::String(expandedBand + 1);
+            placeKnob(id, { advX + 10 + i * (cellW + 8), rowY, cellW, 96 });
+        }
+
+        const int row2Y = bottomY + 158;
+        const int sharedW = (advW - 8 * 6) / 7;
+        const std::array<juce::String, 7> sharedIds
+        {
+            "OTT_X1", "OTT_X2", "OTT_X3", "OTT_INPUT", "OTT_GATE", "OTT_MIX", "OTT_OUTPUT"
+        };
+        for (int i = 0; i < 7; ++i)
+            placeKnob(sharedIds[(size_t) i],
+                      { advX + 10 + i * (sharedW + 8), row2Y, sharedW, 96 });
+
+        if (ottClipper)
+            ottClipper->setBounds(advX + 10, bottomY + 222, 86, 28);
+    }
+
+    repaint();
+}
+
+void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
+{
+    const auto pos = event.position;
+    const auto graph = eqGraphBounds();
+    if (!graph.contains(pos))
+        return;
+
+    float best = 18.f;
+    dragBand = -1;
 
     for (int b = 0; b < 4; ++b)
     {
-        const int cardX = 30 + b * ((width - 86) / 4);
-        const int cardW = (width - 96) / 4;
-        placeGroup(20 + b, { cardX + 7, 904, cardW - 14, 240 }, 3, 76, 76, 2, 3);
+        const auto n = juce::String(b + 1);
+        const float x = graphFrequencyToX(graph, parameterValue("EQ" + n + "_FREQ"));
+        const float y = eqDbToY(graph, parameterValue("EQ" + n + "_GAIN"));
+        const float d = pos.getDistanceFrom({ x, y });
+
+        if (d < best)
+        {
+            best = d;
+            dragBand = b;
+        }
     }
-    placeGroup(25, { 40, 1178, 420, 80 }, 7, 55, 62, 3, 2);
+}
 
-    for (int b = 0; b < 4; ++b)
-    {
-        const int cardX = 30 + b * ((width - 86) / 4);
-        const int cardW = (width - 96) / 4;
-        placeGroup(30 + b, { cardX + 8, 1464, cardW - 16, 96 }, 2, 82, 82, 4, 3);
-    }
-    placeGroup(35, { width - 520, 1460, 500, 104 }, 5, 82, 82, 4, 3);
+void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
+{
+    if (dragBand < 0)
+        return;
 
-    placeGroup(40, { 50, 1716, 260, 92 }, 2, 82, 82, 5, 2);
-    deEssVoice.setBounds(330, 1718, 235, 28);
+    const auto graph = eqGraphBounds();
+    const auto pos = event.position;
+    const auto n = juce::String(dragBand + 1);
 
-    placeGroup(50, { 50, 1960, 260, 88 }, 2, 82, 82, 5, 2);
+    const float hz = juce::jlimit(20.f, 20000.f, graphXToFrequency(graph, pos.x));
+    const float db = juce::jlimit(-24.f, 24.f,
+                                  18.f - ((pos.y - graph.getY()) / graph.getHeight()) * 36.f);
 
-    bypassButtons[0]->setBounds(width - 120, 423, 92, 26);
-    bypassButtons[1]->setBounds(width - 120, 738, 92, 26);
-    bypassButtons[2]->setBounds(width - 120, 1313, 92, 26);
-    bypassButtons[3]->setBounds(width - 120, 1628, 92, 26);
-    bypassButtons[4]->setBounds(width - 120, 1903, 92, 26);
-    if (ottClipper)
-        ottClipper->setBounds(472, 1203, 82, 26);
+    setParameter("EQ" + n + "_FREQ", hz);
+    setParameter("EQ" + n + "_GAIN", db);
+    repaint();
+}
+
+void VVChainAudioProcessorEditor::mouseUp(const juce::MouseEvent&)
+{
+    dragBand = -1;
 }
