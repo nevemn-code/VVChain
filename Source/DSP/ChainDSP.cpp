@@ -284,6 +284,10 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     limiterLookahead.prepare(limiterSpec);
     limiterLookahead.setDelay(static_cast<float>(limiterLookaheadSamples * 4));
 
+    masterDryDelay.prepare(drySpec);
+    masterDryDelay.setDelay(static_cast<float>(
+        limiterOversamplingLatencySamples + limiterLookaheadSamples));
+
     reset();
 }
 
@@ -331,6 +335,7 @@ void VVChainDSP::reset()
     limiterOversampler.reset();
     eqDryDelay.reset();
     limiterLookahead.reset();
+    masterDryDelay.reset();
 
     masterBypassBlend = 0.f;
     limiterGain = 1.f;
