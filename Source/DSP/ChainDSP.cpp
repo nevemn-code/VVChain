@@ -137,6 +137,8 @@ void VVChainDSP::reset()
         b.gateEnvDb = { 0.f, 0.f };
         b.lifterEnv = { 1.f, 1.f };
         b.compEnvDb = { 0.f, 0.f };
+        b.upRmsPower = { 0.f, 0.f };
+        b.downRmsPower = { 0.f, 0.f };
     }
 
     typeXover1.reset();
@@ -173,23 +175,34 @@ void VVChainDSP::reset()
     limiterEnvDb = { 0.f, 0.f };
 }
 
-float VVChainDSP::applyLifter(float input, float& env, float thresholdDb,
-                              float attackMs, float releaseMs, float mix,
-                              double sampleRate, float ratio)
+float VVChainDSP::rmsDetect(float input, float& power, float attackMs,
+                                    float releaseMs, double sampleRate) noexcept
+{
+    const float target = input * input;
+    const float alpha = target > power
+        ? timeCoeff(sampleRate, attackMs)
+        : timeCoeff(sampleRate, releaseMs);
+    power = alpha * power + (1.f - alpha) * target;
+    return std::sqrt(std::max(power, 1.0e-12f));
+}
+
+float VVChainDSP::applyLifterFromDetectorDb(float input, float detectorDb,
+                                             float& env, float thresholdDb,
+                                             float attackMs, float releaseMs,
+                                             float mix, double sampleRate,
+                                             float ratio)
 {
     const float safeRatio = juce::jmax(1.0f, ratio);
     const float slope = 1.0f - (1.0f / safeRatio);
     const float kneeStart = thresholdDb - kLifterKneeDb * 0.5f;
     const float kneeEnd = thresholdDb + kLifterKneeDb * 0.5f;
-    const float magnitude = std::max(std::abs(input), 0.0001f);
-    const float inputDb = juce::Decibels::gainToDecibels(magnitude);
 
     float targetGainDb = 0.f;
-    if (inputDb < kneeStart)
-        targetGainDb = (thresholdDb - inputDb) * slope;
-    else if (inputDb < kneeEnd)
+    if (detectorDb < kneeStart)
+        targetGainDb = (thresholdDb - detectorDb) * slope;
+    else if (detectorDb < kneeEnd)
     {
-        const float x = kneeEnd - inputDb;
+        const float x = kneeEnd - detectorDb;
         targetGainDb = slope / (2.0f * kLifterKneeDb) * x * x;
     }
 
@@ -204,22 +217,22 @@ float VVChainDSP::applyLifter(float input, float& env, float thresholdDb,
     return wet * m + input * (1.0f - m);
 }
 
-float VVChainDSP::applyCompressor(float input, float& envDb, float thresholdDb,
-                                  float attackMs, float releaseMs, float mix,
-                                  double sampleRate, float ratio)
+float VVChainDSP::applyCompressorFromDetectorDb(float input, float detectorDb,
+                                                float& envDb, float thresholdDb,
+                                                float attackMs, float releaseMs,
+                                                float mix, double sampleRate,
+                                                float ratio)
 {
-    const float slope = 1.0f - (1.0f / ratio);
+    const float slope = 1.0f - (1.0f / juce::jmax(1.0f, ratio));
     const float kneeStart = thresholdDb - kCompressorKneeDb * 0.5f;
     const float kneeEnd = thresholdDb + kCompressorKneeDb * 0.5f;
-    const float magnitude = std::max(std::abs(input), 0.00001f);
-    const float inputDb = juce::Decibels::gainToDecibels(magnitude);
 
     float targetReductionDb = 0.f;
-    if (inputDb > kneeEnd)
-        targetReductionDb = (inputDb - thresholdDb) * slope;
-    else if (inputDb > kneeStart)
+    if (detectorDb > kneeEnd)
+        targetReductionDb = (detectorDb - thresholdDb) * slope;
+    else if (detectorDb > kneeStart)
     {
-        const float x = inputDb - kneeStart;
+        const float x = detectorDb - kneeStart;
         targetReductionDb = slope / (2.0f * kCompressorKneeDb) * x * x;
     }
 
@@ -227,8 +240,8 @@ float VVChainDSP::applyCompressor(float input, float& envDb, float thresholdDb,
     const float alpha = targetReductionDb > currentReductionDb
         ? timeCoeff(sampleRate, attackMs)
         : timeCoeff(sampleRate, releaseMs);
-    const float smoothedReduction = alpha * currentReductionDb
-        + (1.0f - alpha) * targetReductionDb;
+    const float smoothedReduction =
+        alpha * currentReductionDb + (1.0f - alpha) * targetReductionDb;
 
     envDb = -juce::jlimit(0.f, 60.f, smoothedReduction);
 
@@ -276,18 +289,13 @@ float VVChainDSP::applyGate(float input, float& envDb, float thresholdDb,
 float VVChainDSP::applyLimiter(float input, float& envDb, double sampleRate)
 {
     juce::ignoreUnused(envDb, sampleRate);
-
-    // Safety stage only: never let OTT's wet bus become an accidental
-    // +10/+20 dB jump. Unity is untouched below the ceiling.
     constexpr float ceiling = 0.9440608763f; // -0.5 dBFS
     const float magnitude = std::abs(input);
     if (magnitude <= ceiling)
         return input;
-
     const float excess = magnitude - ceiling;
     const float shaped = ceiling + excess / (1.0f + 20.0f * excess);
-    const float safe = std::min(shaped, 0.99f);
-    return std::copysign(safe, input);
+    return std::copysign(std::min(shaped, 0.99f), input);
 }
 
 void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
@@ -415,15 +423,26 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     juce::jlimit(0.f, 100.f, p.ottLifterMix[(size_t) band]);
 
                 // Standard OTT order: downward first, upward second.
-                v = applyCompressor(
-                    v, compEnv,
+                // Each stage has its own RMS detector state for this band/channel.
+                const float downRms = rmsDetect(
+                    v, state.downRmsPower[(size_t) ch],
+                    p.ottCompAttack[(size_t) band],
+                    p.ottCompRelease[(size_t) band], sr);
+                const float downDb = gainToDb(downRms);
+                v = applyCompressorFromDetectorDb(
+                    v, downDb, compEnv,
                     p.ottCompThreshold[(size_t) band],
                     p.ottCompAttack[(size_t) band],
                     p.ottCompRelease[(size_t) band],
                     compMix, sr, downRatio);
 
-                v = applyLifter(
-                    v, lifterEnv,
+                const float upRms = rmsDetect(
+                    v, state.upRmsPower[(size_t) ch],
+                    p.ottLifterAttack[(size_t) band],
+                    p.ottLifterRelease[(size_t) band], sr);
+                const float upDb = gainToDb(upRms);
+                v = applyLifterFromDetectorDb(
+                    v, upDb, lifterEnv,
                     p.ottLifterThreshold[(size_t) band],
                     p.ottLifterAttack[(size_t) band],
                     p.ottLifterRelease[(size_t) band],
