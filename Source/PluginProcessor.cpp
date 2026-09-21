@@ -207,7 +207,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.atypeMix = value("ATYPE_MIX");
     p.atypeOutputGainDb = value("ATYPE_OUTPUT");
 
-    p.soloBand = static_cast<int>(std::lround(value("SOLO_BAND"))) - 1;
+    p.soloBand = static_cast<int>(juce::roundToInt(value("SOLO_BAND"))) - 1;
     p.soloPost = value("SOLO_MODE") > 0.5f;
 
     p.deessReferenceHz = value("DEESS_FREQ");
