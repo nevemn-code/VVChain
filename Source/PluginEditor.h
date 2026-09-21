@@ -7,7 +7,8 @@
 #include <tuple>
 #include "PluginProcessor.h"
 
-class VVChainAudioProcessorEditor final : public juce::AudioProcessorEditor
+class VVChainAudioProcessorEditor final : public juce::AudioProcessorEditor,
+                                                  private juce::Timer
 {
 public:
     explicit VVChainAudioProcessorEditor(VVChainAudioProcessor&);
@@ -19,6 +20,7 @@ public:
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
     void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
+    void timerCallback() override;
 
 private:
     using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
@@ -27,6 +29,8 @@ private:
     class MetalLookAndFeel final : public juce::LookAndFeel_V4
     {
     public:
+        bool monochrome = false;
+
         void drawRotarySlider(juce::Graphics&, int x, int y, int width, int height,
                               float sliderPosProportional, float rotaryStartAngle,
                               float rotaryEndAngle, juce::Slider&) override;
@@ -76,6 +80,9 @@ private:
     void drawPanel(juce::Graphics&, juce::Rectangle<float>, const juce::String&,
                    const juce::String&, juce::Colour);
     void drawModuleLeds(juce::Graphics&);
+    juce::Colour uiColour(juce::Colour) const noexcept;
+    void updateBypassVisuals();
+    bool isMasterBypassed() const noexcept;
 
     VVChainAudioProcessor& audioProcessor;
     MetalLookAndFeel metalLook;
@@ -100,6 +107,7 @@ private:
     int expandedBand = -1;
     int dragBand = -1;
     int dragXover = -1;
+    bool lastMasterBypassUi = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VVChainAudioProcessorEditor)
 };
