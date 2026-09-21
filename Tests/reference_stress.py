@@ -516,6 +516,19 @@ def realtime_safety_checks():
     ]:
         assert token in header or token in cpp, token
 
+    phase_cpp = cpp
+    assert "ottPhase2_B1" in phase_cpp
+    assert "ottPhase3_B1" in phase_cpp
+    assert "ottPhase3_B2" in phase_cpp
+    assert ".allPass(low, right)" in phase_cpp
+    assert ".allPass(lowMid, right)" in phase_cpp
+
+    # Master bypass must always be the 64-sample interpolation path.
+    process_master = cpp[cpp.index("const float target = p.masterBypass")
+                          : cpp.index("for (int ch = nCh;", cpp.index("const float target = p.masterBypass"))]
+    assert "masterBypassBlend" in process_master
+    assert "if (p.masterBypass) wet[n] =" not in process_master
+
     for forbidden in [
         "static Biquad makeAnalogPeak",
         "static Biquad makeAnalogHighPass",
