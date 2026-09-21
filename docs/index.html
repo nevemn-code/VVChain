@@ -38,15 +38,7 @@ body{display:grid;place-items:center}.app{width:min(1500px,calc(100vw - 10px));h
     <div class="graph"><canvas id="eqCanvas"></canvas></div>
   </div>
   <div class="bandsFrame"><div class="bandGrid" id="bandGrid"></div></div>
-  <div class="footer">
-    <div class="panel advPanel" id="advPanel">
-      <div class="panelHead" id="advTitle">OTT ADVANCED<div class="panelSub">點 BAND 的 + ADV 開啟；預設值留在 DSP</div></div>
-      <button class="tiny advClose" id="advClose">CLOSE</button>
-      <div class="advHint" id="advHint">主畫面只保留 OTT % / ATTACK / RELEASE。其餘 OTT 進階參數集中在此，不會捲動頁面。</div>
-      <div class="advBody" id="advBody" hidden></div>
-    </div>
-    <div class="panel"><div class="panelHead">MIX / OUT<div class="panelSub">GLOBAL</div></div><div class="mixBody" id="mixBody"></div><div class="note">DOUBLE-CLICK KNOB = RESET · NO PAGE SCROLL</div></div>
-  </div>
+  
 </div>
 <script>
 const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=null,workletNode=null,workletModuleUrl=null,playing=false;
