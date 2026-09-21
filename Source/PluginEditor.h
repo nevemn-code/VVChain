@@ -29,29 +29,63 @@ private:
     class WheelSlider final : public juce::Slider
     {
     public:
+        WheelSlider()
+        {
+            // JUCE enables wheel interaction by default; make it explicit so
+            // look-and-feel / host changes cannot silently disable it.
+            setScrollWheelEnabled(true);
+        }
+
+        void setWheelBehaviour(double step, bool logarithmic = false)
+        {
+            wheelStep = std::max(0.000001, step);
+            wheelLogarithmic = logarithmic;
+            wheelRemainder = 0.0;
+        }
+
         void mouseWheelMove(const juce::MouseEvent& e,
                             const juce::MouseWheelDetails& wheel) override
         {
             juce::ignoreUnused(e);
-            if (!isEnabled() || !isScrollWheelEnabled() || std::abs(wheel.deltaY) < 0.0001f)
+
+            if (!isEnabled() || !isScrollWheelEnabled()
+                || std::abs(wheel.deltaY) < 0.000001f)
                 return;
 
-            const double lo = getMinimum();
-            const double hi = getMaximum();
-            if (!(hi > lo))
+            // Mouse wheels can arrive as full notches or fractional touch-pad
+            // deltas. Accumulate the latter so both devices feel identical.
+            wheelRemainder += juce::jlimit(-4.0, 4.0,
+                                           static_cast<double>(wheel.deltaY));
+
+            const int ticks = static_cast<int>(std::trunc(wheelRemainder));
+            if (ticks == 0)
                 return;
 
-            // Common studio-knob feel: about 0.5% of the normalized range per
-            // mouse-wheel notch, with no acceleration. This stays usable on
-            // wide ranges such as frequency and level without jumping too far.
-            const double proportion = getNormalisableRange().convertTo0to1(getValue());
-            const double next = juce::jlimit(
-                0.0, 1.0,
-                proportion + static_cast<double>(wheel.deltaY) * 0.005);
+            wheelRemainder -= static_cast<double>(ticks);
 
-            setValue(getNormalisableRange().convertFrom0to1(next),
-                     juce::sendNotificationSync);
+            double next = getValue();
+
+            if (wheelLogarithmic)
+            {
+                // About one semitone per wheel tick: familiar studio-style
+                // frequency adjustment without huge jumps at the top end.
+                next *= std::pow(2.0,
+                                 static_cast<double>(ticks) / 24.0);
+            }
+            else
+            {
+                next += static_cast<double>(ticks) * wheelStep;
+            }
+
+            next = juce::jlimit(getMinimum(), getMaximum(), next);
+
+            setValue(next, juce::sendNotificationSync);
         }
+
+    private:
+        double wheelStep = 1.0;
+        double wheelRemainder = 0.0;
+        bool wheelLogarithmic = false;
     };
 
     class MetalLookAndFeel final : public juce::LookAndFeel_V4
@@ -108,6 +142,8 @@ private:
     void drawPanel(juce::Graphics&, juce::Rectangle<float>, const juce::String&,
                    const juce::String&, juce::Colour);
     void drawModuleLeds(juce::Graphics&);
+    void drawGraphDragHint(juce::Graphics&, juce::Rectangle<float>);
+    juce::String formatGraphFrequency(float hz) const;
     juce::Colour uiColour(juce::Colour) const noexcept;
     void updateBypassVisuals();
     bool isMasterBypassed() const noexcept;
@@ -141,6 +177,9 @@ private:
     int expandedBand = -1;
     int dragBand = -1;
     int dragXover = -1;
+    bool showGraphDragHint = false;
+    juce::String graphDragHint;
+    juce::Point<float> graphDragHintPosition {};
     bool lastMasterBypassUi = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VVChainAudioProcessorEditor)
