@@ -26,6 +26,34 @@ private:
     using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using BoolAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 
+    class WheelSlider final : public juce::Slider
+    {
+    public:
+        void mouseWheelMove(const juce::MouseEvent& e,
+                            const juce::MouseWheelDetails& wheel) override
+        {
+            juce::ignoreUnused(e);
+            if (!isEnabled() || !isScrollWheelEnabled() || std::abs(wheel.deltaY) < 0.0001f)
+                return;
+
+            const double lo = getMinimum();
+            const double hi = getMaximum();
+            if (!(hi > lo))
+                return;
+
+            // Common studio-knob feel: about 0.5% of the normalized range per
+            // mouse-wheel notch, with no acceleration. This stays usable on
+            // wide ranges such as frequency and level without jumping too far.
+            const double proportion = getNormalisableRange().convertTo0to1(getValue());
+            const double next = juce::jlimit(
+                0.0, 1.0,
+                proportion + static_cast<double>(wheel.deltaY) * 0.005);
+
+            setValue(getNormalisableRange().convertFrom0to1(next),
+                     juce::sendNotificationSync);
+        }
+    };
+
     class MetalLookAndFeel final : public juce::LookAndFeel_V4
     {
     public:
