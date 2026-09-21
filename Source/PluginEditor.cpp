@@ -869,16 +869,15 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
                            uiColour(k.accent.brighter(.35f)));
     }
 
-    const std::array<juce::Colour, 5> moduleColours
+    const std::array<juce::Colour, 4> moduleColours
     {{
         juce::Colour(0xff38bdf8),
         juce::Colour(0xfffacc15),
         juce::Colour(0xfff472b6),
-        juce::Colour(0xff67d3aa),
-        juce::Colour(0xff9ed85c)
+        juce::Colour(0xff67d3aa)
     }};
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
         if (bypassButtons[(size_t) i])
             bypassButtons[(size_t) i]->setColour(
                 juce::ToggleButton::tickColourId,
@@ -903,10 +902,20 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
                          uiColour(juce::Colour(0xfff472b6)));
 
     for (size_t band = 0; band < analogModeButtons.size(); ++band)
+    {
         if (analogModeButtons[band])
             analogModeButtons[band]->setColour(
                 juce::ToggleButton::tickColourId,
                 uiColour(kBandColours[band]));
+        if (analogBypassButtons[band])
+            analogBypassButtons[band]->setColour(
+                juce::ToggleButton::tickColourId,
+                uiColour(juce::Colour(0xff60a5fa)));
+    }
+
+    if (soloModeButton)
+        soloModeButton->setColour(juce::ToggleButton::tickColourId,
+                                  uiColour(juce::Colour(0xffdfe7ef)));
 
     for (auto& b : advancedButtons)
         if (b)
@@ -1106,7 +1115,7 @@ void VVChainAudioProcessorEditor::resized()
         soloModeButton->setBounds(topX + masterW + topGap, topY, soloModeW, 25);
 
     int xTop = topX + masterW + topGap + soloModeW + topGap;
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
     {
         if (bypassButtons[(size_t) i])
             bypassButtons[(size_t) i]->setBounds(
