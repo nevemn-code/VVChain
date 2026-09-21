@@ -108,17 +108,12 @@ float VVChainDSP::softColor(float x, float amount01) noexcept
     const float drive = 1.0f + 1.35f * a;
     const float asym = x + 0.012f * a * x * x;
 
-    // Unity-gain analogue coloration:
-    // 1) normalize the saturator by drive so small signals remain 0 dB;
-    // 2) calculate a makeup gain at a fixed calibration level so the
-    //    coloration does not become an accidental volume control.
-    const float calibration = 0.25f;
-    const float pos = std::tanh((calibration + 0.012f * a * calibration * calibration) * drive) / drive;
-    const float neg = std::tanh((-calibration + 0.012f * a * calibration * calibration) * drive) / drive;
-    const float calibrationRms = std::sqrt(0.5f * (pos * pos + neg * neg));
-    const float makeup = calibrationRms > 1.0e-6f ? calibration / calibrationRms : 1.0f;
-
-    return std::tanh(asym * drive) / drive * makeup;
+    // Exact small-signal gain compensation:
+    // tanh(drive * x) has a linear gain of "drive" around 0 dBFS.
+    // Applying the reciprocal makeup keeps the analog color from becoming
+    // an accidental level boost while retaining harmonic saturation.
+    const float makeupGain = 1.0f / drive;
+    return std::tanh(asym * drive) * makeupGain;
 }
 
 void VVChainDSP::prepare(double sampleRate, int, int numChannels)
