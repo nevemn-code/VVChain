@@ -258,6 +258,7 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     const int maxBlock = juce::jmax(1, samplesPerBlock);
     dryBuffer.setSize(channels, maxBlock, false, true, true);
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
+    phaseAlignedDryBuffer.setSize(channels, maxBlock, false, true, true);
 
     eqOversampler.reset();
     limiterOversampler.reset();
@@ -322,6 +323,10 @@ void VVChainDSP::reset()
     ottXover1.reset();
     ottXover2.reset();
     ottXover3.reset();
+    dryOttPhase1.reset();
+    dryOttPhase2.reset();
+    dryOttPhase3.reset();
+    dryDeEssPhase.reset();
     ottPhase2_B1.reset();
     ottPhase3_B1.reset();
     ottPhase3_B2.reset();
@@ -371,6 +376,7 @@ void VVChainDSP::reset()
     limiterEnvDb = { 0.f, 0.f };
     dryBuffer.clear();
     alignedDryBuffer.clear();
+    phaseAlignedDryBuffer.clear();
 }
 
 float VVChainDSP::rmsDetectPDR(float input,
@@ -934,11 +940,23 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
             const float excessDb =
                 fastDb - slowDb - 2.0f - p.deessAverageOffset;
 
+            // Soft-knee trigger: reduction starts slightly before
+            // the fast-vs-slow excess reaches zero and reaches full
+            // intensity over a smooth 3 dB transition.
+            constexpr float kneeDb = 1.5f;
+            const float kneeT =
+                juce::jlimit(0.f, 1.f,
+                    (excessDb + kneeDb) / (2.f * kneeDb));
             const float trigger =
-                juce::jlimit(0.f, 1.f, excessDb / 6.f);
+                kneeT * kneeT * (3.f - 2.f * kneeT);
+
+            // Parameter is a real maximum reduction in dB, not a 0..100
+            // percentage. 24 dB is the hard ceiling of the control.
+            const float maxReductionDb =
+                juce::jlimit(0.f, 24.f, p.deessIntensity);
 
             const float targetReductionDb =
-                juce::jlimit(0.f, 8.f, p.deessIntensity) * trigger;
+                maxReductionDb * trigger;
 
             const float gainCoeff =
                 targetReductionDb > state.gainDb
@@ -1030,6 +1048,90 @@ void VVChainDSP::alignDryBuffer(int numSamples)
     }
 }
 
+
+void VVChainDSP::alignDryPhaseBuffer(int numSamples, const Parameters& p)
+{
+    const int nCh = channels;
+
+    const float ottMix =
+        juce::jlimit(0.f, 1.f, p.ottMix / 100.f);
+
+    const bool useOttPhase =
+        !p.ottBypass && ottMix > 0.0001f;
+
+    const bool useDeEssPhase =
+        !p.deessBypass && p.deessIntensity > 0.f;
+
+    float x1 = 0.f;
+    float x2 = 0.f;
+    float x3 = 0.f;
+    float xoverQ = 0.f;
+
+    if (useOttPhase)
+    {
+        x1 = juce::jlimit(80.f, 900.f, p.ottX1);
+        x2 = juce::jlimit(
+            x1 + 80.f, 5000.f, p.ottX2);
+        x3 = juce::jlimit(
+            x2 + 200.f,
+            static_cast<float>(sr * 0.42),
+            p.ottX3);
+
+        xoverQ = crossoverQFromOverlap(p.ottXoverOverlap);
+
+        updateCrossover(
+            dryOttPhase1, sr, x1, xoverQ);
+        updateCrossover(
+            dryOttPhase2, sr, x2, xoverQ);
+        updateCrossover(
+            dryOttPhase3, sr, x3, xoverQ);
+    }
+
+    if (useDeEssPhase)
+    {
+        updateCrossover(
+            dryDeEssPhase,
+            sr,
+            juce::jlimit(6000.f, 18000.f, p.deessReferenceHz),
+            0.70710678f);
+    }
+
+    for (int ch = 0; ch < nCh; ++ch)
+    {
+        const bool right = ch == 1;
+
+        for (int n = 0; n < numSamples; ++n)
+        {
+            float x =
+                alignedDryBuffer.getSample(ch, n);
+
+            // OTT's reconstructed bands, with no dynamics, form the
+            // cascade of the three crossover all-pass paths. Mirror that
+            // same linear phase path before the external Dry/Wet blend.
+            if (useOttPhase)
+            {
+                float phasePath =
+                    dryOttPhase1.allPass(x, right);
+                phasePath =
+                    dryOttPhase2.allPass(phasePath, right);
+                phasePath =
+                    dryOttPhase3.allPass(phasePath, right);
+
+                x += ottMix * (phasePath - x);
+            }
+
+            // Split-band De-Esser is a linear all-pass reconstruction when
+            // its gain reduction is zero. Mirror that phase path as well.
+            if (useDeEssPhase)
+                x = dryDeEssPhase.allPass(x, right);
+
+            phaseAlignedDryBuffer.setSample(ch, n, x);
+        }
+    }
+
+    juce::ignoreUnused(x1, x2, x3, xoverQ);
+}
+
 void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
     juce::ScopedNoDenormals noDenormals;
@@ -1061,18 +1163,25 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
     processDeEsser(buffer, p);
 
-    // Dry/Wet is performed after the EQ latency has been matched.
+    // Dry/Wet is performed after EQ latency matching and
+    // after the crossover phase path has been mirrored into a completely
+    // independent dry-state buffer.
     if (!p.mixBypass)
     {
         const float mix = juce::jlimit(0.f, 1.f, p.dryWet / 100.f);
         const float out = dbToGain(
             juce::jlimit(-24.f, 12.f, p.outputDb));
 
+        if (mix < 0.999f)
+            alignDryPhaseBuffer(numSamples, p);
+
         for (int ch = 0; ch < nCh; ++ch)
         {
             auto* wet = buffer.getWritePointer(ch);
             const auto* original =
-                alignedDryBuffer.getReadPointer(ch);
+                mix < 0.999f
+                    ? phaseAlignedDryBuffer.getReadPointer(ch)
+                    : alignedDryBuffer.getReadPointer(ch);
 
             for (int n = 0; n < numSamples; ++n)
                 wet[n] =
