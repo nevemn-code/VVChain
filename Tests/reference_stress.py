@@ -253,6 +253,21 @@ def source_structure_checks():
     assert re.search(r"const\s+WORKLET_SOURCE\s*=\s*\"", text["web"]), "missing worklet source assignment"
     assert "registerProcessor" in text["web"] and "vvchain-worklet" in text["web"]
 
+    # Independent per-band bypass wiring and default-active semantics.
+    for token in [
+        "OTT_BAND_BYPASS1", "OTT_BAND_BYPASS2", "OTT_BAND_BYPASS3", "OTT_BAND_BYPASS4",
+        "ATYPE_BAND_BYPASS1", "ATYPE_BAND_BYPASS2", "ATYPE_BAND_BYPASS3", "ATYPE_BAND_BYPASS4",
+    ]:
+        assert token in text["processor_cpp"] or token in text["editor_cpp"], token
+
+    assert "std::array<bool, 4> ottBandBypass { false, false, false, false }" in text["dsp_h"]
+    assert "std::array<bool, 4> atypeBandBypass { false, false, false, false }" in text["dsp_h"]
+    assert "if (p.ottBandBypass[(size_t)band])" in text["dsp_cpp"]
+    assert "if (p.atypeBandBypass[(size_t) band])" in text["dsp_cpp"]
+    assert "ottBandBypassButtons" in text["editor_h"]
+    assert "atypeBandBypassButtons" in text["editor_h"]
+    assert "亮 = 啟用；按下 = BYPASS" in text["editor_cpp"]
+
 
 def run():
     rng = random.Random(SEED)
