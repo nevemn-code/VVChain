@@ -331,6 +331,7 @@ VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
     ottClipperAttachment.reset();
     closeAdvanced.reset();
 
+    stopTimer();
     setLookAndFeel(nullptr);
 }
 
@@ -761,11 +762,18 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
                            uiColour(k.accent.brighter(.35f)));
     }
 
-    for (auto& b : bypassButtons)
-        if (b)
-            b->setColour(juce::ToggleButton::tickColourId,
-                         uiColour(b->findColour(
-                             juce::ToggleButton::tickColourId)));
+    const std::array<juce::Colour, 3> moduleColours
+    {{
+        juce::Colour(0xff38bdf8),
+        juce::Colour(0xfffacc15),
+        juce::Colour(0xfff472b6)
+    }};
+
+    for (int i = 0; i < 3; ++i)
+        if (bypassButtons[(size_t) i])
+            bypassButtons[(size_t) i]->setColour(
+                juce::ToggleButton::tickColourId,
+                uiColour(moduleColours[(size_t) i]));
 
     if (deessBypassButton)
         deessBypassButton->setColour(
@@ -915,12 +923,12 @@ void VVChainAudioProcessorEditor::setExpandedBand(int band)
                 expandedBand == b ? "- ADV" : "+ ADV");
             advancedButtons[(size_t) b]->setColour(
                 juce::TextButton::buttonColourId,
-                expandedBand == b ? juce::Colour(0xff3f3517)
-                                  : juce::Colour(0xff17191d));
+                uiColour(expandedBand == b ? juce::Colour(0xff3f3517)
+                                            : juce::Colour(0xff17191d)));
             advancedButtons[(size_t) b]->setColour(
                 juce::TextButton::textColourOffId,
-                expandedBand == b ? juce::Colour(0xffffdf62)
-                                  : juce::Colour(0xffc0c5cb));
+                uiColour(expandedBand == b ? juce::Colour(0xffffdf62)
+                                            : juce::Colour(0xffc0c5cb)));
         }
     }
 
