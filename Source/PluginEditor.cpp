@@ -511,6 +511,59 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.drawVerticalLine((int) x, graph.getY(), graph.getBottom());
     }
 
+    const float xovers[3]
+    {
+        graphFrequencyToX(graph, parameterValue("OTT_X1")),
+        graphFrequencyToX(graph, parameterValue("OTT_X2")),
+        graphFrequencyToX(graph, parameterValue("OTT_X3"))
+    };
+    const float overlap = juce::jlimit(0.f, 100.f,
+                                        parameterValue("XOVER_OVERLAP"));
+    const float spread = 16.f + overlap * 0.52f;
+
+    g.setColour(juce::Colour(0xffffd84d).withAlpha(.07f));
+    for (int i = 0; i < 2; ++i)
+        if (xovers[i + 1] > xovers[i])
+            g.fillRect(xovers[i], graph.getY(),
+                       xovers[i + 1] - xovers[i], graph.getHeight());
+
+    for (int i = 0; i < 3; ++i)
+    {
+        const float x = xovers[i];
+        g.setColour(juce::Colour(0xffffd84d).withAlpha(.92f));
+        g.drawVerticalLine((int) x, graph.getY() + 18.f, graph.getBottom() - 18.f);
+
+        const float l = juce::jmax(graph.getX() + 4.f, x - spread);
+        const float r = juce::jmin(graph.getRight() - 4.f, x + spread);
+        juce::Path curve;
+        curve.startNewSubPath(l, graph.getCentreY() + 20.f);
+        curve.cubicTo(l + spread * .35f, graph.getCentreY() + 20.f,
+                      x - spread * .20f, graph.getCentreY() - 12.f,
+                      x, graph.getCentreY() - 2.f);
+        curve.cubicTo(x + spread * .20f, graph.getCentreY() - 12.f,
+                      r - spread * .35f, graph.getCentreY() + 20.f,
+                      r, graph.getCentreY() + 20.f);
+        g.setColour(juce::Colour(0xffffdf67).withAlpha(.65f));
+        g.strokePath(curve, juce::PathStrokeType(1.1f));
+
+        g.setColour(juce::Colour(0xffffdf67));
+        g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
+        const float hz = parameterValue(
+            i == 0 ? "OTT_X1" : i == 1 ? "OTT_X2" : "OTT_X3");
+        g.drawText("X" + juce::String(i + 1) + "  "
+                   + juce::String(hz, 0) + " Hz",
+                   (int) x + 4, (int) graph.getY() + 22, 90, 11,
+                   juce::Justification::left);
+    }
+
+    g.setColour(juce::Colour(0xffffdf67).withAlpha(.88f));
+    g.setFont(juce::FontOptions(8.f).withStyle("Bold"));
+    g.drawText("SHARED X-OVER · 4 BANDS · 拖曳交叉線 = 頻率 · 線上滾輪 = OVERLAP "
+               + juce::String(overlap, 0) + "%",
+               (int) graph.getX() + 12,
+               (int) graph.getBottom() - 30,
+               600, 13, juce::Justification::left);
+
     juce::Path response;
     for (int i = 0; i <= 420; ++i)
     {
@@ -648,7 +701,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(juce::Colour(0xff8b949f));
     g.setFont(juce::FontOptions(8.f));
-    g.drawText("4-BAND EQ · OTT · TAPE-A · DE-ESSER", 20, 37, 300, 13,
+    g.drawText("4-BAND EQ · SHARED X-OVER · OTT · TAPE-A · DE-ESSER", 20, 37, 430, 13,
                juce::Justification::left);
 
     // Very small MIX / OUT faders in the title bar.
@@ -718,8 +771,8 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(juce::Colour(0xff606873));
     g.setFont(juce::FontOptions(7.f));
-    g.drawText("DOUBLE-CLICK KNOB = RESET · NO PAGE SCROLL",
-               18, 919, 280, 10, juce::Justification::left);
+    g.drawText("SHARED X-OVER = 3 LINES / 4 ZONES · WHEEL ON LINE = OVERLAP · HP/CORNER = GLOBAL LOW-CUT",
+               18, 919, 780, 10, juce::Justification::left);
 }
 
 void VVChainAudioProcessorEditor::setExpandedBand(int band)
