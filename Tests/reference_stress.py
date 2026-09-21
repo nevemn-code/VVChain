@@ -545,7 +545,9 @@ def realtime_safety_checks():
     assert "if (upDb > liftThreshold)" not in cpp
     assert "wet *= outputGain" in cpp
     assert "ceilingDb = -0.8f" in cpp
-    assert "for (int i = 1; i <= 4; ++i)" in cpp
+    assert "filterHalfBandFIREquiripple" in header
+    assert "eqOversampler.processSamplesUp" in cpp
+    assert "eqOversampler.processSamplesDown" in cpp
     assert "std::atan(asymmetric * drive)" in cpp
     assert "const float ax1 = 80.f" in cpp
     assert "const float ax2 = 3000.f" in cpp
