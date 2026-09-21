@@ -92,8 +92,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         f("ATYPE_DEGREE" + n, "Type-A Band " + n + " Degree", 0.f, 100.f, defaults[i]);
         f("ATYPE_LEVEL" + n, "Type-A Band " + n + " Level", -6.f, 6.f, levels[i]);
     }
-    f("ATYPE_ATTACK", "Type-A Attack", 1.f, 100.f, 10.f, 0.35f);
-    f("ATYPE_RELEASE", "Type-A Release", 20.f, 500.f, 80.f, 0.35f);
+    f("ATYPE_ATTACK", "Type-A Attack", 1.f, 100.f, 1.f, 0.35f);
+    f("ATYPE_RELEASE", "Type-A Release", 20.f, 500.f, 20.f, 0.35f);
     f("ATYPE_INPUT", "Type-A Input Gain", -24.f, 24.f, 0.f);
     f("ATYPE_MIX", "Type-A Mix", 0.f, 100.f, 100.f);
     f("ATYPE_OUTPUT", "Type-A Output Gain", -24.f, 24.f, 0.f);
