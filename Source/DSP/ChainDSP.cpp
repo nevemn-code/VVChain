@@ -602,7 +602,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 void VVChainDSP::applyAnalogColor(
     juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    if (p.eqBypass || p.eqColorGlobalBypass)
+    if (p.eqColorGlobalBypass)
         return;
 
     bool anyActive = false;
