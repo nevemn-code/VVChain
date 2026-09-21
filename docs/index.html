@@ -49,7 +49,81 @@ const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=n
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d");
 const state={eq:{bypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:35,hp:70},ott:{bypass:false,bandBypass:[false,false,false,false],degree:[100,100,100,100],liftT:[-40,-40,-40,-40],liftA:[50,50,50,50],liftR:[50,50,50,50],liftM:[100,100,100,100],compT:[-12,-12,-12,-12],compA:[15,15,15,15],compR:[60,60,60,60],compM:[100,100,100,100],level:[0,0,0,0],x:[350,1000,9000],input:5.2,gate:-80,mix:100,clip:true,output:-6},type:{bypass:false,bandBypass:[false,false,false,false],degree:[0,20,70,55],level:[0,0,1,1],attack:10,release:120,input:0,mix:100,output:0},de:{bypass:false,freq:12500,intensity:10,offset:0},mix:{bypass:false,drywet:100,output:0}};
 const defaults=structuredClone(state),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
-const WORKLET_SOURCE="class VVChainWorklet extends AudioWorkletProcessor {\n  constructor(){\n    super();\n    this.ready=false; this.s=null;\n    this.N=8192;\n    this.frame=[new Float32Array(this.N),new Float32Array(this.N)];\n    this.fill=0;\n    this.queue=[new Float32Array(this.N*2),new Float32Array(this.N*2)];\n    this.qr=0; this.qw=0; this.qc=0;\n    this.ch=[this.makeCh(),this.makeCh()];\n    this.re=[new Float64Array(this.N),new Float64Array(this.N)];\n    this.im=[new Float64Array(this.N),new Float64Array(this.N)];\n    this.avgSum=0; this.avgCount=0; this.sampleParity=0; this.pending=0;\n    this.port.onmessage=e=>{\n      if(e.data && e.data.type===\"params\"){this.s=e.data.state;this.ready=true}\n    };\n  }\n  makeCh(){\n    return {\n      eq:Array.from({length:4},()=>({z1:0,z2:0})),\n      hp:{z1:0,z2:0}, lp:[0,0,0], gate:0, lim:0,\n      lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0]\n    };\n  }\n  clamp(v,a,b){return Math.max(a,Math.min(b,v))}\n  finite(v){return Number.isFinite(v)?v:0}\n  db2g(db){return Math.pow(10,db/20)}\n  g2db(g){return 20*Math.log10(Math.max(g,1e-9))}\n  tc(ms){return Math.exp(-1/(.001*Math.max(.1,ms)*sampleRate))}\n  biquad(x,c,z){const y=c[0]*x+z.z1;z.z1=c[1]*x-c[3]*y+z.z2;z.z2=c[2]*x-c[4]*y;return y}\n  peak(fs,f,q,g){\n    const A=Math.pow(10,g/40),w=2*Math.PI*this.clamp(f,10,fs*.45)/fs;\n    const a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w);\n    const b0=1+a*A,b1=-2*cc,b2=1-a*A,a0=1+a/A,a1=-2*cc,a2=1-a/A;\n    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]\n  }\n  hp(fs,f,q){\n    const w=2*Math.PI*this.clamp(f,10,fs*.45)/fs,a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w);\n    const b0=(1+cc)/2,b1=-(1+cc),b2=(1+cc)/2,a0=1+a,a1=-2*cc,a2=1-a;\n    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]\n  }\n  color(x,a){\n    a=this.clamp(a,0,1); if(a<=0)return x;\n    const d=1+1.35*a,z=x+.012*a*x*x;\n    const makeup=1/d;\n    return Math.tanh(z*d)*makeup\n  }\n  fft(re,im,inv){\n    const n=re.length;\n    for(let i=1,j=0;i<n;i++){\n      let bit=n>>1;\n      for(;j&bit;bit>>=1)j^=bit;\n      j^=bit;\n      if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]]}\n    }\n    for(let len=2;len<=n;len<<=1){\n      const ang=(inv?1:-1)*2*Math.PI/len,wr0=Math.cos(ang),wi0=Math.sin(ang);\n      for(let i=0;i<n;i+=len){\n        let wr=1,wi=0;\n        for(let j=0;j<len/2;j++){\n          const k=i+j,l=k+len/2,tr=re[l]*wr-im[l]*wi,ti=re[l]*wi+im[l]*wr,ur=re[k],ui=im[k];\n          re[l]=ur-tr;im[l]=ui-ti;re[k]=ur+tr;im[k]=ui+ti;\n          const nwr=wr*wr0-wi*wi0,nwi=wr*wi0+wi*wr0;wr=nwr;wi=nwi\n        }\n      }\n    }\n    if(inv)for(let i=0;i<n;i++){re[i]/=n;im[i]/=n}\n  }\n  updateAverage(x){\n    if(this.sampleParity===0)this.pending=x;\n    else{this.avgSum+=Math.abs(x-this.pending);this.avgCount++}\n    this.sampleParity^=1;\n  }\n  deesser(){\n    const s=this.s.de;\n    const avg=this.avgCount>0?this.avgSum/this.avgCount:0;\n    const threshold=avg+Number(s.offset||0);\n    const trigger=10;\n    for(let ch=0;ch<2;ch++){\n      const x=this.frame[ch],re=this.re[ch],im=this.im[ch];\n      let more=0;\n      for(let i=0;i<this.N-2;i+=2)if(Math.abs(x[i+1]-x[i])>threshold)more++;\n      for(let i=0;i<this.N;i++){re[i]=x[i];im[i]=0}\n      if(!s.bypass && more>trigger){\n        this.fft(re,im,false);\n        const ref=this.clamp(Number(s.freq||12500),6000,18000);\n        const intensity=this.clamp(Number(s.intensity||10),2,10);\n        for(let i=1;i<this.N/2;i++){\n          const f=44100*i/this.N;\n          const coeff=f<ref/10?.5:f>=ref?(intensity*ref/f):(1+(intensity-1)*Math.pow(f/ref,3));\n          re[i]/=coeff;im[i]/=coeff;re[this.N-i]/=coeff;im[this.N-i]/=coeff;\n        }\n        this.fft(re,im,true);\n      }\n      const q=this.queue[ch];\n      for(let i=0;i<this.N;i++)q[(this.qw+i)%q.length]=(!s.bypass&&more>trigger)?re[i]:x[i];\n    }\n    this.qw=(this.qw+this.N)%this.queue[0].length;\n    this.qc=Math.min(this.qc+this.N,this.queue[0].length);\n    this.fill=0;\n  }\n  sample(x,ch){\n    const s=this.s,c=this.ch[ch];let y=x;\n    if(!s.eq.bypass){\n      y=this.biquad(y,this.hp(sampleRate,s.eq.hp,.707),c.hp);\n      for(let b=0;b<4;b++)y=this.biquad(y,this.peak(sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]),c.eq[b]);\n      y=this.color(y,s.eq.color/100)\n    }\n    if(!s.ott.bypass){\n      const original=y,gdb=this.g2db(Math.abs(y)+1e-9),gt=s.ott.gate,gtarget=gdb<gt?(gdb-gt)*5:0;\n      c.gate=.99*c.gate+.01*gtarget;\n      let z=original*this.db2g(s.ott.input+c.gate),xs=s.ott.x;\n      c.lp[0]+=(1-Math.exp(-2*Math.PI*xs[0]/sampleRate))*(z-c.lp[0]);const h0=z-c.lp[0];\n      c.lp[1]+=(1-Math.exp(-2*Math.PI*xs[1]/sampleRate))*(h0-c.lp[1]);const h1=h0-c.lp[1];\n      c.lp[2]+=(1-Math.exp(-2*Math.PI*xs[2]/sampleRate))*(h1-c.lp[2]);\n      const bands=[c.lp[0],c.lp[1],c.lp[2],h1-c.lp[2]];let sum=0;\n      for(let b=0;b<4;b++){\n        let v=bands[b],db=this.g2db(Math.abs(v)+1e-9),boost=db<s.ott.liftT[b]?(s.ott.liftT[b]-db)*5/6:0;\n        boost=this.clamp(boost,0,30);\n        const la=this.tc(s.ott.liftA[b]),lr=this.tc(s.ott.liftR[b]);\n        c.lift[b]=c.lift[b]*(boost>0?la:lr)+(1-(boost>0?la:lr))*this.db2g(boost);\n        const lm=this.clamp(s.ott.liftM[b]*s.ott.degree[b]/100,0,100);\n        v*=c.lift[b]*lm/100+1-lm/100;\n        const ed=this.g2db(Math.abs(v)+1e-9),red=ed>s.ott.compT[b]?(ed-s.ott.compT[b])*7/8:0;\n        const ca=this.tc(s.ott.compA[b]),cr=this.tc(s.ott.compR[b]);\n        c.comp[b]=c.comp[b]*(red>0?ca:cr)+(1-(red>0?ca:cr))*red;\n        const cm=this.clamp(s.ott.compM[b]*s.ott.degree[b]/100,0,100);\n        v*=this.db2g(-c.comp[b])*cm/100+1-cm/100;\n        sum+=v*this.db2g(s.ott.level[b])\n      }\n      const sdb=this.g2db(Math.abs(sum)+1e-9),lred=sdb>-3?(sdb+3)*19/20:0;\n      c.lim=.995*c.lim+.005*lred;sum*=this.db2g(-c.lim);\n      if(s.ott.clip)sum=Math.tanh(sum*1.7);\n      y=(original*(1-s.ott.mix/100)+sum*s.ott.mix/100)*this.db2g(s.ott.output)\n    }\n    if(!s.type.bypass){
+const WORKLET_SOURCE="class VVChainWorklet extends AudioWorkletProcessor {\n  constructor(){\n    super();\n    this.ready=false; this.s=null;\n    this.N=8192;\n    this.frame=[new Float32Array(this.N),new Float32Array(this.N)];\n    this.fill=0;\n    this.queue=[new Float32Array(this.N*2),new Float32Array(this.N*2)];\n    this.qr=0; this.qw=0; this.qc=0;\n    this.ch=[this.makeCh(),this.makeCh()];\n    this.re=[new Float64Array(this.N),new Float64Array(this.N)];\n    this.im=[new Float64Array(this.N),new Float64Array(this.N)];\n    this.avgSum=0; this.avgCount=0; this.sampleParity=0; this.pending=0;\n    this.port.onmessage=e=>{\n      if(e.data && e.data.type===\"params\"){this.s=e.data.state;this.ready=true}\n    };\n  }\n  makeCh(){\n    return {\n      eq:Array.from({length:4},()=>({z1:0,z2:0})),\n      hp:{z1:0,z2:0}, lp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,\n      lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0]\n    };\n  }\n  clamp(v,a,b){return Math.max(a,Math.min(b,v))}\n  finite(v){return Number.isFinite(v)?v:0}\n  db2g(db){return Math.pow(10,db/20)}\n  g2db(g){return 20*Math.log10(Math.max(g,1e-9))}\n  tc(ms){return Math.exp(-1/(.001*Math.max(.1,ms)*sampleRate))}\n  biquad(x,c,z){const y=c[0]*x+z.z1;z.z1=c[1]*x-c[3]*y+z.z2;z.z2=c[2]*x-c[4]*y;return y}\n  peak(fs,f,q,g){\n    const A=Math.pow(10,g/40),w=2*Math.PI*this.clamp(f,10,fs*.45)/fs;\n    const a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w);\n    const b0=1+a*A,b1=-2*cc,b2=1-a*A,a0=1+a/A,a1=-2*cc,a2=1-a/A;\n    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]\n  }\n  hp(fs,f,q){\n    const w=2*Math.PI*this.clamp(f,10,fs*.45)/fs,a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w);\n    const b0=(1+cc)/2,b1=-(1+cc),b2=(1+cc)/2,a0=1+a,a1=-2*cc,a2=1-a;\n    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]\n  }\n  color(x,a){\n    a=this.clamp(a,0,1); if(a<=0)return x;\n    const d=1+1.35*a,z=x+.012*a*x*x;\n    const makeup=1/d;\n    return Math.tanh(z*d)*makeup\n  }\n  fft(re,im,inv){\n    const n=re.length;\n    for(let i=1,j=0;i<n;i++){\n      let bit=n>>1;\n      for(;j&bit;bit>>=1)j^=bit;\n      j^=bit;\n      if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]]}\n    }\n    for(let len=2;len<=n;len<<=1){\n      const ang=(inv?1:-1)*2*Math.PI/len,wr0=Math.cos(ang),wi0=Math.sin(ang);\n      for(let i=0;i<n;i+=len){\n        let wr=1,wi=0;\n        for(let j=0;j<len/2;j++){\n          const k=i+j,l=k+len/2,tr=re[l]*wr-im[l]*wi,ti=re[l]*wi+im[l]*wr,ur=re[k],ui=im[k];\n          re[l]=ur-tr;im[l]=ui-ti;re[k]=ur+tr;im[k]=ui+ti;\n          const nwr=wr*wr0-wi*wi0,nwi=wr*wi0+wi*wr0;wr=nwr;wi=nwi\n        }\n      }\n    }\n    if(inv)for(let i=0;i<n;i++){re[i]/=n;im[i]/=n}\n  }\n  updateAverage(x){\n    if(this.sampleParity===0)this.pending=x;\n    else{this.avgSum+=Math.abs(x-this.pending);this.avgCount++}\n    this.sampleParity^=1;\n  }\n  deesser(){\n    const s=this.s.de;\n    const avg=this.avgCount>0?this.avgSum/this.avgCount:0;\n    const threshold=avg+Number(s.offset||0);\n    const trigger=10;\n    for(let ch=0;ch<2;ch++){\n      const x=this.frame[ch],re=this.re[ch],im=this.im[ch];\n      let more=0;\n      for(let i=0;i<this.N-2;i+=2)if(Math.abs(x[i+1]-x[i])>threshold)more++;\n      for(let i=0;i<this.N;i++){re[i]=x[i];im[i]=0}\n      if(!s.bypass && more>trigger){\n        this.fft(re,im,false);\n        const ref=this.clamp(Number(s.freq||12500),6000,18000);\n        const intensity=this.clamp(Number(s.intensity||10),2,10);\n        for(let i=1;i<this.N/2;i++){\n          const f=44100*i/this.N;\n          const coeff=f<ref/10?.5:f>=ref?(intensity*ref/f):(1+(intensity-1)*Math.pow(f/ref,3));\n          re[i]/=coeff;im[i]/=coeff;re[this.N-i]/=coeff;im[this.N-i]/=coeff;\n        }\n        this.fft(re,im,true);\n      }\n      const q=this.queue[ch];\n      for(let i=0;i<this.N;i++)q[(this.qw+i)%q.length]=(!s.bypass&&more>trigger)?re[i]:x[i];\n    }\n    this.qw=(this.qw+this.N)%this.queue[0].length;\n    this.qc=Math.min(this.qc+this.N,this.queue[0].length);\n    this.fill=0;\n  }\n  sample(x,ch){\n    const s=this.s,c=this.ch[ch];let y=x;\n    if(!s.eq.bypass){\n      y=this.biquad(y,this.hp(sampleRate,s.eq.hp,.707),c.hp);\n      for(let b=0;b<4;b++)y=this.biquad(y,this.peak(sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]),c.eq[b]);\n      y=this.color(y,s.eq.color/100)\n    }\n    if(!s.ott.bypass){
+      const original=y;
+      const inputGain=this.db2g(this.clamp(s.ott.input,-24,24));
+      const xs=s.ott.x;
+      const z=original*inputGain;
+
+      c.lp[0]+=(1-Math.exp(-2*Math.PI*xs[0]/sampleRate))*(z-c.lp[0]);
+      const h0=z-c.lp[0];
+      c.lp[1]+=(1-Math.exp(-2*Math.PI*xs[1]/sampleRate))*(h0-c.lp[1]);
+      const h1=h0-c.lp[1];
+      c.lp[2]+=(1-Math.exp(-2*Math.PI*xs[2]/sampleRate))*(h1-c.lp[2]);
+
+      const bands=[c.lp[0],c.lp[1],c.lp[2],h1-c.lp[2]];
+      for(let b=0;b<4;b++){
+        if(s.ott.bandBypass[b])continue;
+
+        const degree=this.clamp(Number(s.ott.degree[b]||0),0,100);
+        if(degree<=1e-4)continue;
+
+        let v=bands[b];
+
+        // Per-band gate state: no cross-band detector interaction.
+        const gateDb=this.g2db(Math.abs(v)+1e-9);
+        const gt=s.ott.gate;
+        const gateTarget=gateDb<gt?(gateDb-gt)*5:0;
+        const ga=.99;
+        c.gateBand[b]=ga*c.gateBand[b]+(1-ga)*gateTarget;
+        v*=.9*this.db2g(c.gateBand[b])+.1;
+
+        const depth=degree/100;
+        const downRatio=1+depth*(8-1);
+        const upRatio=1+depth*(6-1);
+
+        // Downward first.
+        const downDb=this.g2db(Math.abs(v)+1e-9);
+        const downThr=s.ott.compT[b];
+        const downSlope=1-1/downRatio;
+        const downTarget=downDb>downThr
+          ? (downDb-downThr)*downSlope
+          : 0;
+        const da=this.tc(s.ott.compA[b]),dr=this.tc(s.ott.compR[b]);
+        c.comp[b]=c.comp[b]*(downTarget>c.comp[b]?da:dr)
+          +(1-(downTarget>c.comp[b]?da:dr))*downTarget;
+        const downMix=this.clamp(s.ott.compM[b]/100,0,1);
+        v*=this.db2g(-c.comp[b]*downMix)+(1-downMix);
+
+        // Upward second: raise only material below the per-band threshold.
+        const upDb=this.g2db(Math.abs(v)+1e-9);
+        const upThr=s.ott.liftT[b];
+        const upSlope=1-1/upRatio;
+        const upTarget=upDb<upThr
+          ? (upThr-upDb)*upSlope
+          : 0;
+        const ua=this.tc(s.ott.liftA[b]),ur=this.tc(s.ott.liftR[b]);
+        const upGain=this.db2g(upTarget);
+        c.lift[b]=c.lift[b]*(upGain>1?ua:ur)
+          +(1-(upGain>1?ua:ur))*upGain;
+        const upMix=this.clamp(s.ott.liftM[b]/100,0,1);
+        v*=c.lift[b]*upMix+(1-upMix);
+
+        v*=this.db2g(this.clamp(s.ott.level[b],-24,12));
+        bands[b]=v;
+      }
+
+      let sum=bands[0]+bands[1]+bands[2]+bands[3];
+      const sdb=this.g2db(Math.abs(sum)+1e-9);
+      const lred=sdb>-3?(sdb+3)*19/20:0;
+      c.lim=.995*c.lim+.005*lred;
+      sum*=this.db2g(-c.lim);
+
+      if(s.ott.clip)sum=Math.tanh(sum*1.7);
+      const mix=this.clamp(s.ott.mix/100,0,1);
+      y=(original*(1-mix)+sum*mix)*this.db2g(this.clamp(s.ott.output,-24,24));
+    }
+    if(!s.type.bypass){
       const ti=y*this.db2g(s.type.input);
       const alphaA=this.tc(s.type.attack);
       const alphaR=this.tc(s.type.release);
