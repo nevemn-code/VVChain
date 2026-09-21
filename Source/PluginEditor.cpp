@@ -74,6 +74,31 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
 {
     juce::ignoreUnused(shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
 
+    if (button.getComponentID() == "ANALOG_MODE")
+    {
+        auto r = button.getLocalBounds().toFloat().reduced(1.0f);
+        const auto accent = monochrome
+            ? button.findColour(juce::ToggleButton::tickColourId).withSaturation(0.0f)
+            : button.findColour(juce::ToggleButton::tickColourId);
+        const bool ss = button.getToggleState();
+        g.setColour(juce::Colour(0xff090b0e));
+        g.fillRoundedRectangle(r, 4.0f);
+        g.setColour(juce::Colour(0xff343941));
+        g.drawRoundedRectangle(r, 4.0f, 1.0f);
+        const float half = r.getWidth() * 0.5f;
+        g.setColour(ss ? juce::Colour(0xff171a1e) : accent.withAlpha(.26f));
+        g.fillRoundedRectangle(r.getX(), r.getY(), half, r.getHeight(), 4.0f);
+        g.setColour(ss ? accent.withAlpha(.26f) : juce::Colour(0xff171a1e));
+        g.fillRoundedRectangle(r.getX() + half, r.getY(), half, r.getHeight(), 4.0f);
+        g.setFont(juce::FontOptions(7.0f).withStyle("Bold"));
+        g.setColour(ss ? accent : juce::Colour(0xffedf1f5));
+        g.drawText("TT", r.withWidth(half).toNearestInt(), juce::Justification::centred);
+        g.setColour(ss ? juce::Colour(0xffedf1f5) : accent);
+        g.drawText("SS", r.withX(r.getX() + half).withWidth(half).toNearestInt(),
+                   juce::Justification::centred);
+        return;
+    }
+
     if (button.getWidth() <= 36 && button.getHeight() <= 36)
     {
         const float d = juce::jmin(button.getWidth(), button.getHeight()) - 10.f;
@@ -147,7 +172,13 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
                                   juce::Colour(0xffdfe7ef));
     masterBypassButton->setTooltip(
         "整個 VVCHAIN 完全旁通；固定 PDC，切換使用短交叉淡化避免斷音/爆音");
-    masterBypassButton->onClick = [this] { updateBypassVisuals(); };
+    masterBypassButton->onClick = [this]
+    {
+        if (auto* parameter = audioProcessor.apvts.getParameter("MASTER_BYPASS"))
+            parameter->setValueNotifyingHost(
+                masterBypassButton->getToggleState() ? 1.0f : 0.0f);
+        updateBypassVisuals();
+    };
     masterBypassAttachment = std::make_unique<BoolAttachment>(
         audioProcessor.apvts, "MASTER_BYPASS", *masterBypassButton);
     addAndMakeVisible(*masterBypassButton);
@@ -168,8 +199,22 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         // The two EQ / ANALOG controls live inside every BAND card.
         // They intentionally remain attached to the shared DSP parameters.
         addKnob("EQ_COLOR_B" + n, "ANALOG COLOR", 0, 100, .1,
-                parameterValue("EQ_COLOR"), " %", b, 3,
-                juce::Colour(0xff60a5fa), false, "EQ_COLOR");
+                parameterValue("EQ_COLOR" + n), " %", b, 3,
+                juce::Colour(0xff60a5fa), false, "EQ_COLOR" + n);
+
+        analogModeButtons[(size_t) b] = std::make_unique<juce::ToggleButton>();
+        analogModeButtons[(size_t) b]->setLookAndFeel(&metalLook);
+        analogModeButtons[(size_t) b]->setComponentID("ANALOG_MODE");
+        analogModeButtons[(size_t) b]->setButtonText("");
+        analogModeButtons[(size_t) b]->setColour(
+            juce::ToggleButton::tickColourId, kBandColours[(size_t) b]);
+        analogModeButtons[(size_t) b]->setTooltip(
+            "ANALOG COLOR：TT = Tube Saturation；SS = Solid-State Saturation");
+        analogModeAttachments[(size_t) b] =
+            std::make_unique<BoolAttachment>(
+                audioProcessor.apvts, "EQ_COLOR_MODE" + n,
+                *analogModeButtons[(size_t) b]);
+        addAndMakeVisible(*analogModeButtons[(size_t) b]);
         // Main screen intentionally keeps only the three OTT performance knobs.
         addKnob("OTT_DEGREE" + n, "OTT %", 0, 100, .1,
                 parameterValue("OTT_DEGREE" + n), " %", b, 4, juce::Colour(0xfffacc15));
@@ -237,8 +282,8 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     addKnob("DEESS_FREQ", "DE-ESS FREQ", 6000, 18000, 10,
             parameterValue("DEESS_FREQ"), " Hz", 4, 0,
             juce::Colour(0xff67d3aa));
-    addKnob("DEESS_INTENSITY", "DE-ESS %", 0, 10, .01,
-            parameterValue("DEESS_INTENSITY"), " %", 4, 1,
+    addKnob("DEESS_INTENSITY", "MAXIMUM REDUCTION", 0, 8, .1,
+            parameterValue("DEESS_INTENSITY"), " dB", 4, 1,
             juce::Colour(0xff67d3aa));
 
     deessBypassButton = std::make_unique<juce::ToggleButton>();
@@ -319,7 +364,13 @@ VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
     for (auto& b : atypeBandBypassButtons)
         if (b) b->setLookAndFeel(nullptr);
 
+    for (auto& b : analogModeButtons)
+        if (b) b->setLookAndFeel(nullptr);
+
     for (auto& a : ottBandBypassAttachments)
+        a.reset();
+
+    for (auto& a : analogModeAttachments)
         a.reset();
     for (auto& a : atypeBandBypassAttachments)
         a.reset();
@@ -508,64 +559,39 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.drawVerticalLine((int) x, graph.getY(), graph.getBottom());
     }
 
-    // Fast real-time spectrum. FFT work happens on a background thread; the GUI
-    // only samples the already-smoothed bins during its 30 Hz timer callback.
-    juce::Path spectrum;
-    bool spectrumStarted = false;
-    for (int bin = 1; bin < VVChainSpectrumAnalyzer::kNumBins; ++bin)
-    {
-        const double hz = (double) bin
-            * audioProcessor.getSampleRate()
-            / (double) (VVChainSpectrumAnalyzer::kFftSize);
-
-        if (hz < 20.0 || hz > 20000.0)
-            continue;
-
-        const float db = juce::jlimit(-100.0f, 0.0f,
-                                      audioProcessor.getSpectrumMagnitudeDb(bin));
-        const float x = graphFrequencyToX(graph, (float) hz);
-        const float y = graph.getBottom()
-            - graph.getHeight() * ((db + 100.0f) / 100.0f);
-
-        if (!spectrumStarted)
-        {
-            spectrum.startNewSubPath(x, y);
-            spectrumStarted = true;
-        }
-        else
-            spectrum.lineTo(x, y);
-    }
-
-    if (spectrumStarted)
-    {
-        const auto spectrumColour = uiColour(juce::Colour(0xff4dd8ff));
-        g.setColour(spectrumColour.withAlpha(.12f));
-        juce::Path fill = spectrum;
-        fill.lineTo(graph.getRight(), graph.getBottom());
-        fill.lineTo(graph.getX(), graph.getBottom());
-        fill.closeSubPath();
-        g.fillPath(fill);
-
-        g.setColour(spectrumColour.withAlpha(.68f));
-        g.strokePath(spectrum, juce::PathStrokeType(1.2f));
-    }
-
     const float xovers[3]
     {
         graphFrequencyToX(graph, parameterValue("OTT_X1")),
         graphFrequencyToX(graph, parameterValue("OTT_X2")),
         graphFrequencyToX(graph, parameterValue("OTT_X3"))
     };
+
     const float overlap = juce::jlimit(0.f, 100.f,
-                                        parameterValue("XOVER_OVERLAP"));
+                                       parameterValue("XOVER_OVERLAP"));
+    const float boundaries[5]
+    {
+        graph.getX(), xovers[0], xovers[1], xovers[2], graph.getRight()
+    };
+
+    // Four graph zones track the four independent Analog Color controls.
+    // 0% = fully transparent; 100% = 30% transparent.
+    for (int band = 0; band < 4; ++band)
+    {
+        const float amount =
+            juce::jlimit(0.f, 100.f,
+                         parameterValue("EQ_COLOR" + juce::String(band + 1)))
+            / 100.f;
+        const float alpha = amount * 0.70f;
+        if (alpha > 0.0f && boundaries[band + 1] > boundaries[band])
+        {
+            g.setColour(uiColour(kBandColours[(size_t) band]).withAlpha(alpha));
+            g.fillRect(boundaries[band], graph.getY(),
+                       boundaries[band + 1] - boundaries[band],
+                       graph.getHeight());
+        }
+    }
+
     const float spread = 16.f + overlap * 0.52f;
-
-    g.setColour(uiColour(juce::Colour(0xffffd84d)).withAlpha(.07f));
-    for (int i = 0; i < 2; ++i)
-        if (xovers[i + 1] > xovers[i])
-            g.fillRect(xovers[i], graph.getY(),
-                       xovers[i + 1] - xovers[i], graph.getHeight());
-
     for (int i = 0; i < 3; ++i)
     {
         const float x = xovers[i];
@@ -784,6 +810,12 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
             b->setColour(juce::ToggleButton::tickColourId,
                          uiColour(juce::Colour(0xfff472b6)));
 
+    for (size_t band = 0; band < analogModeButtons.size(); ++band)
+        if (analogModeButtons[band])
+            analogModeButtons[band]->setColour(
+                juce::ToggleButton::tickColourId,
+                uiColour(kBandColours[band]));
+
     for (auto& b : advancedButtons)
         if (b)
         {
@@ -808,8 +840,6 @@ void VVChainAudioProcessorEditor::timerCallback()
 {
     if (isMasterBypassed() != lastMasterBypassUi)
         updateBypassVisuals();
-
-    repaint(eqGraphBounds().toNearestInt());
 }
 
 void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
@@ -991,25 +1021,36 @@ void VVChainAudioProcessorEditor::resized()
         placeKnob("EQ" + n + "_FREQ", pos(0));
         placeKnob("EQ" + n + "_GAIN", pos(1));
         placeKnob("EQ" + n + "_Q", pos(2));
-        placeKnob("EQ_COLOR_B" + n, pos(3));
+
+        const auto colorCell = pos(3);
+        placeKnob("EQ_COLOR_B" + n,
+                  { colorCell.getX(), colorCell.getY() + 12,
+                    colorCell.getWidth(), colorCell.getHeight() - 12 });
+        if (analogModeButtons[(size_t) b])
+            analogModeButtons[(size_t) b]->setBounds(
+                colorCell.getX() + (colorCell.getWidth() - 36) / 2,
+                colorCell.getY(), 36, 12);
+
         placeKnob("OTT_DEGREE" + n, pos(4));
         placeKnob("OTT_COMP_A" + n, pos(5));
         placeKnob("OTT_COMP_R" + n, pos(6));
         placeKnob("ATYPE_DEGREE" + n, pos(7));
 
         if (ottBandBypassButtons[(size_t) b])
-        {
-            const auto ottCell = pos(4);
-            ottBandBypassButtons[(size_t) b]->setBounds(
-                ottCell.getRight() - 18, ottCell.getY() + 1, 16, 16);
-        }
+            if (auto* knob = findKnob("OTT_DEGREE" + n))
+            {
+                const auto r = knob->slider->getBounds();
+                ottBandBypassButtons[(size_t) b]->setBounds(
+                    r.getRight() - 14, r.getY() + 1, 12, 12);
+            }
 
         if (atypeBandBypassButtons[(size_t) b])
-        {
-            const auto typeCell = pos(7);
-            atypeBandBypassButtons[(size_t) b]->setBounds(
-                typeCell.getRight() - 18, typeCell.getY() + 1, 16, 16);
-        }
+            if (auto* knob = findKnob("ATYPE_DEGREE" + n))
+            {
+                const auto r = knob->slider->getBounds();
+                atypeBandBypassButtons[(size_t) b]->setBounds(
+                    r.getRight() - 14, r.getY() + 1, 12, 12);
+            }
     }
 
     // Fifth zone: the DE-ESS controls get their own full section.
@@ -1018,9 +1059,6 @@ void VVChainAudioProcessorEditor::resized()
         const int innerX = x + 8;
         const int innerTop = cardY + 48;
         const int innerW = cardW - 16;
-        placeKnob("DEESS_FREQ", { innerX + 4, innerTop + 30, innerW - 8, 118 });
-        placeKnob("DEESS_INTENSITY", { innerX + 4, innerTop + 170, innerW - 8, 118 });
-
         if (deessBypassButton)
             deessBypassButton->setBounds(x + cardW - 42, cardY + 4, 28, 28);
 
@@ -1087,6 +1125,20 @@ void VVChainAudioProcessorEditor::resized()
 void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
 {
     const auto pos = event.position;
+
+    if (expandedBand >= 0)
+    {
+        const int popupW = juce::jmin(900, getWidth() - 40);
+        const int popupH = 330;
+        const int popupX = (getWidth() - popupW) / 2;
+        const int popupY = (getHeight() - popupH) / 2;
+        if (!juce::Rectangle<int>(popupX, popupY, popupW, popupH).contains(pos.toInt()))
+        {
+            setExpandedBand(-1);
+            return;
+        }
+    }
+
     const auto graph = eqGraphBounds();
     if (!graph.contains(pos))
         return;
