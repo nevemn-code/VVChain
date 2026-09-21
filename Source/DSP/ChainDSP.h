@@ -24,24 +24,24 @@ public:
 
         // Four-band OTT / PunkOTT-MB style chain.
         std::array<bool, 4> ottBandBypass { false, false, false, false };
-        std::array<float, 4> ottDegree { 100.f, 100.f, 100.f, 100.f };
-        std::array<float, 4> ottLifterThreshold { -40.f, -40.f, -40.f, -40.f };
-        std::array<float, 4> ottLifterAttack { 50.f, 50.f, 50.f, 50.f };
+        std::array<float, 4> ottDegree { 35.f, 35.f, 30.f, 25.f };
+        std::array<float, 4> ottLifterThreshold { -45.f, -45.f, -45.f, -45.f };
+        std::array<float, 4> ottLifterAttack { 1.f, 1.f, 1.f, 1.f };
         std::array<float, 4> ottLifterRelease { 50.f, 50.f, 50.f, 50.f };
         std::array<float, 4> ottLifterMix { 100.f, 100.f, 100.f, 100.f };
-        std::array<float, 4> ottCompThreshold { -12.f, -12.f, -12.f, -12.f };
-        std::array<float, 4> ottCompAttack { 15.f, 15.f, 15.f, 15.f };
-        std::array<float, 4> ottCompRelease { 60.f, 60.f, 60.f, 60.f };
+        std::array<float, 4> ottCompThreshold { -18.f, -18.f, -18.f, -18.f };
+        std::array<float, 4> ottCompAttack { 1.f, 1.f, 1.f, 1.f };
+        std::array<float, 4> ottCompRelease { 50.f, 50.f, 50.f, 50.f };
         std::array<float, 4> ottCompMix { 100.f, 100.f, 100.f, 100.f };
         std::array<float, 4> ottBandLevelDb { 0.f, 0.f, 0.f, 0.f };
-        float ottX1 = 350.f;
+        float ottX1 = 120.f;
         float ottX2 = 1000.f;
-        float ottX3 = 9000.f;
-        float ottInputGainDb = 5.2f;
+        float ottX3 = 7000.f;
+        float ottInputGainDb = 0.f;
         float ottGateThresholdDb = -80.f;
-        float ottMix = 100.f;
-        bool ottClipper = true;
-        float ottOutputGainDb = -6.f;
+        float ottMix = 25.f;
+        bool ottClipper = false;
+        float ottOutputGainDb = 0.f;
 
         // Four-band Type-A / Dolby-A-style dynamic enhancer.
         std::array<bool, 4> atypeBandBypass { false, false, false, false };
