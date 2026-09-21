@@ -134,6 +134,17 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
                   i == 3 ? juce::Colour(0xff67d3aa) :
                            juce::Colour(0xff9ed85c));
 
+    masterBypassButton = std::make_unique<juce::ToggleButton>("BYPASS");
+    masterBypassButton->setLookAndFeel(&metalLook);
+    masterBypassButton->setButtonText("BYPASS");
+    masterBypassButton->setColour(juce::ToggleButton::tickColourId,
+                                  juce::Colour(0xffdfe7ef));
+    masterBypassButton->setTooltip(
+        "整個 VVCHAIN 完全旁通；固定 PDC，切換使用短交叉淡化避免斷音/爆音");
+    masterBypassAttachment = std::make_unique<BoolAttachment>(
+        audioProcessor.apvts, "MASTER_BYPASS", *masterBypassButton);
+    addAndMakeVisible(*masterBypassButton);
+
     for (int b = 0; b < 4; ++b)
     {
         const auto c = kBandColours[(size_t) b];
@@ -227,6 +238,16 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
             parameterValue("DEESS_INTENSITY"), " %", 4, 1,
             juce::Colour(0xff67d3aa));
 
+    deessBypassButton = std::make_unique<juce::ToggleButton>();
+    deessBypassButton->setLookAndFeel(&metalLook);
+    deessBypassButton->setButtonText("");
+    deessBypassButton->setColour(
+        juce::ToggleButton::tickColourId, juce::Colour(0xff67d3aa));
+    deessBypassButton->setTooltip("DE-ESSER：亮 = 啟用；按下 = BYPASS");
+    deessBypassAttachment = std::make_unique<BoolAttachment>(
+        audioProcessor.apvts, "DEESS_BYPASS", *deessBypassButton);
+    addAndMakeVisible(*deessBypassButton);
+
     // Shared OTT advanced controls appear inside the currently expanded BAND.
     addKnob("OTT_X1", "XOVER 1", 80, 600, 1,
             parameterValue("OTT_X1"), " Hz", -1, 30, juce::Colour(0xfffacc15));
@@ -234,6 +255,8 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
             parameterValue("OTT_X2"), " Hz", -1, 31, juce::Colour(0xfffacc15));
     addKnob("OTT_X3", "XOVER 3", 6000, 12000, 1,
             parameterValue("OTT_X3"), " Hz", -1, 32, juce::Colour(0xfffacc15));
+    addKnob("XOVER_OVERLAP", "OVERLAP", 0, 100, 1,
+            parameterValue("XOVER_OVERLAP"), " %", -1, 33, juce::Colour(0xfffacc15));
     addKnob("OTT_INPUT", "INPUT", -24, 24, .1,
             parameterValue("OTT_INPUT"), " dB", -1, 33, juce::Colour(0xfffacc15));
     addKnob("OTT_GATE", "GATE", -90, 0, .1,
@@ -289,6 +312,11 @@ VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
 
     for (auto& b : bypassButtons)
         if (b) b->setLookAndFeel(nullptr);
+
+    if (masterBypassButton) masterBypassButton->setLookAndFeel(nullptr);
+    masterBypassAttachment.reset();
+    if (deessBypassButton) deessBypassButton->setLookAndFeel(nullptr);
+    deessBypassAttachment.reset();
 
     for (auto& b : ottBandBypassButtons)
         if (b) b->setLookAndFeel(nullptr);
