@@ -964,9 +964,6 @@ void VVChainAudioProcessorEditor::resized()
     if (masterBypassButton)
         masterBypassButton->setBounds(w - 338, 9, 76, 25);
 
-    placeKnob("DRY_WET", { w - 220, 39, 92, 29 });
-    placeKnob("OUTPUT_LEVEL", { w - 116, 39, 92, 29 });
-
     for (int b = 0; b < 4; ++b)
     {
         const int x = left + b * (cardW + gap);
