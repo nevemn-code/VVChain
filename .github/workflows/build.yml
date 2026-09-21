@@ -28,6 +28,23 @@ jobs:
         shell: pwsh
         run: cmake --build Builds --config Release
 
+      - name: Real audio latency / phase probe
+        shell: pwsh
+        run: |
+          $probe = Get-ChildItem -Path "$PWD\Builds" -Recurse -File -Filter "VVChainAudioProbe.exe" |
+            Select-Object -First 1
+
+          if (-not $probe) {
+            Write-Host "VVChainAudioProbe.exe not found."
+            Get-ChildItem -Path "$PWD\Builds" -Recurse | Select-Object FullName
+            exit 1
+          }
+
+          & $probe.FullName
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
       - name: Collect VST3
         shell: pwsh
         run: |
@@ -40,6 +57,14 @@ jobs:
 
           New-Item -ItemType Directory -Force -Path "$PWD\Artifacts" | Out-Null
           Copy-Item -LiteralPath $vst3.FullName -Destination "$PWD\Artifacts\VVChain.vst3" -Recurse -Force
+
+          $probeReport = Join-Path $PWD "VVChain_audio_probe.csv"
+          if (Test-Path $probeReport) {
+            Copy-Item -LiteralPath $probeReport -Destination "$PWD\Artifacts\VVChain_audio_probe.csv" -Force
+          } else {
+            Write-Host "Audio probe CSV was not produced."
+            exit 1
+          }
 
           $readme = @"
           VVChain Windows x64 VST3 test build
