@@ -140,7 +140,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
     for (int b = 0; b < 4; ++b)
     {
-        const auto c = kBandColours[(size_t) b];
+        const auto c = uiColour(kBandColours[(size_t) b]);
         const auto n = juce::String(b + 1);
 
         // Main EQ controls.
@@ -280,6 +280,9 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     closeAdvanced->setButtonText("CLOSE");
     closeAdvanced->onClick = [this] { setExpandedBand(-1); };
     addAndMakeVisible(*closeAdvanced);
+
+    startTimerHz(30);
+    updateBypassVisuals();
 
     // MIX / OUT are rotary controls in the DeEsser chain module.
     addKnob("DRY_WET", "MIX", 0, 100, .1,
@@ -502,6 +505,48 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.drawVerticalLine((int) x, graph.getY(), graph.getBottom());
     }
 
+    // Fast real-time spectrum. FFT work happens on a background thread; the GUI
+    // only samples the already-smoothed bins during its 30 Hz timer callback.
+    juce::Path spectrum;
+    bool spectrumStarted = false;
+    for (int bin = 1; bin < VVChainSpectrumAnalyzer::kNumBins; ++bin)
+    {
+        const double hz = (double) bin
+            * audioProcessor.getSampleRate()
+            / (double) (VVChainSpectrumAnalyzer::kFftSize);
+
+        if (hz < 20.0 || hz > 20000.0)
+            continue;
+
+        const float db = juce::jlimit(-100.0f, 0.0f,
+                                      audioProcessor.getSpectrumMagnitudeDb(bin));
+        const float x = graphFrequencyToX(graph, (float) hz);
+        const float y = graph.getBottom()
+            - graph.getHeight() * ((db + 100.0f) / 100.0f);
+
+        if (!spectrumStarted)
+        {
+            spectrum.startNewSubPath(x, y);
+            spectrumStarted = true;
+        }
+        else
+            spectrum.lineTo(x, y);
+    }
+
+    if (spectrumStarted)
+    {
+        const auto spectrumColour = uiColour(juce::Colour(0xff4dd8ff));
+        g.setColour(spectrumColour.withAlpha(.12f));
+        juce::Path fill = spectrum;
+        fill.lineTo(graph.getRight(), graph.getBottom());
+        fill.lineTo(graph.getX(), graph.getBottom());
+        fill.closeSubPath();
+        g.fillPath(fill);
+
+        g.setColour(spectrumColour.withAlpha(.68f));
+        g.strokePath(spectrum, juce::PathStrokeType(1.2f));
+    }
+
     const float xovers[3]
     {
         graphFrequencyToX(graph, parameterValue("OTT_X1")),
@@ -512,7 +557,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                                         parameterValue("XOVER_OVERLAP"));
     const float spread = 16.f + overlap * 0.52f;
 
-    g.setColour(juce::Colour(0xffffd84d).withAlpha(.07f));
+    g.setColour(uiColour(juce::Colour(0xffffd84d)).withAlpha(.07f));
     for (int i = 0; i < 2; ++i)
         if (xovers[i + 1] > xovers[i])
             g.fillRect(xovers[i], graph.getY(),
@@ -521,7 +566,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     for (int i = 0; i < 3; ++i)
     {
         const float x = xovers[i];
-        g.setColour(juce::Colour(0xffffd84d).withAlpha(.92f));
+        g.setColour(uiColour(juce::Colour(0xffffd84d)).withAlpha(.92f));
         g.drawVerticalLine((int) x, graph.getY() + 18.f, graph.getBottom() - 18.f);
 
         const float l = juce::jmax(graph.getX() + 4.f, x - spread);
@@ -534,10 +579,10 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         curve.cubicTo(x + spread * .20f, graph.getCentreY() - 12.f,
                       r - spread * .35f, graph.getCentreY() + 20.f,
                       r, graph.getCentreY() + 20.f);
-        g.setColour(juce::Colour(0xffffdf67).withAlpha(.65f));
+        g.setColour(uiColour(juce::Colour(0xffffdf67)).withAlpha(.65f));
         g.strokePath(curve, juce::PathStrokeType(1.1f));
 
-        g.setColour(juce::Colour(0xffffdf67));
+        g.setColour(uiColour(juce::Colour(0xffffdf67)));
         g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
         const float hz = parameterValue(
             i == 0 ? "OTT_X1" : i == 1 ? "OTT_X2" : "OTT_X3");
@@ -547,7 +592,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                    juce::Justification::left);
     }
 
-    g.setColour(juce::Colour(0xffffdf67).withAlpha(.88f));
+    g.setColour(uiColour(juce::Colour(0xffffdf67)).withAlpha(.88f));
     g.setFont(juce::FontOptions(8.f).withStyle("Bold"));
     g.drawText("SHARED X-OVER · 4 BANDS · 拖曳交叉線 = 頻率 · 線上滾輪 = OVERLAP "
                + juce::String(overlap, 0) + "%",
@@ -629,6 +674,7 @@ void VVChainAudioProcessorEditor::drawCard(
     g.setColour(juce::Colours::black.withAlpha(.94f));
     g.drawRoundedRectangle(r, 8.f, 1.f);
 
+    accent = uiColour(accent);
     g.setColour(accent.withAlpha(.8f));
     g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
 
@@ -644,6 +690,20 @@ void VVChainAudioProcessorEditor::drawCard(
 
     g.setColour(accent.withAlpha(.28f));
     g.drawRoundedRectangle(r.reduced(2.f), 6.f, 1.f);
+
+    if (title == "DE-ESSER")
+    {
+        g.setColour(uiColour(juce::Colour(0xff67d3aa)).withAlpha(.55f));
+        for (int i = 0; i < 3; ++i)
+        {
+            const float y = r.getY() + 106.f + i * 88.f;
+            juce::Path chevron;
+            chevron.startNewSubPath(r.getCentreX() - 4.f, y);
+            chevron.lineTo(r.getCentreX(), y + 4.f);
+            chevron.lineTo(r.getCentreX() + 4.f, y);
+            g.strokePath(chevron, juce::PathStrokeType(1.1f));
+        }
+    }
 }
 
 void VVChainAudioProcessorEditor::drawPanel(
@@ -674,6 +734,85 @@ void VVChainAudioProcessorEditor::drawModuleLeds(juce::Graphics& g)
     juce::ignoreUnused(g);
 }
 
+juce::Colour VVChainAudioProcessorEditor::uiColour(juce::Colour c) const noexcept
+{
+    return metalLook.monochrome ? c.withSaturation(0.0f) : c;
+}
+
+bool VVChainAudioProcessorEditor::isMasterBypassed() const noexcept
+{
+    return parameterValue("MASTER_BYPASS") > 0.5f;
+}
+
+void VVChainAudioProcessorEditor::updateBypassVisuals()
+{
+    const bool bypassed = isMasterBypassed();
+    if (bypassed == lastMasterBypassUi && metalLook.monochrome == bypassed)
+        return;
+
+    lastMasterBypassUi = bypassed;
+    metalLook.monochrome = bypassed;
+
+    for (auto& k : knobs)
+    {
+        const auto c = uiColour(k.accent);
+        k.slider->setColour(juce::Slider::rotarySliderFillColourId, c);
+        k.label->setColour(juce::Label::textColourId,
+                           uiColour(k.accent.brighter(.35f)));
+    }
+
+    for (auto& b : bypassButtons)
+        if (b)
+            b->setColour(juce::ToggleButton::tickColourId,
+                         uiColour(b->findColour(
+                             juce::ToggleButton::tickColourId)));
+
+    if (deessBypassButton)
+        deessBypassButton->setColour(
+            juce::ToggleButton::tickColourId, uiColour(juce::Colour(0xff67d3aa)));
+
+    if (masterBypassButton)
+        masterBypassButton->setColour(
+            juce::ToggleButton::tickColourId, uiColour(juce::Colour(0xffdfe7ef)));
+
+    for (auto& b : ottBandBypassButtons)
+        if (b)
+            b->setColour(juce::ToggleButton::tickColourId,
+                         uiColour(juce::Colour(0xfffacc15)));
+
+    for (auto& b : atypeBandBypassButtons)
+        if (b)
+            b->setColour(juce::ToggleButton::tickColourId,
+                         uiColour(juce::Colour(0xfff472b6)));
+
+    for (auto& b : advancedButtons)
+        if (b)
+        {
+            b->setColour(
+                juce::TextButton::buttonColourId,
+                uiColour(b->getToggleState()
+                    ? juce::Colour(0xff3f3517)
+                    : juce::Colour(0xff17191d)));
+            b->setColour(
+                juce::TextButton::textColourOffId,
+                uiColour(juce::Colour(0xffc0c5cb)));
+        }
+
+    if (ottClipper)
+        ottClipper->setColour(
+            juce::ToggleButton::tickColourId, uiColour(juce::Colour(0xfffacc15)));
+
+    repaint();
+}
+
+void VVChainAudioProcessorEditor::timerCallback()
+{
+    if (isMasterBypassed() != lastMasterBypassUi)
+        updateBypassVisuals();
+
+    repaint(eqGraphBounds().toNearestInt());
+}
+
 void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(0xff080a0d));
@@ -696,9 +835,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
 
     // Very small MIX / OUT faders in the title bar.
-    g.setColour(juce::Colour(0xff737b86));
-    g.setFont(juce::FontOptions(7.f));
-        const auto graph = eqGraphBounds();
+    const auto graph = eqGraphBounds();
     drawEqGraph(g, graph);
 
     const int cardY = 404;
@@ -713,7 +850,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
         const int x = left + b * (cardW + gap);
         drawCard(g,
                  { (float) x, (float) cardY, (float) cardW, (float) cardH },
-                 kBandColours[(size_t) b],
+                 uiColour(kBandColours[(size_t) b]),
                  "BAND " + juce::String(b + 1),
                  "EQ / ANALOG · OTT · TAPE-A");
     }
@@ -722,7 +859,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
         const int x = left + 4 * (cardW + gap);
         drawCard(g,
                  { (float) x, (float) cardY, (float) cardW, (float) cardH },
-                 juce::Colour(0xff67d3aa),
+                 uiColour(juce::Colour(0xff67d3aa)),
                  "DE-ESSER",
                  "PRECISION SIBILANCE CONTROL · 6–18 kHz");
     }
@@ -744,7 +881,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
         g.setGradientFill(popup);
         g.fillRoundedRectangle(popupX, popupY, popupW, popupH, 10.f);
 
-        g.setColour(juce::Colour(0xfffacc15).withAlpha(.8f));
+        g.setColour(uiColour(juce::Colour(0xfffacc15)).withAlpha(.8f));
         g.drawRoundedRectangle(popupX, popupY, popupW, popupH, 10.f, 1.2f);
 
         g.setColour(juce::Colours::white);
