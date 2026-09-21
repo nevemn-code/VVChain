@@ -168,10 +168,15 @@ private:
     Crossover4th ottXover3 {};
     std::array<BandDynamics, 4> ottDynamics {};
 
+    // Four independent Type-A exciter bands.
+    // Fixed crossovers follow a practical 4-band exciter layout:
+    // ~20-200 Hz / 200-2 kHz / 2-7.8 kHz / 7.8-20 kHz.
     Crossover4th typeXover1 {};
     Crossover4th typeXover2 {};
-    Biquad typeHP9k {};
-    std::array<std::array<float, 2>, 4> typeEnv {};
+    Biquad typeHP7k8 {};
+    std::array<std::array<float, 2>, 4> typeFastEnv {};
+    std::array<std::array<float, 2>, 4> typeSlowEnv {};
+    std::array<std::array<float, 2>, 4> typeDc {};
 
     std::array<DeEssState, 2> deess {};
     std::array<std::array<float, kDeessBlockSize>, 2> dryDelay {};
