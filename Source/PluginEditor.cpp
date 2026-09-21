@@ -1041,7 +1041,7 @@ void VVChainAudioProcessorEditor::resized()
             {
                 const auto r = knob->slider->getBounds();
                 ottBandBypassButtons[(size_t) b]->setBounds(
-                    r.getRight() - 14, r.getY() + 1, 12, 12);
+                    r.getCentreX() + 15, r.getY() + 2, 12, 12);
             }
 
         if (atypeBandBypassButtons[(size_t) b])
@@ -1049,7 +1049,7 @@ void VVChainAudioProcessorEditor::resized()
             {
                 const auto r = knob->slider->getBounds();
                 atypeBandBypassButtons[(size_t) b]->setBounds(
-                    r.getRight() - 14, r.getY() + 1, 12, 12);
+                    r.getCentreX() + 15, r.getY() + 2, 12, 12);
             }
     }
 
