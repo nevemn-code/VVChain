@@ -84,6 +84,16 @@ private:
 
         void reset() { z1L = z2L = z1R = z2R = 0.0; }
 
+        inline void updateCoefficients(double nb0, double nb1, double nb2,
+                                       double na1, double na2) noexcept
+        {
+            b0 = nb0;
+            b1 = nb1;
+            b2 = nb2;
+            a1 = na1;
+            a2 = na2;
+        }
+
         inline float process(float x, bool right)
         {
             double& z1 = right ? z1R : z1L;
@@ -135,10 +145,12 @@ private:
         float gainDb = 0.f;
     };
 
-    static Biquad makeAnalogPeak(double fs, double f0, double gainDb, double q);
-    static Biquad makeAnalogHighPass(double fs, double f0, double q);
-    static Biquad makeLowPass(double fs, double f0, double q);
-    static Biquad makeHighPass(double fs, double f0, double q);
+    static void updateAnalogPeak(Biquad& filter, double fs, double f0,
+                                 double gainDb, double q);
+    static void updateAnalogHighPass(Biquad& filter, double fs, double f0, double q);
+    static void updateLowPass(Biquad& filter, double fs, double f0, double q);
+    static void updateHighPass(Biquad& filter, double fs, double f0, double q);
+    static void updateCrossover(Crossover4th& xover, double fs, double f0, double q);
 
     static float dbToGain(float db) noexcept;
     static float gainToDb(float gain) noexcept;
