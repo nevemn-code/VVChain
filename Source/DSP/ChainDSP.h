@@ -111,6 +111,8 @@ private:
 
     struct BandDynamics
     {
+        // Independent state for each OTT band / channel.
+        std::array<float, 2> gateEnvDb { 0.f, 0.f };
         std::array<float, 2> lifterEnv { 1.f, 1.f };
         std::array<float, 2> compEnvDb { 0.f, 0.f };
     };
@@ -140,7 +142,7 @@ private:
 
     static float applyLifter(float input, float& env, float thresholdDb,
                              float attackMs, float releaseMs, float mix,
-                             double sampleRate);
+                             double sampleRate, float ratio = 6.f);
 
     static float applyCompressor(float input, float& envDb, float thresholdDb,
                                  float attackMs, float releaseMs, float mix,
