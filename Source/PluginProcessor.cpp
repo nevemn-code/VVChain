@@ -116,7 +116,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     f("DEESS_FREQ", "DeEsser Frequency", 6000.f, 18000.f, 8000.f);
     p.push_back(std::make_unique<juce::AudioParameterFloat>(
         "DEESS_INTENSITY", "DeEsser Maximum Reduction",
-        juce::NormalisableRange<float>(0.f, 8.f, 0.1f), 3.f));
+        juce::NormalisableRange<float>(0.f, 24.f, 0.1f), 3.f));
     f("DEESS_OFFSET", "DeEsser Average Offset", -0.1f, 0.1f, 0.f);
 
     f("DRY_WET", "Dry / Wet", 0.f, 100.f, 100.f);
