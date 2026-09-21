@@ -10,6 +10,7 @@ public:
     struct Parameters
     {
         bool eqBypass = false;
+        bool masterBypass = false;
         bool ottBypass = false;
         bool atypeBypass = false;
         bool deessBypass = false;
@@ -37,6 +38,7 @@ public:
         float ottX1 = 120.f;
         float ottX2 = 1000.f;
         float ottX3 = 7000.f;
+        float ottXoverOverlap = 50.f;
         float ottInputGainDb = 0.f;
         float ottGateThresholdDb = -80.f;
         float ottMix = 25.f;
@@ -186,7 +188,7 @@ private:
     // ~20-200 Hz / 200-2 kHz / 2-7.8 kHz / 7.8-20 kHz.
     Crossover4th typeXover1 {};
     Crossover4th typeXover2 {};
-    Biquad typeHP7k8 {};
+    Crossover4th typeXover3 {};
     std::array<std::array<float, 2>, 4> typeFastEnv {};
     std::array<std::array<float, 2>, 4> typeSlowEnv {};
     std::array<std::array<float, 2>, 4> typeDc {};
@@ -199,6 +201,8 @@ private:
     std::array<float, 2> limiterEnvDb {};
 
     std::array<std::complex<double>, kDeessBlockSize> deessFft {};
+
+    float masterBypassBlend = 0.f;
 
     double deessAvgSum = 0.0;
     uint64_t deessAvgCount = 0;
