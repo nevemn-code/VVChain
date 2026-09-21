@@ -2,135 +2,68 @@
 <defs>
   <linearGradient id="top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#343840"/><stop offset="1" stop-color="#17191e"/></linearGradient>
   <linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#292d33"/><stop offset="1" stop-color="#12151a"/></linearGradient>
-  <linearGradient id="graph" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f1216"/><stop offset="1" stop-color="#20242a"/></linearGradient>
-  <style>
-    .ui{font-family:Arial,sans-serif}
-    .white{fill:#fff}.muted{fill:#8b949f}.tiny{font-size:9px}.small{font-size:11px}.label{font-size:10px;font-weight:700}
-    .knob{fill:#171a1f;stroke:#70757e;stroke-width:2}.arc{fill:none;stroke-width:3}
-  </style>
+  <linearGradient id="popup" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#28231a"/><stop offset="1" stop-color="#101216"/></linearGradient>
+  <style>.ui{font-family:Arial,sans-serif}.white{fill:#fff}.muted{fill:#8b949f}.tiny{font-size:9px}.small{font-size:11px}.label{font-size:9px;font-weight:700}.knob{fill:#171a1f;stroke:#70757e;stroke-width:2}</style>
 </defs>
-
 <rect width="1600" height="1000" fill="#080a0d"/>
 <rect width="1600" height="70" fill="url(#top)"/>
-<rect y="68" width="1600" height="2" fill="#000" opacity=".85"/>
-
 <text x="18" y="34" class="ui white" font-size="25" font-weight="700">VVCHAIN</text>
 <text x="20" y="52" class="ui muted small">4-BAND EQ · OTT · TAPE-A · DE-ESSER</text>
-<text x="1288" y="49" class="ui muted tiny">MIX</text>
-<line x1="1310" y1="51" x2="1388" y2="51" stroke="#38bdf8" stroke-width="4"/>
-<circle cx="1352" cy="51" r="6" fill="#38bdf8"/>
-<text x="1398" y="49" class="ui muted tiny">OUT</text>
-<line x1="1420" y1="51" x2="1498" y2="51" stroke="#9ed85c" stroke-width="4"/>
-<circle cx="1468" cy="51" r="6" fill="#9ed85c"/>
+<text x="1300" y="49" class="ui muted tiny">MIX</text><line x1="1325" y1="51" x2="1395" y2="51" stroke="#38bdf8" stroke-width="4"/><circle cx="1362" cy="51" r="6" fill="#38bdf8"/>
+<text x="1405" y="49" class="ui muted tiny">OUT</text><line x1="1430" y1="51" x2="1500" y2="51" stroke="#9ed85c" stroke-width="4"/><circle cx="1478" cy="51" r="6" fill="#9ed85c"/>
 
-<!-- EQ graph -->
-<rect x="18" y="78" width="1564" height="190" rx="8" fill="url(#graph)" stroke="#050607"/>
-<g stroke="#68727d" opacity=".32">
-  <line x1="18" y1="101" x2="1582" y2="101"/><line x1="18" y1="124" x2="1582" y2="124"/>
-  <line x1="18" y1="147" x2="1582" y2="147"/><line x1="18" y1="170" x2="1582" y2="170"/>
-  <line x1="18" y1="193" x2="1582" y2="193"/><line x1="18" y1="216" x2="1582" y2="216"/>
-  <line x1="18" y1="239" x2="1582" y2="239"/>
-  <line x1="40" y1="78" x2="40" y2="268"/><line x1="180" y1="78" x2="180" y2="268"/>
-  <line x1="330" y1="78" x2="330" y2="268"/><line x1="500" y1="78" x2="500" y2="268"/>
-  <line x1="680" y1="78" x2="680" y2="268"/><line x1="865" y1="78" x2="865" y2="268"/>
-  <line x1="1050" y1="78" x2="1050" y2="268"/><line x1="1225" y1="78" x2="1225" y2="268"/>
-  <line x1="1405" y1="78" x2="1405" y2="268"/><line x1="1582" y1="78" x2="1582" y2="268"/>
+<!-- 40% EQ graph -->
+<rect x="18" y="78" width="1564" height="315" rx="8" fill="#111318" stroke="#050607"/>
+<g stroke="#68727d" opacity=".30">
+<line x1="18" y1="105" x2="1582" y2="105"/><line x1="18" y1="132" x2="1582" y2="132"/><line x1="18" y1="159" x2="1582" y2="159"/><line x1="18" y1="186" x2="1582" y2="186"/><line x1="18" y1="213" x2="1582" y2="213"/><line x1="18" y1="240" x2="1582" y2="240"/><line x1="18" y1="267" x2="1582" y2="267"/><line x1="18" y1="294" x2="1582" y2="294"/><line x1="18" y1="321" x2="1582" y2="321"/><line x1="18" y1="348" x2="1582" y2="348"/>
+<line x1="55" y1="78" x2="55" y2="393"/><line x1="205" y1="78" x2="205" y2="393"/><line x1="385" y1="78" x2="385" y2="393"/><line x1="600" y1="78" x2="600" y2="393"/><line x1="800" y1="78" x2="800" y2="393"/><line x1="1000" y1="78" x2="1000" y2="393"/><line x1="1200" y1="78" x2="1200" y2="393"/><line x1="1400" y1="78" x2="1400" y2="393"/><line x1="1582" y1="78" x2="1582" y2="393"/>
 </g>
-<path d="M18 204 C120 189 155 203 240 184 S395 195 520 168 S670 191 820 150 S1010 184 1130 140 S1320 170 1450 121 S1530 134 1582 116"
-      fill="none" stroke="#fff" stroke-width="3"/>
-<g class="ui white small"><text x="30" y="95">EQ RESPONSE · 20 Hz — 20 kHz · DRAG NODES</text></g>
-<g class="ui muted tiny"><text x="24" y="258">20 Hz</text><text x="790" y="258">1 kHz</text><text x="1546" y="258">20 kHz</text></g>
+<path d="M18 330 C130 315 210 335 330 295 S530 318 680 270 S850 305 1000 242 S1200 280 1370 200 S1500 215 1582 178" fill="none" stroke="#fff" stroke-width="3"/>
+<text x="30" y="95" class="ui white small">EQ RESPONSE · 20 Hz — 20 kHz · DRAG NODES</text>
+<text x="24" y="382" class="ui muted tiny">20 Hz</text><text x="790" y="382" class="ui muted tiny">1 kHz</text><text x="1546" y="382" class="ui muted tiny">20 kHz</text>
 
-<!-- Four band cards -->
+<!-- 60% controls -->
 <g class="ui">
-  <!-- card 1 -->
-  <rect x="18" y="278" width="383" height="632" rx="8" fill="url(#card)" stroke="#38bdf8"/>
-  <rect x="18" y="278" width="4" height="632" rx="2" fill="#38bdf8"/>
-  <text x="31" y="298" class="white" font-size="13" font-weight="700">BAND 1</text>
-  <text x="31" y="313" class="muted tiny">EQ / ANALOG · OTT · TAPE-A</text>
-  <rect x="342" y="286" width="50" height="20" rx="5" fill="#17191d" stroke="#38bdf8"/>
-  <text x="367" y="300" fill="#c0c5cb" font-size="9" text-anchor="middle">+ ADV</text>
-
-  <!-- card 2 -->
-  <rect x="409" y="278" width="383" height="632" rx="8" fill="url(#card)" stroke="#22d3ee"/>
-  <rect x="409" y="278" width="4" height="632" rx="2" fill="#22d3ee"/>
-  <text x="422" y="298" class="white" font-size="13" font-weight="700">BAND 2</text>
-  <text x="422" y="313" class="muted tiny">EQ / ANALOG · OTT · TAPE-A</text>
-  <rect x="733" y="286" width="50" height="20" rx="5" fill="#3f3517" stroke="#facc15"/>
-  <text x="758" y="300" fill="#ffdf62" font-size="9" text-anchor="middle">- ADV</text>
-
-  <!-- card 3 -->
-  <rect x="800" y="278" width="383" height="632" rx="8" fill="url(#card)" stroke="#a3e635"/>
-  <rect x="800" y="278" width="4" height="632" rx="2" fill="#a3e635"/>
-  <text x="813" y="298" class="white" font-size="13" font-weight="700">BAND 3</text>
-  <text x="813" y="313" class="muted tiny">EQ / ANALOG · OTT · TAPE-A</text>
-  <rect x="1124" y="286" width="50" height="20" rx="5" fill="#17191d" stroke="#a3e635"/>
-  <text x="1149" y="300" fill="#c0c5cb" font-size="9" text-anchor="middle">+ ADV</text>
-
-  <!-- card 4 -->
-  <rect x="1191" y="278" width="391" height="632" rx="8" fill="url(#card)" stroke="#f97316"/>
-  <rect x="1191" y="278" width="4" height="632" rx="2" fill="#f97316"/>
-  <text x="1204" y="298" class="white" font-size="13" font-weight="700">BAND 4</text>
-  <text x="1204" y="313" class="muted tiny">EQ / ANALOG · OTT · TAPE-A · DE-ESSER</text>
-  <rect x="1523" y="286" width="50" height="20" rx="5" fill="#17191d" stroke="#f97316"/>
-  <text x="1548" y="300" fill="#c0c5cb" font-size="9" text-anchor="middle">+ ADV</text>
-
-  <!-- simplified main knobs for all four -->
-  <g transform="translate(34,338)">
-    <g class="label muted"><text x="30" y="0">FREQ</text><text x="98" y="0">GAIN</text><text x="166" y="0">Q</text></g>
-    <circle cx="30" cy="34" r="22" class="knob"/><circle cx="98" cy="34" r="22" class="knob"/><circle cx="166" cy="34" r="22" class="knob"/>
-    <g class="label muted"><text x="22" y="77">ANALOG</text><text x="89" y="77">HP/CORNER</text><text x="165" y="77">OTT %</text></g>
-    <circle cx="30" cy="111" r="22" class="knob"/><circle cx="98" cy="111" r="22" class="knob"/><circle cx="166" cy="111" r="22" class="knob"/>
-    <g class="label muted"><text x="20" y="154">ATTACK</text><text x="89" y="154">RELEASE</text><text x="160" y="154">TAPE-A+</text></g>
-    <circle cx="30" cy="188" r="22" class="knob"/><circle cx="98" cy="188" r="22" class="knob"/><circle cx="166" cy="188" r="22" class="knob"/>
-  </g>
-
-  <g transform="translate(425,338)">
-    <g class="label muted"><text x="30" y="0">FREQ</text><text x="98" y="0">GAIN</text><text x="166" y="0">Q</text></g>
-    <circle cx="30" cy="34" r="22" class="knob"/><circle cx="98" cy="34" r="22" class="knob"/><circle cx="166" cy="34" r="22" class="knob"/>
-    <g class="label muted"><text x="22" y="77">ANALOG</text><text x="89" y="77">HP/CORNER</text><text x="165" y="77">OTT %</text></g>
-    <circle cx="30" cy="111" r="22" class="knob"/><circle cx="98" cy="111" r="22" class="knob"/><circle cx="166" cy="111" r="22" class="knob"/>
-    <g class="label muted"><text x="20" y="154">ATTACK</text><text x="89" y="154">RELEASE</text><text x="160" y="154">TAPE-A+</text></g>
-    <circle cx="30" cy="188" r="22" class="knob"/><circle cx="98" cy="188" r="22" class="knob"/><circle cx="166" cy="188" r="22" class="knob"/>
-  </g>
-
-  <g transform="translate(816,338)">
-    <g class="label muted"><text x="30" y="0">FREQ</text><text x="98" y="0">GAIN</text><text x="166" y="0">Q</text></g>
-    <circle cx="30" cy="34" r="22" class="knob"/><circle cx="98" cy="34" r="22" class="knob"/><circle cx="166" cy="34" r="22" class="knob"/>
-    <g class="label muted"><text x="22" y="77">ANALOG</text><text x="89" y="77">HP/CORNER</text><text x="165" y="77">OTT %</text></g>
-    <circle cx="30" cy="111" r="22" class="knob"/><circle cx="98" cy="111" r="22" class="knob"/><circle cx="166" cy="111" r="22" class="knob"/>
-    <g class="label muted"><text x="20" y="154">ATTACK</text><text x="89" y="154">RELEASE</text><text x="160" y="154">TAPE-A+</text></g>
-    <circle cx="30" cy="188" r="22" class="knob"/><circle cx="98" cy="188" r="22" class="knob"/><circle cx="166" cy="188" r="22" class="knob"/>
-  </g>
-
-  <g transform="translate(1207,338)">
-    <g class="label muted"><text x="30" y="0">FREQ</text><text x="98" y="0">GAIN</text><text x="166" y="0">Q</text></g>
-    <circle cx="30" cy="34" r="22" class="knob"/><circle cx="98" cy="34" r="22" class="knob"/><circle cx="166" cy="34" r="22" class="knob"/>
-    <g class="label muted"><text x="22" y="77">ANALOG</text><text x="89" y="77">HP/CORNER</text><text x="165" y="77">OTT %</text></g>
-    <circle cx="30" cy="111" r="22" class="knob"/><circle cx="98" cy="111" r="22" class="knob"/><circle cx="166" cy="111" r="22" class="knob"/>
-    <g class="label muted"><text x="20" y="154">ATTACK</text><text x="89" y="154">RELEASE</text><text x="160" y="154">TAPE-A+</text></g>
-    <circle cx="30" cy="188" r="22" class="knob"/><circle cx="98" cy="188" r="22" class="knob"/><circle cx="166" cy="188" r="22" class="knob"/>
-    <g class="label muted"><text x="16" y="226">DE-ESS FREQ</text><text x="103" y="226">DE-ESS INT</text></g>
-    <circle cx="30" cy="258" r="22" class="knob"/><circle cx="118" cy="258" r="22" class="knob"/>
-  </g>
-
-  <!-- inline advanced area shown in Band 2 -->
-  <line x1="417" y1="611" x2="784" y2="611" stroke="#22d3ee" opacity=".3"/>
-  <text x="422" y="632" fill="#facc15" font-size="10" font-weight="700">OTT ADVANCED</text>
-  <text x="422" y="646" fill="#747b86" font-size="8">Lifter / compressor detail · crossovers · I/O</text>
-  <g font-size="7.5" fill="#aab0ba">
-    <text x="425" y="673">LIFT T</text><text x="488" y="673">LIFT ATT</text><text x="552" y="673">LIFT REL</text><text x="617" y="673">LIFT MIX</text><text x="680" y="673">COMP T</text><text x="744" y="673">COMP MIX</text>
-    <text x="425" y="753">BAND LVL</text><text x="488" y="753">XOVER 1</text><text x="552" y="753">XOVER 2</text><text x="617" y="753">XOVER 3</text><text x="680" y="753">INPUT</text><text x="744" y="753">GATE</text>
-    <text x="425" y="833">MASTER</text><text x="488" y="833">OUTPUT</text>
+  <rect x="18" y="399" width="383" height="500" rx="8" fill="url(#card)" stroke="#38bdf8"/><rect x="409" y="399" width="383" height="500" rx="8" fill="url(#card)" stroke="#22d3ee"/><rect x="800" y="399" width="383" height="500" rx="8" fill="url(#card)" stroke="#a3e635"/><rect x="1191" y="399" width="391" height="500" rx="8" fill="url(#card)" stroke="#f97316"/>
+  <g class="white" font-size="13" font-weight="700"><text x="31" y="421">BAND 1</text><text x="422" y="421">BAND 2</text><text x="813" y="421">BAND 3</text><text x="1204" y="421">BAND 4</text></g>
+  <g class="muted tiny"><text x="31" y="437">EQ / ANALOG · OTT · TAPE-A</text><text x="422" y="437">EQ / ANALOG · OTT · TAPE-A</text><text x="813" y="437">EQ / ANALOG · OTT · TAPE-A</text><text x="1204" y="437">EQ / ANALOG · OTT · TAPE-A · DE-ESSER</text></g>
+  <g class="label muted">
+    <text x="45" y="470">FREQ</text><text x="145" y="470">GAIN</text><text x="245" y="470">Q</text>
+    <text x="45" y="560">ANALOG</text><text x="145" y="560">HP/CORNER</text><text x="245" y="560">OTT %</text>
+    <text x="45" y="650">ATTACK</text><text x="145" y="650">RELEASE</text><text x="245" y="650">TAPE-A+</text>
   </g>
   <g fill="#171a1f" stroke="#70757e">
-    <circle cx="435" cy="698" r="20"/><circle cx="498" cy="698" r="20"/><circle cx="562" cy="698" r="20"/><circle cx="627" cy="698" r="20"/><circle cx="690" cy="698" r="20"/><circle cx="754" cy="698" r="20"/>
-    <circle cx="435" cy="778" r="20"/><circle cx="498" cy="778" r="20"/><circle cx="562" cy="778" r="20"/><circle cx="627" cy="778" r="20"/><circle cx="690" cy="778" r="20"/><circle cx="754" cy="778" r="20"/>
-    <circle cx="435" cy="858" r="20"/><circle cx="498" cy="858" r="20"/>
+    <circle cx="60" cy="500" r="28"/><circle cx="160" cy="500" r="28"/><circle cx="260" cy="500" r="28"/>
+    <circle cx="60" cy="590" r="28"/><circle cx="160" cy="590" r="28"/><circle cx="260" cy="590" r="28"/>
+    <circle cx="60" cy="680" r="28"/><circle cx="160" cy="680" r="28"/><circle cx="260" cy="680" r="28"/>
+    <circle cx="451" cy="500" r="28"/><circle cx="551" cy="500" r="28"/><circle cx="651" cy="500" r="28"/>
+    <circle cx="451" cy="590" r="28"/><circle cx="551" cy="590" r="28"/><circle cx="651" cy="590" r="28"/>
+    <circle cx="451" cy="680" r="28"/><circle cx="551" cy="680" r="28"/><circle cx="651" cy="680" r="28"/>
+    <circle cx="842" cy="500" r="28"/><circle cx="942" cy="500" r="28"/><circle cx="1042" cy="500" r="28"/>
+    <circle cx="842" cy="590" r="28"/><circle cx="942" cy="590" r="28"/><circle cx="1042" cy="590" r="28"/>
+    <circle cx="842" cy="680" r="28"/><circle cx="942" cy="680" r="28"/><circle cx="1042" cy="680" r="28"/>
   </g>
-  <rect x="560" y="840" width="64" height="25" rx="5" fill="#3f3517" stroke="#facc15"/>
-  <text x="592" y="856" fill="#ffdf62" font-size="8" text-anchor="middle">CLIPPER</text>
+  <rect x="1514" y="448" width="55" height="20" rx="4" fill="#17191d" stroke="#f97316"/><text x="1541" y="462" fill="#d6dbe1" font-size="8" text-anchor="middle">+ ADV</text>
+  <g class="label muted"><text x="1218" y="470">FREQ</text><text x="1305" y="470">GAIN</text><text x="1392" y="470">Q</text></g>
+  <g fill="#171a1f" stroke="#70757e"><circle cx="1238" cy="500" r="24"/><circle cx="1325" cy="500" r="24"/><circle cx="1412" cy="500" r="24"/></g>
+  <text x="1510" y="500" class="label" fill="#67d3aa" text-anchor="end">DE-ESS FREQ</text><text x="1510" y="518" class="ui muted tiny" text-anchor="end">12.5 kHz</text>
+  <text x="1510" y="570" class="label" fill="#67d3aa" text-anchor="end">DE-ESS %</text><text x="1510" y="588" class="ui muted tiny" text-anchor="end">10 %</text>
+  <g class="label muted"><text x="1218" y="560">ANALOG</text><text x="1305" y="560">HP/CORNER</text><text x="1392" y="560">OTT %</text><text x="1218" y="650">ATTACK</text><text x="1305" y="650">RELEASE</text><text x="1392" y="650">TAPE-A+</text></g>
+  <g fill="#171a1f" stroke="#70757e"><circle cx="1238" cy="590" r="24"/><circle cx="1325" cy="590" r="24"/><circle cx="1412" cy="590" r="24"/><circle cx="1238" cy="680" r="24"/><circle cx="1325" cy="680" r="24"/><circle cx="1412" cy="680" r="24"/></g>
+  <rect x="1130" y="448" width="50" height="20" rx="4" fill="#17191d" stroke="#a3e635"/><text x="1155" y="462" fill="#d6dbe1" font-size="8" text-anchor="middle">+ ADV</text>
+  <rect x="739" y="448" width="50" height="20" rx="4" fill="#17191d" stroke="#22d3ee"/><text x="764" y="462" fill="#d6dbe1" font-size="8" text-anchor="middle">+ ADV</text>
+  <rect x="348" y="448" width="50" height="20" rx="4" fill="#17191d" stroke="#38bdf8"/><text x="373" y="462" fill="#d6dbe1" font-size="8" text-anchor="middle">+ ADV</text>
 </g>
 
-<text x="18" y="936" class="ui muted tiny">點 BAND 的 + ADV 開啟；OTT 預設值由 DSP 決定。沒有獨立底部 OTT ADVANCED 區塊，不捲動頁面。</text>
+<!-- popup example, overlaid without changing lower layout -->
+<rect x="350" y="575" width="900" height="330" rx="10" fill="#000" opacity=".55"/>
+<rect x="350" y="566" width="900" height="330" rx="10" fill="url(#popup)" stroke="#facc15" stroke-opacity=".8"/>
+<text x="365" y="590" fill="#facc15" font-family="Consolas" font-size="12" font-weight="700">OTT ADVANCED · BAND 2</text>
+<rect x="1177" y="575" width="62" height="21" rx="4" fill="#17150f" stroke="#5c4e1f"/><text x="1208" y="589" fill="#ffdf62" font-family="Consolas" font-size="8" text-anchor="middle">CLOSE</text>
+<g fill="#171a1f" stroke="#70757e">
+  <circle cx="425" cy="650" r="25"/><circle cx="525" cy="650" r="25"/><circle cx="625" cy="650" r="25"/><circle cx="725" cy="650" r="25"/><circle cx="825" cy="650" r="25"/><circle cx="925" cy="650" r="25"/><circle cx="1025" cy="650" r="25"/>
+  <circle cx="425" cy="770" r="25"/><circle cx="525" cy="770" r="25"/><circle cx="625" cy="770" r="25"/><circle cx="725" cy="770" r="25"/><circle cx="825" cy="770" r="25"/><circle cx="925" cy="770" r="25"/><circle cx="1025" cy="770" r="25"/>
+</g>
+<g fill="#aab0ba" font-family="Consolas" font-size="7"><text x="425" y="690" text-anchor="middle">LIFT T</text><text x="525" y="690" text-anchor="middle">LIFT A</text><text x="625" y="690" text-anchor="middle">LIFT R</text><text x="725" y="690" text-anchor="middle">LIFT MIX</text><text x="825" y="690" text-anchor="middle">COMP T</text><text x="925" y="690" text-anchor="middle">COMP MIX</text><text x="1025" y="690" text-anchor="middle">BAND LVL</text><text x="425" y="810" text-anchor="middle">XOVER 1</text><text x="525" y="810" text-anchor="middle">XOVER 2</text><text x="625" y="810" text-anchor="middle">XOVER 3</text><text x="725" y="810" text-anchor="middle">INPUT</text><text x="825" y="810" text-anchor="middle">GATE</text><text x="925" y="810" text-anchor="middle">MASTER</text><text x="1025" y="810" text-anchor="middle">OUTPUT</text></g>
+<text x="18" y="930" class="ui muted tiny">+ ADV 為浮動彈出面板；下方 BAND 高度完全不改。主區約 40% 曲線 / 60% 控制。</text>
 </svg>
