@@ -581,22 +581,44 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             {
                 for (size_t band = 0; band < eq.size(); ++band)
                 {
-                    y = eq[band].process(y, right);
+                    // Keep the unprocessed signal as the phase reference for
+                    // each EQ band. Analog Color operates on the band's EQ
+                    // delta only, not on the entire full-band signal.
+                    //
+                    // This is important for a flat EQ: when gain = 0 dB the
+                    // EQ delta is exactly zero, so EQ + Analog is sample-
+                    // transparent instead of applying four serial saturators
+                    // merely because the EQ module is enabled.
+                    const float eqBandInput = y;
+                    const float eqOutput =
+                        eq[band].process(eqBandInput, right);
+                    const float eqDelta =
+                        eqOutput - eqBandInput;
 
-                    if (!p.eqColorGlobalBypass && !p.eqColorBypass[band])
+                    float analogDelta = eqDelta;
+
+                    if (!p.eqColorGlobalBypass
+                        && !p.eqColorBypass[band]
+                        && std::abs(eqDelta) > 1.0e-12f)
                     {
                         const float amount =
-                            juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
+                            juce::jlimit(
+                                0.f, 100.f, p.eqColor[band]) / 100.f;
 
-                        y = analogColor(
-                            y,
-                            amount,
-                            p.eqColorSolidState[band],
-                            analogPreviousInput[band][static_cast<size_t>(ch)],
-                            analogEvenDc[band][static_cast<size_t>(ch)],
-                            analogLevelPower[band][static_cast<size_t>(ch)],
-                            osSr);
+                        const float coloredDelta =
+                            analogColor(
+                                eqDelta,
+                                amount,
+                                p.eqColorSolidState[band],
+                                analogPreviousInput[band][static_cast<size_t>(ch)],
+                                analogEvenDc[band][static_cast<size_t>(ch)],
+                                analogLevelPower[band][static_cast<size_t>(ch)],
+                                osSr);
+
+                        analogDelta = coloredDelta;
                     }
+
+                    y = eqBandInput + analogDelta;
                 }
             }
 
@@ -1419,5 +1441,4 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     for (int ch = nCh; ch < buffer.getNumChannels(); ++ch)
         buffer.clear(ch, 0, numSamples);
 }
-
 
