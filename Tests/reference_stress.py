@@ -309,6 +309,9 @@ def source_structure_checks():
         "DEESS_INTENSITY",
         "DEESS_OFFSET",
         "COUNT > 10",
+        "DEESS_INTENSITY",
+        "VVChainSpectrumAnalyzer",
+        "kFftOrder = 11",
         "Male Vocal",
         "Female Vocal",
     ]:
@@ -342,6 +345,8 @@ def source_structure_checks():
     assert "const float makeupGain = 1.0f / drive;" in cpp
     assert "return std::tanh(asym * drive) * makeupGain;" in cpp
     assert "y = softColor(y, colorAmount);" in cpp
+    assert "p.hfCornerHz" not in cpp
+    assert "hfCornerHz" not in text["dsp_h"]
     assert "0.20f + 0.80f * colorAmount" not in cpp
     assert ".2+.8*s.eq.color/100" not in text["web"]
     assert "y=this.color(y,s.eq.color/100)" in text["web"]
@@ -363,7 +368,9 @@ def source_structure_checks():
     assert "XOVER_OVERLAP" in editor
     assert "SHARED X-OVER" in editor
     assert 'addKnob("DEESS_FREQ", "DE-ESS FREQ"' in editor
-    assert ", 4, 0" in editor
+    assert 'addKnob("DEESS_INTENSITY", "DE-ESS %", 0, 10' in editor
+    assert 'addKnob("DRY_WET", "MIX"' in editor
+    assert 'addKnob("OUTPUT_LEVEL", "OUT"' in editor
     assert "void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;" in editor_h
     # Four-band Type-A now follows the shared OTT X1/X2/X3 crossover.
     assert "const float tx1 = juce::jlimit" in cpp
