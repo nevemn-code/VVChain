@@ -44,6 +44,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         const auto n = juce::String(i + 1);
         f("EQ_COLOR" + n, "EQ " + n + " Analog Color", 0.f, 100.f, 35.f);
         p.push_back(std::make_unique<juce::AudioParameterBool>(
+            "EQ_COLOR_BYPASS" + n, "EQ " + n + " Analog Color Bypass", false));
+        p.push_back(std::make_unique<juce::AudioParameterBool>(
             "EQ_COLOR_MODE" + n, "EQ " + n + " Analog Mode SS", false));
     }
     f("HF_CORNER", "EQ High-pass Corner", 40.f, 120.f, 70.f);
@@ -94,6 +96,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     f("ATYPE_MIX", "Type-A Mix", 0.f, 100.f, 100.f);
     f("ATYPE_OUTPUT", "Type-A Output Gain", -24.f, 24.f, 0.f);
 
+    p.push_back(std::make_unique<juce::AudioParameterChoice>(
+        "SOLO_BAND", "Solo Band",
+        juce::StringArray { "OFF", "BAND 1", "BAND 2", "BAND 3", "BAND 4" }, 0));
+    p.push_back(std::make_unique<juce::AudioParameterChoice>(
+        "SOLO_MODE", "Solo Routing",
+        juce::StringArray { "PRE", "POST" }, 0));
+
     // Reference-based DeEsser controls. Frequency is now directly selectable.
     // Reference reference points remain documented at 12.5 kHz / 13.5 kHz;
     // the active processor accepts the full selectable frequency range.
@@ -117,8 +126,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
 void VVChainAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     dsp.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
-    // The realtime DeEsser processes complete 8192-sample blocks.
-    setLatencySamples(8192);
+    // DeEsser is now zero-latency: sidechain detection modulates the current sample
+    // without FFT block buffering or lookahead.
+    setLatencySamples(0);
 }
 
 bool VVChainAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
@@ -158,6 +168,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.gain[(size_t)i] = value("EQ" + n + "_GAIN");
         p.q[(size_t)i] = value("EQ" + n + "_Q");
         p.eqColor[(size_t)i] = value("EQ_COLOR" + n);
+        p.eqColorBypass[(size_t)i] = value("EQ_COLOR_BYPASS" + n) > 0.5f;
         p.eqColorSolidState[(size_t)i] =
             value("EQ_COLOR_MODE" + n) > 0.5f;
 
@@ -195,6 +206,9 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.atypeInputGainDb = value("ATYPE_INPUT");
     p.atypeMix = value("ATYPE_MIX");
     p.atypeOutputGainDb = value("ATYPE_OUTPUT");
+
+    p.soloBand = static_cast<int>(std::lround(value("SOLO_BAND"))) - 1;
+    p.soloPost = value("SOLO_MODE") > 0.5f;
 
     p.deessReferenceHz = value("DEESS_FREQ");
     p.deessIntensity = value("DEESS_INTENSITY");
