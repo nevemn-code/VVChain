@@ -62,6 +62,28 @@ target_link_libraries(VVChain PRIVATE
 
 juce_generate_juce_header(VVChain)
 
+# Real audio-domain regression executable. It drives the actual VVChainDSP
+# with rendered audio and measures latency, cross-correlation, phase and null
+# residual rather than relying only on source-level assertions.
+juce_add_console_app(VVChainAudioProbe
+    PRODUCT_NAME "VVChainAudioProbe"
+)
+target_sources(VVChainAudioProbe PRIVATE
+    Tests/audio_probe.cpp
+    Source/DSP/ChainDSP.cpp
+    Source/DSP/ChainDSP.h
+)
+target_include_directories(VVChainAudioProbe PRIVATE
+    Source
+    Source/DSP
+)
+target_compile_features(VVChainAudioProbe PRIVATE cxx_std_20)
+target_link_libraries(VVChainAudioProbe PRIVATE
+    juce::juce_dsp
+)
+juce_generate_juce_header(VVChainAudioProbe)
+
+
 enable_testing()
 add_test(NAME vvchain_reference_stress
     COMMAND ${CMAKE_COMMAND} -E echo "Run Tests/reference_stress.py with Python 3.11+")
