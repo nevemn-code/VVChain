@@ -134,6 +134,7 @@ void VVChainDSP::reset()
 
     for (auto& b : ottDynamics)
     {
+        b.gateEnvDb = { 0.f, 0.f };
         b.lifterEnv = { 1.f, 1.f };
         b.compEnvDb = { 0.f, 0.f };
     }
@@ -174,9 +175,10 @@ void VVChainDSP::reset()
 
 float VVChainDSP::applyLifter(float input, float& env, float thresholdDb,
                               float attackMs, float releaseMs, float mix,
-                              double sampleRate)
+                              double sampleRate, float ratio)
 {
-    const float slope = 1.0f - (1.0f / kLifterRatio);
+    const float safeRatio = juce::jmax(1.0f, ratio);
+    const float slope = 1.0f - (1.0f / safeRatio);
     const float kneeStart = thresholdDb - kLifterKneeDb * 0.5f;
     const float kneeEnd = thresholdDb + kLifterKneeDb * 0.5f;
     const float magnitude = std::max(std::abs(input), 0.0001f);
@@ -302,6 +304,10 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
 void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
+    // Four independent OTT bands. Each band has its own detector state and
+    // runs downward compression first, then upward compression, followed by
+    // per-band makeup. The gate is also applied after the crossover so it
+    // cannot make one frequency band modulate another.
     const float x1 = juce::jlimit(80.f, 900.f, p.ottX1);
     const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.ottX2);
     const float x3 = juce::jlimit(x2 + 200.f, static_cast<float>(sr * 0.42), p.ottX3);
@@ -321,6 +327,13 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
     ottXover3.hp1 = makeHighPass(sr, x3, 0.707);
     ottXover3.hp2 = makeHighPass(sr, x3, 0.707);
 
+    const float inputGain =
+        dbToGain(juce::jlimit(-24.f, 24.f, p.ottInputGainDb));
+    const float globalMix =
+        juce::jlimit(0.f, 1.f, p.ottMix / 100.f);
+    const float outputGain =
+        dbToGain(juce::jlimit(-24.f, 24.f, p.ottOutputGainDb));
+
     for (int ch = 0; ch < channels; ++ch)
     {
         auto* data = buffer.getWritePointer(ch);
@@ -329,8 +342,7 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
             const float original = data[n];
-            const float x = applyGate(original, gateEnvDb[(size_t)ch], p.ottGateThresholdDb, sr)
-                * dbToGain(juce::jlimit(-24.f, 24.f, p.ottInputGainDb));
+            const float x = original * inputGain;
 
             const float low = ottXover1.low(x, right);
             const float x1High = ottXover1.high(x, right);
@@ -343,47 +355,75 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
             for (int band = 0; band < 4; ++band)
             {
-                // Band-level bypass leaves this crossover band untouched while
-                // the other OTT bands continue processing normally.
-                if (p.ottBandBypass[(size_t)band])
+                if (p.ottBandBypass[(size_t) band])
                     continue;
 
-                const float degree = juce::jlimit(0.f, 100.f, p.ottDegree[(size_t)band]);
-                const float lifterMix = juce::jlimit(0.f, 100.f,
-                    p.ottLifterMix[(size_t)band] * degree / 100.f);
-                const float compMix = juce::jlimit(0.f, 100.f,
-                    p.ottCompMix[(size_t)band] * degree / 100.f);
+                const float degree =
+                    juce::jlimit(0.f, 100.f, p.ottDegree[(size_t) band]);
 
-                float& lifterEnv = ottDynamics[(size_t)band].lifterEnv[(size_t)ch];
-                float& compEnv = ottDynamics[(size_t)band].compEnvDb[(size_t)ch];
+                if (degree <= 0.0001f)
+                    continue;
 
-                bands[band] = applyLifter(
-                    bands[band], lifterEnv,
-                    p.ottLifterThreshold[(size_t)band],
-                    p.ottLifterAttack[(size_t)band],
-                    p.ottLifterRelease[(size_t)band],
-                    lifterMix, sr);
+                auto& state = ottDynamics[(size_t) band];
+                float& gateEnv = state.gateEnvDb[(size_t) ch];
+                float& lifterEnv = state.lifterEnv[(size_t) ch];
+                float& compEnv = state.compEnvDb[(size_t) ch];
 
-                bands[band] = applyCompressor(
-                    bands[band], compEnv,
-                    p.ottCompThreshold[(size_t)band],
-                    p.ottCompAttack[(size_t)band],
-                    p.ottCompRelease[(size_t)band],
-                    compMix, sr, kCompressorRatio);
+                // The existing GATE control is now independent per frequency band.
+                float v = applyGate(
+                    bands[band], gateEnv,
+                    p.ottGateThresholdDb, sr);
 
-                bands[band] *= dbToGain(
-                    juce::jlimit(-24.f, 12.f, p.ottBandLevelDb[(size_t)band]));
+                // Degree=0 means true unity ratio. Degree=100 reaches the
+                // OTT-style maximum ratios while preserving the user's
+                // existing per-band controls.
+                const float depth = degree / 100.f;
+                const float downRatio =
+                    1.f + depth * (kCompressorRatio - 1.f);
+                const float upRatio =
+                    1.f + depth * (kLifterRatio - 1.f);
+
+                const float compMix =
+                    juce::jlimit(0.f, 100.f, p.ottCompMix[(size_t) band]);
+                const float lifterMix =
+                    juce::jlimit(0.f, 100.f, p.ottLifterMix[(size_t) band]);
+
+                // Standard OTT order: downward first, upward second.
+                v = applyCompressor(
+                    v, compEnv,
+                    p.ottCompThreshold[(size_t) band],
+                    p.ottCompAttack[(size_t) band],
+                    p.ottCompRelease[(size_t) band],
+                    compMix, sr, downRatio);
+
+                v = applyLifter(
+                    v, lifterEnv,
+                    p.ottLifterThreshold[(size_t) band],
+                    p.ottLifterAttack[(size_t) band],
+                    p.ottLifterRelease[(size_t) band],
+                    lifterMix, sr, upRatio);
+
+                v *= dbToGain(
+                    juce::jlimit(-24.f, 12.f,
+                        p.ottBandLevelDb[(size_t) band]));
+
+                bands[band] = v;
             }
 
-            float y = bands[0] + bands[1] + bands[2] + bands[3];
-            y = applyLimiter(y, limiterEnvDb[(size_t)ch], sr);
+            float wet = bands[0] + bands[1] + bands[2] + bands[3];
+
+            // Keep the existing protective limiter/clipper as the final wet
+            // bus safety stage; it does not feed back into any band detector.
+            wet = applyLimiter(
+                wet, limiterEnvDb[(size_t) ch], sr);
 
             if (p.ottClipper)
-                y = std::tanh(y * 1.7f);
+                wet = std::tanh(wet * 1.7f);
 
-            const float mix = juce::jlimit(0.f, 1.f, p.ottMix / 100.f);
-            data[n] = original + mix * (y - original);
-            data[n] *= dbToGain(juce::jlimit(-24.f, 24.f, p.ottOutputGainDb));
+            // OTT Depth/Mix is the final dry/wet blend. The input signal is
+            // never used as a detector for another band.
+            data[n] =
+                (original + globalMix * (wet - original)) * outputGain;
         }
     }
 }
