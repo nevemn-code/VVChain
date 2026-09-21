@@ -868,8 +868,17 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
 
 void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    const float referenceHz = juce::jlimit(6000.f, 18000.f, p.deessReferenceHz);
-    const float detectionQ = 0.707f;
+    if (p.deessBypass || p.deessIntensity <= 0.0f)
+        return;
+
+    const float referenceHz =
+        juce::jlimit(6000.f, 18000.f, p.deessReferenceHz);
+    const float q = 0.70710678f;
+
+    // Split-band de-essing: only the high band is gain-reduced. The low band
+    // is carried through untouched and recombined, matching the standard
+    // split-band approach used in professional de-essers.
+    updateCrossover(deessSplit, sr, referenceHz, q);
 
     const float fastAttack = timeCoeff(sr, 0.25f);
     const float fastRelease = timeCoeff(sr, 45.f);
@@ -882,54 +891,124 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
     {
         auto* data = buffer.getWritePointer(ch);
         auto& state = deess[(size_t) ch];
-
-        updateHighPass(state.sidechainHP, sr, referenceHz, detectionQ);
         const bool right = ch == 1;
 
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
             const float input = data[n];
-            const float sidechain =
-                std::abs(state.sidechainHP.process(input, right));
+            const float lowBand = deessSplit.low(input, right);
+            const float highBand = deessSplit.high(input, right);
+            const float detector = std::abs(highBand);
 
-            const float fastCoeff = sidechain > state.fastEnv
-                ? fastAttack : fastRelease;
+            const float fastCoeff =
+                detector > state.fastEnv ? fastAttack : fastRelease;
             state.fastEnv =
                 fastCoeff * state.fastEnv
-                + (1.f - fastCoeff) * sidechain;
+                + (1.f - fastCoeff) * detector;
 
-            const float slowCoeff = sidechain > state.slowEnv
-                ? slowAttack : slowRelease;
+            const float slowCoeff =
+                detector > state.slowEnv ? slowAttack : slowRelease;
             state.slowEnv =
                 slowCoeff * state.slowEnv
-                + (1.f - slowCoeff) * sidechain;
+                + (1.f - slowCoeff) * detector;
 
-            float targetReductionDb = 0.f;
+            const float fastDb = gainToDb(state.fastEnv);
+            const float slowDb = gainToDb(state.slowEnv);
+            const float excessDb =
+                fastDb - slowDb - 2.0f - p.deessAverageOffset;
 
-            if (!p.deessBypass && p.deessIntensity > 0.f)
-            {
-                const float fastDb = gainToDb(state.fastEnv);
-                const float slowDb = gainToDb(state.slowEnv);
-                const float adaptiveExcess =
-                    fastDb - slowDb - 2.0f - p.deessAverageOffset;
+            const float trigger =
+                juce::jlimit(0.f, 1.f, excessDb / 6.f);
 
-                const float trigger = juce::jlimit(
-                    0.f, 1.f, adaptiveExcess / 6.f);
-
-                targetReductionDb =
-                    juce::jlimit(0.f, 8.f, p.deessIntensity) * trigger;
-            }
+            const float targetReductionDb =
+                juce::jlimit(0.f, 8.f, p.deessIntensity) * trigger;
 
             const float gainCoeff =
                 targetReductionDb > state.gainDb
-                    ? gainAttack : gainRelease;
+                    ? gainAttack
+                    : gainRelease;
+
             state.gainDb =
                 gainCoeff * state.gainDb
                 + (1.f - gainCoeff) * targetReductionDb;
 
-            // Wide-band zero-latency gain control: one scalar gain on the full
-            // sample preserves timing and avoids split-band phase rotation.
-            data[n] = input * dbToGain(-state.gainDb);
+            data[n] =
+                lowBand + highBand * dbToGain(-state.gainDb);
+        }
+    }
+}
+
+void VVChainDSP::processMasterLimiter(juce::AudioBuffer<float>& buffer,
+                                         bool active)
+{
+    juce::dsp::AudioBlock<const float> inputBlock(buffer);
+    juce::dsp::AudioBlock<float> outputBlock(buffer);
+    auto osBlock = limiterOversampler.processSamplesUp(inputBlock);
+
+    const double osSr =
+        sr * static_cast<double>(limiterOversampler.getOversamplingFactor());
+
+    constexpr float ceilingDb = -1.0f;
+    const float ceiling = dbToGain(ceilingDb);
+    const float attack =
+        timeCoeff(osSr, 0.05f);
+    const float release =
+        timeCoeff(osSr, 50.f);
+
+    for (size_t n = 0; n < osBlock.getNumSamples(); ++n)
+    {
+        float peak = 0.f;
+        for (int ch = 0; ch < channels; ++ch)
+        {
+            const float* data = osBlock.getChannelPointer(
+                static_cast<size_t>(ch));
+            peak = std::max(peak, std::abs(data[n]));
+        }
+
+        const float targetGain =
+            active && peak > ceiling
+                ? ceiling / std::max(peak, 1.0e-9f)
+                : 1.0f;
+
+        // Gain is smoothed in dB/log space, not as a raw linear amplitude.
+        const float targetDb = gainToDb(targetGain);
+        const float currentDb = gainToDb(
+            juce::jmax(limiterGain, 1.0e-9f));
+        const float alpha =
+            targetDb < currentDb ? attack : release;
+
+        const float smoothedDb =
+            alpha * currentDb + (1.f - alpha) * targetDb;
+
+        limiterGain = dbToGain(smoothedDb);
+
+        for (int ch = 0; ch < channels; ++ch)
+        {
+            float* data = osBlock.getChannelPointer(
+                static_cast<size_t>(ch));
+
+            limiterLookahead.pushSample(ch, data[n]);
+            data[n] =
+                limiterLookahead.popSample(ch) * limiterGain;
+        }
+    }
+
+    limiterOversampler.processSamplesDown(outputBlock);
+}
+
+void VVChainDSP::alignDryBuffer(int numSamples)
+{
+    const int nCh = channels;
+
+    for (int ch = 0; ch < nCh; ++ch)
+    {
+        for (int n = 0; n < numSamples; ++n)
+        {
+            const float input = dryBuffer.getSample(ch, n);
+            eqDryDelay.pushSample(ch, input);
+
+            alignedDryBuffer.setSample(
+                ch, n, eqDryDelay.popSample(ch));
         }
     }
 }
