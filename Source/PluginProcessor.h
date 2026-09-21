@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include <array>
 #include "DSP/ChainDSP.h"
+#include "SpectrumAnalyzer.h"
 
 class VVChainAudioProcessor final : public juce::AudioProcessor
 {
@@ -36,8 +37,11 @@ public:
     juce::AudioProcessorValueTreeState apvts;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
+    float getSpectrumMagnitudeDb(int bin) const noexcept;
+
 private:
     VVChainDSP dsp;
+    VVChainSpectrumAnalyzer spectrumAnalyzer;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VVChainAudioProcessor)
 };
