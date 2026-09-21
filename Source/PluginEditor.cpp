@@ -978,10 +978,16 @@ void VVChainAudioProcessorEditor::resized()
     const int cardCount = 5;
     const int cardW = (w - left * 2 - gap * (cardCount - 1)) / cardCount;
 
-    const int ledStart = w - 146;
-    for (int i = 0; i < 3; ++i)
+    const int ledStart = w - 250;
+    for (int i = 0; i < 5; ++i)
         if (bypassButtons[(size_t) i])
             bypassButtons[(size_t) i]->setBounds(ledStart + i * 46, 10, 28, 28);
+
+    if (masterBypassButton)
+        masterBypassButton->setBounds(w - 338, 9, 76, 25);
+
+    placeKnob("DRY_WET", { w - 220, 39, 92, 29 });
+    placeKnob("OUTPUT_LEVEL", { w - 116, 39, 92, 29 });
 
     for (int b = 0; b < 4; ++b)
     {
@@ -1037,18 +1043,11 @@ void VVChainAudioProcessorEditor::resized()
         const int innerX = x + 8;
         const int innerTop = cardY + 48;
         const int innerW = cardW - 16;
-        const int rowH = 88;
-        const int knobH = 78;
-
-        placeKnob("DEESS_FREQ",       { innerX + 4, innerTop + 4 + 0 * rowH, innerW - 8, knobH });
-        placeKnob("DEESS_INTENSITY",  { innerX + 4, innerTop + 4 + 1 * rowH, innerW - 8, knobH });
-        placeKnob("DRY_WET",          { innerX + 4, innerTop + 4 + 2 * rowH, innerW - 8, knobH });
-        placeKnob("OUTPUT_LEVEL",     { innerX + 4, innerTop + 4 + 3 * rowH, innerW - 8, knobH });
+        placeKnob("DEESS_FREQ", { innerX + 4, innerTop + 30, innerW - 8, 118 });
+        placeKnob("DEESS_INTENSITY", { innerX + 4, innerTop + 170, innerW - 8, 118 });
 
         if (deessBypassButton)
-            deessBypassButton->setBounds(innerX + 8, innerTop - 6, 16, 16);
-        if (masterBypassButton)
-            masterBypassButton->setBounds(innerX + innerW - 24, innerTop - 6, 16, 16);
+            deessBypassButton->setBounds(innerX + innerW - 20, innerTop + 7, 16, 16);
     }
 
     if (expandedBand >= 0)
