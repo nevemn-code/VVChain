@@ -21,6 +21,7 @@ public:
         std::array<float, 4> gain { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> q { 0.707f, 0.707f, 0.707f, 0.707f };
         std::array<float, 4> eqColor { 35.f, 35.f, 35.f, 35.f };
+        std::array<bool, 4> eqColorBypass { false, false, false, false };
         // false = TT (Tube Saturation), true = SS (Solid-State Saturation)
         std::array<bool, 4> eqColorSolidState { false, false, false, false };
 
@@ -61,6 +62,9 @@ public:
         float deessIntensity = 0.f;
         float deessAverageOffset = 0.f;
 
+        int soloBand = -1;
+        bool soloPost = false;
+
         float dryWet = 100.f;
         float outputDb = 0.f;
     };
@@ -70,7 +74,6 @@ public:
     void process(juce::AudioBuffer<float>& buffer, const Parameters& p);
 
 private:
-    static constexpr int kDeessBlockSize = 8192;
 
     struct Biquad
     {
@@ -125,15 +128,9 @@ private:
 
     struct DeEssState
     {
-        std::array<float, kDeessBlockSize> input {};
-        std::array<float, kDeessBlockSize> output {};
-        int inputCount = 0;
-        int outputRead = 0;
-        int outputReady = 0;
-        std::array<float, kDeessBlockSize * 4> queue {};
-        int queueRead = 0;
-        int queueWrite = 0;
-        int queueCount = 0;
+        float detectorLp = 0.f;
+        float detectorEnv = 0.f;
+        float detectorAvg = 0.f;
     };
 
     static Biquad makeAnalogPeak(double fs, double f0, double gainDb, double q);
@@ -169,9 +166,6 @@ private:
 
     static float applyLimiter(float input, float& envDb, double sampleRate);
 
-    static void fft(std::array<std::complex<double>, kDeessBlockSize>& data, bool inverse);
-
-    void processDeEsserWindow(DeEssState& state, const Parameters& p);
     void processDeEsser(juce::AudioBuffer<float>& buffer, const Parameters& p);
 
     void applyEq(juce::AudioBuffer<float>&, const Parameters&);
@@ -199,20 +193,17 @@ private:
     std::array<std::array<float, 2>, 4> typeDc {};
 
     std::array<DeEssState, 2> deess {};
-    std::array<std::array<float, kDeessBlockSize>, 2> dryDelay {};
-    int dryDelayWrite = 0;
+
+    Crossover4th soloPreXover1 {}, soloPreXover2 {}, soloPreXover3 {};
+    Crossover4th soloPostXover1 {}, soloPostXover2 {}, soloPostXover3 {};
+    float soloBlend = 0.f;
+    int lastSoloBand = -2;
+    bool lastSoloPost = false;
 
     std::array<float, 2> gateEnvDb {};
     std::array<float, 2> limiterEnvDb {};
 
-    std::array<std::complex<double>, kDeessBlockSize> deessFft {};
-
     float masterBypassBlend = 0.f;
-
-    double deessAvgSum = 0.0;
-    uint64_t deessAvgCount = 0;
-    uint64_t deessSampleCounter = 0;
-    float deessPendingSample = 0.0f;
 
     double sr = 48000.0;
     int channels = 2;
