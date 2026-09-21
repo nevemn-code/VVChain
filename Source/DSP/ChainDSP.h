@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <juce_dsp/juce_dsp.h>
 #include <array>
 #include <complex>
 
@@ -73,6 +74,8 @@ public:
     void prepare(double sampleRate, int samplesPerBlock, int numChannels);
     void reset();
     void process(juce::AudioBuffer<float>& buffer, const Parameters& p);
+
+    int getLatencySamples() const noexcept { return totalLatencySamples; }
 
 private:
 
@@ -162,7 +165,9 @@ private:
         std::array<float, 2> lifterEnv { 1.f, 1.f };
         std::array<float, 2> compEnvDb { 0.f, 0.f };
         std::array<float, 2> upRmsPower { 0.f, 0.f };
+        std::array<float, 2> upSlowRmsPower { 0.f, 0.f };
         std::array<float, 2> downRmsPower { 0.f, 0.f };
+        std::array<float, 2> downSlowRmsPower { 0.f, 0.f };
     };
 
     struct DeEssState
@@ -188,8 +193,13 @@ private:
                              float& previousInput, float& evenDc,
                              float& levelPower, double sampleRate) noexcept;
 
-    static float rmsDetect(float input, float& power, float attackMs, float releaseMs,
-                           double sampleRate) noexcept;
+    static float rmsDetectPDR(float input,
+                               float& fastPower,
+                               float& slowPower,
+                               float attackMs,
+                               float releaseMs,
+                               double sampleRate,
+                               float& programReleaseMs) noexcept;
 
     static float applyLifterFromDetectorDb(float input, float detectorDb,
                                             float& env, float thresholdDb,
@@ -214,6 +224,9 @@ private:
     void applyEq(juce::AudioBuffer<float>&, const Parameters&);
     void applyOtt(juce::AudioBuffer<float>&, const Parameters&);
     void applyAType(juce::AudioBuffer<float>&, const Parameters&);
+
+    void processMasterLimiter(juce::AudioBuffer<float>& buffer, bool active);
+    void alignDryBuffer(int numSamples);
 
     std::array<Biquad, 4> eq {};
     std::array<std::array<float, 2>, 4> analogPreviousInput {};
@@ -243,7 +256,23 @@ private:
     std::array<std::array<float, 2>, 4> typeDc {};
 
     std::array<DeEssState, 2> deess {};
+    Crossover4th deessSplit {};
+    juce::dsp::Oversampling<float> eqOversampler
+    {
+        2, 2,
+        juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR,
+        true, true
+    };
+    juce::dsp::Oversampling<float> limiterOversampler
+    {
+        2, 2,
+        juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR,
+        true, true
+    };
+    juce::dsp::DelayLine<float> eqDryDelay { 4096 };
+    juce::dsp::DelayLine<float> limiterLookahead { 8192 };
     juce::AudioBuffer<float> dryBuffer;
+    juce::AudioBuffer<float> alignedDryBuffer;
 
     Crossover4th soloPreXover1 {}, soloPreXover2 {}, soloPreXover3 {};
     Crossover4th soloPostXover1 {}, soloPostXover2 {}, soloPostXover3 {};
@@ -254,7 +283,12 @@ private:
     std::array<float, 2> gateEnvDb {};
     std::array<float, 2> limiterEnvDb {};
 
+    float limiterGain = 1.f;
     float masterBypassBlend = 0.f;
+    int eqLatencySamples = 0;
+    int limiterOversamplingLatencySamples = 0;
+    int limiterLookaheadSamples = 0;
+    int totalLatencySamples = 0;
 
     double sr = 48000.0;
     int channels = 2;
