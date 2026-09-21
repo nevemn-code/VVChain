@@ -576,7 +576,7 @@ def realtime_safety_checks():
         "updateCrossover2nd(typeXover1",
         "updateCrossover(soloPreXover1",
         "updateCrossover(soloPostXover1",
-        "updateHighPass(state.sidechainHP",
+        "updateCrossover(deessSplit"
     ]:
         assert token in cpp, token
 
