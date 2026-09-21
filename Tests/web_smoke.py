@@ -74,6 +74,16 @@ assert "dragXover" in text
 assert 'sensitivity:.20' in text
 assert "knobRefreshers=[]" in text and "knobRefreshers.push(render)" in text
 assert "knobRefreshers.forEach(fn=>fn())" in text
+assert "SOLO PRE" in text
+assert "solo:{band:-1,post:false}" in text
+assert "soloBand=Math.round(Number(this.s.solo?.band??-1))" in worklet
+assert "soloPost=!!(this.s.solo?.post)" in worklet
+assert "this.soloBlend=0" in worklet and "this.soloBlend+1/64" in worklet
+assert "colorBypass:[false,false,false,false]" in text
+assert "if(!s.eq.colorBypass[b])" in worklet
+assert "deessLedRefs" in text and "syncDeessLeds" in text
+assert "source.loop=true" in text
+assert "fft(" not in worklet
 assert "this.N=512" in text
 assert "native/reference DE-ESSER remains 8192-sample PDC" in text
 assert "if(this.s&&was!==now)" in text
