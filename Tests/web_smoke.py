@@ -33,6 +33,7 @@ required = [
     "TAPE-A", "OTT %", "ATTACK", "RELEASE",
     "DE-ESS FREQ", "DE-ESS %",
     "bandGrid", "advPopup", "advPopupGrid", "mixFader", "outFader", "leds",
+    "ott.bandBypass", "gateBand", "downRatio=1+depth*(8-1)", "upRatio=1+depth*(6-1)",
     "bandBypass", "BAND ", "deessZone", "Math.exp(steps*.025)",
     'addEventListener("wheel"', "grid-template-columns:repeat(5,1fr)",
     "OTT：亮=啟用；按下=BYPASS", "TYPE-A：亮=啟用；按下=BYPASS",
