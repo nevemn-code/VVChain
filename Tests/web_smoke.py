@@ -35,12 +35,14 @@ required = [
     "AudioWorkletNode", "audioWorklet.addModule", "vvchain-worklet",
     "8192", "12500", "13500", "DE-ESSER", "Male Vocal", "Female Vocal",
     "INTENSITY", "OFFSET", "BYPASS", "PROCESS DE-ESSER",
+    "ALL MODULES ON ONE PAGE", "OTT / PUNKOTT-MB", "TYPE-A", "MIX / OUT",
+    "eqCards", "ottBands", "typeBands", "deKnob0", "mixGrid",
 ]
 for token in required:
     assert token in text, token
 
 for forbidden in [
-    "ANALYZER", "analyzer", "createAnalyser", "AnalyserNode",
+    "ANALYZER", "analyzer", "createAnalyser", "AnalyserNode", "functionTabs",
     "inputAnalyser", "outputAnalyser", "fftSize",
     "4096", "1365", "2730", "2731",
     "N=4096", "HOP=1365", "SHIFT=2730",
