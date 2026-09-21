@@ -54,7 +54,7 @@ assert "bypassLed(\"EQ\"" in text and "bypassLed(\"OTT\"" in text
 assert "bypassLed(\"TAPE-A\"" in text and "bypassLed(\"DE-ESS\"" in text
 assert "typeFast" in text or "typeFast" in worklet
 assert "typeSlow" in text or "typeSlow" in worklet
-assert "const amount=(degree/100)*(.10+.90*transient)" in worklet or "0.10f + 0.90f * transient" in text
+assert "const amount=(degree/100)*(.10+.90*transient)" in text or "0.10f + 0.90f * transient" in text
 assert "bypassLed(\"MIX\"" in text
 
 for forbidden in [
