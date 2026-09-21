@@ -595,7 +595,7 @@ void VVChainAudioProcessorEditor::paintPage(
     {
         auto card = juce::Rectangle<int>(
             30 + b * ((width - 86) / 4), 1438, (width - 96) / 4, 140);
-        drawCard(g, card, kBandColours[(size_t)b]);
+        drawCard(g, card.toFloat(), kBandColours[(size_t)b]);
     }
 
     const juce::Rectangle<float> deSection(18.f, 1615.f, width - 36.f, 260.f);
