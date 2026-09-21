@@ -225,6 +225,8 @@ def source_structure_checks():
         "8192",
         "12500",
         "13500",
+        "6000",
+        "18000",
         "DEESS_VOICE",
         "DEESS_INTENSITY",
         "DEESS_OFFSET",
@@ -235,7 +237,7 @@ def source_structure_checks():
         assert token in combined, token
 
     # Old broken/overlap implementation must be gone.
-    for token in ["1365", "2730", "2731", "HOP=1365", "N=4096", "DEESS_FREQ", "DEESS_SENS", "DEESS_AMOUNT"]:
+    for token in ["1365", "2730", "2731", "HOP=1365", "N=4096", "DEESS_SENS", "DEESS_AMOUNT"]:
         assert token not in combined, f"old implementation remains: {token}"
 
     # Corrupted JS variable forms from the previous patch must not exist.

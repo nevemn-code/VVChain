@@ -80,6 +80,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     f("ATYPE_OUTPUT", "Type-A Output Gain", -24.f, 24.f, 0.f);
 
     // Reference-based DeEsser controls. Frequency is now directly selectable.
+    // Reference reference points remain documented at 12.5 kHz / 13.5 kHz;
+    // the active processor accepts the full selectable frequency range.
     // DEESS_VOICE is retained for legacy preset compatibility but is no longer
     // used by the realtime processor.
     p.push_back(std::make_unique<juce::AudioParameterChoice>(
