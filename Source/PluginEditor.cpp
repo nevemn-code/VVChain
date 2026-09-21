@@ -166,6 +166,33 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addKnob("ATYPE_DEGREE" + n, "TAPE-A +", 0, 100, .1,
                 parameterValue("ATYPE_DEGREE" + n), "", b, 8, c, true);
 
+        // Independent per-band bypass LEDs. False = active/lit; true = bypass/dim.
+        ottBandBypassButtons[(size_t) b] = std::make_unique<juce::ToggleButton>();
+        ottBandBypassButtons[(size_t) b]->setLookAndFeel(&metalLook);
+        ottBandBypassButtons[(size_t) b]->setButtonText("");
+        ottBandBypassButtons[(size_t) b]->setColour(
+            juce::ToggleButton::tickColourId, juce::Colour(0xfffacc15));
+        ottBandBypassButtons[(size_t) b]->setTooltip(
+            "BAND " + n + " OTT：亮 = 啟用；按下 = BYPASS");
+        ottBandBypassAttachments[(size_t) b] =
+            std::make_unique<BoolAttachment>(
+                audioProcessor.apvts, "OTT_BAND_BYPASS" + n,
+                *ottBandBypassButtons[(size_t) b]);
+        addAndMakeVisible(*ottBandBypassButtons[(size_t) b]);
+
+        atypeBandBypassButtons[(size_t) b] = std::make_unique<juce::ToggleButton>();
+        atypeBandBypassButtons[(size_t) b]->setLookAndFeel(&metalLook);
+        atypeBandBypassButtons[(size_t) b]->setButtonText("");
+        atypeBandBypassButtons[(size_t) b]->setColour(
+            juce::ToggleButton::tickColourId, juce::Colour(0xfff472b6));
+        atypeBandBypassButtons[(size_t) b]->setTooltip(
+            "BAND " + n + " TYPE-A：亮 = 啟用；按下 = BYPASS");
+        atypeBandBypassAttachments[(size_t) b] =
+            std::make_unique<BoolAttachment>(
+                audioProcessor.apvts, "ATYPE_BAND_BYPASS" + n,
+                *atypeBandBypassButtons[(size_t) b]);
+        addAndMakeVisible(*atypeBandBypassButtons[(size_t) b]);
+
         if (b == 3)
         {
             addKnob("DEESS_FREQ", "DE-ESS FREQ", 6000, 18000, 10,
@@ -263,6 +290,16 @@ VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
 
     for (auto& b : bypassButtons)
         if (b) b->setLookAndFeel(nullptr);
+
+    for (auto& b : ottBandBypassButtons)
+        if (b) b->setLookAndFeel(nullptr);
+    for (auto& b : atypeBandBypassButtons)
+        if (b) b->setLookAndFeel(nullptr);
+
+    for (auto& a : ottBandBypassAttachments)
+        a.reset();
+    for (auto& a : atypeBandBypassAttachments)
+        a.reset();
 
     if (advancedButtons.size() > 0)
         for (auto& b : advancedButtons)
@@ -736,6 +773,20 @@ void VVChainAudioProcessorEditor::resized()
         placeKnob("OTT_COMP_A" + n, pos(6));
         placeKnob("OTT_COMP_R" + n, pos(7));
         placeKnob("ATYPE_DEGREE" + n, pos(8));
+
+        if (ottBandBypassButtons[(size_t) b])
+        {
+            const auto ottCell = pos(5);
+            ottBandBypassButtons[(size_t) b]->setBounds(
+                ottCell.getRight() - 18, ottCell.getY() + 1, 16, 16);
+        }
+
+        if (atypeBandBypassButtons[(size_t) b])
+        {
+            const auto typeCell = pos(8);
+            atypeBandBypassButtons[(size_t) b]->setBounds(
+                typeCell.getRight() - 18, typeCell.getY() + 1, 16, 16);
+        }
 
         if (b == 3)
         {
