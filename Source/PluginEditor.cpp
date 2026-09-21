@@ -285,22 +285,12 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     startTimerHz(30);
     updateBypassVisuals();
 
-    // MIX / OUT stays tiny and horizontal in the title bar.
+    // DE-ESSER also owns the final MIX / OUT controls.
+    // All four controls are rotary knobs and stay strictly vertical.
     addKnob("DRY_WET", "MIX", 0, 100, .1,
-            parameterValue("DRY_WET"), " %", -3, 40, juce::Colour(0xff38bdf8));
+            parameterValue("DRY_WET"), " %", 4, 2, juce::Colour(0xff38bdf8));
     addKnob("OUTPUT_LEVEL", "OUT", -24, 12, .1,
-            parameterValue("OUTPUT_LEVEL"), " dB", -3, 41, juce::Colour(0xff9ed85c));
-
-    for (const auto& id : { juce::String("DRY_WET"), juce::String("OUTPUT_LEVEL") })
-    {
-        if (auto* k = findKnob(id))
-        {
-            k->slider->setSliderStyle(juce::Slider::LinearHorizontal);
-            k->slider->setTextBoxStyle(juce::Slider::TextBoxRight, false, 48, 14);
-            k->slider->setColour(juce::Slider::thumbColourId, k->accent);
-            k->slider->setColour(juce::Slider::trackColourId, k->accent.withAlpha(.65f));
-        }
-    }
+            parameterValue("OUTPUT_LEVEL"), " dB", 4, 3, juce::Colour(0xff9ed85c));
 
     setExpandedBand(-1);
 }
@@ -761,14 +751,16 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
                            uiColour(k.accent.brighter(.35f)));
     }
 
-    const std::array<juce::Colour, 3> moduleColours
+    const std::array<juce::Colour, 5> moduleColours
     {{
         juce::Colour(0xff38bdf8),
         juce::Colour(0xfffacc15),
-        juce::Colour(0xfff472b6)
+        juce::Colour(0xfff472b6),
+        juce::Colour(0xff67d3aa),
+        juce::Colour(0xff9ed85c)
     }};
 
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 5; ++i)
         if (bypassButtons[(size_t) i])
             bypassButtons[(size_t) i]->setColour(
                 juce::ToggleButton::tickColourId,
@@ -776,7 +768,7 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
 
     if (deessBypassButton)
         deessBypassButton->setColour(
-            juce::ToggleButton::tickColourId, uiColour(juce::Colour(0xff67d3aa)));
+            juce::ToggleButton::tickColourId, uiColour(moduleColours[3]));
 
     if (masterBypassButton)
         masterBypassButton->setColour(
@@ -841,7 +833,6 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.drawText("4-BAND EQ · SHARED X-OVER · OTT · TAPE-A · DE-ESSER", 20, 37, 430, 13,
                juce::Justification::left);
 
-    // Very small MIX / OUT faders in the title bar.
     const auto graph = eqGraphBounds();
     drawEqGraph(g, graph);
 
@@ -906,7 +897,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(juce::Colour(0xff606873));
     g.setFont(juce::FontOptions(7.f));
-    g.drawText("SHARED X-OVER = 3 LINES / 4 ZONES · WHEEL ON LINE = OVERLAP · HP/CORNER = GLOBAL LOW-CUT",
+    g.drawText("SHARED X-OVER = 3 LINES / 4 ZONES · WHEEL ON LINE = OVERLAP",
                18, 919, 780, 10, juce::Justification::left);
 }
 
@@ -1034,7 +1025,15 @@ void VVChainAudioProcessorEditor::resized()
         placeKnob("DEESS_INTENSITY", { innerX + 4, innerTop + 170, innerW - 8, 118 });
 
         if (deessBypassButton)
-            deessBypassButton->setBounds(innerX + innerW - 20, innerTop + 7, 16, 16);
+            deessBypassButton->setBounds(x + cardW - 42, cardY + 4, 28, 28);
+
+        // First two controls are 20% smaller; MIX / OUT use the full size.
+        const int knobX = innerX + 8;
+        const int knobW = innerW - 16;
+        placeKnob("DEESS_FREQ",      { knobX, innerTop + 34,  knobW, 90 });
+        placeKnob("DEESS_INTENSITY", { knobX, innerTop + 129, knobW, 90 });
+        placeKnob("DRY_WET",         { knobX, innerTop + 224, knobW, 112 });
+        placeKnob("OUTPUT_LEVEL",    { knobX, innerTop + 341, knobW, 112 });
     }
 
     if (expandedBand >= 0)
