@@ -525,8 +525,9 @@ def realtime_safety_checks():
     assert "ottPhase2_B1" in phase_cpp
     assert "ottPhase3_B1" in phase_cpp
     assert "ottPhase3_B2" in phase_cpp
-    assert ".allPass(low, right)" in phase_cpp
-    assert ".allPass(lowMid, right)" in phase_cpp
+    assert "lowL = ottPhase2_B1.allPass(lowL, false)" in phase_cpp
+    assert "lowL = ottPhase3_B1.allPass(lowL, false)" in phase_cpp
+    assert "lowMidL = ottPhase3_B2.allPass(lowMidL, false)" in phase_cpp
 
     # Master bypass must always be the 64-sample interpolation path.
     process_master = cpp[cpp.index("processMasterLimiter(")
