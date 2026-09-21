@@ -20,7 +20,9 @@ public:
         std::array<float, 4> freq { 80.f, 350.f, 2500.f, 10000.f };
         std::array<float, 4> gain { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> q { 0.707f, 0.707f, 0.707f, 0.707f };
-        float eqColor = 35.f;
+        std::array<float, 4> eqColor { 35.f, 35.f, 35.f, 35.f };
+        // false = TT (Tube Saturation), true = SS (Solid-State Saturation)
+        std::array<bool, 4> eqColorSolidState { false, false, false, false };
 
         // Four-band OTT / PunkOTT-MB style chain.
         std::array<bool, 4> ottBandBypass { false, false, false, false };
@@ -56,7 +58,7 @@ public:
 
         // Reference-based DeEsser controls. Defaults preserve the reference behaviour.
         float deessReferenceHz = 12500.f;
-        float deessIntensity = 10.f;
+        float deessIntensity = 0.f;
         float deessAverageOffset = 0.f;
 
         float dryWet = 100.f;
@@ -142,7 +144,8 @@ private:
     static float dbToGain(float db) noexcept;
     static float gainToDb(float gain) noexcept;
     static float timeCoeff(double sampleRate, float ms) noexcept;
-    static float softColor(float x, float amount01) noexcept;
+    static float analogColor(float x, float amount01, bool solidState,
+                             float& previousInput, float& evenDc) noexcept;
 
     static float rmsDetect(float input, float& power, float attackMs, float releaseMs,
                            double sampleRate) noexcept;
@@ -175,6 +178,8 @@ private:
     void applyAType(juce::AudioBuffer<float>&, const Parameters&);
 
     std::array<Biquad, 4> eq {};
+    std::array<std::array<float, 2>, 4> analogPreviousInput {};
+    std::array<std::array<float, 2>, 4> analogEvenDc {};
 
     Crossover4th ottXover1 {};
     Crossover4th ottXover2 {};
