@@ -59,6 +59,9 @@ assert "typeFast" in text or "typeFast" in worklet
 assert "typeSlow" in text or "typeSlow" in worklet
 assert "const amount=(degree/100)*(.10+.90*transient)" in text or "0.10f + 0.90f * transient" in text
 assert "masterBypass" in text and "globalBypass" in text
+assert "masterBypass.addEventListener" in text
+assert "syncMaster" in text
+assert "state.masterBypass=!state.masterBypass" in text
 assert "state.eq.hp" not in text
 assert "this.hp(sampleRate" not in text
 assert "MAXIMUM REDUCTION" in text
