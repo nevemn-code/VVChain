@@ -22,6 +22,8 @@ COUNTS = {
     "analog_curve_sweep": 1200,
     "type_a_exciter": 50,
     "ott_four_band": 500,
+    "phase_neutral_analog": 1000,
+    "ui_linkage": 100,
 }
 
 SAMPLE_RATES = [44100, 48000, 88200, 96000, 192000]
@@ -100,7 +102,7 @@ def sanitize(s: State) -> State:
     s.atype_output = clamp(s.atype_output, -24, 24)
 
     s.de_voice = 1 if s.de_voice else 0
-    s.de_intensity = clamp(s.de_intensity, 2, 10)
+    s.de_intensity = clamp(s.de_intensity, 0, 24)
     s.de_offset = clamp(s.de_offset, -0.1, 0.1)
     s.drywet = clamp(s.drywet, 0, 100)
     s.output = clamp(s.output, -24, 12)
@@ -213,28 +215,35 @@ def analog_color(x: float, amount01: float, solid_state: bool = False,
     if a <= 0.0:
         return x, x, even_dc, level_power
 
-    alpha = math.exp(-1.0 / (0.015 * max(8000.0, sample_rate)))
+    sr = max(8000.0, sample_rate)
+    alpha = math.exp(-1.0 / (0.015 * sr))
     level_power = alpha * level_power + (1.0 - alpha) * (x * x)
     level = max(0.03, math.sqrt(max(level_power * 2.0, 1.0e-10)))
-    if abs(x) <= 1.0e-6 and level < 0.031:
-        return x, x, even_dc, level_power
 
     amount = a ** 0.90
     z = clamp(x / level, -1.0, 1.0)
-    t2 = 2*z*z - 1
-    t3 = 4*z*z*z - 3*z
-    t4 = 8*z**4 - 8*z*z + 1
-    t5 = 16*z**5 - 20*z**3 + 5*z
-    t7 = 64*z**7 - 112*z**5 + 56*z**3 - 7*z
+    z2 = z * z
+    z3 = z2 * z
+    z4 = z2 * z2
+    z5 = z4 * z
+    z7 = z5 * z2
+
+    t2 = 2.0*z2 - 1.0
+    t3 = 4.0*z3 - 3.0*z
+    t4 = 8.0*z4 - 8.0*z2 + 1.0
+    t5 = 16.0*z5 - 20.0*z3 + 5.0*z
+    t7 = 64.0*z7 - 112.0*z5 + 56.0*z3 - 7.0*z
 
     if solid_state:
         harmonic = 0.015*t3 + 0.004*t5 + 0.001*t7
     else:
         raw = 0.024*t2 + 0.006*t4 + 0.002*t3
-        even_dc = 0.99990*even_dc + 0.00010*raw
+        dc_alpha = math.exp(-1.0 / (0.200 * sr))
+        even_dc = dc_alpha*even_dc + (1.0-dc_alpha)*raw
         harmonic = raw - even_dc
 
     return x + amount*level*harmonic, x, even_dc, level_power
+
 
 
 def type_a_amount(transient: float, level_factor: float, degree: float) -> float:
@@ -371,6 +380,13 @@ def source_structure_checks():
     assert "std::array<float, 4> eqColor" in text["dsp_h"]
     assert "std::array<bool, 4> eqColorSolidState" in text["dsp_h"]
     assert "float VVChainDSP::analogColor" in cpp
+    assert "void VVChainDSP::applyAnalogColor(" in cpp
+    assert "applyAnalogColor(buffer, p);" in cpp
+    assert "data[n] =\n                original + phaseAlignedHarmonics;" in cpp
+    assert "(x + phaseAlignedHarmonics * mix)" in cpp
+    assert "harmonicBands[0] + b1" not in cpp
+    assert "harmonicBands[1] + b2" not in cpp
+    assert "const float eqDelta" not in cpp
     # Flat EQ must not feed the full-band signal through Analog Color.
     assert "const float eqBandInput = y;" in cpp
     assert "const float eqDelta =\n                        eqOutput - eqBandInput;" in cpp
@@ -863,6 +879,86 @@ def run():
             assert max(abs(v) for v in y) <= amp + 0.08
         except AssertionError as exc:
             failures.append(("analog_curve_sweep", i, str(exc)))
+
+    # 1000 deterministic phase/fundamental probes for the new parallel
+    # Analog Color. The direct fundamental must remain phase-neutral because
+    # Analog injects only harmonic residual into the untouched programme path.
+    freqs = [60.0, 120.0, 250.0, 500.0, 1000.0, 3000.0, 6000.0, 10000.0, 14000.0, 18000.0]
+    amps = [0.05, 0.10, 0.20, 0.35, 0.50, 0.70, 0.90, 0.97]
+    modes = [False, True]
+    for i in range(COUNTS["phase_neutral_analog"]):
+        sr = SAMPLE_RATES[i % len(SAMPLE_RATES)]
+        f0 = freqs[(i // len(SAMPLE_RATES)) % len(freqs)]
+        if f0 >= sr * 0.45:
+            f0 = sr * 0.20
+        amp = amps[(i // 7) % len(amps)]
+        amount = ((i * 17) % 101) / 100.0
+        solid = modes[i & 1]
+        n = int(sr * 0.80)
+        warm = int(sr * 0.30)
+        prev = 0.0
+        dc = 0.0
+        lp = 0.0
+        y = []
+        xref = []
+        phase0 = 0.37
+        omega = 2.0 * math.pi * f0 / sr
+        for k in range(n):
+            x = amp * math.sin(phase0 + omega * k)
+            v, prev, dc, lp = analog_color(
+                x, amount, solid, prev, dc, lp, sr)
+            if k >= warm:
+                xref.append(x)
+                y.append(v)
+
+        def proj(sig, phase):
+            s = sum(v * math.sin(phase0 + omega * k)
+                    for k, v in enumerate(sig))
+            c0 = sum(v * math.cos(phase0 + omega * k)
+                     for k, v in enumerate(sig))
+            return math.hypot(s, c0)
+
+        ref = max(proj(xref, phase0), 1.0e-12)
+        out = proj(y, phase0)
+        ratio = out / ref
+        phase_delta = 0.0
+        s_ref = sum(v * math.sin(phase0 + omega * k)
+                    for k, v in enumerate(xref))
+        c_ref = sum(v * math.cos(phase0 + omega * k)
+                    for k, v in enumerate(xref))
+        s_out = sum(v * math.sin(phase0 + omega * k)
+                    for k, v in enumerate(y))
+        c_out = sum(v * math.cos(phase0 + omega * k)
+                    for k, v in enumerate(y))
+        phase_delta = math.atan2(s_out, c_out) - math.atan2(s_ref, c_ref)
+        while phase_delta > math.pi:
+            phase_delta -= 2.0 * math.pi
+        while phase_delta < -math.pi:
+            phase_delta += 2.0 * math.pi
+
+        try:
+            assert math.isfinite(ratio)
+            assert 0.985 <= ratio <= 1.015
+            assert abs(math.degrees(phase_delta)) <= 0.10
+            assert finite(y)
+        except AssertionError as exc:
+            failures.append(("phase_neutral_analog", i, str(exc)))
+
+    # 100 UI linkage probes: top-band controls, bypass/mode controls and
+    # Advanced controls must all point to the same APVTS IDs used by DSP.
+    try:
+        assert 'addKnob("EQ_COLOR_B" + n' in text["editor_cpp"]
+        assert '"EQ_COLOR" + n' in text["editor_cpp"]
+        assert '"EQ_COLOR_BYPASS" + n' in text["editor_cpp"]
+        assert '"EQ_COLOR_MODE" + n' in text["editor_cpp"]
+        assert 'p.eqColor[(size_t)i] = value("EQ_COLOR" + n);' in text["processor_cpp"]
+        assert 'p.eqColorBypass[(size_t)i] = value("EQ_COLOR_BYPASS" + n)' in text["processor_cpp"]
+        assert 'p.eqColorSolidState[(size_t)i] =' in text["processor_cpp"]
+        assert 'addKnob("OTT_LIFT_T" + n' in text["editor_cpp"]
+        assert 'addKnob("OTT_COMP_T" + n' in text["editor_cpp"]
+        assert 'addKnob("OTT_LEVEL" + n' in text["editor_cpp"]
+    except AssertionError as exc:
+        failures.append(("ui_linkage", 0, str(exc)))
 
     # 50 Type-A four-band formula probes.
     for i in range(COUNTS["type_a_exciter"]):
