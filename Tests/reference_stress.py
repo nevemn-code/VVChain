@@ -294,6 +294,7 @@ def ott_transfer_db(input_db: float, threshold_db: float, ratio: float,
 
 
 def source_structure_checks():
+    multiband_phase_alignment_checks()
     root = Path(__file__).resolve().parents[1]
     files = {
         "processor_h": root / "Source/PluginProcessor.h",
@@ -440,7 +441,174 @@ def source_structure_checks():
     assert "亮 = 啟用；按下 = BYPASS" in text["editor_cpp"]
 
 
+def _biquad_response(c, w):
+    z = complex(math.cos(-w), math.sin(-w))
+    b0, b1, b2, a1, a2 = c
+    return (b0 + b1*z + b2*z*z) / (1.0 + a1*z + a2*z*z)
+
+
+def _lr4_response(kind, fs, fc, q, freq):
+    k = math.tan(math.pi * fc / fs)
+    k2 = k * k
+    a0 = 1.0 + k / q + k2
+    a1 = 2.0 * (k2 - 1.0)
+    a2 = 1.0 - k / q + k2
+    if kind == "lp":
+        c = (k2 / a0, 2.0 * k2 / a0, k2 / a0, a1 / a0, a2 / a0)
+    else:
+        c = (1.0 / a0, -2.0 / a0, 1.0 / a0, a1 / a0, a2 / a0)
+    w = 2.0 * math.pi * freq / fs
+    h = _biquad_response(c, w)
+    return h * h
+
+
+def multiband_phase_alignment_checks():
+    fs = 48000.0
+    x1, x2, x3 = 120.0, 1000.0, 7000.0
+
+    for overlap in (0.0, 25.0, 50.0, 75.0, 100.0):
+        q = 0.90 - 0.35 * overlap / 100.0
+
+        # Test only where at least one branch has meaningful energy.
+        for freq in (80.0, 250.0, 600.0, 1000.0, 2000.0, 4000.0, 7000.0, 10000.0, 15000.0):
+            h1lp = _lr4_response("lp", fs, x1, q, freq)
+            h1hp = _lr4_response("hp", fs, x1, q, freq)
+            h2lp = _lr4_response("lp", fs, x2, q, freq)
+            h2hp = _lr4_response("hp", fs, x2, q, freq)
+            h3lp = _lr4_response("lp", fs, x3, q, freq)
+            h3hp = _lr4_response("hp", fs, x3, q, freq)
+
+            ap2 = h2lp + h2hp
+            ap3 = h3lp + h3hp
+
+            paths = [
+                h1lp * ap2 * ap3,
+                h1hp * h2lp * ap3,
+                h1hp * h2hp * h3lp,
+                h1hp * h2hp * h3hp,
+            ]
+
+            active = [math.atan2(z.imag, z.real) for z in paths if abs(z) > 0.02]
+            if len(active) < 2:
+                continue
+
+            ref = active[0]
+            for phase in active[1:]:
+                err = math.atan2(math.sin(phase - ref), math.cos(phase - ref))
+                assert abs(err) < 1.0e-6, (overlap, freq, ref, phase)
+
+    print("ott_lr4_phase_alignment: PASS")
+
+
+def realtime_safety_checks():
+    root = Path(__file__).resolve().parents[1]
+    header = (root / "Source/DSP/ChainDSP.h").read_text(encoding="utf-8")
+    cpp = (root / "Source/DSP/ChainDSP.cpp").read_text(encoding="utf-8")
+
+    # Coefficient changes must update existing filter objects, never replace them.
+    for token in [
+        "updateCoefficients",
+        "updateAnalogPeak",
+        "updateAnalogHighPass",
+        "updateLowPass",
+        "updateHighPass",
+        "updateCrossover",
+    ]:
+        assert token in header or token in cpp, token
+
+    phase_cpp = cpp
+    assert "ottPhase2_B1" in phase_cpp
+    assert "ottPhase3_B1" in phase_cpp
+    assert "ottPhase3_B2" in phase_cpp
+    assert ".allPass(low, right)" in phase_cpp
+    assert ".allPass(lowMid, right)" in phase_cpp
+
+    # Master bypass must always be the 64-sample interpolation path.
+    process_master = cpp[cpp.index("processMasterLimiter(")
+                          : cpp.index("for (int ch = nCh;", cpp.index("processMasterLimiter("))]
+    assert "masterBypassBlend" in cpp
+    assert "masterDryDelay" in cpp
+    assert "processMasterLimiter(buffer, true)" in cpp
+    assert "if (p.masterBypass) wet[n] =" not in cpp
+    assert "eqOversampler.processSamplesUp" in cpp
+    assert "limiterOversampler.processSamplesUp" in cpp
+    assert "setLatencySamples(dsp.getLatencySamples())" in (root / "Source/PluginProcessor.cpp").read_text(encoding="utf-8")
+
+    assert "updateAnalogPeak" in cpp
+    assert "G1" in cpp
+    assert "rmsDetectPDR" in cpp
+    assert "programReleaseMs" in cpp
+    assert "updateCrossover(deessSplit" in cpp
+    assert "lowBand + highBand * dbToGain(-state.gainDb)" in cpp
+    # OTT/A-Type/analog-color regression invariants.
+    assert "applyLifterFromDetectorDb" in cpp
+    assert "if (upDb > liftThreshold)" not in cpp
+    assert "wet *= outputGain" in cpp
+    assert "ceilingDb = -0.8f" in cpp
+    assert "filterHalfBandFIREquiripple" in header
+    assert "eqOversampler.processSamplesUp" in cpp
+    assert "eqOversampler.processSamplesDown" in cpp
+    assert "std::atan(asymmetric * drive)" in cpp
+    assert "const float ax1 = 80.f" in cpp
+    assert "const float ax2 = 3000.f" in cpp
+    assert "const float ax3 = 9000.f" in cpp
+    assert "const float b2 = x - b1 - b3" in cpp
+    type_start = cpp.index("void VVChainDSP::applyAType")
+    type_end = cpp.index("void VVChainDSP::processDeEsser")
+    assert "harmonicSum" not in cpp[type_start:type_end]
+
+    editor_h = (root / "Source/PluginEditor.h").read_text(encoding="utf-8")
+    editor_cpp = (root / "Source/PluginEditor.cpp").read_text(encoding="utf-8")
+    assert "juce::Colour(0xffef4444)" in editor_cpp
+    assert "juce::Colour(0xfffacc15)" in editor_cpp
+    assert "juce::Colour(0xff3b82f6)" in editor_cpp
+    assert "juce::Colour(0xff22c55e)" in editor_cpp
+    assert "juce::Colours::white.withAlpha(.96f)" in editor_cpp
+    assert "drawGraphDragHint" in editor_cpp
+    assert "class WheelSlider final : public juce::Slider" in editor_h
+    assert "std::make_unique<WheelSlider>()" in editor_cpp
+    assert "setScrollWheelEnabled(true)" in editor_h
+    assert "wheelRemainder" in editor_h
+    assert "wheelLogarithmic" in editor_h
+    assert "filterHalfBandFIREquiripple" not in editor_h
+
+    for forbidden in [
+        "static Biquad makeAnalogPeak",
+        "static Biquad makeAnalogHighPass",
+        "static Biquad makeLowPass",
+        "static Biquad makeHighPass",
+        "eq[i] = makeAnalogPeak",
+        "ottXover1.lp1 = makeLowPass",
+        "typeXover1.lp1 = makeLowPass",
+        "soloPreXover1.lp1 = makeLowPass",
+        "state.sidechainHP = makeHighPass",
+    ]:
+        assert forbidden not in header and forbidden not in cpp, forbidden
+
+    # The realtime process function may not allocate/resize heap memory.
+    start = cpp.index("void VVChainDSP::process(")
+    process_body = cpp[start:]
+    assert "setSize(" not in process_body
+    assert "juce::ScopedNoDenormals noDenormals;" in process_body
+    assert "dryBuffer.copyFrom" in process_body
+
+    # Every stateful crossover / sidechain path uses coefficient updates.
+    for token in [
+        "updateCrossover(ottXover1",
+        "updateCrossover2nd(typeXover1",
+        "soloPreXover1",
+        "soloPostXover1",
+        "updateCrossover(deessSplit"
+    ]:
+        assert token in cpp, token
+
+    print("realtime_filter_state_safety: PASS")
+    print("audio_thread_no_heap_resize: PASS")
+    print("denormal_guard: PASS")
+
+
 def run():
+    realtime_safety_checks()
     rng = random.Random(SEED)
     failures = []
 

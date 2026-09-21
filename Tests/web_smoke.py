@@ -57,6 +57,12 @@ assert "hp(f,q=.707)" in worklet
 assert "this.hp(this.clamp(Number(this.s.de.freq||8000)" in worklet
 assert "fft(re,im,inv)" not in worklet and "this.fft(" not in worklet
 assert "dryQueue" not in worklet
+assert "d.addEventListener(\"wheel\"" in text
+assert "wheelRemainder" in text
+assert "#ef4444" in text and "#facc15" in text and "#3b82f6" in text and "#22c55e" in text
+assert "background:#fff" in text
+assert "graphHint" in text
+assert "graphFrequencyText" in text
 
 for forbidden in [
     "ANALYZER", "createAnalyser", "AnalyserNode",
