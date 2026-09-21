@@ -457,7 +457,7 @@ int main()
             const auto ottParams = makeOtt();
             const auto deessParams = makeDeEss((ci % 3) == 0);
 
-            const auto eqAnalogParams =
+            auto eqAnalogParams =
                 makeEq(cfg.eqGain, analogParams.eqColor[0]);
             eqAnalogParams.eqColorSolidState =
                 { cfg.ss, cfg.ss, cfg.ss, cfg.ss };
@@ -502,20 +502,15 @@ int main()
                     cfg.audio.amplitude), cfg.audio.block);
 
             const int eqDelay = estimateDelay(
-                makeSine(cfg.audio.sr * 2, cfg.audio.sr,
-                         cfg.audio.freq, cfg.audio.amplitude), eqFlatOut);
+                noise, render(dsp, eqFlatParams, noise, cfg.audio.block));
             const int analogDelay = estimateDelay(
-                makeSine(cfg.audio.sr * 2, cfg.audio.sr,
-                         cfg.audio.freq, cfg.audio.amplitude), analogOut);
+                noise, render(dsp, analogParams, noise, cfg.audio.block));
             const int tapeDelay = estimateDelay(
-                makeSine(cfg.audio.sr * 2, cfg.audio.sr,
-                         cfg.audio.freq, cfg.audio.amplitude), tapeOut);
+                noise, render(dsp, tapeParams, noise, cfg.audio.block));
             const int ottDelay = estimateDelay(
-                makeSine(cfg.audio.sr * 2, cfg.audio.sr,
-                         cfg.audio.freq, cfg.audio.amplitude), ottOut);
+                noise, render(dsp, ottParams, noise, cfg.audio.block));
             const int deessDelay = estimateDelay(
-                makeSine(cfg.audio.sr * 2, cfg.audio.sr,
-                         cfg.audio.freq, cfg.audio.amplitude), deessOut);
+                noise, render(dsp, deessParams, noise, cfg.audio.block));
 
             const int maxDelayError = std::max({
                 std::abs(baselineDelay - declaredLatency),
