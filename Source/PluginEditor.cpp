@@ -178,26 +178,25 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     setResizable(false, false);
     setSize(1500, 930);
 
-    const std::array<juce::String, 5> bypassIds
+    const std::array<juce::String, 4> bypassIds
     {
-        "EQ_BYPASS", "OTT_BYPASS", "ATYPE_BYPASS", "DEESS_BYPASS", "MIX_BYPASS"
+        "EQ_BYPASS", "OTT_BYPASS", "ATYPE_BYPASS", "DEESS_BYPASS"
     };
 
-    const std::array<juce::String, 5> bypassLabels
+    const std::array<juce::String, 4> bypassLabels
     {
-        "EQ", "OTT", "TAPE-A", "DE-ESS", "MIX"
+        "EQ", "OTT", "TAPE-A", "DE-ESS"
     };
 
-    const std::array<juce::Colour, 5> bypassColours
+    const std::array<juce::Colour, 4> bypassColours
     {
         juce::Colour(0xff38bdf8),
         juce::Colour(0xfffacc15),
         juce::Colour(0xfff472b6),
-        juce::Colour(0xff67d3aa),
-        juce::Colour(0xff9ed85c)
+        juce::Colour(0xff67d3aa)
     };
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
         addBypass(i, bypassIds[(size_t) i], bypassLabels[(size_t) i],
                   bypassColours[(size_t) i]);
 
@@ -219,6 +218,19 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         audioProcessor.apvts, "MASTER_BYPASS", *masterBypassButton);
     addAndMakeVisible(*masterBypassButton);
 
+    soloModeButton = std::make_unique<juce::ToggleButton>("SOLO PRE");
+    soloModeButton->setLookAndFeel(&metalLook);
+    soloModeButton->setButtonText("SOLO PRE");
+    soloModeButton->setColour(juce::ToggleButton::tickColourId, juce::Colour(0xffdfe7ef));
+    soloModeButton->setTooltip("SOLO 路徑：PRE = 所有處理前；POST = 所有處理後");
+    soloModeButton->onClick = [this]
+    {
+        const bool post = parameterValue("SOLO_MODE") < 0.5f;
+        if (auto* parameter = audioProcessor.apvts.getParameter("SOLO_MODE"))
+            parameter->setValueNotifyingHost(parameter->convertTo0to1(post ? 1.f : 0.f));
+    };
+    addAndMakeVisible(*soloModeButton);
+
     for (int b = 0; b < 4; ++b)
     {
         const auto c = uiColour(kBandColours[(size_t) b]);
@@ -235,7 +247,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         // The two EQ / ANALOG controls live inside every BAND card.
         // They intentionally remain attached to the shared DSP parameters.
         addKnob("EQ_COLOR_B" + n, "ANALOG COLOR", 0, 100, .1,
-                parameterValue("EQ_COLOR" + n), " %", b, 3,
+                parameterValue("EQ_COLOR" + n), " %", b, 6,
                 juce::Colour(0xff60a5fa), false, "EQ_COLOR" + n);
 
         analogModeButtons[(size_t) b] = std::make_unique<juce::ToggleButton>();
@@ -251,13 +263,46 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
                 audioProcessor.apvts, "EQ_COLOR_MODE" + n,
                 *analogModeButtons[(size_t) b]);
         addAndMakeVisible(*analogModeButtons[(size_t) b]);
+
+        analogBypassButtons[(size_t) b] = std::make_unique<juce::ToggleButton>();
+        analogBypassButtons[(size_t) b]->setLookAndFeel(&metalLook);
+        analogBypassButtons[(size_t) b]->setButtonText("");
+        analogBypassButtons[(size_t) b]->setColour(
+            juce::ToggleButton::tickColourId, juce::Colour(0xff60a5fa));
+        analogBypassButtons[(size_t) b]->setTooltip(
+            "BAND " + n + " ANALOG COLOR：亮 = 啟用；按下 = BYPASS");
+        analogBypassAttachments[(size_t) b] =
+            std::make_unique<BoolAttachment>(
+                audioProcessor.apvts, "EQ_COLOR_BYPASS" + n,
+                *analogBypassButtons[(size_t) b]);
+        addAndMakeVisible(*analogBypassButtons[(size_t) b]);
+
+        soloButtons[(size_t) b] = std::make_unique<juce::ToggleButton>("SOLO");
+        soloButtons[(size_t) b]->setLookAndFeel(&metalLook);
+        soloButtons[(size_t) b]->setButtonText("SOLO");
+        soloButtons[(size_t) b]->setTooltip(
+            "SOLO BAND " + n + "：使用共享 X-OVER 頻段，不使用 EQ FREQ");
+        soloButtons[(size_t) b]->setColour(
+            juce::ToggleButton::tickColourId, juce::Colour(0xffdfe7ef));
+        soloButtons[(size_t) b]->onClick = [this, b]
+        {
+            const int requested = parameterValue("SOLO_BAND") >= 0.5f
+                ? static_cast<int>(std::lround(parameterValue("SOLO_BAND")))
+                : 0;
+            const int next = (requested == b + 1) ? 0 : b + 1;
+            if (auto* parameter = audioProcessor.apvts.getParameter("SOLO_BAND"))
+                parameter->setValueNotifyingHost(
+                    parameter->convertTo0to1(static_cast<float>(next)));
+        };
+        addAndMakeVisible(*soloButtons[(size_t) b]);
+
         // Main screen intentionally keeps only the three OTT performance knobs.
         addKnob("OTT_DEGREE" + n, "OTT %", 0, 100, .1,
-                parameterValue("OTT_DEGREE" + n), " %", b, 4, juce::Colour(0xfffacc15));
+                parameterValue("OTT_DEGREE" + n), " %", b, 3, juce::Colour(0xfffacc15));
         addKnob("OTT_COMP_A" + n, "ATTACK", .1, 250, .1,
-                parameterValue("OTT_COMP_A" + n), " ms", b, 5, juce::Colour(0xfffacc15));
+                parameterValue("OTT_COMP_A" + n), " ms", b, 4, juce::Colour(0xfffacc15));
         addKnob("OTT_COMP_R" + n, "RELEASE", 10, 2500, 1,
-                parameterValue("OTT_COMP_R" + n), " ms", b, 6, juce::Colour(0xfffacc15));
+                parameterValue("OTT_COMP_R" + n), " ms", b, 5, juce::Colour(0xfffacc15));
 
         addKnob("ATYPE_DEGREE" + n, "TAPE-A +", 0, 100, .1,
                 parameterValue("ATYPE_DEGREE" + n), "", b, 7, c, true);
@@ -402,6 +447,14 @@ VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
 
     for (auto& b : analogModeButtons)
         if (b) b->setLookAndFeel(nullptr);
+    for (auto& b : analogBypassButtons)
+        if (b) b->setLookAndFeel(nullptr);
+    for (auto& b : soloButtons)
+        if (b) b->setLookAndFeel(nullptr);
+    if (soloModeButton) soloModeButton->setLookAndFeel(nullptr);
+
+    for (auto& a : analogBypassAttachments)
+        a.reset();
 
     for (auto& a : ottBandBypassAttachments)
         a.reset();
@@ -446,6 +499,8 @@ void VVChainAudioProcessorEditor::addKnob(
     k.slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     k.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 68, 17);
     k.slider->setRange(min, max, step);
+    if (id.endsWith("_FREQ"))
+        k.slider->setSkewFactorFromMidPoint(632.f);
     k.slider->setDoubleClickReturnValue(true, defaultValue);
     k.slider->setColour(juce::Slider::rotarySliderFillColourId, accent);
     k.slider->setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colour(0xff08090b));
@@ -877,6 +932,17 @@ void VVChainAudioProcessorEditor::timerCallback()
 {
     if (isMasterBypassed() != lastMasterBypassUi)
         updateBypassVisuals();
+
+    const int soloRaw = static_cast<int>(std::lround(parameterValue("SOLO_BAND")));
+    const int soloBand = soloRaw - 1;
+    for (int b = 0; b < 4; ++b)
+        if (soloButtons[(size_t) b])
+            soloButtons[(size_t) b]->setToggleState(soloBand == b,
+                                                    juce::dontSendNotification);
+
+    if (soloModeButton)
+        soloModeButton->setButtonText(
+            parameterValue("SOLO_MODE") > 0.5f ? "SOLO POST" : "SOLO PRE");
 }
 
 void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
@@ -1023,19 +1089,23 @@ void VVChainAudioProcessorEditor::resized()
     const int cardCount = 5;
     const int cardW = (w - left * 2 - gap * (cardCount - 1)) / cardCount;
 
-    const std::array<int, 5> moduleWidths { 50, 52, 66, 62, 50 };
+    const std::array<int, 4> moduleWidths { 50, 52, 66, 62 };
     constexpr int topGap = 5;
     constexpr int masterW = 78;
     int total = masterW;
     for (auto mw : moduleWidths)
         total += topGap + mw;
+    constexpr int soloModeW = 68;
+    total += topGap + soloModeW;
 
     const int topX = w - 18 - total;
     constexpr int topY = 17;
     if (masterBypassButton)
         masterBypassButton->setBounds(topX, topY, masterW, 25);
+    if (soloModeButton)
+        soloModeButton->setBounds(topX + masterW + topGap, topY, soloModeW, 25);
 
-    int xTop = topX + masterW + topGap;
+    int xTop = topX + masterW + topGap + soloModeW + topGap;
     for (int i = 0; i < 5; ++i)
     {
         if (bypassButtons[(size_t) i])
@@ -1049,6 +1119,8 @@ void VVChainAudioProcessorEditor::resized()
         const int x = left + b * (cardW + gap);
         if (advancedButtons[(size_t) b])
             advancedButtons[(size_t) b]->setBounds(x + cardW - 58, cardY + 8, 50, 20);
+        if (soloButtons[(size_t) b])
+            soloButtons[(size_t) b]->setBounds(x + cardW - 108, cardY + 8, 46, 20);
 
         const int innerX = x + 8;
         const int innerTop = cardY + 48;
@@ -1072,7 +1144,11 @@ void VVChainAudioProcessorEditor::resized()
         placeKnob("EQ" + n + "_GAIN", pos(1));
         placeKnob("EQ" + n + "_Q", pos(2));
 
-        const auto colorCell = pos(3);
+        placeKnob("OTT_DEGREE" + n, pos(3));
+        placeKnob("OTT_COMP_A" + n, pos(4));
+        placeKnob("OTT_COMP_R" + n, pos(5));
+
+        const colorCell = pos(6);
         placeKnob("EQ_COLOR_B" + n,
                   { colorCell.getX(), colorCell.getY() + 17,
                     colorCell.getWidth(), colorCell.getHeight() - 17 });
@@ -1081,9 +1157,6 @@ void VVChainAudioProcessorEditor::resized()
                 colorCell.getX() + (colorCell.getWidth() - 36) / 2,
                 colorCell.getY() - 10, 36, 12);
 
-        placeKnob("OTT_DEGREE" + n, pos(4));
-        placeKnob("OTT_COMP_A" + n, pos(5));
-        placeKnob("OTT_COMP_R" + n, pos(6));
         placeKnob("ATYPE_DEGREE" + n, pos(7));
 
         if (ottBandBypassButtons[(size_t) b])
@@ -1091,6 +1164,14 @@ void VVChainAudioProcessorEditor::resized()
             {
                 const auto r = knob->slider->getBounds();
                 ottBandBypassButtons[(size_t) b]->setBounds(
+                    r.getRight() - 11, r.getY() - 10, 12, 12);
+            }
+
+        if (analogBypassButtons[(size_t) b])
+            if (auto* knob = findKnob("EQ_COLOR_B" + n))
+            {
+                const auto r = knob->slider->getBounds();
+                analogBypassButtons[(size_t) b]->setBounds(
                     r.getRight() - 11, r.getY() - 10, 12, 12);
             }
 
@@ -1267,6 +1348,10 @@ void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
 
     setParameter("EQ" + n + "_FREQ", hz);
     setParameter("EQ" + n + "_GAIN", db);
+    if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
+        freqKnob->slider->setValue(hz, juce::dontSendNotification);
+    if (auto* gainKnob = findKnob("EQ" + n + "_GAIN"))
+        gainKnob->slider->setValue(db, juce::dontSendNotification);
     repaint();
 }
 
@@ -1336,5 +1421,7 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
     const float nextQ = juce::jlimit(
         0.1f, 18.f, q * std::exp(-wheel.deltaY * 0.25f));
     setParameter("EQ" + n + "_Q", nextQ);
+    if (auto* knob = findKnob("EQ" + n + "_Q"))
+        knob->slider->setValue(nextQ, juce::dontSendNotification);
     repaint();
 }
