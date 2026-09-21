@@ -292,6 +292,9 @@ def source_structure_checks():
         "if (!p.atypeBypass)",
         "p.deessBypass",
         "if (!p.mixBypass)",
+        "p.masterBypass",
+        "masterBypassBlend",
+        "kMasterBypassRampSamples",
     ]:
         assert token in cpp, token
 
@@ -329,6 +332,9 @@ def source_structure_checks():
 
     assert "std::array<bool, 4> ottBandBypass { false, false, false, false }" in text["dsp_h"]
     assert "std::array<bool, 4> atypeBandBypass { false, false, false, false }" in text["dsp_h"]
+    assert "float ottXoverOverlap = 50.f;" in text["dsp_h"]
+    assert 'f("XOVER_OVERLAP", "Shared Crossover Overlap"' in text["processor_cpp"]
+    assert 'f("MASTER_BYPASS", "Master Bypass"' in text["processor_cpp"]
     assert "if (p.ottBandBypass[(size_t)band])" in text["dsp_cpp"]
     assert "if (p.atypeBandBypass[(size_t) band])" in text["dsp_cpp"]
     assert "ottBandBypassButtons" in text["editor_h"]
@@ -351,13 +357,20 @@ def source_structure_checks():
     assert "TextBoxBelow, false, 68, 17" in editor
     assert "cardCount = 5" in editor
     assert "DE-ESSER" in editor
+    assert "masterBypassButton" in editor
+    assert "deessBypassButton" in editor
+    assert "dragXover" in editor
+    assert "XOVER_OVERLAP" in editor
+    assert "SHARED X-OVER" in editor
     assert 'addKnob("DEESS_FREQ", "DE-ESS FREQ"' in editor
     assert ", 4, 0" in editor
     assert "void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;" in editor_h
-    # Rewritten four-band Type-A exciter structure.
-    assert "constexpr float x1 = 200.f;" in cpp
-    assert "constexpr float x2 = 2000.f;" in cpp
-    assert "constexpr float x3 = 7800.f;" in cpp
+    # Four-band Type-A now follows the shared OTT X1/X2/X3 crossover.
+    assert "const float tx1 = juce::jlimit" in cpp
+    assert "const float tx2 = juce::jlimit" in cpp
+    assert "const float tx3 = juce::jlimit" in cpp
+    assert "crossoverQFromOverlap(p.ottXoverOverlap)" in cpp
+    assert "Crossover4th typeXover3" in text["dsp_h"]
     assert "typeFastEnv" in text["dsp_h"]
     assert "typeSlowEnv" in text["dsp_h"]
     assert "typeDc" in text["dsp_h"]
