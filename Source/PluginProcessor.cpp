@@ -26,6 +26,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     p.push_back(std::make_unique<juce::AudioParameterBool>("ATYPE_BYPASS", "Type-A Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("DEESS_BYPASS", "DeEsser Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("MIX_BYPASS", "Mix / Out Bypass", false));
+    p.push_back(std::make_unique<juce::AudioParameterBool>("MASTER_BYPASS", "Master Bypass", false));
 
     // Four-band analogue-coloured parametric EQ.
     for (int i = 0; i < 4; ++i)
@@ -48,6 +49,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     f("OTT_X1", "OTT Crossover 1", 80.f, 600.f, 120.f, 1.5f);
     f("OTT_X2", "OTT Crossover 2", 750.f, 3000.f, 1000.f, 0.8f);
     f("OTT_X3", "OTT Crossover 3", 6000.f, 12000.f, 7000.f, 0.65f);
+    f("XOVER_OVERLAP", "Shared Crossover Overlap", 0.f, 100.f, 50.f);
 
     for (int i = 0; i < 4; ++i)
     {
@@ -133,6 +135,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     };
 
     p.eqBypass = value("EQ_BYPASS") > 0.5f;
+    p.masterBypass = value("MASTER_BYPASS") > 0.5f;
     p.ottBypass = value("OTT_BYPASS") > 0.5f;
     p.atypeBypass = value("ATYPE_BYPASS") > 0.5f;
     p.deessBypass = value("DEESS_BYPASS") > 0.5f;
@@ -172,6 +175,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.ottX1 = value("OTT_X1");
     p.ottX2 = value("OTT_X2");
     p.ottX3 = value("OTT_X3");
+    p.ottXoverOverlap = value("XOVER_OVERLAP");
     p.ottOutputGainDb = value("OTT_OUTPUT");
     p.ottClipper = value("OTT_CLIPPER") > 0.5f;
 
