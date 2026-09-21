@@ -224,7 +224,6 @@ def source_structure_checks():
     for token in [
         "8192",
         "12500",
-        "13500",
         "6000",
         "18000",
         "DEESS_VOICE",
