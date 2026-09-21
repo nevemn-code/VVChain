@@ -552,7 +552,8 @@ def realtime_safety_checks():
     # OTT/A-Type/analog-color regression invariants.
     assert "applyLifterFromDetectorDb" in cpp
     assert "if (upDb > liftThreshold)" not in cpp
-    assert "wet *= outputGain" in cpp
+    assert "wetL *= outputGain" in cpp
+    assert "wetR *= outputGain" in cpp
     assert "ceilingDb = -0.8f" in cpp
     assert "filterHalfBandFIREquiripple" in header
     assert "eqOversampler.processSamplesUp" in cpp
