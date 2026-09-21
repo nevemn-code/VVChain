@@ -21,7 +21,6 @@ public:
         std::array<float, 4> gain { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> q { 0.707f, 0.707f, 0.707f, 0.707f };
         float eqColor = 35.f;
-        float hfCornerHz = 70.f;
 
         // Four-band OTT / PunkOTT-MB style chain.
         std::array<bool, 4> ottBandBypass { false, false, false, false };
@@ -176,7 +175,6 @@ private:
     void applyAType(juce::AudioBuffer<float>&, const Parameters&);
 
     std::array<Biquad, 4> eq {};
-    Biquad hp {};
 
     Crossover4th ottXover1 {};
     Crossover4th ottXover2 {};
