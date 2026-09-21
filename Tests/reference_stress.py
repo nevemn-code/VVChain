@@ -411,19 +411,25 @@ def source_structure_checks():
     assert "void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;" in editor_h
     # Four-band Type-A now follows the shared OTT X1/X2/X3 crossover.
     assert "const float tx1 = juce::jlimit" in cpp
-    assert "const float tx2 = juce::jlimit" in cpp
-    assert "const float tx3 = juce::jlimit" in cpp
+    assert "const float tx2 =" in cpp
+    assert "const float tx3 =" in cpp
     assert "crossoverQFromOverlap(p.ottXoverOverlap)" in cpp
+    assert "return 0.70710678f" in cpp
+    assert "Crossover4th typeXover1" in text["dsp_h"]
     assert "Crossover4th typeXover3" in text["dsp_h"]
-    assert "typeFastEnv" in text["dsp_h"]
-    assert "typeSlowEnv" in text["dsp_h"]
-    assert "typeDc" in text["dsp_h"]
-    assert "const float harmonicSum" in cpp
+    assert "Crossover4th typePhase2_B1" in text["dsp_h"]
+    assert "Crossover4th typePhase3_B1" in text["dsp_h"]
+    assert "Crossover4th typePhase3_B2" in text["dsp_h"]
+    assert "typeEvenDc" in text["dsp_h"]
+    assert "phaseAlignedProcessed" in cpp
     assert "const float transientRatio" in cpp
     assert "const float levelFactor" in cpp
     assert "std::tanh(norm * drive)" in cpp
     assert "0.10f + 0.90f * transient" in cpp
     assert "if (p.atypeBandBypass[(size_t) band])" in cpp
+    assert "typePhase2_B1.allPass" in cpp
+    assert "typePhase3_B1.allPass" in cpp
+    assert "typePhase3_B2.allPass" in cpp
     assert "directDb" not in cpp
     assert "averageAmount" not in cpp
     assert "processed = base + enhanced * mix" not in cpp
@@ -637,14 +643,14 @@ def run():
             ott_degree=[rng.uniform(0, 100) for _ in range(4)],
             atype_degree=[rng.uniform(0, 100) for _ in range(4)],
             de_voice=i % 2,
-            de_intensity=rng.uniform(0, 8),
+            de_intensity=rng.uniform(0, 24),
             de_offset=rng.uniform(-0.1, 0.1),
             drywet=rng.uniform(0, 100),
             output=rng.uniform(-24, 12),
         )
         sanitize(s)
         try:
-            assert 0 <= s.de_intensity <= 8
+            assert 0 <= s.de_intensity <= 24
             assert -0.1 <= s.de_offset <= 0.1
             assert s.de_voice in (0, 1)
         except AssertionError as exc:
