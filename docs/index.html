@@ -156,7 +156,7 @@ bg.appendChild(card);
 const body=card.querySelector(".deessZone");
 const deLed=document.createElement("button");deLed.className="bandLed de";deLed.style.setProperty("--led","#67d3aa");deLed.title="DE-ESSER：亮=啟用；按下=BYPASS";deLed.classList.toggle("on",!state.de.bypass);deLed.onclick=()=>{state.de.bypass=!state.de.bypass;syncDeessLeds();sendParams()};card.appendChild(deLed);deessLedRefs.push(deLed);syncDeessLeds();
 makeKnob(body,{label:"DE-ESS FREQ",get:()=>state.de.freq,set:v=>state.de.freq=v,min:6000,max:18000,suffix:" Hz",accent:"#67d3aa",formatValue:hz});
-makeKnob(body,{label:"MAXIMUM REDUCTION",get:()=>state.de.intensity,set:v=>state.de.intensity=v,min:0,max:8,suffix:" dB",accent:"#67d3aa",formatDigits:1});
+makeKnob(body,{label:"MAXIMUM REDUCTION",get:()=>state.de.intensity,set:v=>state.de.intensity=v,min:0,max:24,suffix:" dB",accent:"#67d3aa",formatDigits:1});
 makeKnob(body,{label:"MIX",get:()=>state.mix.drywet,set:v=>state.mix.drywet=v,min:0,max:100,suffix:" %",accent:"#38bdf8",formatDigits:1});
 makeKnob(body,{label:"OUT",get:()=>state.mix.output,set:v=>state.mix.output=v,min:-24,max:12,suffix:" dB",accent:"#9ed85c",formatDigits:1});
 }
