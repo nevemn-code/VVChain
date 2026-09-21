@@ -496,9 +496,11 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
                 const float levelFactor =
                     juce::jlimit(0.f, 1.25f, (levelDb + 48.f) / 36.f);
 
+                // Transient discrimination is the main excitation envelope:
+                // steady-state retains only a small floor, while a new transient
+                // can open the harmonic generator strongly.
                 const float amount = (degree / 100.f)
-                    * (0.18f + 0.82f * transient)
-                    * (0.20f + 0.80f * levelFactor);
+                    * (0.10f + 0.90f * transient);
 
                 if (amount <= 1.0e-6f)
                     continue;
@@ -541,9 +543,12 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
                     dbToGain(juce::jlimit(-6.f, 6.f,
                                           p.atypeBandLevelDb[(size_t) band]));
 
+                const float levelScaledAmount =
+                    amount * (0.20f + 0.80f * levelFactor);
+
                 harmonicSum += harmonic
-                    * slowEnv
-                    * amount
+                    * magnitude
+                    * levelScaledAmount
                     * bandTrim;
             }
 
