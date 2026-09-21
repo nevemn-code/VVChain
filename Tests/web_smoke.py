@@ -31,8 +31,8 @@ assert node.returncode == 0, node.stderr
 required = [
     "LOAD AUDIO", "AudioWorkletNode", "8192",
     "TAPE-A", "OTT %", "ATTACK", "RELEASE",
-    "DE-ESS FREQ", "DE-ESS INT",
-    "bandGrid", "advBody", "mixBody", "leds",
+    "DE-ESS FREQ", "DE-ESS %",
+    "bandGrid", "advPopup", "advPopupGrid", "mixFader", "outFader", "leds",
     "NO PAGE SCROLL", "s.freq", "const avg=s.type.degree.reduce",
 ]
 for token in required:
