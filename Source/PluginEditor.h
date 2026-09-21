@@ -51,7 +51,8 @@ private:
     void addKnob(const juce::String& id, const juce::String& title,
                  double min, double max, double step, double defaultValue,
                  const juce::String& suffix, int band, int slot,
-                 juce::Colour accent, bool tapeDisplayDb = false);
+                 juce::Colour accent, bool tapeDisplayDb = false,
+                 const juce::String& attachmentId = {});
 
     void addBypass(int index, const juce::String& parameterId,
                    const juce::String& tooltip, juce::Colour accent);
