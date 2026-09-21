@@ -128,7 +128,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
 void VVChainAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     dsp.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
-    setLatencySamples(0);
+    setLatencySamples(dsp.getLatencySamples());
 }
 
 bool VVChainAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
