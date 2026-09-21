@@ -370,7 +370,7 @@ def source_structure_checks():
     assert "std::array<float, 4> eqColor" in text["dsp_h"]
     assert "std::array<bool, 4> eqColorSolidState" in text["dsp_h"]
     assert "float VVChainDSP::analogColor" in cpp
-    assert "Chebyshev" in cpp and "integral / dz" in cpp
+    assert "const float level = std::max" in cpp and "std::pow(a, 0.90f)" in cpp
     assert "EQ_COLOR_MODE" in text["processor_cpp"]
     assert "ANALOG_MODE" in editor
     assert "Maximum Reduction" in text["processor_cpp"]
@@ -384,6 +384,7 @@ def source_structure_checks():
     assert "0.024f *" in cpp and "0.015f *" in cpp
     assert ".2+.8*s.eq.color/100" not in text["web"]
     assert "y=this.analog(y,Number(s.eq.color[b]||0)/100,!!s.eq.mode[b],c,b)" in text["web"]
+    assert "analogPower" in text["web"]
     assert "modeSwitch" in text["web"]
     # UI interaction / layout regression checks.
     editor = text["editor_cpp"]
