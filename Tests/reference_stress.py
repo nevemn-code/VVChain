@@ -293,7 +293,7 @@ def source_structure_checks():
     assert "TextBoxBelow, false, 68, 17" in editor
     assert "cardCount = 5" in editor
     assert "DE-ESSER" in editor
-    assert "addKnob("DEESS_FREQ", "DE-ESS FREQ"" in editor
+    assert 'addKnob("DEESS_FREQ", "DE-ESS FREQ"' in editor
     assert ", 4, 0" in editor
     assert "void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;" in editor_h
     assert "亮 = 啟用；按下 = BYPASS" in text["editor_cpp"]
