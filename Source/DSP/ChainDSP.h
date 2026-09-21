@@ -23,6 +23,7 @@ public:
         float hfCornerHz = 70.f;
 
         // Four-band OTT / PunkOTT-MB style chain.
+        std::array<bool, 4> ottBandBypass { false, false, false, false };
         std::array<float, 4> ottDegree { 100.f, 100.f, 100.f, 100.f };
         std::array<float, 4> ottLifterThreshold { -40.f, -40.f, -40.f, -40.f };
         std::array<float, 4> ottLifterAttack { 50.f, 50.f, 50.f, 50.f };
@@ -43,6 +44,7 @@ public:
         float ottOutputGainDb = -6.f;
 
         // Four-band Type-A / Dolby-A-style dynamic enhancer.
+        std::array<bool, 4> atypeBandBypass { false, false, false, false };
         std::array<float, 4> atypeDegree { 0.f, 20.f, 70.f, 55.f };
         std::array<float, 4> atypeBandLevelDb { 0.f, 0.f, 1.f, 1.f };
         float atypeAttackMs = 10.f;
