@@ -68,7 +68,7 @@ assert "MAXIMUM REDUCTION" in text
 assert "state.ott.x.map" in text
 assert "state.eq.color" in text and "state.eq.mode" in text
 assert "this.analog(" in worklet
-assert "Math.cosh" in worklet
+assert "const shaped=ceiling+excess/(1+20*excess)" in worklet
 assert "grid-template-rows:.8fr .8fr 1fr 1fr" in text
 assert "dragXover" in text
 assert "bandLed de" in text
