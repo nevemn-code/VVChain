@@ -386,7 +386,7 @@ float VVChainAudioProcessorEditor::graphFrequencyToX(
     return graph.getX() + graph.getWidth() * logMap(hz, 20.f, 20000.f);
 }
 
-float VVChainAudioProcessorEditorEditor::graphXToFrequency(
+float VVChainAudioProcessorEditor::graphXToFrequency(
     const juce::Rectangle<float>& graph, float x) const
 {
     const float t = (x - graph.getX()) / juce::jmax(1.f, graph.getWidth());
