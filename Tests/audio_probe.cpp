@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -461,7 +462,7 @@ int main()
                 makeEq(cfg.eqGain, analogParams.eqColor[0]);
             eqAnalogParams.eqColorSolidState =
                 { cfg.ss, cfg.ss, cfg.ss, cfg.ss };
-            const auto analogTapeParams = makeAnalog(25.f, cfg.ss);
+            auto analogTapeParams = makeAnalog(25.f, cfg.ss);
             analogTapeParams.atypeBypass = false;
             analogTapeParams.atypeMix = 100.f;
             analogTapeParams.atypeDegree = { 10.f, 15.f, 25.f, 25.f };
