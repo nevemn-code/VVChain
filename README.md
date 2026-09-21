@@ -27,7 +27,7 @@ INPUT
 ## DSP
 - Native De-Esser 使用固定 8192-sample PDC。
 - HP / CORNER 不參與聲音計算。
-- ANALOG COLOR 使用輕量一階 ADAA 思路：TT 為較柔和的偶次諧波染色；SS 為較陡的奇次諧波染色，不增加額外 oversampling latency。
+- ANALOG COLOR 採「乾聲基波 1:1 + 加法諧波」結構：15 ms RMS 只用來正規化染色諧波的量級，不形成壓縮增益；TT 主要為偶次諧波、SS 主要為奇次諧波，避免整段訊號進入 tanh 而產生壓縮感。
 - Master BYPASS 保持固定 PDC，完全旁通時輸出延遲乾聲。
 - AAX 目標受 VVCHAIN_ENABLE_AAX 控制，需合法 AAX SDK / 開發環境。
 
@@ -47,12 +47,12 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## Validation
-- Tests/reference_stress.py：DSP / 參數空間 deterministic regression，包含 500 組 TT/SS 染色驗證。
+- Tests/reference_stress.py：DSP / 參數空間 deterministic regression，包含 500 組 TT/SS 與 1,200 組頻率／振幅染色掃描，共 3,685 組案例。
 - Tests/web_smoke.py：Web Preview JavaScript 語法、UI 結構、音檔載入 / 播放、BYPASS、DE-ESSER、MIX / OUT regression。
 
 > Regression tests are not a substitute for final DAW pluginval or AAX certification.
   
 ### Analog Color / TT / SS
-Analog Color is an additive harmonic-colour stage rather than a full-signal tanh compressor. TT (Tube Saturation) primarily injects controlled 2nd/4th-order harmonics with a very small 3rd-order component; SS (Solid-State Saturation) primarily injects controlled 3rd/5th/7th-order harmonics. The original waveform path remains at unity, and the harmonic generator uses a lightweight first-order ADAA form.
+Analog Color is an additive harmonic-colour stage rather than a full-signal tanh compressor. TT (Tube Saturation) primarily injects controlled 2nd/4th-order harmonics with a very small 3rd-order component; SS (Solid-State Saturation) primarily injects controlled 3rd/5th/7th-order harmonics. The original waveform path remains at unity. A 15 ms RMS tracker normalizes only the added harmonic generator, so the stage is designed for colour rather than compression.
 
 PSP's published ClassicQ documentation describes SIM as Class-A plus transformer simulation, with the Class-A stage before output level and the transformer followed by SAT; PSP does not publish the proprietary transfer curve. VVChain therefore uses that documented topology as a design reference rather than claiming a code-level clone. PSP describes its analog EQ/preamp coloration as gentle/subtle, and McQ describes SAT as a smooth overdrive stage.
