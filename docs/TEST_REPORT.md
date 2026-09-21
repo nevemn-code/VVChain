@@ -1,16 +1,18 @@
 # VVChain Reference Test Report
 
-The prototype reference matrix was run with deterministic seed 20260920.
+The current deterministic matrix contains **2,485 cases**:
 
-| Group | Cases |
-|---|---:|
-| planning_matrix | 1280 |
-| debug_regression | 120 |
-| all_features | 180 |
-| transient | 655 |
-| full_chain | 820 |
-| Total | 3055 |
+- Planning: 280
+- Debug continuity: 500
+- All-feature: 180
+- Transient: 155
+- Full-chain: 220
+- Independent band bypass: 50
+- Analog color unity: 50
+- TT / SS saturation: 500
+- Type-A exciter: 50
+- OTT four-band: 500
 
-Reference result: PASS, 0 reported failures.
+This report is updated by CI runs. The latest run before the current patch failed in the new analog unity micro-signal check; the DSP was then updated with an exact unity guard below the nonlinear noise floor.
 
-Important: this is an offline/reference DSP simulation, not a claim of completed VST3/AAX host certification. Real host and AAX SDK/signing validation remains a release requirement.
+Real VST3 host/pluginval and AAX SDK/signing validation remains a separate release requirement.
