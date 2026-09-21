@@ -1031,68 +1031,85 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     jassert(nCh <= dryBuffer.getNumChannels());
     jassert(numSamples <= dryBuffer.getNumSamples());
 
-    // prepareToPlay() owns all DSP memory allocation. The host contract supplies
-    // blocks no larger than the prepared maximum; never resize on the audio thread.
     if (nCh > dryBuffer.getNumChannels() || numSamples > dryBuffer.getNumSamples())
         return;
 
     for (int ch = 0; ch < nCh; ++ch)
         dryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
 
-    if (!p.eqBypass)
-        applyEq(buffer, p);
+    // Always traverse the fixed-latency EQ oversampling path. When EQ is
+    // bypassed this is a latency-only pass-through, keeping PDC stable.
+    applyEq(buffer, p);
+    alignDryBuffer(numSamples);
+
     if (!p.ottBypass)
         applyOtt(buffer, p);
     if (!p.atypeBypass)
         applyAType(buffer, p);
 
-    // Intentionally no FFT, lookahead or plugin PDC.
     processDeEsser(buffer, p);
 
+    // Dry/Wet is performed after the EQ latency has been matched.
     if (!p.mixBypass)
     {
         const float mix = juce::jlimit(0.f, 1.f, p.dryWet / 100.f);
-        const float out = dbToGain(juce::jlimit(-24.f, 12.f, p.outputDb));
+        const float out = dbToGain(
+            juce::jlimit(-24.f, 12.f, p.outputDb));
 
         for (int ch = 0; ch < nCh; ++ch)
         {
             auto* wet = buffer.getWritePointer(ch);
-            const auto* original = dryBuffer.getReadPointer(ch);
+            const auto* original =
+                alignedDryBuffer.getReadPointer(ch);
 
             for (int n = 0; n < numSamples; ++n)
-                wet[n] = (original[n] + mix * (wet[n] - original[n])) * out;
+                wet[n] =
+                    (original[n] + mix * (wet[n] - original[n])) * out;
         }
     }
 
-    const float soloX1 = juce::jlimit(40.f, 1000.f, p.ottX1);
-    const float soloX2 = juce::jlimit(soloX1 + 80.f, 5000.f, p.ottX2);
-    const float soloX3 = juce::jlimit(
-        soloX2 + 200.f,
-        static_cast<float>(sr * 0.42),
-        p.ottX3);
-    const float soloQ = crossoverQFromOverlap(p.ottXoverOverlap);
+    const float soloX1 =
+        juce::jlimit(40.f, 1000.f, p.ottX1);
+    const float soloX2 =
+        juce::jlimit(soloX1 + 80.f, 5000.f, p.ottX2);
+    const float soloX3 =
+        juce::jlimit(soloX2 + 200.f,
+                     static_cast<float>(sr * 0.42),
+                     p.ottX3);
+    const float soloQ = crossoverQFromOverlap(
+        p.ottXoverOverlap);
 
-    updateCrossover(soloPreXover1, sr, soloX1, soloQ);
-    updateCrossover(soloPreXover2, sr, soloX2, soloQ);
-    updateCrossover(soloPreXover3, sr, soloX3, soloQ);
-    updateCrossover(soloPostXover1, sr, soloX1, soloQ);
-    updateCrossover(soloPostXover2, sr, soloX2, soloQ);
-    updateCrossover(soloPostXover3, sr, soloX3, soloQ);
+    updateCrossover(
+        soloPreXover1, sr, soloX1, soloQ);
+    updateCrossover(
+        soloPreXover2, sr, soloX2, soloQ);
+    updateCrossover(
+        soloPreXover3, sr, soloX3, soloQ);
+    updateCrossover(
+        soloPostXover1, sr, soloX1, soloQ);
+    updateCrossover(
+        soloPostXover2, sr, soloX2, soloQ);
+    updateCrossover(
+        soloPostXover3, sr, soloX3, soloQ);
 
-    const bool soloEnabled = p.soloBand >= 0 && p.soloBand < 4;
-    if (p.soloBand != lastSoloBand || p.soloPost != lastSoloPost)
+    const bool soloEnabled =
+        p.soloBand >= 0 && p.soloBand < 4;
+
+    if (p.soloBand != lastSoloBand
+        || p.soloPost != lastSoloPost)
     {
         soloBlend = 0.f;
         lastSoloBand = p.soloBand;
         lastSoloPost = p.soloPost;
     }
 
-    auto splitBand = [](float x,
-                        Crossover4th& x1,
-                        Crossover4th& x2,
-                        Crossover4th& x3,
-                        int band,
-                        bool right)
+    auto splitBand =
+        [](float x,
+           Crossover4th& x1,
+           Crossover4th& x2,
+           Crossover4th& x3,
+           int band,
+           bool right)
     {
         const float low = x1.low(x, right);
         const float high1 = x1.high(x, right);
@@ -1110,15 +1127,17 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     };
 
-    // One crossfade counter per audio sample, shared by both channels.
-    // Switching SOLO or PRE/POST therefore cannot make a channel-dependent click.
-    const int safeSoloBand = juce::jlimit(0, 3, p.soloBand);
+    const int safeSoloBand =
+        juce::jlimit(0, 3, p.soloBand);
+
     for (int n = 0; n < numSamples; ++n)
     {
         if (soloEnabled)
-            soloBlend = std::min(1.f, soloBlend + 1.f / 64.f);
+            soloBlend =
+                std::min(1.f, soloBlend + 1.f / 64.f);
         else
-            soloBlend = std::max(0.f, soloBlend - 1.f / 64.f);
+            soloBlend =
+                std::max(0.f, soloBlend - 1.f / 64.f);
 
         if (soloBlend <= 0.f)
             continue;
@@ -1129,40 +1148,71 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
             const bool right = ch == 1;
 
             const float preSolo = splitBand(
-                dryBuffer.getSample(ch, n),
-                soloPreXover1, soloPreXover2, soloPreXover3,
-                safeSoloBand, right);
+                alignedDryBuffer.getSample(ch, n),
+                soloPreXover1,
+                soloPreXover2,
+                soloPreXover3,
+                safeSoloBand,
+                right);
+
             const float postSolo = splitBand(
                 wet[n],
-                soloPostXover1, soloPostXover2, soloPostXover3,
-                safeSoloBand, right);
+                soloPostXover1,
+                soloPostXover2,
+                soloPostXover3,
+                safeSoloBand,
+                right);
 
-            const float solo = p.soloPost ? postSolo : preSolo;
-            wet[n] = wet[n] * (1.f - soloBlend) + solo * soloBlend;
+            const float solo =
+                p.soloPost ? postSolo : preSolo;
+
+            wet[n] =
+                wet[n] * (1.f - soloBlend)
+                + solo * soloBlend;
         }
     }
 
-    // Soft master bypass. No host latency is introduced.
-    const float target = p.masterBypass ? 1.f : 0.f;
-    const float step = 1.f / static_cast<float>(kMasterBypassRampSamples);
+    // Final 4x true-peak lookahead limiter. Its output already contains the
+    // fixed limiter latency, so the master-bypass dry path is delayed by the
+    // same amount below.
+    processMasterLimiter(buffer, true);
+
+    const float target =
+        p.masterBypass ? 1.f : 0.f;
+    const float step =
+        1.f / static_cast<float>(kMasterBypassRampSamples);
 
     for (int n = 0; n < numSamples; ++n)
     {
         if (masterBypassBlend < target)
-            masterBypassBlend = std::min(target, masterBypassBlend + step);
+            masterBypassBlend =
+                std::min(target,
+                         masterBypassBlend + step);
         else if (masterBypassBlend > target)
-            masterBypassBlend = std::max(target, masterBypassBlend - step);
+            masterBypassBlend =
+                std::max(target,
+                         masterBypassBlend - step);
 
         const float blend = masterBypassBlend;
+
         for (int ch = 0; ch < nCh; ++ch)
         {
+            masterDryDelay.pushSample(
+                ch,
+                alignedDryBuffer.getSample(ch, n));
+
+            const float delayedDry =
+                masterDryDelay.popSample(ch);
+
             auto* wet = buffer.getWritePointer(ch);
-            const float original = dryBuffer.getSample(ch, n);
-            wet[n] = wet[n] * (1.f - blend) + original * blend;
+            wet[n] =
+                wet[n] * (1.f - blend)
+                + delayedDry * blend;
         }
     }
 
     for (int ch = nCh; ch < buffer.getNumChannels(); ++ch)
         buffer.clear(ch, 0, numSamples);
 }
+
 
