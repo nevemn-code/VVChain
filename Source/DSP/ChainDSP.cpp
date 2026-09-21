@@ -107,28 +107,29 @@ float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
 }
 
 float VVChainDSP::analogColor(float x, float amount01, bool solidState,
-                                    float& previousInput, float& evenDc) noexcept
+                                    float& previousInput, float& evenDc,
+                                    float& levelPower, double sampleRate) noexcept
 {
     const float a = juce::jlimit(0.f, 1.f, amount01);
-    if (a <= 0.0f)
-    {
-        previousInput = x;
-        return x;
-    }
+    previousInput = x;
 
-    // Colour only: keep the dry/fundamental path intact and add a deliberately
-    // small harmonic series. This avoids the old full-signal tanh compression.
-    const float x0 = previousInput;
-    if (std::abs(x) < 1.0e-6f && std::abs(x0) < 1.0e-6f)
-    {
-        previousInput = x;
+    if (a <= 0.0f)
         return x;
-    }
+
+    const float safeRate = static_cast<float>(std::max(8000.0, sampleRate));
+    const float alpha = std::exp(-1.0f / (0.015f * safeRate));
+    levelPower = alpha * levelPower + (1.0f - alpha) * (x * x);
+
+    // RMS is used only to normalize the added harmonic generator. The dry
+    // waveform is never gain-modulated, so this stage colours instead of compresses.
+    const float level = std::max(
+        0.03f, std::sqrt(std::max(levelPower * 2.0f, 1.0e-10f)));
+
+    if (std::abs(x) <= 1.0e-6f && level < 0.031f)
+        return x;
 
     const float amount = std::pow(a, 0.90f);
-    const float z = juce::jlimit(-1.0f, 1.0f, x);
-    const float z0 = juce::jlimit(-1.0f, 1.0f, x0);
-    const float dz = z - z0;
+    const float z = juce::jlimit(-1.0f, 1.0f, x / level);
 
     const auto t2 = [](float v) noexcept { return 2.0f * v * v - 1.0f; };
     const auto t3 = [](float v) noexcept { return 4.0f * v * v * v - 3.0f * v; };
@@ -151,88 +152,28 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
         return 64.0f * v7 - 112.0f * v5 + 56.0f * v3 - 7.0f * v;
     };
 
-    const auto i2 = [](float v) noexcept { return (2.0f / 3.0f) * v * v * v - v; };
-    const auto i3 = [](float v) noexcept
-    {
-        const float v2 = v * v;
-        return v2 * v2 - 1.5f * v2;
-    };
-    const auto i4 = [](float v) noexcept
-    {
-        const float v2 = v * v;
-        const float v3 = v2 * v;
-        const float v5 = v3 * v2;
-        return 1.6f * v5 - (8.0f / 3.0f) * v3 + v;
-    };
-    const auto i5 = [](float v) noexcept
-    {
-        const float v2 = v * v;
-        const float v4 = v2 * v2;
-        const float v6 = v4 * v2;
-        return (8.0f / 3.0f) * v6 - 5.0f * v4 + 2.5f * v2;
-    };
-    const auto i7 = [](float v) noexcept
-    {
-        const float v2 = v * v;
-        const float v4 = v2 * v2;
-        const float v6 = v4 * v2;
-        const float v8 = v4 * v4;
-        return 8.0f * v8 - (56.0f / 3.0f) * v6 + 14.0f * v4 - 3.5f * v2;
-    };
-
     float harmonic = 0.0f;
-    if (std::abs(dz) > 1.0e-5f)
+    if (solidState)
     {
-        if (solidState)
-        {
-            const float integral =
-                0.015f * (i3(z) - i3(z0))
-                + 0.004f * (i5(z) - i5(z0))
-                + 0.001f * (i7(z) - i7(z0));
-            harmonic = integral / dz;
-        }
-        else
-        {
-            const float integral =
-                0.024f * (i2(z) - i2(z0))
-                + 0.006f * (i4(z) - i4(z0))
-                + 0.002f * (i3(z) - i3(z0));
-            harmonic = integral / dz;
-
-            const float raw = 0.024f * t2(z)
-                            + 0.006f * t4(z)
-                            + 0.002f * t3(z);
-            constexpr float dcAlpha = 0.99990f;
-            evenDc = dcAlpha * evenDc + (1.0f - dcAlpha) * raw;
-            harmonic -= evenDc;
-        }
+        harmonic =
+            0.015f * t3(z)
+            + 0.004f * t5(z)
+            + 0.001f * t7(z);
     }
     else
     {
-        const float mid = 0.5f * (z + z0);
-        if (solidState)
-        {
-            harmonic =
-                0.015f * t3(mid)
-                + 0.004f * t5(mid)
-                + 0.001f * t7(mid);
-        }
-        else
-        {
-            const float raw =
-                0.024f * t2(mid)
-                + 0.006f * t4(mid)
-                + 0.002f * t3(mid);
-            constexpr float dcAlpha = 0.99990f;
-            evenDc = dcAlpha * evenDc + (1.0f - dcAlpha) * raw;
-            harmonic = raw - evenDc;
-        }
+        const float raw =
+            0.024f * t2(z)
+            + 0.006f * t4(z)
+            + 0.002f * t3(z);
+
+        constexpr float dcAlpha = 0.99990f;
+        evenDc = dcAlpha * evenDc + (1.0f - dcAlpha) * raw;
+        harmonic = raw - evenDc;
     }
 
-    previousInput = x;
-    return x + amount * harmonic;
+    return x + amount * level * harmonic;
 }
-
 
 void VVChainDSP::prepare(double sampleRate, int, int numChannels)
 {
@@ -247,6 +188,8 @@ void VVChainDSP::reset()
     for (auto& state : analogPreviousInput)
         state = { 0.f, 0.f };
     for (auto& state : analogEvenDc)
+        state = { 0.f, 0.f };
+    for (auto& state : analogLevelPower)
         state = { 0.f, 0.f };
     ottXover1.reset();
     ottXover2.reset();
@@ -448,7 +391,9 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 y = analogColor(
                     y, amount, p.eqColorSolidState[band],
                     analogPreviousInput[band][(size_t) ch],
-                    analogEvenDc[band][(size_t) ch]);
+                    analogEvenDc[band][(size_t) ch],
+                    analogLevelPower[band][(size_t) ch],
+                    sr);
             }
 
             data[n] = y;
