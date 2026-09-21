@@ -22,7 +22,7 @@ COUNTS = {
     "analog_curve_sweep": 1200,
     "type_a_exciter": 50,
     "ott_four_band": 500,
-    "phase_neutral_analog": 1000,
+    "phase_neutral_analog": 100,
     "ui_linkage": 100,
 }
 
