@@ -568,9 +568,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     // Very small MIX / OUT faders in the title bar.
     g.setColour(juce::Colour(0xff737b86));
     g.setFont(juce::FontOptions(7.f));
-    g.drawText("GLOBAL", getWidth() - 226, 37, 50, 12, juce::Justification::left);
-
-    const auto graph = eqGraphBounds();
+        const auto graph = eqGraphBounds();
     drawEqGraph(g, graph);
 
     const int cardY = 278;
@@ -673,8 +671,8 @@ void VVChainAudioProcessorEditor::resized()
             bypassButtons[(size_t) i]->setBounds(ledStart + i * 46, 10, 28, 28);
 
     // Tiny MIX / OUT faders.
-    placeKnob("DRY_WET", { w - 220, 46, 92, 20 });
-    placeKnob("OUTPUT_LEVEL", { w - 116, 46, 92, 20 });
+    placeKnob("DRY_WET", { w - 220, 39, 92, 29 });
+    placeKnob("OUTPUT_LEVEL", { w - 116, 39, 92, 29 });
 
     for (int b = 0; b < 4; ++b)
     {
@@ -723,12 +721,12 @@ void VVChainAudioProcessorEditor::resized()
 
         if (expandedBand == b)
         {
-            const int advY = cardY + 369;
+            const int advY = cardY + 364;
             const int advW = cardW - 16;
             const int advCols = 6;
             const int advGap = 4;
             const int advCellW = (advW - advGap * (advCols - 1)) / advCols;
-            const int advRowH = 91;
+            const int advRowH = 84;
 
             const auto advPos = [&](int slot)
             {
@@ -737,7 +735,7 @@ void VVChainAudioProcessorEditor::resized()
                 return juce::Rectangle<int>(
                     x + 8 + col * (advCellW + advGap),
                     advY + row * advRowH,
-                    advCellW, 84);
+                    advCellW, 76);
             };
 
             const std::array<juce::String, 7> bandAdv
@@ -760,7 +758,7 @@ void VVChainAudioProcessorEditor::resized()
 
             if (ottClipper)
                 ottClipper->setBounds(x + 8 + 4 * (advCellW + advGap),
-                                      advY + 2 * advRowH + 16,
+                                      advY + 2 * advRowH + 12,
                                       advCellW, 28);
         }
     }
