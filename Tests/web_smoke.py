@@ -29,7 +29,7 @@ node = subprocess.run(
 assert node.returncode == 0, node.stderr
 
 required = [
-    "LOAD AUDIO", "AudioWorkletNode", "8192",
+    "LOAD AUDIO", "AudioWorkletNode",
     "TAPE-A", "OTT %", "ATTACK", "RELEASE",
     "DE-ESS FREQ", "MAXIMUM REDUCTION", "MIX", "OUT",
     "bandGrid", "advPopup", "advPopupGrid", "leds",
@@ -84,8 +84,10 @@ assert "if(!s.eq.colorBypass[b])" in worklet
 assert "deessLedRefs" in text and "syncDeessLeds" in text
 assert "source.loop=true" in text
 assert "fft(" not in worklet
-assert "this.N=512" in text
-assert "native/reference DE-ESSER remains 8192-sample PDC" in text
+assert "fft(" not in worklet
+assert "this.N=" not in worklet
+assert "deess(x,ch)" in worklet
+assert "DE-ESSER" in text
 assert "if(this.s&&was!==now)" in text
 assert "bandLed de" in text
 
@@ -122,7 +124,7 @@ print("four_band_compact_chain: PASS")
 print("tape_a_active_amount: PASS")
 print("band4_selectable_deesser_frequency: PASS")
 print("led_bypass_controls: PASS")
-print("continuous_deesser_stream: 8192-block")
+print("continuous_deesser_stream: zero-latency-sidechain")
 
 assert "headerControls" in text
 assert ">BYPASS</button>" in text
