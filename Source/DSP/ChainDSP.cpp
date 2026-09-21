@@ -242,7 +242,48 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
 {
     sr = std::max(8000.0, sampleRate);
     channels = juce::jlimit(1, 2, numChannels);
-    dryBuffer.setSize(channels, juce::jmax(1, samplesPerBlock), false, true, true);
+
+    const int maxBlock = juce::jmax(1, samplesPerBlock);
+    dryBuffer.setSize(channels, maxBlock, false, true, true);
+    alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
+
+    eqOversampler.reset();
+    limiterOversampler.reset();
+    eqOversampler.initProcessing(static_cast<size_t>(maxBlock));
+    limiterOversampler.initProcessing(static_cast<size_t>(maxBlock));
+
+    eqLatencySamples =
+        static_cast<int>(std::lround(eqOversampler.getLatencyInSamples()));
+    limiterOversamplingLatencySamples =
+        static_cast<int>(std::lround(limiterOversampler.getLatencyInSamples()));
+    limiterLookaheadSamples =
+        juce::jmax(1, static_cast<int>(std::lround(sr * 0.003)));
+
+    totalLatencySamples =
+        eqLatencySamples
+        + limiterOversamplingLatencySamples
+        + limiterLookaheadSamples;
+
+    juce::dsp::ProcessSpec drySpec
+    {
+        sr,
+        static_cast<juce::uint32>(maxBlock),
+        static_cast<juce::uint32>(channels)
+    };
+
+    eqDryDelay.prepare(drySpec);
+    eqDryDelay.setDelay(static_cast<float>(eqLatencySamples));
+
+    juce::dsp::ProcessSpec limiterSpec
+    {
+        sr * 4.0,
+        static_cast<juce::uint32>(maxBlock * 4),
+        static_cast<juce::uint32>(channels)
+    };
+
+    limiterLookahead.prepare(limiterSpec);
+    limiterLookahead.setDelay(static_cast<float>(limiterLookaheadSamples * 4));
+
     reset();
 }
 
@@ -261,6 +302,7 @@ void VVChainDSP::reset()
     soloBlend = 0.f;
     lastSoloBand = -2;
     lastSoloPost = false;
+
     ottXover1.reset();
     ottXover2.reset();
     ottXover3.reset();
@@ -274,14 +316,25 @@ void VVChainDSP::reset()
         b.lifterEnv = { 1.f, 1.f };
         b.compEnvDb = { 0.f, 0.f };
         b.upRmsPower = { 0.f, 0.f };
+        b.upSlowRmsPower = { 0.f, 0.f };
         b.downRmsPower = { 0.f, 0.f };
+        b.downSlowRmsPower = { 0.f, 0.f };
     }
 
     typeXover1.reset();
     typeXover2.reset();
     typeXover3.reset();
 
+    deessSplit.reset();
+
+    eqOversampler.reset();
+    limiterOversampler.reset();
+    eqDryDelay.reset();
+    limiterLookahead.reset();
+
     masterBypassBlend = 0.f;
+    limiterGain = 1.f;
+
     for (size_t band = 0; band < 4; ++band)
     {
         typeFastEnv[band] = { 0.f, 0.f };
@@ -300,6 +353,7 @@ void VVChainDSP::reset()
     gateEnvDb = { 0.f, 0.f };
     limiterEnvDb = { 0.f, 0.f };
     dryBuffer.clear();
+    alignedDryBuffer.clear();
 }
 
 float VVChainDSP::rmsDetectPDR(float input,
