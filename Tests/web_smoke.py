@@ -31,7 +31,7 @@ assert node.returncode == 0, node.stderr
 required = [
     "LOAD AUDIO", "AudioWorkletNode", "8192",
     "TAPE-A", "OTT %", "ATTACK", "RELEASE",
-    "DE-ESS FREQ", "DE-ESS %", "MIX", "OUT",
+    "DE-ESS FREQ", "MAXIMUM REDUCTION", "MIX", "OUT",
     "bandGrid", "advPopup", "advPopupGrid", "leds",
     "ott.bandBypass", "gateBand", "downMax=b===3?100:66.7", "downRatio=1+depth*(downMax-1)", "upRatio=1+depth*(4-1)",
     "bandBypass", "BAND ", "deessZone", "Math.exp(steps*.025)",
@@ -39,7 +39,7 @@ required = [
     "OTT：亮=啟用；按下=BYPASS", "TYPE-A：亮=啟用；按下=BYPASS",
     "NO PAGE SCROLL", "s.freq", "typeFast", "typeSlow", "typeDc", "transientRatio",
     "masterBypass", "state.ott.overlap", "SHARED X-OVER", "dryQueue", "typeLp", "bandLed de",
-    "audioFileInput", "decodeAudioData", "onprocessorerror", "deActive",
+    "audioFileInput", "decodeAudioData", "onprocessorerror", "deActive", "modeSwitch", "Solid-State Saturation", "Tube Saturation",
     "grid-template-rows:.8fr .8fr 1fr 1fr", 'label:"MIX"', 'label:"OUT"',
 
 ]
@@ -61,13 +61,17 @@ assert "const amount=(degree/100)*(.10+.90*transient)" in text or "0.10f + 0.90f
 assert "masterBypass" in text and "globalBypass" in text
 assert "state.eq.hp" not in text
 assert "this.hp(sampleRate" not in text
-assert "DE-ESS %" in text
+assert "MAXIMUM REDUCTION" in text
 assert "state.ott.x.map" in text
+assert "state.eq.color" in text and "state.eq.mode" in text
+assert "this.analog(" in worklet
+assert "Math.cosh" in worklet
+assert "grid-template-rows:.8fr .8fr 1fr 1fr" in text
 assert "dragXover" in text
 assert "bandLed de" in text
 
 for forbidden in [
-    "ANALYZER", "analyzer", "createAnalyser", "AnalyserNode",
+    "ANALYZER", "createAnalyser", "AnalyserNode",
     "functionTabs", "ottBands", "typeBands", "deKnob0",
     "4096", "1365", "2730", "2731", "DEESS_VOICE",
 ]:
