@@ -19,7 +19,7 @@ COUNTS = {
     "band_bypass": 50,
     "eq_color_gain": 50,
     "type_a_exciter": 50,
-    "ott_four_band": 50,
+    "ott_four_band": 500,
 }
 
 SAMPLE_RATES = [44100, 48000, 88200, 96000, 192000]
@@ -41,12 +41,12 @@ class State:
     hp: float = 70
 
     ott_band_bypass: list[bool] = field(default_factory=lambda: [False] * 4)
-    ott_degree: list[float] = field(default_factory=lambda: [100] * 4)
-    ott_x: list[float] = field(default_factory=lambda: [350, 1000, 9000])
-    ott_input: float = 5.2
+    ott_degree: list[float] = field(default_factory=lambda: [35, 35, 30, 25])
+    ott_x: list[float] = field(default_factory=lambda: [120, 1000, 7000])
+    ott_input: float = 0
     ott_gate: float = -80
-    ott_mix: float = 100
-    ott_output: float = -6
+    ott_mix: float = 25
+    ott_output: float = 0
 
     atype_band_bypass: list[bool] = field(default_factory=lambda: [False] * 4)
     atype_degree: list[float] = field(default_factory=lambda: [0, 20, 70, 55])
@@ -580,8 +580,8 @@ def run():
         input_db = -60.0 + float((i * 13) % 61)
         degree = float((i * 29) % 101)
 
-        up_ratio = 1.0 + (degree / 100.0) * (6.0 - 1.0)
-        down_ratio = 1.0 + (degree / 100.0) * (8.0 - 1.0)
+        up_ratio = 1.0 + (degree / 100.0) * (4.0 - 1.0)
+        down_ratio = 1.0 + (degree / 100.0) * ((100.0 if i % 4 == 3 else 66.7) - 1.0)
 
         up = ott_transfer_db(input_db, threshold, up_ratio, True)
         down = ott_transfer_db(input_db, threshold, down_ratio, False)
@@ -600,16 +600,32 @@ def run():
                 assert down <= input_db + 1e-12
                 assert abs(up - input_db) < 1e-12
 
-            up_full = ott_transfer_db(input_db, threshold, 6.0, True)
-            down_full = ott_transfer_db(input_db, threshold, 8.0, False)
+            up_full = ott_transfer_db(input_db, threshold, 4.0, True)
+            down_full = ott_transfer_db(input_db, threshold, (100.0 if i % 4 == 3 else 66.7), False)
             if input_db < threshold:
                 assert up_full >= up - 1e-12
             else:
                 assert down_full <= down + 1e-12
 
+            # Each of the four cases represents one isolated band:
+            # no other band's detector/state is allowed to participate.
             decisions = [False, False, False, False]
             decisions[i % 4] = True
             assert sum(1 for v in decisions if v) == 1
+
+            # Gate logic may attenuate but must never create gain.
+            gate_in = -80.0 + float((i * 17) % 31)
+            gate_thr = -80.0
+            gate_knee = 9.0
+            gate_start = gate_thr - gate_knee / 2.0
+            if gate_in < gate_start:
+                gate_db = (gate_in - gate_thr) * 5.0
+            elif gate_in < gate_thr + gate_knee / 2.0:
+                tgate = clamp((gate_in - gate_start) / gate_knee, 0.0, 1.0)
+                gate_db = (gate_in - gate_thr) * 5.0 * (1.0 - tgate) ** 2
+            else:
+                gate_db = 0.0
+            assert gate_db <= 1e-12
         except AssertionError as exc:
             failures.append(("ott_four_band", i, str(exc)))
 
