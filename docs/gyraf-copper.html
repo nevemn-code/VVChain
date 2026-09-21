@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>Gyraf Audio Artisan Copper UI - Ctob Mastering Suite</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d0b0a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 30px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #e0d0cc;
+  }
+  .wrapper {
+    width: 1020px;
+    filter: drop-shadow(0 25px 50px rgba(0, 0, 0, 0.95));
+  }
+  svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    user-select: none;
+  }
+  .status-bar {
+    margin-top: 15px;
+    font-family: monospace;
+    font-size: 13px;
+    color: #b27a63;
+    display: flex;
+    justify-content: space-between;
+    width: 1020px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+  <svg id="gyraf-ui" viewBox="0 0 1000 380" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="panel-base" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#7a3a22"/>
+        <stop offset="25%" stop-color="#994d30"/>
+        <stop offset="50%" stop-color="#b66341"/>
+        <stop offset="75%" stop-color="#884025"/>
+        <stop offset="100%" stop-color="#5a2413"/>
+      </linearGradient>
+
+      <linearGradient id="brushed-specular" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.25"/>
+        <stop offset="3%" stop-color="#ffffff" stop-opacity="0.05"/>
+        <stop offset="48%" stop-color="#ffffff" stop-opacity="0.0"/>
+        <stop offset="50%" stop-color="#000000" stop-opacity="0.15"/>
+        <stop offset="52%" stop-color="#ffffff" stop-opacity="0.05"/>
+        <stop offset="97%" stop-color="#000000" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="#000000" stop-opacity="0.6"/>
+      </linearGradient>
+
+      <linearGradient id="bevel-light" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#f6beaa"/>
+        <stop offset="100%" stop-color="#3d1408"/>
+      </linearGradient>
+
+      <radialGradient id="knob-body" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#3a251e"/>
+        <stop offset="50%" stop-color="#21140f"/>
+        <stop offset="85%" stop-color="#140a07"/>
+        <stop offset="100%" stop-color="#050201"/>
+      </radialGradient>
+
+      <radialGradient id="knob-cap" cx="40%" cy="35%" r="65%">
+        <stop offset="0%" stop-color="#d48a6e"/>
+        <stop offset="40%" stop-color="#a85b3d"/>
+        <stop offset="80%" stop-color="#5a2817"/>
+        <stop offset="100%" stop-color="#2a1007"/>
+      </radialGradient>
+
+      <radialGradient id="tube-glow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffb347" stop-opacity="0.95"/>
+        <stop offset="35%" stop-color="#ff5e13" stop-opacity="0.75"/>
+        <stop offset="70%" stop-color="#b72c00" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+      </radialGradient>
+
+      <linearGradient id="vu-paper" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#fcf1d4"/>
+        <stop offset="70%" stop-color="#fae7b9"/>
+        <stop offset="100%" stop-color="#e8cf97"/>
+      </linearGradient>
+
+      <radialGradient id="hex-bolt" cx="30%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#ffd5c6"/>
+        <stop offset="50%" stop-color="#995840"/>
+        <stop offset="100%" stop-color="#2b130a"/>
+      </radialGradient>
+    </defs>
+
+    <rect x="0" y="0" width="1000" height="380" rx="6" fill="url(#bevel-light)"/>
+    <rect x="2" y="2" width="996" height="376" rx="5" fill="url(#panel-base)"/>
+    <rect x="2" y="2" width="996" height="376" rx="5" fill="url(#brushed-specular)"/>
+
+    <g transform="translate(25, 25)">
+      <circle cx="0" cy="0" r="10" fill="#140804" stroke="#4a1e10" stroke-width="1"/>
+      <circle cx="0" cy="0" r="7.5" fill="url(#hex-bolt)"/>
+      <polygon points="0,-4 3.5,-2 3.5,2 0,4 -3.5,2 -3.5,-2" fill="#1f0904"/>
+    </g>
+    <g transform="translate(975, 25)">
+      <circle cx="0" cy="0" r="10" fill="#140804" stroke="#4a1e10" stroke-width="1"/>
+      <circle cx="0" cy="0" r="7.5" fill="url(#hex-bolt)"/>
+      <polygon points="0,-4 3.5,-2 3.5,2 0,4 -3.5,2 -3.5,-2" fill="#1f0904"/>
+    </g>
+    <g transform="translate(25, 355)">
+      <circle cx="0" cy="0" r="10" fill="#140804" stroke="#4a1e10" stroke-width="1"/>
+      <circle cx="0" cy="0" r="7.5" fill="url(#hex-bolt)"/>
+      <polygon points="0,-4 3.5,-2 3.5,2 0,4 -3.5,2 -3.5,-2" fill="#1f0904"/>
+    </g>
+    <g transform="translate(975, 355)">
+      <circle cx="0" cy="0" r="10" fill="#140804" stroke="#4a1e10" stroke-width="1"/>
+      <circle cx="0" cy="0" r="7.5" fill="url(#hex-bolt)"/>
+      <polygon points="0,-4 3.5,-2 3.5,2 0,4 -3.5,2 -3.5,-2" fill="#1f0904"/>
+    </g>
+
+    <line x1="70" y1="40" x2="350" y2="40" stroke="#f6beaa" stroke-width="1.2" opacity="0.6"/>
+    <line x1="650" y1="40" x2="930" y2="40" stroke="#f6beaa" stroke-width="1.2" opacity="0.6"/>
+    <text x="500" y="44" font-family="Georgia, serif" font-size="18" font-weight="bold" letter-spacing="5" fill="#f8cfc0" text-anchor="middle" opacity="0.95">GYRAF AUDIO · GYRATEC XXI</text>
+    <text x="500" y="60" font-family="-apple-system, sans-serif" font-size="9" font-weight="600" letter-spacing="3" fill="#d29681" text-anchor="middle">TRUE PASSIVE TUBE MASTERING PROCESSOR</text>
+
+    <g transform="translate(500, 195)">
+      <rect x="-85" y="-75" width="170" height="150" rx="14" fill="#130602" stroke="#d48a6e" stroke-width="1.5"/>
+      <rect x="-80" y="-70" width="160" height="140" rx="10" fill="#080201"/>
+      <circle cx="-35" cy="5" r="50" fill="url(#tube-glow)"/>
+      <circle cx="35" cy="5" r="50" fill="url(#tube-glow)"/>
+
+      <g transform="translate(-35, 5)">
+        <rect x="-14" y="-45" width="28" height="75" rx="12" fill="#ffffff" fill-opacity="0.08" stroke="#ffe2d4" stroke-width="1" stroke-opacity="0.3"/>
+        <line x1="-5" y1="-25" x2="-5" y2="25" stroke="#ffebc2" stroke-width="2.5"/>
+        <line x1="5" y1="-25" x2="5" y2="25" stroke="#ffebc2" stroke-width="2.5"/>
+        <line x1="-12" y1="-30" x2="12" y2="-30" stroke="#888" stroke-width="1"/>
+        <line x1="-12" y1="20" x2="12" y2="20" stroke="#888" stroke-width="1"/>
+      </g>
+
+      <g transform="translate(35, 5)">
+        <rect x="-14" y="-45" width="28" height="75" rx="12" fill="#ffffff" fill-opacity="0.08" stroke="#ffe2d4" stroke-width="1" stroke-opacity="0.3"/>
+        <line x1="-5" y1="-25" x2="-5" y2="25" stroke="#ffebc2" stroke-width="2.5"/>
+        <line x1="5" y1="-25" x2="5" y2="25" stroke="#ffebc2" stroke-width="2.5"/>
+        <line x1="-12" y1="-30" x2="12" y2="-30" stroke="#888" stroke-width="1"/>
+        <line x1="-12" y1="20" x2="12" y2="20" stroke="#888" stroke-width="1"/>
+      </g>
+
+      <line x1="-60" y1="-65" x2="-60" y2="65" stroke="#8c4b31" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-20" y1="-65" x2="-20" y2="65" stroke="#8c4b31" stroke-width="3" stroke-linecap="round"/>
+      <line x1="20" y1="-65" x2="20" y2="65" stroke="#8c4b31" stroke-width="3" stroke-linecap="round"/>
+      <line x1="60" y1="-65" x2="60" y2="65" stroke="#8c4b31" stroke-width="3" stroke-linecap="round"/>
+      <text x="0" y="90" font-family="sans-serif" font-size="9" font-weight="700" letter-spacing="2" fill="#f8cfc0" text-anchor="middle">VALVE STAGE</text>
+    </g>
+
+    <g transform="translate(290, 100)">
+      <rect x="-75" y="-45" width="150" height="90" rx="5" fill="#190904" stroke="#502213" stroke-width="2"/>
+      <rect x="-70" y="-40" width="140" height="80" rx="3" fill="url(#vu-paper)"/>
+      <path d="M -50 15 Q 0 -22 50 15" stroke="#2b1810" stroke-width="1.8" fill="none"/>
+      <line x1="-40" y1="9" x2="-36" y2="3" stroke="#2b1810" stroke-width="1.5"/>
+      <line x1="-20" y1="0" x2="-18" y2="-6" stroke="#2b1810" stroke-width="1.5"/>
+      <line x1="0" y1="-3" x2="0" y2="-9" stroke="#2b1810" stroke-width="1.5"/>
+      <line x1="20" y1="0" x2="18" y2="-6" stroke="#bf2a1d" stroke-width="1.8"/>
+      <line x1="40" y1="9" x2="36" y2="3" stroke="#bf2a1d" stroke-width="1.8"/>
+      <text x="0" y="-16" font-family="sans-serif" font-size="8" font-weight="bold" fill="#2b1810" text-anchor="middle">VU - LEFT</text>
+      <g id="needle-left" transform="rotate(-15, 0, 32)">
+        <line x1="0" y1="32" x2="0" y2="-32" stroke="#b01f12" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="0" cy="32" r="6" fill="#1c0e08"/>
+      </g>
+    </g>
+
+    <g transform="translate(710, 100)">
+      <rect x="-75" y="-45" width="150" height="90" rx="5" fill="#190904" stroke="#502213" stroke-width="2"/>
+      <rect x="-70" y="-40" width="140" height="80" rx="3" fill="url(#vu-paper)"/>
+      <path d="M -50 15 Q 0 -22 50 15" stroke="#2b1810" stroke-width="1.8" fill="none"/>
+      <line x1="-40" y1="9" x2="-36" y2="3" stroke="#2b1810" stroke-width="1.5"/>
+      <line x1="-20" y1="0" x2="-18" y2="-6" stroke="#2b1810" stroke-width="1.5"/>
+      <line x1="0" y1="-3" x2="0" y2="-9" stroke="#2b1810" stroke-width="1.5"/>
+      <line x1="20" y1="0" x2="18" y2="-6" stroke="#bf2a1d" stroke-width="1.8"/>
+      <line x1="40" y1="9" x2="36" y2="3" stroke="#bf2a1d" stroke-width="1.8"/>
+      <text x="0" y="-16" font-family="sans-serif" font-size="8" font-weight="bold" fill="#2b1810" text-anchor="middle">VU - RIGHT</text>
+      <g id="needle-right" transform="rotate(-10, 0, 32)">
+        <line x1="0" y1="32" x2="0" y2="-32" stroke="#b01f12" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="0" cy="32" r="6" fill="#1c0e08"/>
+      </g>
+    </g>
+
+    <g class="knob-control" id="ctrl-drive" transform="translate(130, 220)" style="cursor: ns-resize;">
+      <circle cx="0" cy="0" r="62" stroke="#f6beaa" stroke-width="1" stroke-dasharray="2 12" fill="none" opacity="0.6"/>
+      <text x="0" y="-72" font-family="-apple-system, sans-serif" font-size="10" font-weight="bold" fill="#f8cfc0" text-anchor="middle">INPUT DRIVE</text>
+      <text x="-48" y="55" font-size="8" font-family="monospace" fill="#e0a996">-12</text>
+      <text x="0" y="72" font-size="8" font-family="monospace" fill="#e0a996">0</text>
+      <text x="44" y="55" font-size="8" font-family="monospace" fill="#e0a996">+12</text>
+      <circle cx="0" cy="0" r="46" fill="url(#knob-body)" stroke="#0f0502" stroke-width="3"/>
+      <circle cx="0" cy="0" r="38" fill="url(#knob-cap)" stroke="#4a1e10" stroke-width="1.5"/>
+      <g id="rot-drive" transform="rotate(-40)">
+        <rect x="-2.5" y="-36" width="5" height="16" rx="2" fill="#fff4f0"/>
+      </g>
+    </g>
+
+    <g class="knob-control" id="ctrl-low" transform="translate(310, 245)" style="cursor: ns-resize;">
+      <circle cx="0" cy="0" r="54" stroke="#f6beaa" stroke-width="1" stroke-dasharray="2 10" fill="none" opacity="0.6"/>
+      <text x="0" y="-62" font-family="-apple-system, sans-serif" font-size="10" font-weight="bold" fill="#f8cfc0" text-anchor="middle">BASS ATTEN</text>
+      <circle cx="0" cy="0" r="40" fill="url(#knob-body)" stroke="#0f0502" stroke-width="3"/>
+      <circle cx="0" cy="0" r="32" fill="url(#knob-cap)" stroke="#4a1e10" stroke-width="1.5"/>
+      <g id="rot-low" transform="rotate(-70)">
+        <rect x="-2" y="-30" width="4" height="14" rx="2" fill="#fff4f0"/>
+      </g>
+    </g>
+
+    <g class="knob-control" id="ctrl-high" transform="translate(690, 245)" style="cursor: ns-resize;">
+      <circle cx="0" cy="0" r="54" stroke="#f6beaa" stroke-width="1" stroke-dasharray="2 10" fill="none" opacity="0.6"/>
+      <text x="0" y="-62" font-family="-apple-system, sans-serif" font-size="10" font-weight="bold" fill="#f8cfc0" text-anchor="middle">AIR BOOST</text>
+      <circle cx="0" cy="0" r="40" fill="url(#knob-body)" stroke="#0f0502" stroke-width="3"/>
+      <circle cx="0" cy="0" r="32" fill="url(#knob-cap)" stroke="#4a1e10" stroke-width="1.5"/>
+      <g id="rot-high" transform="rotate(30)">
+        <rect x="-2" y="-30" width="4" height="14" rx="2" fill="#fff4f0"/>
+      </g>
+    </g>
+
+    <g class="knob-control" id="ctrl-out" transform="translate(870, 220)" style="cursor: ns-resize;">
+      <circle cx="0" cy="0" r="62" stroke="#f6beaa" stroke-width="1" stroke-dasharray="2 12" fill="none" opacity="0.6"/>
+      <text x="0" y="-72" font-family="-apple-system, sans-serif" font-size="10" font-weight="bold" fill="#f8cfc0" text-anchor="middle">OUTPUT TRIM</text>
+      <text x="-48" y="55" font-size="8" font-family="monospace" fill="#e0a996">-INF</text>
+      <text x="0" y="72" font-size="8" font-family="monospace" fill="#e0a996">-6dB</text>
+      <text x="48" y="55" font-size="8" font-family="monospace" fill="#e0a996">0dB</text>
+      <circle cx="0" cy="0" r="46" fill="url(#knob-body)" stroke="#0f0502" stroke-width="3"/>
+      <circle cx="0" cy="0" r="38" fill="url(#knob-cap)" stroke="#4a1e10" stroke-width="1.5"/>
+      <g id="rot-out" transform="rotate(10)">
+        <rect x="-2.5" y="-36" width="5" height="16" rx="2" fill="#fff4f0"/>
+      </g>
+    </g>
+
+    <g id="ctrl-bypass" transform="translate(500, 325)" style="cursor: pointer;">
+      <circle cx="0" cy="0" r="14" fill="#140804" stroke="#502213" stroke-width="1.5"/>
+      <circle cx="0" cy="0" r="9" fill="url(#hex-bolt)"/>
+      <line id="switch-lever" x1="0" y1="0" x2="0" y2="-16" stroke="#f0ece9" stroke-width="5" stroke-linecap="round"/>
+      <text x="0" y="24" font-family="-apple-system, sans-serif" font-size="9" font-weight="700" letter-spacing="2" fill="#f8cfc0" text-anchor="middle">HARDWARE IN</text>
+    </g>
+  </svg>
+</div>
+
+<div class="status-bar">
+  <span>STATUS: ONLINE [48-BIT / 96kHz]</span>
+  <span id="param-display">DRIVE: +2.5 dB | AIR: +3.0 dB | ATTEN: 0.0 dB | OUT: -1.2 dB</span>
+</div>
+
+<script>
+  const params = {
+    drive: { angle: -40, el: document.getElementById('rot-drive'), min: -135, max: 135 },
+    low:   { angle: -70, el: document.getElementById('rot-low'),   min: -135, max: 135 },
+    high:  { angle: 30,  el: document.getElementById('rot-high'),  min: -135, max: 135 },
+    out:   { angle: 10,  el: document.getElementById('rot-out'),   min: -135, max: 135 }
+  };
+
+  let activeParam = null;
+  let startY = 0;
+  let startAngle = 0;
+
+  const needleL = document.getElementById('needle-left');
+  const needleR = document.getElementById('needle-right');
+  const statusDisplay = document.getElementById('param-display');
+
+  function bindKnob(id, key) {
+    const el = document.getElementById(id);
+    el.addEventListener('mousedown', (e) => {
+      activeParam = params[key];
+      startY = e.clientY;
+      startAngle = activeParam.angle;
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    });
+  }
+
+  bindKnob('ctrl-drive', 'drive');
+  bindKnob('ctrl-low', 'low');
+  bindKnob('ctrl-high', 'high');
+  bindKnob('ctrl-out', 'out');
+
+  function onMouseMove(e) {
+    if (!activeParam) return;
+    const deltaY = startY - e.clientY;
+    let newAngle = startAngle + deltaY * 1.5;
+    newAngle = Math.max(activeParam.min, Math.min(activeParam.max, newAngle));
+    activeParam.angle = newAngle;
+    activeParam.el.setAttribute('transform', `rotate(${newAngle})`);
+
+    const lSwing = (params.drive.angle / 135) * 25 - 5;
+    const rSwing = (params.out.angle / 135) * 25 - 5;
+    needleL.setAttribute('transform', `rotate(${lSwing}, 0, 32)`);
+    needleR.setAttribute('transform', `rotate(${rSwing}, 0, 32)`);
+
+    updateStatus();
+  }
+
+  function onMouseUp() {
+    activeParam = null;
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+  }
+
+  function updateStatus() {
+    const dVal = ((params.drive.angle / 135) * 12).toFixed(1);
+    const hVal = (((params.high.angle + 135) / 270) * 12).toFixed(1);
+    const lVal = (((params.low.angle + 135) / 270) * 12).toFixed(1);
+    const oVal = ((params.out.angle / 135) * 6).toFixed(1);
+    statusDisplay.textContent = `DRIVE: ${dVal > 0 ? '+' : ''}${dVal} dB | AIR: +${hVal} dB | BASS ATTEN: -${lVal} dB | OUT: ${oVal > 0 ? '+' : ''}${oVal} dB`;
+  }
+
+  let bypassed = false;
+  const swEl = document.getElementById('ctrl-bypass');
+  const lever = document.getElementById('switch-lever');
+  swEl.addEventListener('click', () => {
+    bypassed = !bypassed;
+    lever.setAttribute('x2', bypassed ? '-10' : '0');
+    lever.setAttribute('y2', bypassed ? '-12' : '-16');
+  });
+
+  setInterval(() => {
+    if (activeParam) return;
+    const jitterL = (Math.random() - 0.5) * 2;
+    const jitterR = (Math.random() - 0.5) * 2;
+    const baseL = (params.drive.angle / 135) * 22 - 8;
+    const baseR = (params.out.angle / 135) * 22 - 6;
+    needleL.setAttribute('transform', `rotate(${baseL + jitterL}, 0, 32)`);
+    needleR.setAttribute('transform', `rotate(${baseR + jitterR}, 0, 32)`);
+  }, 120);
+</script>
+</body>
+</html>
