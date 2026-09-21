@@ -17,6 +17,7 @@ COUNTS = {
     "transient": 155,
     "full_chain": 220,
     "band_bypass": 50,
+    "eq_color_gain": 50,
 }
 
 SAMPLE_RATES = [44100, 48000, 88200, 96000, 192000]
@@ -199,6 +200,20 @@ def simple_chain_probe(src: list[float], s: State, sr: int) -> list[float]:
     return y
 
 
+def analog_color(x: float, amount01: float) -> float:
+    a = clamp(amount01, 0.0, 1.0)
+    if a <= 0.0:
+        return x
+    drive = 1.0 + 1.35 * a
+    z = x + 0.012 * a * x * x
+    calibration = 0.25
+    pos = math.tanh((calibration + 0.012 * a * calibration * calibration) * drive) / drive
+    neg = math.tanh((-calibration + 0.012 * a * calibration * calibration) * drive) / drive
+    calibration_rms = math.sqrt(0.5 * (pos * pos + neg * neg))
+    makeup = calibration / calibration_rms if calibration_rms > 1e-6 else 1.0
+    return math.tanh(z * drive) / drive * makeup
+
+
 def source_structure_checks():
     root = Path(__file__).resolve().parents[1]
     files = {
@@ -266,6 +281,14 @@ def source_structure_checks():
     assert "if (p.atypeBandBypass[(size_t) band])" in text["dsp_cpp"]
     assert "ottBandBypassButtons" in text["editor_h"]
     assert "atypeBandBypassButtons" in text["editor_h"]
+    assert "const float calibration = 0.25f;" in cpp
+    assert "const float calibrationRms" in cpp
+    assert "const float makeup" in cpp
+    assert "return std::tanh(asym * drive) / drive * makeup;" in cpp
+    assert "y = softColor(y, colorAmount);" in cpp
+    assert "0.20f + 0.80f * colorAmount" not in cpp
+    assert ".2+.8*s.eq.color/100" not in text["web"]
+    assert "y=this.color(y,s.eq.color/100)" in text["web"]
     assert "亮 = 啟用；按下 = BYPASS" in text["editor_cpp"]
 
 
@@ -415,6 +438,25 @@ def run():
             assert type_changed != baseline
         except AssertionError as exc:
             failures.append(("band_bypass", i, str(exc)))
+
+    # 50 EQ analog-color gain-matching probes. These specifically verify that
+    # the coloration stage preserves unity gain at its calibration level and
+    # remains finite across the full color range.
+    for i in range(COUNTS["eq_color_gain"]):
+        amount = (i % 51) / 50.0
+        calibration = 0.25
+        pos = analog_color(calibration, amount)
+        neg = analog_color(-calibration, amount)
+        low_pos = analog_color(1.0e-5, amount)
+        low_neg = analog_color(-1.0e-5, amount)
+        try:
+            assert math.isfinite(pos) and math.isfinite(neg)
+            calibration_rms = math.sqrt(0.5 * (pos * pos + neg * neg))
+            assert abs(calibration_rms / calibration - 1.0) < 1.0e-6
+            assert abs(low_pos / 1.0e-5 - 1.0) < 0.02
+            assert abs(low_neg / -1.0e-5 - 1.0) < 0.02
+        except AssertionError as exc:
+            failures.append(("eq_color_gain", i, str(exc)))
 
     total = sum(COUNTS.values())
     print("VVChain requested validation")
