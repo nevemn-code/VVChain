@@ -960,6 +960,31 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
     if (!graph.contains(pos))
         return;
 
+    const float xovers[3]
+    {
+        graphFrequencyToX(graph, parameterValue("OTT_X1")),
+        graphFrequencyToX(graph, parameterValue("OTT_X2")),
+        graphFrequencyToX(graph, parameterValue("OTT_X3"))
+    };
+
+    float bestXover = 11.f;
+    dragXover = -1;
+    for (int i = 0; i < 3; ++i)
+    {
+        const float d = std::abs(pos.x - xovers[i]);
+        if (d < bestXover)
+        {
+            bestXover = d;
+            dragXover = i;
+        }
+    }
+
+    if (dragXover >= 0)
+    {
+        dragBand = -1;
+        return;
+    }
+
     float best = 20.f;
     dragBand = -1;
 
@@ -982,6 +1007,18 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
 
 void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
 {
+    const auto graph = eqGraphBounds();
+
+    if (dragXover >= 0)
+    {
+        const float hz = constrainXoverFrequency(
+            dragXover, graphXToFrequency(graph, event.position.x));
+        setParameter(dragXover == 0 ? "OTT_X1"
+                     : dragXover == 1 ? "OTT_X2" : "OTT_X3", hz);
+        repaint();
+        return;
+    }
+
     if (dragBand < 0)
         return;
 
@@ -1003,6 +1040,7 @@ void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
 void VVChainAudioProcessorEditor::mouseUp(const juce::MouseEvent&)
 {
     dragBand = -1;
+    dragXover = -1;
 }
 
 void VVChainAudioProcessorEditor::mouseWheelMove(
@@ -1011,6 +1049,32 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
     const auto graph = eqGraphBounds();
     if (!graph.contains(event.position) || std::abs(wheel.deltaY) < 0.0001f)
         return;
+
+    float bestXover = 12.f;
+    int xover = -1;
+
+    for (int i = 0; i < 3; ++i)
+    {
+        const float lineX = graphFrequencyToX(
+            graph, parameterValue(i == 0 ? "OTT_X1" : i == 1 ? "OTT_X2" : "OTT_X3"));
+        const float d = std::abs(event.position.x - lineX);
+
+        if (d < bestXover)
+        {
+            bestXover = d;
+            xover = i;
+        }
+    }
+
+    if (xover >= 0)
+    {
+        const float overlap = juce::jlimit(
+            0.f, 100.f,
+            parameterValue("XOVER_OVERLAP") + wheel.deltaY * 2.0f);
+        setParameter("XOVER_OVERLAP", overlap);
+        repaint();
+        return;
+    }
 
     float best = 22.f;
     int band = -1;
