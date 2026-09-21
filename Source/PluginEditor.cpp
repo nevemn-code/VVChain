@@ -835,6 +835,9 @@ void VVChainAudioProcessorEditor::resized()
         if (bypassButtons[(size_t) i])
             bypassButtons[(size_t) i]->setBounds(ledStart + i * 46, 10, 28, 28);
 
+    if (masterBypassButton)
+        masterBypassButton->setBounds(w - 338, 9, 76, 25);
+
     placeKnob("DRY_WET", { w - 220, 39, 92, 29 });
     placeKnob("OUTPUT_LEVEL", { w - 116, 39, 92, 29 });
 
@@ -893,9 +896,10 @@ void VVChainAudioProcessorEditor::resized()
         const int innerX = x + 8;
         const int innerTop = cardY + 48;
         const int innerW = cardW - 16;
-        const int halfW = (innerW - 4) / 2;
-        placeKnob("DEESS_FREQ", { innerX, innerTop + 28, halfW, 150 });
-        placeKnob("DEESS_INTENSITY", { innerX + halfW + 4, innerTop + 28, halfW, 150 });
+        placeKnob("DEESS_FREQ", { innerX + 4, innerTop + 30, innerW - 8, 118 });
+        placeKnob("DEESS_INTENSITY", { innerX + 4, innerTop + 170, innerW - 8, 118 });
+        if (deessBypassButton)
+            deessBypassButton->setBounds(innerX + innerW - 20, innerTop + 7, 16, 16);
     }
 
     if (expandedBand >= 0)
@@ -911,8 +915,8 @@ void VVChainAudioProcessorEditor::resized()
         const int innerX = popupX + 12;
         const int gridTop = popupY + 46;
         const int gapX = 6;
-        const int cols = 7;
-        const int cellW = (popupW - 24 - gapX * 6) / cols;
+        const int cols = 8;
+        const int cellW = (popupW - 24 - gapX * 7) / cols;
         const int rowH = 112;
 
         const auto p = [&](int slot)
@@ -931,15 +935,15 @@ void VVChainAudioProcessorEditor::resized()
             "OTT_LIFT_T", "OTT_LIFT_A", "OTT_LIFT_R", "OTT_LIFT_M",
             "OTT_COMP_T", "OTT_COMP_M", "OTT_LEVEL"
         }};
-        const std::array<juce::String, 7> sharedAdv
+        const std::array<juce::String, 8> sharedAdv
         {{
-            "OTT_X1", "OTT_X2", "OTT_X3",
+            "OTT_X1", "OTT_X2", "OTT_X3", "XOVER_OVERLAP",
             "OTT_INPUT", "OTT_GATE", "OTT_MIX", "OTT_OUTPUT"
         }};
 
         for (int i = 0; i < 7; ++i)
             placeKnob(bandAdv[(size_t)i] + n, p(i));
-        for (int i = 0; i < 7; ++i)
+        for (int i = 0; i < 8; ++i)
             placeKnob(sharedAdv[(size_t)i], p(i + 7));
 
         if (ottClipper)
