@@ -59,7 +59,7 @@ class State:
     atype_output: float = 0
 
     de_voice: int = 0
-    de_intensity: float = 10
+    de_intensity: float = 0
     de_offset: float = 0
 
     drywet: float = 100
@@ -207,47 +207,34 @@ def simple_chain_probe(src: list[float], s: State, sr: int) -> list[float]:
 
 
 def analog_color(x: float, amount01: float, solid_state: bool = False,
-                previous: float = 0.0, even_dc: float = 0.0):
+                previous: float = 0.0, even_dc: float = 0.0,
+                level_power: float = 0.0, sample_rate: float = 48000.0):
     a = clamp(amount01, 0.0, 1.0)
     if a <= 0.0:
-        return x, x, even_dc
-    if abs(x) < 1.0e-6 and abs(previous) < 1.0e-6:
-        return x, x, even_dc
+        return x, x, even_dc, level_power
+
+    alpha = math.exp(-1.0 / (0.015 * max(8000.0, sample_rate)))
+    level_power = alpha * level_power + (1.0 - alpha) * (x * x)
+    level = max(0.03, math.sqrt(max(level_power * 2.0, 1.0e-10)))
+    if abs(x) <= 1.0e-6 and level < 0.031:
+        return x, x, even_dc, level_power
 
     amount = a ** 0.90
-    z = clamp(x, -1.0, 1.0)
-    z0 = clamp(previous, -1.0, 1.0)
-    dz = z - z0
+    z = clamp(x / level, -1.0, 1.0)
+    t2 = 2*z*z - 1
+    t3 = 4*z*z*z - 3*z
+    t4 = 8*z**4 - 8*z*z + 1
+    t5 = 16*z**5 - 20*z**3 + 5*z
+    t7 = 64*z**7 - 112*z**5 + 56*z**3 - 7*z
 
-    t2 = lambda v: 2*v*v - 1
-    t3 = lambda v: 4*v*v*v - 3*v
-    t4 = lambda v: 8*v**4 - 8*v*v + 1
-    t5 = lambda v: 16*v**5 - 20*v**3 + 5*v
-    t7 = lambda v: 64*v**7 - 112*v**5 + 56*v**3 - 7*v
-    i2 = lambda v: (2/3)*v**3 - v
-    i3 = lambda v: v**4 - 1.5*v**2
-    i4 = lambda v: 1.6*v**5 - (8/3)*v**3 + v
-    i5 = lambda v: (8/3)*v**6 - 5*v**4 + 2.5*v**2
-    i7 = lambda v: 8*v**8 - (56/3)*v**6 + 14*v**4 - 3.5*v**2
-
-    if abs(dz) > 1e-5:
-        if solid_state:
-            harmonic = (0.015*(i3(z)-i3(z0)) + 0.004*(i5(z)-i5(z0)) + 0.001*(i7(z)-i7(z0))) / dz
-        else:
-            harmonic = (0.024*(i2(z)-i2(z0)) + 0.006*(i4(z)-i4(z0)) + 0.002*(i3(z)-i3(z0))) / dz
-            raw = 0.024*t2(z) + 0.006*t4(z) + 0.002*t3(z)
-            even_dc = 0.99990*even_dc + 0.00010*raw
-            harmonic -= even_dc
+    if solid_state:
+        harmonic = 0.015*t3 + 0.004*t5 + 0.001*t7
     else:
-        mid = 0.5*(z+z0)
-        if solid_state:
-            harmonic = 0.015*t3(mid) + 0.004*t5(mid) + 0.001*t7(mid)
-        else:
-            raw = 0.024*t2(mid) + 0.006*t4(mid) + 0.002*t3(mid)
-            even_dc = 0.99990*even_dc + 0.00010*raw
-            harmonic = raw - even_dc
+        raw = 0.024*t2 + 0.006*t4 + 0.002*t3
+        even_dc = 0.99990*even_dc + 0.00010*raw
+        harmonic = raw - even_dc
 
-    return x + amount*harmonic, x, even_dc
+    return x + amount*level*harmonic, x, even_dc, level_power
 
 
 def type_a_amount(transient: float, level_factor: float, degree: float) -> float:
@@ -604,8 +591,8 @@ def run():
         amount = (i % 51) / 50.0
         x = 1.0e-6
         try:
-            pos, _, _ = analog_color(x, amount, False)
-            neg, _, _ = analog_color(-x, amount, False)
+            pos, _, _, _ = analog_color(x, amount, False)
+            neg, _, _, _ = analog_color(-x, amount, False)
             assert math.isfinite(pos) and math.isfinite(neg)
             assert abs(pos / x - 1.0) < 1.0e-9
             assert abs(neg / -x - 1.0) < 1.0e-9
@@ -619,8 +606,11 @@ def run():
         x = math.sin(i * 0.173) * 0.95
         prev = math.sin((i - 1) * 0.173) * 0.95
         dc = 0.0
+        level_power = 0.0
         try:
-            y, prev, dc = analog_color(x, amount, solid, prev, dc)
+            y, prev, dc, level_power = analog_color(
+                x, amount, solid, prev, dc, level_power,
+                SAMPLE_RATES[i % len(SAMPLE_RATES)])
             assert math.isfinite(y) and math.isfinite(prev) and math.isfinite(dc)
             assert abs(y) < 2.0
             # At 0%, both modes are sample-accurate unity.
@@ -644,10 +634,12 @@ def run():
         xref = []
         prev = amp * math.sin(phase - 2 * math.pi * freq / sr)
         dc = 0.0
+        level_power = 0.0
         for k in range(n):
             ang = phase + 2 * math.pi * freq * k / sr
             x = amp * math.sin(ang)
-            v, prev, dc = analog_color(x, amount, solid, prev, dc)
+            v, prev, dc, level_power = analog_color(
+                x, amount, solid, prev, dc, level_power, sr)
             xref.append(x)
             y.append(v)
 
