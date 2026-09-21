@@ -405,7 +405,7 @@ def source_structure_checks():
     assert "XOVER_OVERLAP" in editor
     assert "SHARED X-OVER" in editor
     assert 'addKnob("DEESS_FREQ", "DE-ESS FREQ"' in editor
-    assert 'addKnob("DEESS_INTENSITY", "MAXIMUM REDUCTION", 0, 8, .1' in editor
+    assert 'addKnob("DEESS_INTENSITY", "MAXIMUM REDUCTION", 0, 24, .1' in editor
     assert 'addKnob("DRY_WET", "MIX"' in editor
     assert 'addKnob("OUTPUT_LEVEL", "OUT"' in editor
     assert "void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;" in editor_h
@@ -522,6 +522,22 @@ def realtime_safety_checks():
     assert "ottPhase3_B2" in phase_cpp
     assert ".allPass(low, right)" in phase_cpp
     assert ".allPass(lowMid, right)" in phase_cpp
+
+    # External Dry/Wet must use independent crossover states. Reusing the
+    # live OTT/De-Esser IIR state would make the dry path state-dependent.
+    for token in [
+        "dryOttPhase1",
+        "dryOttPhase2",
+        "dryOttPhase3",
+        "dryDeEssPhase",
+        "phaseAlignedDryBuffer",
+        "alignDryPhaseBuffer",
+    ]:
+        assert token in phase_cpp or token in (root / "Source/DSP/ChainDSP.h").read_text(encoding="utf-8"), token
+
+    assert "jlimit(0.f, 24.f, p.deessIntensity)" in phase_cpp
+    assert 'NormalisableRange<float>(0.f, 24.f, 0.1f), 3.f' in text["processor_cpp"]
+    assert 'addKnob("DEESS_INTENSITY", "MAXIMUM REDUCTION", 0, 24, .1' in text["editor_cpp"]
 
     # Master bypass must always be the 64-sample interpolation path.
     process_master = cpp[cpp.index("processMasterLimiter(")
