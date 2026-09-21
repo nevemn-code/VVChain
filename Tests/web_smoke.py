@@ -51,6 +51,9 @@ assert "de:{bypass:false" in text
 assert "mix:{bypass:false" in text
 assert "bypassLed(\"EQ\"" in text and "bypassLed(\"OTT\"" in text
 assert "bypassLed(\"TAPE-A\"" in text and "bypassLed(\"DE-ESS\"" in text
+assert "typeFast" in text or "typeFast" in worklet
+assert "typeSlow" in text or "typeSlow" in worklet
+assert "0.18+.82*transient" in text or "0.18f + 0.82f * transient" in text
 assert "bypassLed(\"MIX\"" in text
 
 for forbidden in [
