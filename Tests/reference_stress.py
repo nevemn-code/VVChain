@@ -529,6 +529,27 @@ def realtime_safety_checks():
     assert "masterBypassBlend" in process_master
     assert "if (p.masterBypass) wet[n] =" not in process_master
 
+    # OTT/A-Type/analog-color regression invariants.
+    assert "applyLifterFromDetectorDb" in cpp
+    assert "if (upDb > liftThreshold)" not in cpp
+    assert "wet *= outputGain" in cpp
+    assert "ceilingDb = -0.8f" in cpp
+    assert "for (int i = 1; i <= 4; ++i)" in cpp
+    assert "std::atan(asymmetric * drive)" in cpp
+    assert "const float ax1 = 80.f" in cpp
+    assert "const float ax2 = 3000.f" in cpp
+    assert "const float ax3 = 9000.f" in cpp
+    assert "const float b2 = x - b1 - b3" in cpp
+    type_start = cpp.index("void VVChainDSP::applyAType")
+    type_end = cpp.index("void VVChainDSP::processDeEsser")
+    assert "harmonicSum" not in cpp[type_start:type_end]
+
+    editor_h = (root / "Source/PluginEditor.h").read_text(encoding="utf-8")
+    editor_cpp = (root / "Source/PluginEditor.cpp").read_text(encoding="utf-8")
+    assert "class WheelSlider final : public juce::Slider" in editor_h
+    assert "std::make_unique<WheelSlider>()" in editor_cpp
+    assert "deltaY) * 0.005" in editor_h
+
     for forbidden in [
         "static Biquad makeAnalogPeak",
         "static Biquad makeAnalogHighPass",
