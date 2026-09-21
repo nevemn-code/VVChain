@@ -19,6 +19,7 @@ COUNTS = {
     "band_bypass": 50,
     "eq_color_gain": 50,
     "type_a_exciter": 50,
+    "ott_four_band": 50,
 }
 
 SAMPLE_RATES = [44100, 48000, 88200, 96000, 192000]
@@ -252,6 +253,15 @@ def type_a_band_process(signal: list[float], degree: float, band_level_db: float
     return out
 
 
+def ott_transfer_db(input_db: float, threshold_db: float, ratio: float,
+                    upward: bool) -> float:
+    ratio = max(1.0, ratio)
+    slope = 1.0 - 1.0 / ratio
+    if upward:
+        return input_db + max(0.0, threshold_db - input_db) * slope
+    return input_db - max(0.0, input_db - threshold_db) * slope
+
+
 def source_structure_checks():
     root = Path(__file__).resolve().parents[1]
     files = {
@@ -351,11 +361,22 @@ def source_structure_checks():
     assert "const float transientRatio" in cpp
     assert "const float levelFactor" in cpp
     assert "std::tanh(norm * drive)" in cpp
-    assert "0.18f + 0.82f * transient" in cpp
+    assert "0.10f + 0.90f * transient" in cpp
     assert "if (p.atypeBandBypass[(size_t) band])" in cpp
     assert "directDb" not in cpp
     assert "averageAmount" not in cpp
     assert "processed = base + enhanced * mix" not in cpp
+    # True four-band OTT: each band has its own gate/detector state,
+    # downward-first/upward-second order, and unity at degree=0.
+    assert "std::array<float, 2> gateEnvDb" in text["dsp_h"]
+    assert "const float downRatio" in cpp
+    assert "const float upRatio" in cpp
+    assert "v = applyCompressor(" in cpp
+    assert "v = applyLifter(" in cpp
+    assert "gateEnv" in cpp
+    assert "applyGate(original" not in cpp
+    assert "if (degree <= 0.0001f)" in cpp
+    assert "if (p.ottBandBypass[(size_t) band])" in cpp
     assert "亮 = 啟用；按下 = BYPASS" in text["editor_cpp"]
 
 
@@ -564,6 +585,45 @@ def run():
             assert math.sqrt(sum(v * v for v in hres) / len(hres)) >=                    math.sqrt(sum(v * v for v in residual) / len(residual))
         except AssertionError as exc:
             failures.append(("type_a_exciter", i, str(exc)))
+
+    # 50 OTT transfer / independence probes.
+    for i in range(COUNTS["ott_four_band"]):
+        threshold = -48.0 + float((i * 7) % 37)
+        input_db = -60.0 + float((i * 13) % 61)
+        degree = float((i * 29) % 101)
+
+        up_ratio = 1.0 + (degree / 100.0) * (6.0 - 1.0)
+        down_ratio = 1.0 + (degree / 100.0) * (8.0 - 1.0)
+
+        up = ott_transfer_db(input_db, threshold, up_ratio, True)
+        down = ott_transfer_db(input_db, threshold, down_ratio, False)
+        neutral_up = ott_transfer_db(input_db, threshold, 1.0, True)
+        neutral_down = ott_transfer_db(input_db, threshold, 1.0, False)
+
+        try:
+            assert math.isfinite(up) and math.isfinite(down)
+            assert abs(neutral_up - input_db) < 1e-12
+            assert abs(neutral_down - input_db) < 1e-12
+
+            if input_db < threshold:
+                assert up >= input_db - 1e-12
+                assert abs(down - input_db) < 1e-12
+            else:
+                assert down <= input_db + 1e-12
+                assert abs(up - input_db) < 1e-12
+
+            up_full = ott_transfer_db(input_db, threshold, 6.0, True)
+            down_full = ott_transfer_db(input_db, threshold, 8.0, False)
+            if input_db < threshold:
+                assert up_full >= up - 1e-12
+            else:
+                assert down_full <= down + 1e-12
+
+            decisions = [False, False, False, False]
+            decisions[i % 4] = True
+            assert sum(1 for v in decisions if v) == 1
+        except AssertionError as exc:
+            failures.append(("ott_four_band", i, str(exc)))
 
     total = sum(COUNTS.values())
     print("VVChain requested validation")
