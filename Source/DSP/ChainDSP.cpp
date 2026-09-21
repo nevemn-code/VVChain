@@ -2,8 +2,8 @@
 
 namespace
 {
-static constexpr float kLifterRatio = 6.0f;
-static constexpr float kCompressorRatio = 8.0f;
+static constexpr float kLifterRatio = 4.0f;
+static constexpr float kCompressorRatio = 66.7f;
 static constexpr float kGateRatio = 6.0f;
 static constexpr float kLifterKneeDb = 6.0f;
 static constexpr float kCompressorKneeDb = 6.0f;
@@ -248,14 +248,22 @@ float VVChainDSP::applyGate(float input, float& envDb, float thresholdDb,
     const float magnitude = std::max(std::abs(input), 0.000001f);
     const float inputDb = juce::Decibels::gainToDecibels(magnitude);
 
+    // A gate must never create positive gain. The previous knee formula
+    // accidentally turned the gate into an expander/booster around the
+    // threshold, which could make OTT jump by many dB on quiet material.
     float targetGainDb = 0.f;
     if (inputDb < kneeStart)
+    {
         targetGainDb = (inputDb - thresholdDb) * ratioSlope;
+    }
     else if (inputDb < kneeEnd)
     {
-        const float x = inputDb - kneeEnd;
-        targetGainDb = ratioSlope / (2.f * knee) * x * x;
+        const float t = juce::jlimit(0.f, 1.f, (inputDb - kneeStart) / knee);
+        const float hardGainDb = (inputDb - thresholdDb) * ratioSlope;
+        targetGainDb = hardGainDb * (1.f - t) * (1.f - t);
     }
+
+    targetGainDb = std::min(0.f, targetGainDb);
 
     const float attack = timeCoeff(sampleRate, 100.f);
     const float release = timeCoeff(sampleRate, 30.f);
@@ -267,7 +275,19 @@ float VVChainDSP::applyGate(float input, float& envDb, float thresholdDb,
 
 float VVChainDSP::applyLimiter(float input, float& envDb, double sampleRate)
 {
-    return applyCompressor(input, envDb, -3.f, 30.f, 100.f, 100.f, sampleRate, 20.f);
+    juce::ignoreUnused(envDb, sampleRate);
+
+    // Safety stage only: never let OTT's wet bus become an accidental
+    // +10/+20 dB jump. Unity is untouched below the ceiling.
+    constexpr float ceiling = 0.9440608763f; // -0.5 dBFS
+    const float magnitude = std::abs(input);
+    if (magnitude <= ceiling)
+        return input;
+
+    const float excess = magnitude - ceiling;
+    const float shaped = ceiling + excess / (1.0f + 20.0f * excess);
+    const float safe = std::min(shaped, 0.99f);
+    return std::copysign(safe, input);
 }
 
 void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
@@ -378,8 +398,14 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 // OTT-style maximum ratios while preserving the user's
                 // existing per-band controls.
                 const float depth = degree / 100.f;
+
+                // Classic OTT-style scaling: upward reaches 4:1.
+                // Downward is intentionally much stronger, matching the
+                // documented Ableton/Xfer family character. The top band
+                // uses the slightly harder target.
+                const float downMaxRatio = band == 3 ? 100.f : kCompressorRatio;
                 const float downRatio =
-                    1.f + depth * (kCompressorRatio - 1.f);
+                    1.f + depth * (downMaxRatio - 1.f);
                 const float upRatio =
                     1.f + depth * (kLifterRatio - 1.f);
 
@@ -412,8 +438,8 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
             float wet = bands[0] + bands[1] + bands[2] + bands[3];
 
-            // Keep the existing protective limiter/clipper as the final wet
-            // bus safety stage; it does not feed back into any band detector.
+            // Global safety only. It runs after the four independent band processors
+            // and never feeds any result back into a band detector.
             wet = applyLimiter(
                 wet, limiterEnvDb[(size_t) ch], sr);
 
