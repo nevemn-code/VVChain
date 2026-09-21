@@ -491,11 +491,8 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
     // The original band signal remains intact; only newly generated
     // harmonic content is mixed back at a controlled level.
     //
-    // Band layout:
-    // B1 20-200 Hz
-    // B2 200-2000 Hz
-    // B3 2000-7800 Hz
-    // B4 7800-20 kHz
+    // Band layout is controlled by the shared OTT X1/X2/X3 crossover,
+    // so OTT and TAPE-A always use the same four frequency regions.
     const float tx1 = juce::jlimit(40.f, 1000.f, p.ottX1);
     const float tx2 = juce::jlimit(tx1 + 80.f, 5000.f, p.ottX2);
     const float tx3 = juce::jlimit(tx2 + 200.f, static_cast<float>(sr * 0.42), p.ottX3);
