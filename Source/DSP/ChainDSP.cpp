@@ -116,64 +116,123 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
         return x;
     }
 
-    // Below this level, forcing exact unity avoids meaningless floating-point
-    // coloration/denormal noise while preserving the nonlinear curve above it.
-    if (std::abs(x) < 1.0e-5f && std::abs(previousInput) < 1.0e-5f)
+    // Colour only: keep the dry/fundamental path intact and add a deliberately
+    // small harmonic series. This avoids the old full-signal tanh compression.
+    const float x0 = previousInput;
+    if (std::abs(x) < 1.0e-6f && std::abs(x0) < 1.0e-6f)
     {
         previousInput = x;
         return x;
     }
 
-    // First-order ADAA for tanh keeps the nonlinear stage lightweight while
-    // reducing aliasing without adding an extra plugin latency stage.
-    // This follows the open-source ADAA approach documented by Chowdhury et al.
-    const float drive = solidState
-        ? (1.0f + 5.0f * a)   // SS: steeper, harder odd-order saturation
-        : (1.0f + 2.4f * a);  // TT: softer tube-like transition
+    const float amount = std::pow(a, 0.90f);
+    const float z = juce::jlimit(-1.0f, 1.0f, x);
+    const float z0 = juce::jlimit(-1.0f, 1.0f, x0);
+    const float dz = z - z0;
 
-    const float x0 = previousInput;
-    const float dx = x - x0;
-
-    const auto logCosh = [](float v) noexcept
+    const auto t2 = [](float v) noexcept { return 2.0f * v * v - 1.0f; };
+    const auto t3 = [](float v) noexcept { return 4.0f * v * v * v - 3.0f * v; };
+    const auto t4 = [](float v) noexcept
     {
-        const float av = std::abs(v);
-        if (av > 12.0f)
-            return av - std::log(2.0f);
-        return std::log(std::cosh(v));
+        const float v2 = v * v;
+        return 8.0f * v2 * v2 - 8.0f * v2 + 1.0f;
+    };
+    const auto t5 = [](float v) noexcept
+    {
+        const float v2 = v * v;
+        return 16.0f * v2 * v2 * v - 20.0f * v2 * v + 5.0f * v;
+    };
+    const auto t7 = [](float v) noexcept
+    {
+        const float v2 = v * v;
+        const float v3 = v2 * v;
+        const float v5 = v3 * v2;
+        const float v7 = v5 * v2;
+        return 64.0f * v7 - 112.0f * v5 + 56.0f * v3 - 7.0f * v;
     };
 
-    const auto antiTanhNormalised = [drive, &logCosh](float v) noexcept
+    const auto i2 = [](float v) noexcept { return (2.0f / 3.0f) * v * v * v - v; };
+    const auto i3 = [](float v) noexcept
     {
-        // Integral of tanh(d*x)/d, normalised to unity small-signal gain.
-        return logCosh(drive * v) / (drive * drive);
+        const float v2 = v * v;
+        return v2 * v2 - 1.5f * v2;
+    };
+    const auto i4 = [](float v) noexcept
+    {
+        const float v2 = v * v;
+        const float v3 = v2 * v;
+        const float v5 = v3 * v2;
+        return 1.6f * v5 - (8.0f / 3.0f) * v3 + v;
+    };
+    const auto i5 = [](float v) noexcept
+    {
+        const float v2 = v * v;
+        const float v4 = v2 * v2;
+        const float v6 = v4 * v2;
+        return (8.0f / 3.0f) * v6 - 5.0f * v4 + 2.5f * v2;
+    };
+    const auto i7 = [](float v) noexcept
+    {
+        const float v2 = v * v;
+        const float v4 = v2 * v2;
+        const float v6 = v4 * v2;
+        const float v8 = v4 * v4;
+        return 8.0f * v8 - (56.0f / 3.0f) * v6 + 14.0f * v4 - 3.5f * v2;
     };
 
-    float odd = 0.0f;
-    if (std::abs(dx) > 1.0e-5f)
-        odd = (antiTanhNormalised(x) - antiTanhNormalised(x0)) / dx;
+    float harmonic = 0.0f;
+    if (std::abs(dz) > 1.0e-5f)
+    {
+        if (solidState)
+        {
+            const float integral =
+                0.015f * (i3(z) - i3(z0))
+                + 0.004f * (i5(z) - i5(z0))
+                + 0.001f * (i7(z) - i7(z0));
+            harmonic = integral / dz;
+        }
+        else
+        {
+            const float integral =
+                0.024f * (i2(z) - i2(z0))
+                + 0.006f * (i4(z) - i4(z0))
+                + 0.002f * (i3(z) - i3(z0));
+            harmonic = integral / dz;
+
+            const float raw = 0.024f * t2(z)
+                            + 0.006f * t4(z)
+                            + 0.002f * t3(z);
+            constexpr float dcAlpha = 0.99990f;
+            evenDc = dcAlpha * evenDc + (1.0f - dcAlpha) * raw;
+            harmonic -= evenDc;
+        }
+    }
     else
-        odd = std::tanh(drive * (x + x0) * 0.5f) / drive;
-
-    // TT intentionally introduces a controlled even-order component using
-    // the analytically anti-aliased x^2 transfer function. The very slow DC
-    // tracker removes the static offset before it is mixed back.
-    const float even = (x * x + x * x0 + x0 * x0) / 3.0f;
-    constexpr float dcAlpha = 0.99974f; // ~80 ms at 48 kHz
-    evenDc = dcAlpha * evenDc + (1.0f - dcAlpha) * even;
-    const float evenAc = even - evenDc;
-
-    const float oddSaturated = odd;
-    const float tubeEven = evenAc * (0.10f + 0.22f * a);
-    const float shaped = solidState
-        ? oddSaturated
-        : oddSaturated + tubeEven;
+    {
+        const float mid = 0.5f * (z + z0);
+        if (solidState)
+        {
+            harmonic =
+                0.015f * t3(mid)
+                + 0.004f * t5(mid)
+                + 0.001f * t7(mid);
+        }
+        else
+        {
+            const float raw =
+                0.024f * t2(mid)
+                + 0.006f * t4(mid)
+                + 0.002f * t3(mid);
+            constexpr float dcAlpha = 0.99990f;
+            evenDc = dcAlpha * evenDc + (1.0f - dcAlpha) * raw;
+            harmonic = raw - evenDc;
+        }
+    }
 
     previousInput = x;
-
-    // At zero colour this is exact unity. Increasing colour moves gradually
-    // from the original signal toward the selected analogue transfer.
-    return x + a * (shaped - x);
+    return x + amount * harmonic;
 }
+
 
 void VVChainDSP::prepare(double sampleRate, int, int numChannels)
 {
