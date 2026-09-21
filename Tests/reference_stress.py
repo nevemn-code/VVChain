@@ -573,7 +573,7 @@ def realtime_safety_checks():
     # Every stateful crossover / sidechain path uses coefficient updates.
     for token in [
         "updateCrossover(ottXover1",
-        "updateCrossover(typeXover1",
+        "updateCrossover2nd(typeXover1",
         "updateCrossover(soloPreXover1",
         "updateCrossover(soloPostXover1",
         "updateHighPass(state.sidechainHP",
