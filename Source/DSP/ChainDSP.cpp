@@ -191,6 +191,12 @@ void VVChainDSP::reset()
         state = { 0.f, 0.f };
     for (auto& state : analogLevelPower)
         state = { 0.f, 0.f };
+
+    soloPreXover1.reset(); soloPreXover2.reset(); soloPreXover3.reset();
+    soloPostXover1.reset(); soloPostXover2.reset(); soloPostXover3.reset();
+    soloBlend = 0.f;
+    lastSoloBand = -2;
+    lastSoloPost = false;
     ottXover1.reset();
     ottXover2.reset();
     ottXover3.reset();
@@ -217,24 +223,7 @@ void VVChainDSP::reset()
     }
 
     for (auto& state : deess)
-    {
-        state.input.fill(0.f);
-        state.output.fill(0.f);
-        state.inputCount = 0;
-        state.queue.fill(0.f);
-        state.queueRead = 0;
-        state.queueWrite = 0;
-        state.queueCount = 0;
-    }
-
-    deessAvgSum = 0.0;
-    deessAvgCount = 0;
-    deessSampleCounter = 0;
-    deessPendingSample = 0.0f;
-
-    for (auto& channel : dryDelay)
-        channel.fill(0.f);
-    dryDelayWrite = 0;
+        state = {};
 
     gateEnvDb = { 0.f, 0.f };
     limiterEnvDb = { 0.f, 0.f };
@@ -388,7 +377,8 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 const float amount =
                     juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
 
-                y = analogColor(
+                if (!p.eqColorBypass[band])
+                    y = analogColor(
                     y, amount, p.eqColorSolidState[band],
                     analogPreviousInput[band][(size_t) ch],
                     analogEvenDc[band][(size_t) ch],
@@ -725,163 +715,59 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
     }
 }
 
-void VVChainDSP::fft(std::array<std::complex<double>, kDeessBlockSize>& data, bool inverse)
-{
-    // Iterative radix-2 Cooley-Tukey FFT. No windowing: this intentionally
-    // follows the reference processor's FFT -> filter -> IFFT structure.
-    const size_t n = data.size();
-
-    for (size_t i = 1, j = 0; i < n; ++i)
-    {
-        size_t bit = n >> 1;
-        for (; j & bit; bit >>= 1)
-            j ^= bit;
-        j ^= bit;
-        if (i < j)
-            std::swap(data[i], data[j]);
-    }
-
-    for (size_t length = 2; length <= n; length <<= 1)
-    {
-        const double angle = (inverse ? 1.0 : -1.0) * kTwoPi / static_cast<double>(length);
-        const std::complex<double> wlen(std::cos(angle), std::sin(angle));
-
-        for (size_t i = 0; i < n; i += length)
-        {
-            std::complex<double> w(1.0, 0.0);
-            for (size_t j = 0; j < length / 2; ++j)
-            {
-                const auto u = data[i + j];
-                const auto v = data[i + j + length / 2] * w;
-                data[i + j] = u + v;
-                data[i + j + length / 2] = u - v;
-                w *= wlen;
-            }
-        }
-    }
-
-    if (inverse)
-    {
-        const double scale = 1.0 / static_cast<double>(n);
-        for (auto& v : data)
-            v *= scale;
-    }
-}
-
-void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters& p)
-{
-    constexpr int count = kDeessBlockSize;
-    const float* input = state.input.data();
-
-    const float globalAverage = deessAvgCount > 0
-        ? static_cast<float>(deessAvgSum / static_cast<double>(deessAvgCount))
-        : 0.0f;
-    const float average = globalAverage + p.deessAverageOffset;
-
-    int countMore = 0;
-    for (int i = 0; i < count - 2; i += 2)
-        if (std::abs(input[i + 1] - input[i]) > average)
-            ++countMore;
-
-    for (int i = 0; i < count; ++i)
-        deessFft[(size_t)i] = std::complex<double>(static_cast<double>(input[i]), 0.0);
-
-    // Reference trigger condition: COUNT > 10.
-    constexpr int trigger = 10;
-
-    if (!p.deessBypass && countMore > trigger)
-    {
-        fft(deessFft, false);
-
-        const double referenceHz = juce::jlimit(6000.0, 18000.0,
-            static_cast<double>(p.deessReferenceHz));
-        const double maximumReductionDb =
-            juce::jlimit(0.0, 8.0, static_cast<double>(p.deessIntensity));
-        const double nyquist =
-            std::max(referenceHz + 100.0, sr * 0.45);
-
-        for (int i = 1; i < count / 2; ++i)
-        {
-            const double freq = sr * static_cast<double>(i)
-                              / static_cast<double>(count);
-
-            const double t = freq <= referenceHz
-                ? 0.0
-                : juce::jlimit(0.0, 1.0,
-                    (freq - referenceHz) / (nyquist - referenceHz));
-
-            const double reductionDb =
-                maximumReductionDb * std::pow(t, 0.70);
-            const double gain =
-                std::pow(10.0, reductionDb / 20.0);
-
-            deessFft[(size_t)i] /= gain;
-            deessFft[(size_t)(count - i)] /= gain;
-        }
-
-        fft(deessFft, true);
-    }
-
-    constexpr float mix = 1.0f;
-
-    for (int i = 0; i < count; ++i)
-    {
-        float y = (!p.deessBypass && countMore > trigger)
-            ? static_cast<float>(deessFft[(size_t)i].real())
-            : input[i];
-
-        y = input[i] * (1.0f - mix) + y * mix;
-
-        state.queue[(size_t)state.queueWrite] = y;
-        state.queueWrite =
-            (state.queueWrite + 1) % static_cast<int>(state.queue.size());
-    }
-
-    state.queueCount = std::min(
-        state.queueCount + count, static_cast<int>(state.queue.size()));
-    state.inputCount = 0;
-}
-
 void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    const int samples = buffer.getNumSamples();
+    const float referenceHz = juce::jlimit(6000.f, 18000.f, p.deessReferenceHz);
+    const float hpAlpha = 1.0f - std::exp(
+        -static_cast<float>(kTwoPi * referenceHz / std::max(8000.0, sr)));
 
-    for (int n = 0; n < samples; ++n)
+    const float attackCoeff = timeCoeff(sr, 0.35f);
+    const float releaseCoeff = timeCoeff(sr, 55.f);
+    const float averageCoeff = timeCoeff(sr, 260.f);
+
+    for (int ch = 0; ch < channels; ++ch)
     {
-        const float detectorSample = buffer.getReadPointer(0)[n];
+        auto* data = buffer.getWritePointer(ch);
+        auto& state = deess[(size_t) ch];
 
-        if ((deessSampleCounter & 1ULL) == 0)
-            deessPendingSample = detectorSample;
-        else
+        for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
-            deessAvgSum += std::abs(detectorSample - deessPendingSample);
-            ++deessAvgCount;
-        }
+            const float input = data[n];
 
-        ++deessSampleCounter;
+            // Zero-latency high-frequency sidechain detector.
+            state.detectorLp += hpAlpha * (input - state.detectorLp);
+            const float detector = std::abs(input - state.detectorLp);
 
-        for (int ch = 0; ch < channels; ++ch)
-            deess[(size_t)ch].input[(size_t)deess[(size_t)ch].inputCount++] =
-                buffer.getReadPointer(ch)[n];
+            const float envCoeff = detector > state.detectorEnv
+                ? attackCoeff
+                : releaseCoeff;
+            state.detectorEnv =
+                envCoeff * state.detectorEnv
+                + (1.f - envCoeff) * detector;
 
-        if (deess[0].inputCount == kDeessBlockSize)
-            for (int ch = 0; ch < channels; ++ch)
-                processDeEsserWindow(deess[(size_t)ch], p);
+            state.detectorAvg =
+                averageCoeff * state.detectorAvg
+                + (1.f - averageCoeff) * detector;
 
-        for (int ch = 0; ch < channels; ++ch)
-        {
-            auto& state = deess[(size_t)ch];
-            float output = 0.0f;
+            float output = input;
 
-            if (state.queueCount > 0)
+            if (!p.deessBypass && p.deessIntensity > 0.f)
             {
-                output = state.queue[(size_t)state.queueRead];
-                state.queueRead =
-                    (state.queueRead + 1) % static_cast<int>(state.queue.size());
-                --state.queueCount;
+                const float envDb = gainToDb(state.detectorEnv);
+                const float avgDb = gainToDb(state.detectorAvg);
+                const float excessDb =
+                    envDb - (avgDb + 2.5f + p.deessAverageOffset);
+
+                const float reductionDb =
+                    juce::jlimit(0.f, 8.f, p.deessIntensity)
+                    * juce::jlimit(0.f, 1.f, excessDb / 6.f);
+
+                // Broadband gain control: phase relationship is unchanged because
+                // the entire waveform is multiplied by one scalar gain value.
+                output = input * dbToGain(-reductionDb);
             }
 
-            buffer.getWritePointer(ch)[n] = output;
+            data[n] = output;
         }
     }
 }
