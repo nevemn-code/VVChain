@@ -4,10 +4,10 @@ namespace
 {
 const std::array<juce::Colour, 4> kBandColours
 {
-    juce::Colour(0xff38bdf8),
-    juce::Colour(0xff22d3ee),
-    juce::Colour(0xffa3e635),
-    juce::Colour(0xfff97316)
+    juce::Colour(0xffef4444), // red
+    juce::Colour(0xfffacc15), // yellow
+    juce::Colour(0xff3b82f6), // blue
+    juce::Colour(0xff22c55e)  // green
 };
 
 float logMap(float value, float min, float max)
@@ -62,8 +62,11 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
     const float pointerLength = radius * .29f;
     const float px = cx + std::cos(angle - juce::MathConstants<float>::halfPi) * pointerLength;
     const float py = cy + std::sin(angle - juce::MathConstants<float>::halfPi) * pointerLength;
-    g.setColour(juce::Colours::black.withAlpha(.98f));
-    g.drawLine(cx, cy, px, py, 3.2f);
+    // White pointer / scale mark for clear visibility on the dark knob face.
+    g.setColour(juce::Colours::black.withAlpha(.85f));
+    g.drawLine(cx, cy, px, py, 4.4f);
+    g.setColour(juce::Colours::white.withAlpha(.96f));
+    g.drawLine(cx, cy, px, py, 2.4f);
     g.setColour(juce::Colours::white.withAlpha(.70f));
     g.fillEllipse(cx - 2.2f, cy - 2.2f, 4.4f, 4.4f);
 }
@@ -500,9 +503,35 @@ void VVChainAudioProcessorEditor::addKnob(
     k.slider->setLookAndFeel(&metalLook);
     k.slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     k.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 68, 17);
+    k.slider->setScrollWheelEnabled(true);
     k.slider->setRange(min, max, step);
-    if (id.endsWith("_FREQ"))
+    if (id.endsWith("_FREQ") || id.startsWith("OTT_X"))
         k.slider->setSkewFactorFromMidPoint(632.f);
+
+    if (auto* wheelSlider = dynamic_cast<WheelSlider*>(k.slider.get()))
+    {
+        const bool logarithmic =
+            id.endsWith("_FREQ") || id.startsWith("OTT_X");
+
+        double wheelStep = std::max(
+            0.01, (max - min) * 0.01);
+
+        if (id.contains("GAIN") || id.contains("LEVEL")
+            || id.contains("THRESH") || id.endsWith("_OUTPUT")
+            || id == "OUTPUT_LEVEL" || id == "ATYPE_LEVEL")
+            wheelStep = 0.5;
+        else if (id.endsWith("_Q"))
+            wheelStep = 0.02;
+        else if (id.contains("ATTACK"))
+            wheelStep = 1.0;
+        else if (id.contains("RELEASE"))
+            wheelStep = 5.0;
+        else if (id.contains("DEGREE") || id.contains("MIX")
+                 || id.contains("COLOR") || id == "DRY_WET")
+            wheelStep = 1.0;
+
+        wheelSlider->setWheelBehaviour(wheelStep, logarithmic);
+    }
     k.slider->setDoubleClickReturnValue(true, defaultValue);
     k.slider->setColour(juce::Slider::rotarySliderFillColourId, accent);
     k.slider->setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colour(0xff08090b));
@@ -783,6 +812,8 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                24, 12, juce::Justification::centred);
     g.drawText("20k", (int) graph.getRight() - 28, (int) graph.getBottom() - 15,
                28, 12, juce::Justification::right);
+
+    drawGraphDragHint(g, graph);
 }
 
 void VVChainAudioProcessorEditor::drawCard(
@@ -966,6 +997,56 @@ void VVChainAudioProcessorEditor::timerCallback()
     if (bypassButtons[4])
         bypassButtons[4]->setToggleState(deessBypassed,
                                          juce::dontSendNotification);
+}
+
+juce::String VVChainAudioProcessorEditor::formatGraphFrequency(float hz) const
+{
+    hz = juce::jmax(20.0f, hz);
+    if (hz >= 1000.0f)
+        return juce::String(hz / 1000.0f, hz >= 10000.0f ? 1 : 2) + " kHz";
+    return juce::String(hz, hz >= 100.0f ? 0 : 1) + " Hz";
+}
+
+void VVChainAudioProcessorEditor::drawGraphDragHint(
+    juce::Graphics& g, juce::Rectangle<float> graph)
+{
+    if (!showGraphDragHint || graphDragHint.isEmpty())
+        return;
+
+    const auto font = juce::FontOptions(9.0f).withStyle("Bold");
+    g.setFont(font);
+
+    const float paddingX = 9.0f;
+    const float paddingY = 6.0f;
+    const float boxW =
+        juce::jlimit(175.0f, graph.getWidth() - 12.0f,
+                     g.getCurrentFont().getStringWidthFloat(graphDragHint)
+                         + paddingX * 2.0f);
+    const float boxH = 28.0f;
+
+    float bx = graphDragHintPosition.x + 14.0f;
+    float by = graphDragHintPosition.y - boxH - 10.0f;
+
+    if (bx + boxW > graph.getRight() - 6.0f)
+        bx = graphDragHintPosition.x - boxW - 14.0f;
+    if (by < graph.getY() + 6.0f)
+        by = graphDragHintPosition.y + 14.0f;
+
+    bx = juce::jlimit(graph.getX() + 6.0f,
+                      graph.getRight() - boxW - 6.0f, bx);
+    by = juce::jlimit(graph.getY() + 6.0f,
+                      graph.getBottom() - boxH - 6.0f, by);
+
+    g.setColour(juce::Colour(0xff07090c).withAlpha(.94f));
+    g.fillRoundedRectangle(bx, by, boxW, boxH, 5.0f);
+    g.setColour(juce::Colours::white.withAlpha(.92f));
+    g.drawRoundedRectangle(bx, by, boxW, boxH, 5.0f, 1.0f);
+    g.setColour(juce::Colours::white);
+    g.drawText(graphDragHint,
+               juce::Rectangle<float>(bx + paddingX, by + 1.0f,
+                                      boxW - paddingX * 2.0f,
+                                      boxH - 2.0f).toNearestInt(),
+               juce::Justification::centred);
 }
 
 void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
@@ -1319,6 +1400,16 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
     if (dragXover >= 0)
     {
         dragBand = -1;
+        showGraphDragHint = true;
+        graphDragHintPosition = pos;
+        const hz = parameterValue(
+            dragXover == 0 ? "OTT_X1"
+            : dragXover == 1 ? "OTT_X2" : "OTT_X3");
+        graphDragHint = "X" + juce::String(dragXover + 1)
+            + "  " + formatGraphFrequency(hz)
+            + "   OVERLAP " + juce::String(
+                parameterValue("XOVER_OVERLAP"), 0) + "%";
+        repaint();
         return;
     }
 
@@ -1340,7 +1431,23 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
             dragBand = b;
         }
     }
-}
+
+    if (dragBand >= 0)
+    {
+        showGraphDragHint = true;
+        graphDragHintPosition = pos;
+        const auto n = juce::String(dragBand + 1);
+        const float hz = parameterValue("EQ" + n + "_FREQ");
+        const float db = parameterValue("EQ" + n + "_GAIN");
+        const float q = parameterValue("EQ" + n + "_Q");
+        const String prefix = "BAND " + n + "   ";
+        graphDragHint = prefix
+            + formatGraphFrequency(hz)
+            + "   " + juce::String(db >= 0.f ? "+" : "")
+            + juce::String(db, 1) + " dB"
+            + "   Q " + juce::String(q, 2);
+        repaint();
+    }
 
 void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
 {
@@ -1352,6 +1459,12 @@ void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
             dragXover, graphXToFrequency(graph, event.position.x));
         setParameter(dragXover == 0 ? "OTT_X1"
                      : dragXover == 1 ? "OTT_X2" : "OTT_X3", hz);
+
+        graphDragHintPosition = event.position;
+        graphDragHint = "X" + juce::String(dragXover + 1)
+            + "  " + formatGraphFrequency(hz)
+            + "   OVERLAP " + juce::String(
+                parameterValue("XOVER_OVERLAP"), 0) + "%";
         repaint();
         return;
     }
@@ -1375,6 +1488,15 @@ void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
         freqKnob->slider->setValue(hz, juce::dontSendNotification);
     if (auto* gainKnob = findKnob("EQ" + n + "_GAIN"))
         gainKnob->slider->setValue(db, juce::dontSendNotification);
+
+    graphDragHintPosition = event.position;
+    const float q = parameterValue("EQ" + n + "_Q");
+    graphDragHint = "BAND " + n
+        + "   " + formatGraphFrequency(hz)
+        + "   " + juce::String(db >= 0.f ? "+" : "")
+        + juce::String(db, 1) + " dB"
+        + "   Q " + juce::String(q, 2);
+    showGraphDragHint = true;
     repaint();
 }
 
@@ -1382,6 +1504,9 @@ void VVChainAudioProcessorEditor::mouseUp(const juce::MouseEvent&)
 {
     dragBand = -1;
     dragXover = -1;
+    showGraphDragHint = false;
+    graphDragHint.clear();
+    repaint();
 }
 
 void VVChainAudioProcessorEditor::mouseWheelMove(
