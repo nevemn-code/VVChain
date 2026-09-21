@@ -171,8 +171,8 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
             addKnob("DEESS_FREQ", "DE-ESS FREQ", 6000, 18000, 10,
                     parameterValue("DEESS_FREQ"), " Hz", b, 9,
                     juce::Colour(0xff67d3aa));
-            addKnob("DEESS_INTENSITY", "DE-ESS INT", 2, 10, .01,
-                    parameterValue("DEESS_INTENSITY"), "", b, 10,
+            addKnob("DEESS_INTENSITY", "DE-ESS %", 2, 10, .01,
+                    parameterValue("DEESS_INTENSITY"), " %", b, 10,
                     juce::Colour(0xff67d3aa));
         }
 
@@ -224,6 +224,11 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     addAndMakeVisible(*ottClipper);
     ottClipperAttachment = std::make_unique<BoolAttachment>(
         audioProcessor.apvts, "OTT_CLIPPER", *ottClipper);
+
+    closeAdvanced = std::make_unique<juce::TextButton>("CLOSE");
+    closeAdvanced->setButtonText("CLOSE");
+    closeAdvanced->onClick = [this] { setExpandedBand(-1); };
+    addAndMakeVisible(*closeAdvanced);
 
     // MIX / OUT is deliberately tiny and horizontal.
     addKnob("DRY_WET", "MIX", 0, 100, .1,
@@ -377,7 +382,7 @@ void VVChainAudioProcessorEditor::setParameter(const juce::String& id, float val
 juce::Rectangle<float> VVChainAudioProcessorEditor::eqGraphBounds() const
 {
     // Intentionally large: the EQ response is the visual focus at the top.
-    return { 18.f, 78.f, (float) getWidth() - 36.f, 190.f };
+    return { 18.f, 78.f, (float) getWidth() - 36.f, 320.f };
 }
 
 float VVChainAudioProcessorEditor::graphFrequencyToX(
@@ -571,11 +576,11 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
         const auto graph = eqGraphBounds();
     drawEqGraph(g, graph);
 
-    const int cardY = 278;
+    const int cardY = 404;
     const int gap = 8;
     const int left = 18;
     const int cardW = (getWidth() - left * 2 - gap * 3) / 4;
-    const int cardH = 632;
+    const int cardH = 510;
 
     for (int b = 0; b < 4; ++b)
     {
@@ -587,23 +592,39 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                  b == 3 ? "EQ / ANALOG · OTT · TAPE-A · DE-ESSER"
                         : "EQ / ANALOG · OTT · TAPE-A");
 
-        if (expandedBand == b)
-        {
-            const int advLineY = cardY + 333;
-            g.setColour(kBandColours[(size_t) b].withAlpha(.32f));
-            g.drawHorizontalLine(advLineY, x + 10, x + cardW - 10);
+    }
 
-            g.setColour(juce::Colour(0xfffacc15));
-            g.setFont(juce::FontOptions(8.f).withStyle("Bold"));
-            g.drawText("OTT ADVANCED", x + 11, cardY + 342, cardW - 80, 14,
-                       juce::Justification::left);
+    // Floating OTT Advanced popup: it overlays the controls and never changes band height.
+    if (expandedBand >= 0)
+    {
+        const float popupW = juce::jmin(900.f, (float) getWidth() - 40.f);
+        const float popupH = 330.f;
+        const float popupX = ((float) getWidth() - popupW) * 0.5f;
+        const float popupY = ((float) getHeight() - popupH) * 0.5f;
 
-            g.setColour(juce::Colour(0xff747b86));
-            g.setFont(juce::FontOptions(6.8f));
-            g.drawText("Lifter / compressor detail · crossovers · I/O",
-                       x + 11, cardY + 356, cardW - 22, 11,
-                       juce::Justification::left);
-        }
+        g.setColour(juce::Colours::black.withAlpha(.72f));
+        g.fillRoundedRectangle(popupX + 7.f, popupY + 9.f, popupW, popupH, 10.f);
+
+        juce::ColourGradient popup(
+            juce::Colour(0xff28231a), popupX, popupY,
+            juce::Colour(0xff101216), popupX, popupY + popupH, false);
+        g.setGradientFill(popup);
+        g.fillRoundedRectangle(popupX, popupY, popupW, popupH, 10.f);
+
+        g.setColour(juce::Colour(0xfffacc15).withAlpha(.8f));
+        g.drawRoundedRectangle(popupX, popupY, popupW, popupH, 10.f, 1.2f);
+
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::FontOptions(12.f).withStyle("Bold"));
+        g.drawText("OTT ADVANCED · BAND " + juce::String(expandedBand + 1),
+                   (int) popupX + 14, (int) popupY + 9, 330, 18,
+                   juce::Justification::left);
+
+        g.setColour(juce::Colour(0xff8a9098));
+        g.setFont(juce::FontOptions(7.5f));
+        g.drawText("完整進階參數 · 關閉後主畫面比例不變",
+                   (int) popupX + 14, (int) popupY + 28, 300, 12,
+                   juce::Justification::left);
     }
 
     g.setColour(juce::Colour(0xff606873));
@@ -650,6 +671,8 @@ void VVChainAudioProcessorEditor::setExpandedBand(int band)
 
     if (ottClipper)
         ottClipper->setVisible(expandedBand >= 0);
+    if (closeAdvanced)
+        closeAdvanced->setVisible(expandedBand >= 0);
 
     resized();
     repaint();
@@ -658,19 +681,17 @@ void VVChainAudioProcessorEditor::setExpandedBand(int band)
 void VVChainAudioProcessorEditor::resized()
 {
     const int w = getWidth();
-    const int cardY = 278;
-    const int cardH = 632;
+    const int cardY = 404;
+    const int cardH = 510;
     const int gap = 8;
     const int left = 18;
     const int cardW = (w - left * 2 - gap * 3) / 4;
 
-    // Five bypass/status buttons at the top-right.
     const int ledStart = w - 250;
     for (int i = 0; i < 5; ++i)
         if (bypassButtons[(size_t) i])
             bypassButtons[(size_t) i]->setBounds(ledStart + i * 46, 10, 28, 28);
 
-    // Tiny MIX / OUT faders.
     placeKnob("DRY_WET", { w - 220, 39, 92, 29 });
     placeKnob("OUTPUT_LEVEL", { w - 116, 39, 92, 29 });
 
@@ -682,12 +703,15 @@ void VVChainAudioProcessorEditor::resized()
             advancedButtons[(size_t) b]->setBounds(x + cardW - 58, cardY + 8, 50, 20);
 
         const int innerX = x + 8;
-        const int innerTop = cardY + 47;
+        const int innerTop = cardY + 48;
         const int innerW = cardW - 16;
-        const int cols = 3;
+        const int cols = (b == 3 ? 3 : 3);
         const int cellGap = 4;
-        const int cellW = (innerW - cellGap * 2) / cols;
-        const int rowH = 72;
+        const int sideGap = 6;
+        const int sideW = (b == 3 ? 72 : 0);
+        const int mainW = innerW - sideW - (b == 3 ? sideGap : 0);
+        const int cellW = (mainW - cellGap * 2) / cols;
+        const int rowH = 92;
 
         const auto pos = [&](int slot)
         {
@@ -696,7 +720,7 @@ void VVChainAudioProcessorEditor::resized()
             return juce::Rectangle<int>(
                 innerX + col * (cellW + cellGap),
                 innerTop + row * rowH,
-                cellW, 66);
+                cellW, 82);
         };
 
         const auto n = juce::String(b + 1);
@@ -715,52 +739,58 @@ void VVChainAudioProcessorEditor::resized()
 
         if (b == 3)
         {
-            placeKnob("DEESS_FREQ", pos(9));
-            placeKnob("DEESS_INTENSITY", pos(10));
+            const int sx = x + cardW - 8 - sideW;
+            placeKnob("DEESS_FREQ", { sx, innerTop + 8, sideW, 82 });
+            placeKnob("DEESS_INTENSITY", { sx, innerTop + 104, sideW, 82 });
         }
+    }
 
-        if (expandedBand == b)
+    if (expandedBand >= 0)
+    {
+        const int popupW = juce::jmin(900, w - 40);
+        const int popupH = 330;
+        const int popupX = (w - popupW) / 2;
+        const int popupY = (getHeight() - popupH) / 2;
+
+        if (closeAdvanced)
+            closeAdvanced->setBounds(popupX + popupW - 76, popupY + 8, 62, 21);
+
+        const int innerX = popupX + 12;
+        const int gridTop = popupY + 46;
+        const int gapX = 6;
+        const int cols = 7;
+        const int cellW = (popupW - 24 - gapX * 6) / cols;
+        const int rowH = 112;
+
+        const auto p = [&](int slot)
         {
-            const int advY = cardY + 364;
-            const int advW = cardW - 16;
-            const int advCols = 6;
-            const int advGap = 4;
-            const int advCellW = (advW - advGap * (advCols - 1)) / advCols;
-            const int advRowH = 84;
+            const int row = slot / cols;
+            const int col = slot % cols;
+            return juce::Rectangle<int>(
+                innerX + col * (cellW + gapX),
+                gridTop + row * rowH,
+                cellW, 100);
+        };
 
-            const auto advPos = [&](int slot)
-            {
-                const int row = slot / advCols;
-                const int col = slot % advCols;
-                return juce::Rectangle<int>(
-                    x + 8 + col * (advCellW + advGap),
-                    advY + row * advRowH,
-                    advCellW, 76);
-            };
+        const auto n = juce::String(expandedBand + 1);
+        const std::array<juce::String, 7> bandAdv
+        {{
+            "OTT_LIFT_T", "OTT_LIFT_A", "OTT_LIFT_R", "OTT_LIFT_M",
+            "OTT_COMP_T", "OTT_COMP_M", "OTT_LEVEL"
+        }};
+        const std::array<juce::String, 7> sharedAdv
+        {{
+            "OTT_X1", "OTT_X2", "OTT_X3",
+            "OTT_INPUT", "OTT_GATE", "OTT_MIX", "OTT_OUTPUT"
+        }};
 
-            const std::array<juce::String, 7> bandAdv
-            {
-                "OTT_LIFT_T", "OTT_LIFT_A", "OTT_LIFT_R", "OTT_LIFT_M",
-                "OTT_COMP_T", "OTT_COMP_M", "OTT_LEVEL"
-            };
+        for (int i = 0; i < 7; ++i)
+            placeKnob(bandAdv[(size_t)i] + n, p(i));
+        for (int i = 0; i < 7; ++i)
+            placeKnob(sharedAdv[(size_t)i], p(i + 7));
 
-            for (int i = 0; i < 7; ++i)
-                placeKnob(bandAdv[(size_t) i] + n, advPos(i));
-
-            const std::array<juce::String, 7> sharedAdv
-            {
-                "OTT_X1", "OTT_X2", "OTT_X3",
-                "OTT_INPUT", "OTT_GATE", "OTT_MIX", "OTT_OUTPUT"
-            };
-
-            for (int i = 0; i < 7; ++i)
-                placeKnob(sharedAdv[(size_t) i], advPos(i + 7));
-
-            if (ottClipper)
-                ottClipper->setBounds(x + 8 + 4 * (advCellW + advGap),
-                                      advY + 2 * advRowH + 12,
-                                      advCellW, 28);
-        }
+        if (ottClipper)
+            ottClipper->setBounds(innerX, popupY + popupH - 34, 82, 24);
     }
 
     repaint();
