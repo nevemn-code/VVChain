@@ -124,6 +124,13 @@ private:
         {
             return hp2.process(hp1.process(x, right), right);
         }
+
+        // LP4 + HP4 of the same crossover forms the phase-only all-pass
+        // compensation needed when a band skipped this crossover.
+        inline float allPass(float x, bool right)
+        {
+            return low(x, right) + high(x, right);
+        }
     };
 
     struct BandDynamics
@@ -194,6 +201,13 @@ private:
     Crossover4th ottXover1 {};
     Crossover4th ottXover2 {};
     Crossover4th ottXover3 {};
+
+    // Phase-alignment dummy crossovers for the unequal-depth OTT branches:
+    // Band 1 skips X2/X3; Band 2 skips X3.
+    Crossover4th ottPhase2_B1 {};
+    Crossover4th ottPhase3_B1 {};
+    Crossover4th ottPhase3_B2 {};
+
     std::array<BandDynamics, 4> ottDynamics {};
 
     // Four independent Type-A exciter bands.
