@@ -25,6 +25,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     p.push_back(std::make_unique<juce::AudioParameterBool>("OTT_BYPASS", "OTT Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("ATYPE_BYPASS", "Type-A Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("DEESS_BYPASS", "DeEsser Bypass", false));
+    p.push_back(std::make_unique<juce::AudioParameterBool>("EQ_COLOR_GLOBAL_BYPASS", "Analog Color Global Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("MIX_BYPASS", "Mix / Out Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("MASTER_BYPASS", "Master Bypass", false));
 
@@ -66,11 +67,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         const juce::String n = juce::String(i + 1);
         p.push_back(std::make_unique<juce::AudioParameterBool>(
             "OTT_BAND_BYPASS" + n, "OTT Band " + n + " Bypass", false));
-        const float ottDegreeDefaults[4] = { 35.f, 35.f, 30.f, 25.f };
+        const float ottDegreeDefaults[4] = { 32.f, 30.f, 26.f, 22.f };
         f("OTT_DEGREE" + n, "OTT Band " + n + " Degree", 0.f, 100.f, ottDegreeDefaults[i]);
-        f("OTT_LIFT_T" + n, "OTT Band " + n + " Lifter Threshold", -80.f, 0.f, -45.f);
+        f("OTT_LIFT_T" + n, "OTT Band " + n + " Lifter Threshold", -80.f, 0.f, -40.f);
         f("OTT_LIFT_A" + n, "OTT Band " + n + " Lifter Attack", 1.f, 500.f, 1.f, 0.35f);
-        f("OTT_LIFT_R" + n, "OTT Band " + n + " Lifter Release", 10.f, 2500.f, 50.f, 0.35f);
+        f("OTT_LIFT_R" + n, "OTT Band " + n + " Lifter Release", 10.f, 2500.f, 80.f, 0.35f);
         f("OTT_LIFT_M" + n, "OTT Band " + n + " Lifter Mix", 0.f, 100.f, 100.f);
         f("OTT_COMP_T" + n, "OTT Band " + n + " Compressor Threshold", -40.f, 0.f, -18.f);
         f("OTT_COMP_A" + n, "OTT Band " + n + " Compressor Attack", 0.1f, 250.f, 1.f, 0.35f);
@@ -83,7 +84,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     for (int i = 0; i < 4; ++i)
     {
         const juce::String n = juce::String(i + 1);
-        const float defaults[4] = { 0.f, 20.f, 70.f, 55.f };
+        const float defaults[4] = { 8.f, 28.f, 58.f, 46.f };
         const float levels[4] = { 0.f, 0.f, 1.f, 1.f };
         p.push_back(std::make_unique<juce::AudioParameterBool>(
             "ATYPE_BAND_BYPASS" + n, "Type-A Band " + n + " Bypass", false));
@@ -111,10 +112,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     p.push_back(std::make_unique<juce::AudioParameterChoice>(
         "DEESS_VOICE", "Legacy DeEsser Voice",
         juce::StringArray { "Male Vocal", "Female Vocal" }, 0));
-    f("DEESS_FREQ", "DeEsser Frequency", 6000.f, 18000.f, 12500.f);
+    f("DEESS_FREQ", "DeEsser Frequency", 6000.f, 18000.f, 8000.f);
     p.push_back(std::make_unique<juce::AudioParameterFloat>(
         "DEESS_INTENSITY", "DeEsser Maximum Reduction",
-        juce::NormalisableRange<float>(0.f, 8.f, 0.1f), 0.f));
+        juce::NormalisableRange<float>(0.f, 8.f, 0.1f), 3.f));
     f("DEESS_OFFSET", "DeEsser Average Offset", -0.1f, 0.1f, 0.f);
 
     f("DRY_WET", "Dry / Wet", 0.f, 100.f, 100.f);
@@ -126,8 +127,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
 void VVChainAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     dsp.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
-    // DeEsser is now zero-latency: sidechain detection modulates the current sample
-    // without FFT block buffering or lookahead.
     setLatencySamples(0);
 }
 
@@ -160,6 +159,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.atypeBypass = value("ATYPE_BYPASS") > 0.5f;
     p.deessBypass = value("DEESS_BYPASS") > 0.5f;
     p.mixBypass = value("MIX_BYPASS") > 0.5f;
+    p.eqColorGlobalBypass = value("EQ_COLOR_GLOBAL_BYPASS") > 0.5f;
 
     for (int i = 0; i < 4; ++i)
     {
