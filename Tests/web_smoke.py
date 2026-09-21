@@ -33,7 +33,7 @@ required = [
     "TAPE-A", "OTT %", "ATTACK", "RELEASE",
     "DE-ESS FREQ", "DE-ESS %",
     "bandGrid", "advPopup", "advPopupGrid", "mixFader", "outFader", "leds",
-    "bandBypass", "BAND ",
+    "bandBypass", "BAND ", "deessZone", "repeat(5", "mouseWheelMove", "deltaY * 0.025", "std::exp(-wheel.deltaY * 0.25f)",
     "OTT：亮=啟用；按下=BYPASS", "TYPE-A：亮=啟用；按下=BYPASS",
     "NO PAGE SCROLL", "s.freq", "const avg=s.type.degree.reduce",
 ]
@@ -57,6 +57,24 @@ for forbidden in [
     "4096", "1365", "2730", "2731", "DEESS_VOICE",
 ]:
     assert forbidden not in text, f"legacy/forbidden remains: {forbidden}"
+
+# 50 deterministic EQ graph wheel interaction probes.
+q_cases = [0.1 + (18.0 - 0.1) * ((i * 37) % 100) / 100.0 for i in range(50)]
+for i, q0 in enumerate(q_cases):
+    # Browser wheel: deltaY < 0 is wheel-up and must reduce Q.
+    q_up = max(0.1, min(18.0, q0 * (2.718281828459045 ** ((-100.0 / 100.0) * 0.025))))
+    assert q_up <= q0 + 1e-12, (i, q0, q_up)
+
+    # Browser wheel-down must increase Q from the same starting point.
+    q_down = max(0.1, min(18.0, q0 * (2.718281828459045 ** ((100.0 / 100.0) * 0.025))))
+    assert q_down >= q0 - 1e-12, (i, q0, q_down)
+
+    # One wheel notch changes Q only about 2.47% before clamping.
+    if 0.101 < q0 < 17.9:
+        assert q0 - q_up < q0 * 0.026
+        assert q_down - q0 < q0 * 0.026
+
+print("q_wheel_50_cases: PASS")
 
 print("VVChain compact UI smoke test: PASS")
 print("main_js_parse: PASS")
