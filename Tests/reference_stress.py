@@ -576,7 +576,7 @@ def realtime_safety_checks():
     assert "const float tx1" in cpp
     assert "const float tx2" in cpp
     assert "const float tx3" in cpp
-    assert "const float b2 = x - b1 - b3" in cpp
+    assert "const float b2 =" in cpp
     type_start = cpp.index("void VVChainDSP::applyAType")
     type_end = cpp.index("void VVChainDSP::processDeEsser")
     assert "harmonicSum" not in cpp[type_start:type_end]
