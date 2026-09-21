@@ -397,7 +397,7 @@ void VVChainAudioProcessorEditor::placeKnob(const juce::String& id, juce::Rectan
 {
     if (auto* k = findKnob(id))
     {
-        k->label->setBounds(area.removeFromTop(12));
+        k->label->setBounds(area.removeFromTop(13));
         k->slider->setBounds(area);
     }
 }
@@ -725,7 +725,8 @@ void VVChainAudioProcessorEditor::setExpandedBand(int band)
 void VVChainAudioProcessorEditor::resized()
 {
     const int w = getWidth();
-    const int cardY = 399;
+
+    const int cardY = 404;
     const int gap = 8;
     const int left = 18;
     const int cardCount = 5;
