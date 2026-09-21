@@ -133,8 +133,6 @@ void VVChainDSP::prepare(double sampleRate, int, int numChannels)
 void VVChainDSP::reset()
 {
     for (auto& b : eq) b.reset();
-    hp.reset();
-
     ottXover1.reset();
     ottXover2.reset();
     ottXover3.reset();
@@ -309,8 +307,6 @@ float VVChainDSP::applyLimiter(float input, float& envDb, double sampleRate)
 
 void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    hp = makeAnalogHighPass(sr, juce::jlimit(40.f, 120.f, p.hfCornerHz), 0.707);
-
     for (size_t i = 0; i < eq.size(); ++i)
         eq[i] = makeAnalogPeak(
             sr,
@@ -327,7 +323,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
-            float y = hp.process(data[n], right);
+            float y = data[n];
             for (auto& band : eq)
                 y = band.process(y, right);
 
@@ -734,7 +730,7 @@ void VVChainDSP::processDeEsserWindow(DeEssState& state, const Parameters& p)
         const double referenceHz = juce::jlimit(6000.0, 18000.0,
             static_cast<double>(p.deessReferenceHz));
         const double intensity =
-            juce::jlimit(2.0, 10.0, static_cast<double>(p.deessIntensity));
+            juce::jlimit(0.0, 10.0, static_cast<double>(p.deessIntensity));
 
         for (int i = 1; i < count / 2; ++i)
         {
