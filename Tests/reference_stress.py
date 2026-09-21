@@ -218,7 +218,9 @@ def analog_color(x: float, amount01: float, solid_state: bool = False,
     sr = max(8000.0, sample_rate)
     alpha = math.exp(-1.0 / (0.015 * sr))
     level_power = alpha * level_power + (1.0 - alpha) * (x * x)
-    level = max(0.03, math.sqrt(max(level_power * 2.0, 1.0e-10)))
+    if level_power < 1.0e-12:
+        return x, x, even_dc, level_power
+    level = max(1.0e-6, math.sqrt(max(level_power * 2.0, 1.0e-12)))
 
     amount = a ** 0.90
     z = clamp(x / level, -1.0, 1.0)
