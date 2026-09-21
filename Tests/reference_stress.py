@@ -440,7 +440,59 @@ def source_structure_checks():
     assert "亮 = 啟用；按下 = BYPASS" in text["editor_cpp"]
 
 
+def realtime_safety_checks():
+    root = Path(__file__).resolve().parents[1]
+    header = (root / "Source/DSP/ChainDSP.h").read_text(encoding="utf-8")
+    cpp = (root / "Source/DSP/ChainDSP.cpp").read_text(encoding="utf-8")
+
+    # Coefficient changes must update existing filter objects, never replace them.
+    for token in [
+        "updateCoefficients",
+        "updateAnalogPeak",
+        "updateAnalogHighPass",
+        "updateLowPass",
+        "updateHighPass",
+        "updateCrossover",
+    ]:
+        assert token in header or token in cpp, token
+
+    for forbidden in [
+        "static Biquad makeAnalogPeak",
+        "static Biquad makeAnalogHighPass",
+        "static Biquad makeLowPass",
+        "static Biquad makeHighPass",
+        "eq[i] = makeAnalogPeak",
+        "ottXover1.lp1 = makeLowPass",
+        "typeXover1.lp1 = makeLowPass",
+        "soloPreXover1.lp1 = makeLowPass",
+        "state.sidechainHP = makeHighPass",
+    ]:
+        assert forbidden not in header and forbidden not in cpp, forbidden
+
+    # The realtime process function may not allocate/resize heap memory.
+    start = cpp.index("void VVChainDSP::process(")
+    process_body = cpp[start:]
+    assert "setSize(" not in process_body
+    assert "juce::ScopedNoDenormals noDenormals;" in process_body
+    assert "dryBuffer.copyFrom" in process_body
+
+    # Every stateful crossover / sidechain path uses coefficient updates.
+    for token in [
+        "updateCrossover(ottXover1",
+        "updateCrossover(typeXover1",
+        "updateCrossover(soloPreXover1",
+        "updateCrossover(soloPostXover1",
+        "updateHighPass(state.sidechainHP",
+    ]:
+        assert token in cpp, token
+
+    print("realtime_filter_state_safety: PASS")
+    print("audio_thread_no_heap_resize: PASS")
+    print("denormal_guard: PASS")
+
+
 def run():
+    realtime_safety_checks()
     rng = random.Random(SEED)
     failures = []
 
