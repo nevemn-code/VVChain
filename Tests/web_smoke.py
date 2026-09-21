@@ -33,9 +33,8 @@ required = [
     "TAPE-A", "OTT %", "ATTACK", "RELEASE",
     "DE-ESS FREQ", "DE-ESS %",
     "bandGrid", "advPopup", "advPopupGrid", "mixFader", "outFader", "leds",
-    "OTT_BAND_BYPASS1", "OTT_BAND_BYPASS4",
-    "ATYPE_BAND_BYPASS1", "ATYPE_BAND_BYPASS4",
-    "bandBypass", "亮=啟用；按下=BYPASS",
+    "bandBypass", "BAND ",
+    "OTT：亮=啟用；按下=BYPASS", "TYPE-A：亮=啟用；按下=BYPASS",
     "NO PAGE SCROLL", "s.freq", "const avg=s.type.degree.reduce",
 ]
 for token in required:
