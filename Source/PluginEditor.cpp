@@ -308,11 +308,11 @@ void VVChainAudioProcessorEditor::addKnob(
         step < .01 ? 3 : step < .1 ? 2 : step < 1 ? 1 : 0);
     if (tapeDisplayDb)
     {
-        k.slider->setTextFromValueFunction([](double value)
+        k.slider->textFromValueFunction = [](double value)
         {
             return juce::String(value * .06, 1) + " dB";
         });
-        k.slider->setValueFromTextFunction([](const juce::String& text)
+        k.slider->valueFromTextFunction = [](const juce::String& text)
         {
             return text.retainCharacters("0123456789.-").getDoubleValue() / .06;
         });
