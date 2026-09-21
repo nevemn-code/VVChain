@@ -307,10 +307,14 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
 
 void VVChainDSP::reset()
 {
-    for (auto& b : eq) b.reset();
+    for (auto& b : eq)
+        b.reset();
+
     for (auto& state : analogPreviousInput)
         state = { 0.f, 0.f };
-    for (auto& state : analogEvenDc)
+    for (auto& state : analogDcLastInput)
+        state = { 0.f, 0.f };
+    for (auto& state : analogDcLastOutput)
         state = { 0.f, 0.f };
     for (auto& state : analogLevelPower)
         state = { 0.f, 0.f };
@@ -321,27 +325,31 @@ void VVChainDSP::reset()
     lastSoloBand = -2;
     lastSoloPost = false;
 
-    ottXover1.reset();
-    ottXover2.reset();
-    ottXover3.reset();
-    ottPhase2_B1.reset();
-    ottPhase3_B1.reset();
-    ottPhase3_B2.reset();
+    ottXover1.reset(); ottXover2.reset(); ottXover3.reset();
+    ottPhase2_B1.reset(); ottPhase3_B1.reset(); ottPhase3_B2.reset();
+
+    for (auto& filter : ottDownDetectorHP)
+        filter.reset();
+    for (auto& filter : ottUpDetectorHP)
+        filter.reset();
 
     for (auto& b : ottDynamics)
     {
-        b.gateEnvDb = { 0.f, 0.f };
-        b.lifterEnv = { 1.f, 1.f };
-        b.compEnvDb = { 0.f, 0.f };
-        b.upRmsPower = { 0.f, 0.f };
-        b.upSlowRmsPower = { 0.f, 0.f };
-        b.downRmsPower = { 0.f, 0.f };
-        b.downSlowRmsPower = { 0.f, 0.f };
+        b.gateEnvDb = 0.f;
+        b.lifterEnv = 1.f;
+        b.compEnvDb = 0.f;
+        b.upRmsPower = 0.f;
+        b.upSlowRmsPower = 0.f;
+        b.downRmsPower = 0.f;
+        b.downSlowRmsPower = 0.f;
     }
 
-    typeXover1.reset();
-    typeXover2.reset();
-    typeXover3.reset();
+    typeXover1.reset(); typeXover2.reset(); typeXover3.reset();
+    for (auto& filter : typeDetectorHP)
+        filter.reset();
+    typeFastEnv.fill(0.f);
+    typeSlowEnv.fill(0.f);
+    typeDc.fill(0.f);
 
     deessSplit.reset();
 
@@ -353,13 +361,6 @@ void VVChainDSP::reset()
 
     masterBypassBlend = 0.f;
     limiterGain = 1.f;
-
-    for (size_t band = 0; band < 4; ++band)
-    {
-        typeFastEnv[band] = { 0.f, 0.f };
-        typeSlowEnv[band] = { 0.f, 0.f };
-        typeDc[band] = { 0.f, 0.f };
-    }
 
     for (auto& state : deess)
     {
@@ -832,25 +833,29 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
 void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    // Four independent OTT bands. Each band has its own detector state and
-    // runs downward compression first, then upward compression, followed by
-    // per-band makeup. The gate is also applied after the crossover so it
-    // cannot make one frequency band modulate another.
+    constexpr float kDetectorHPHz = 100.f;
+
     const float x1 = juce::jlimit(80.f, 900.f, p.ottX1);
     const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.ottX2);
-    const float x3 = juce::jlimit(x2 + 200.f, static_cast<float>(sr * 0.42), p.ottX3);
-
+    const float x3 = juce::jlimit(x2 + 200.f,
+                                  static_cast<float>(sr * 0.42),
+                                  p.ottX3);
     const float xoverQ = crossoverQFromOverlap(p.ottXoverOverlap);
 
     updateCrossover(ottXover1, sr, x1, xoverQ);
     updateCrossover(ottXover2, sr, x2, xoverQ);
     updateCrossover(ottXover3, sr, x3, xoverQ);
-
-    // Equalize the number of crossover sections traversed by each branch.
-    // B1: X1 -> add all-pass X2 + X3. B2: X1+X2 -> add all-pass X3.
     updateCrossover(ottPhase2_B1, sr, x2, xoverQ);
     updateCrossover(ottPhase3_B1, sr, x3, xoverQ);
     updateCrossover(ottPhase3_B2, sr, x3, xoverQ);
+
+    for (int band = 0; band < 4; ++band)
+    {
+        updateHighPass(ottDownDetectorHP[(size_t) band],
+                       sr, kDetectorHPHz, 0.70710678);
+        updateHighPass(ottUpDetectorHP[(size_t) band],
+                       sr, kDetectorHPHz, 0.70710678);
+    }
 
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.ottInputGainDb));
@@ -859,135 +864,178 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
     const float outputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.ottOutputGainDb));
 
-    for (int ch = 0; ch < channels; ++ch)
+    auto* leftData = buffer.getWritePointer(0);
+    auto* rightData =
+        channels > 1 ? buffer.getWritePointer(1) : leftData;
+
+    for (int n = 0; n < buffer.getNumSamples(); ++n)
     {
-        auto* data = buffer.getWritePointer(ch);
-        const bool right = ch == 1;
+        const float originalL = leftData[n];
+        const float originalR = channels > 1 ? rightData[n] : originalL;
+        const float inputL = originalL * inputGain;
+        const float inputR = originalR * inputGain;
 
-        for (int n = 0; n < buffer.getNumSamples(); ++n)
+        float lowL = ottXover1.low(inputL, false);
+        const float x1HighL = ottXover1.high(inputL, false);
+        float lowMidL = ottXover2.low(x1HighL, false);
+        const float x2HighL = ottXover2.high(x1HighL, false);
+        const float midHighL = ottXover3.low(x2HighL, false);
+        const float topL = ottXover3.high(x2HighL, false);
+
+        float lowR = channels > 1 ? ottXover1.low(inputR, true) : lowL;
+        const float x1HighR = channels > 1 ? ottXover1.high(inputR, true) : x1HighL;
+        float lowMidR = channels > 1 ? ottXover2.low(x1HighR, true) : lowMidL;
+        const float x2HighR = channels > 1 ? ottXover2.high(x1HighR, true) : x2HighL;
+        const float midHighR = channels > 1 ? ottXover3.low(x2HighR, true) : midHighL;
+        const float topR = channels > 1 ? ottXover3.high(x2HighR, true) : topL;
+
+        lowL = ottPhase2_B1.allPass(lowL, false);
+        lowL = ottPhase3_B1.allPass(lowL, false);
+        lowMidL = ottPhase3_B2.allPass(lowMidL, false);
+
+        if (channels > 1)
         {
-            const float original = data[n];
-            const float x = original * inputGain;
+            lowR = ottPhase2_B1.allPass(lowR, true);
+            lowR = ottPhase3_B1.allPass(lowR, true);
+            lowMidR = ottPhase3_B2.allPass(lowMidR, true);
+        }
+        else
+        {
+            lowR = lowL;
+            lowMidR = lowMidL;
+        }
 
-            float low = ottXover1.low(x, right);
-            const float x1High = ottXover1.high(x, right);
-            float lowMid = ottXover2.low(x1High, right);
-            const float x2High = ottXover2.high(x1High, right);
-            const float midHigh = ottXover3.low(x2High, right);
-            const float top = ottXover3.high(x2High, right);
+        float bandsL[4] = { lowL, lowMidL, midHighL, topL };
+        float bandsR[4] = { lowR, lowMidR, midHighR, topR };
 
-            // LP4 + HP4 compensation restores the phase path for skipped
-            // crossovers without adding host/plugin latency.
-            low = ottPhase2_B1.allPass(low, right);
-            low = ottPhase3_B1.allPass(low, right);
-            lowMid = ottPhase3_B2.allPass(lowMid, right);
+        for (int band = 0; band < 4; ++band)
+        {
+            if (p.ottBandBypass[(size_t) band])
+                continue;
 
-            float bands[4] = { low, lowMid, midHigh, top };
+            const float degree =
+                juce::jlimit(0.f, 100.f, p.ottDegree[(size_t) band]);
+            if (degree <= 0.0001f)
+                continue;
 
-            for (int band = 0; band < 4; ++band)
-            {
-                if (p.ottBandBypass[(size_t) band])
-                    continue;
+            auto& state = ottDynamics[(size_t) band];
 
-                const float degree =
-                    juce::jlimit(0.f, 100.f, p.ottDegree[(size_t) band]);
-
-                if (degree <= 0.0001f)
-                    continue;
-
-                auto& state = ottDynamics[(size_t) band];
-                float& gateEnv = state.gateEnvDb[(size_t) ch];
-                float& lifterEnv = state.lifterEnv[(size_t) ch];
-                float& compEnv = state.compEnvDb[(size_t) ch];
-
-                // The existing GATE control is now independent per frequency band.
-                float v = applyGate(
-                    bands[band], gateEnv,
+            const float gateGain =
+                linkedGateGain(
+                    bandsL[band], bandsR[band],
+                    state.gateEnvDb,
                     p.ottGateThresholdDb, sr);
 
-                // Degree=0 means true unity ratio. Degree=100 reaches the
-                // OTT-style maximum ratios while preserving the user's
-                // existing per-band controls.
-                const float depth = degree / 100.f;
+            float vL = bandsL[band] * gateGain;
+            float vR = bandsR[band] * gateGain;
 
-                // Classic OTT-style scaling: upward reaches 4:1.
-                // Downward is intentionally much stronger, matching the
-                // documented Ableton/Xfer family character. The top band
-                // uses the slightly harder target.
-                const float downMaxRatio = band == 3 ? 100.f : kCompressorRatio;
-                const float downRatio =
-                    1.f + depth * (downMaxRatio - 1.f);
-                const float upRatio =
-                    1.f + depth * (kLifterRatio - 1.f);
+            const float depth = degree / 100.f;
+            const float downMaxRatio =
+                band == 3 ? 100.f : kCompressorRatio;
+            const float downRatio =
+                1.f + depth * (downMaxRatio - 1.f);
+            const float upRatio =
+                1.f + depth * (kLifterRatio - 1.f);
 
-                const float compMix =
-                    juce::jlimit(0.f, 100.f, p.ottCompMix[(size_t) band]);
-                const float lifterMix =
-                    juce::jlimit(0.f, 100.f, p.ottLifterMix[(size_t) band]);
+            const float compMix =
+                juce::jlimit(0.f, 100.f,
+                             p.ottCompMix[(size_t) band]) / 100.f;
+            const float lifterMix =
+                juce::jlimit(0.f, 100.f,
+                             p.ottLifterMix[(size_t) band]) / 100.f;
 
-                // Standard OTT order: downward first, upward second.
-                // Each stage has its own RMS detector state for this band/channel.
-                float downReleaseMs = p.ottCompRelease[(size_t) band];
-                const float downDb = rmsDetectPDR(
-                    v,
-                    state.downRmsPower[(size_t) ch],
-                    state.downSlowRmsPower[(size_t) ch],
+            float downReleaseMs =
+                p.ottCompRelease[(size_t) band];
+            const float downDb =
+                rmsDetectLinkedPDR(
+                    vL, vR,
+                    ottDownDetectorHP[(size_t) band],
+                    state.downRmsPower,
+                    state.downSlowRmsPower,
                     p.ottCompAttack[(size_t) band],
                     p.ottCompRelease[(size_t) band],
                     sr,
                     downReleaseMs);
 
-                v = applyCompressorFromDetectorDb(
-                    v, downDb, compEnv,
+            const float downGain =
+                linkedCompressorGain(
+                    downDb,
+                    state.compEnvDb,
                     p.ottCompThreshold[(size_t) band],
                     p.ottCompAttack[(size_t) band],
                     downReleaseMs,
-                    compMix, sr, downRatio);
+                    sr,
+                    downRatio);
 
-                float upReleaseMs = p.ottLifterRelease[(size_t) band];
-                const float upDb = rmsDetectPDR(
-                    v,
-                    state.upRmsPower[(size_t) ch],
-                    state.upSlowRmsPower[(size_t) ch],
+            const float downApplied =
+                downGain * compMix + (1.f - compMix);
+            vL *= downApplied;
+            vR *= downApplied;
+
+            float upReleaseMs =
+                p.ottLifterRelease[(size_t) band];
+            const float upDb =
+                rmsDetectLinkedPDR(
+                    vL, vR,
+                    ottUpDetectorHP[(size_t) band],
+                    state.upRmsPower,
+                    state.upSlowRmsPower,
                     p.ottLifterAttack[(size_t) band],
                     p.ottLifterRelease[(size_t) band],
                     sr,
                     upReleaseMs);
 
-                const float liftThreshold =
-                    juce::jmax(p.ottLifterThreshold[(size_t) band], -48.f);
-
-                v = applyLifterFromDetectorDb(
-                    v, upDb, lifterEnv,
+            const float liftThreshold =
+                juce::jmax(p.ottLifterThreshold[(size_t) band], -48.f);
+            const float upGain =
+                linkedLifterGain(
+                    upDb,
+                    state.lifterEnv,
                     liftThreshold,
                     p.ottLifterAttack[(size_t) band],
                     upReleaseMs,
-                    lifterMix, sr, upRatio);
+                    sr,
+                    upRatio);
 
-                v *= dbToGain(
-                    juce::jlimit(-24.f, 12.f,
-                        p.ottBandLevelDb[(size_t) band]));
+            const float upApplied =
+                upGain * lifterMix + (1.f - lifterMix);
+            vL *= upApplied;
+            vR *= upApplied;
 
-                bands[band] = v;
-            }
+            const float bandTrim =
+                dbToGain(juce::jlimit(
+                    -24.f, 12.f,
+                    p.ottBandLevelDb[(size_t) band]));
 
-            float wet = bands[0] + bands[1] + bands[2] + bands[3];
-
-            if (p.ottClipper)
-                wet = std::tanh(wet * 1.7f);
-
-            wet *= outputGain;
-
-            // Do not clip the OTT reconstruction here. The final true-peak
-            // lookahead limiter operates on the complete mixed programme.
-            data[n] =
-                original + globalMix * (wet - original);
+            bandsL[band] = vL * bandTrim;
+            bandsR[band] = vR * bandTrim;
         }
+
+        float wetL = bandsL[0] + bandsL[1] + bandsL[2] + bandsL[3];
+        float wetR = bandsR[0] + bandsR[1] + bandsR[2] + bandsR[3];
+
+        if (p.ottClipper)
+        {
+            wetL = masteringSoftClipper(wetL, 1.258925f, 0.50f);
+            wetR = masteringSoftClipper(wetR, 1.258925f, 0.50f);
+        }
+
+        wetL *= outputGain;
+        wetR *= outputGain;
+
+        leftData[n] =
+            originalL + globalMix * (wetL - originalL);
+
+        if (channels > 1)
+            rightData[n] =
+                originalR + globalMix * (wetR - originalR);
     }
 }
 
 void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
+    constexpr float detectorHPHz = 100.f;
+
     const float ax1 = 80.f;
     const float ax2 = 3000.f;
     const float ax3 = 9000.f;
@@ -996,6 +1044,10 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
     updateCrossover2nd(typeXover1, sr, ax1, typeQ);
     updateCrossover2nd(typeXover2, sr, ax2, typeQ);
     updateCrossover2nd(typeXover3, sr, ax3, typeQ);
+
+    for (int band = 0; band < 4; ++band)
+        updateHighPass(typeDetectorHP[(size_t) band],
+                       sr, detectorHPHz, 0.70710678);
 
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.atypeInputGainDb));
@@ -1008,112 +1060,141 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
     const float mix =
         juce::jlimit(0.f, 1.f, p.atypeMix / 100.f);
 
-    for (int ch = 0; ch < channels; ++ch)
+    auto* leftData = buffer.getWritePointer(0);
+    auto* rightData =
+        channels > 1 ? buffer.getWritePointer(1) : leftData;
+
+    for (int n = 0; n < buffer.getNumSamples(); ++n)
     {
-        auto* data = buffer.getWritePointer(ch);
-        const bool right = ch == 1;
+        const float inputL = leftData[n] * inputGain;
+        const float inputR = channels > 1 ? rightData[n] * inputGain : inputL;
 
-        for (int n = 0; n < buffer.getNumSamples(); ++n)
+        const float b1L = typeXover1.low(inputL, false);
+        const float b3L = typeXover2.high(inputL, false);
+        const float b4L = typeXover3.high(inputL, false);
+        const float b2L = inputL - b1L - b3L;
+
+        const float b1R = channels > 1 ? typeXover1.low(inputR, true) : b1L;
+        const float b3R = channels > 1 ? typeXover2.high(inputR, true) : b3L;
+        const float b4R = channels > 1 ? typeXover3.high(inputR, true) : b4L;
+        const float b2R = channels > 1 ? inputR - b1R - b3R : b2L;
+
+        const float bandsL[4] = { b1L, b2L, b3L, b4L };
+        const float bandsR[4] = { b1R, b2R, b3R, b4R };
+
+        float enhancementL = 0.f;
+        float enhancementR = 0.f;
+
+        for (int band = 0; band < 4; ++band)
         {
-            const float original = data[n];
-            const float x = original * inputGain;
+            if (p.atypeBandBypass[(size_t) band])
+                continue;
 
-            const float b1 = typeXover1.low(x, right);
-            const float b3 = typeXover2.high(x, right);
-            const float b4 = typeXover3.high(x, right);
-            const float b2 = x - b1 - b3;
+            const float degree =
+                juce::jlimit(0.f, 100.f,
+                             p.atypeDegree[(size_t) band]);
+            if (degree <= 0.f)
+                continue;
 
-            const float bands[4] = { b1, b2, b3, b4 };
-            float enhancement = 0.f;
+            const float detectedL =
+                typeDetectorHP[(size_t) band].process(
+                    bandsL[band], false);
+            const float detectedR =
+                typeDetectorHP[(size_t) band].process(
+                    bandsR[band], true);
 
-            for (int band = 0; band < 4; ++band)
+            const float magnitude =
+                std::max(std::abs(detectedL),
+                         std::abs(detectedR));
+
+            float& fastEnv = typeFastEnv[(size_t) band];
+            float& slowEnv = typeSlowEnv[(size_t) band];
+            float& gainState = typeDc[(size_t) band];
+
+            const float fastAlpha =
+                magnitude > fastEnv ? attackCoeff : releaseCoeff;
+            fastEnv =
+                fastAlpha * fastEnv
+                + (1.f - fastAlpha) * magnitude;
+
+            const float slowAlpha =
+                magnitude > slowEnv ? attackCoeff : releaseCoeff;
+            slowEnv =
+                slowAlpha * slowEnv
+                + (1.f - slowAlpha) * magnitude;
+
+            const float levelDb =
+                gainToDb(std::max(slowEnv, 1.0e-7f));
+            const float depth = degree / 100.f;
+            const float thresholdDb =
+                -56.f + 20.f * std::sqrt(depth);
+            const float ratio =
+                1.f + 15.f * std::sqrt(depth);
+            const float slope =
+                1.f - 1.f / juce::jmax(1.f, ratio);
+
+            const float kneeStart = thresholdDb - 3.f;
+            const float kneeEnd = thresholdDb + 3.f;
+
+            float targetGainDb = 0.f;
+            if (levelDb < kneeStart)
+                targetGainDb = (thresholdDb - levelDb) * slope;
+            else if (levelDb < kneeEnd)
             {
-                if (p.atypeBandBypass[(size_t) band])
-                    continue;
-
-                const float degree =
-                    juce::jlimit(0.f, 100.f, p.atypeDegree[(size_t) band]);
-                if (degree <= 0.f)
-                    continue;
-
-                const float magnitude = std::abs(bands[band]);
-                float& fastEnv = typeFastEnv[(size_t) band][(size_t) ch];
-                float& slowEnv = typeSlowEnv[(size_t) band][(size_t) ch];
-                float& gainState = typeDc[(size_t) band][(size_t) ch];
-
-                const float fastAlpha =
-                    magnitude > fastEnv ? attackCoeff : releaseCoeff;
-                fastEnv = fastAlpha * fastEnv
-                    + (1.f - fastAlpha) * magnitude;
-
-                const float slowAlpha =
-                    magnitude > slowEnv ? attackCoeff : releaseCoeff;
-                slowEnv = slowAlpha * slowEnv
-                    + (1.f - slowAlpha) * magnitude;
-
-                const float levelDb =
-                    gainToDb(std::max(slowEnv, 1.0e-7f));
-                const float depth = degree / 100.f;
-
-                const float thresholdDb =
-                    -56.f + 20.f * std::sqrt(depth);
-                const float ratio =
-                    1.f + 15.f * std::sqrt(depth);
-                const float slope =
-                    1.f - 1.f / juce::jmax(1.f, ratio);
-
-                const float kneeStart = thresholdDb - 3.f;
-                const float kneeEnd = thresholdDb + 3.f;
-
-                float targetGainDb = 0.f;
-                if (levelDb < kneeStart)
-                    targetGainDb =
-                        (thresholdDb - levelDb) * slope;
-                else if (levelDb < kneeEnd)
-                {
-                    const float xk = kneeEnd - levelDb;
-                    targetGainDb =
-                        slope / 12.f * xk * xk;
-                }
-
-                targetGainDb =
-                    juce::jlimit(0.f, 9.f, targetGainDb * depth);
-
-                const float gainAlpha =
-                    targetGainDb > gainState
-                        ? attackCoeff
-                        : releaseCoeff;
-                gainState =
-                    gainAlpha * gainState
-                    + (1.f - gainAlpha) * targetGainDb;
-
-                const float bandTrim =
-                    dbToGain(juce::jlimit(
-                        -6.f, 6.f,
-                        p.atypeBandLevelDb[(size_t) band]));
-
-                const float processed =
-                    bands[band]
-                    * dbToGain(gainState)
-                    * bandTrim;
-
-                enhancement += processed - bands[band];
+                const float xk = kneeEnd - levelDb;
+                targetGainDb = slope / 12.f * xk * xk;
             }
 
-            float delta = enhancement * mix;
+            targetGainDb =
+                juce::jlimit(0.f, 9.f,
+                             targetGainDb * depth);
 
-            if ((x > 0.f && delta > 0.f) || (x < 0.f && delta < 0.f))
-            {
-                const float headroom = 0.985f - std::abs(x);
-                if (headroom <= 0.f)
-                    delta = 0.f;
-                else
-                    delta = std::copysign(
-                        std::min(std::abs(delta), headroom), delta);
-            }
+            const float gainAlpha =
+                targetGainDb > gainState ? attackCoeff : releaseCoeff;
 
-            data[n] = (x + delta) * outputGain;
+            gainState =
+                gainAlpha * gainState
+                + (1.f - gainAlpha) * targetGainDb;
+
+            const float bandTrim =
+                dbToGain(juce::jlimit(
+                    -6.f, 6.f,
+                    p.atypeBandLevelDb[(size_t) band]));
+
+            const float sharedGain =
+                dbToGain(gainState) * bandTrim;
+
+            enhancementL +=
+                bandsL[band] * (sharedGain - 1.f);
+            enhancementR +=
+                bandsR[band] * (sharedGain - 1.f);
         }
+
+        float deltaL = enhancementL * mix;
+        float deltaR = enhancementR * mix;
+
+        if ((inputL > 0.f && deltaL > 0.f)
+            || (inputL < 0.f && deltaL < 0.f))
+        {
+            const float headroom = 0.985f - std::abs(inputL);
+            deltaL = headroom > 0.f
+                ? std::copysign(std::min(std::abs(deltaL), headroom), deltaL)
+                : 0.f;
+        }
+
+        if (channels > 1
+            && ((inputR > 0.f && deltaR > 0.f)
+                || (inputR < 0.f && deltaR < 0.f)))
+        {
+            const float headroom = 0.985f - std::abs(inputR);
+            deltaR = headroom > 0.f
+                ? std::copysign(std::min(std::abs(deltaR), headroom), deltaR)
+                : 0.f;
+        }
+
+        leftData[n] = (inputL + deltaL) * outputGain;
+        if (channels > 1)
+            rightData[n] = (inputR + deltaR) * outputGain;
     }
 }
 
