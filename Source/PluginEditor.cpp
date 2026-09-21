@@ -697,7 +697,7 @@ void VVChainAudioProcessorEditor::drawCard(
         g.setColour(uiColour(juce::Colour(0xff67d3aa)).withAlpha(.55f));
         for (int i = 0; i < 3; ++i)
         {
-            const float y = r.getY() + 106.f + i * 88.f;
+            const float y = r.getY() + 132.f + i * 88.f;
             juce::Path chevron;
             chevron.startNewSubPath(r.getCentreX() - 4.f, y);
             chevron.lineTo(r.getCentreX(), y + 4.f);
