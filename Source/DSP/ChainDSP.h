@@ -145,7 +145,8 @@ private:
     static float gainToDb(float gain) noexcept;
     static float timeCoeff(double sampleRate, float ms) noexcept;
     static float analogColor(float x, float amount01, bool solidState,
-                             float& previousInput, float& evenDc) noexcept;
+                             float& previousInput, float& evenDc,
+                             float& levelPower, double sampleRate) noexcept;
 
     static float rmsDetect(float input, float& power, float attackMs, float releaseMs,
                            double sampleRate) noexcept;
@@ -180,6 +181,7 @@ private:
     std::array<Biquad, 4> eq {};
     std::array<std::array<float, 2>, 4> analogPreviousInput {};
     std::array<std::array<float, 2>, 4> analogEvenDc {};
+    std::array<std::array<float, 2>, 4> analogLevelPower {};
 
     Crossover4th ottXover1 {};
     Crossover4th ottXover2 {};
