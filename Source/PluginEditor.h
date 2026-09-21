@@ -82,6 +82,10 @@ private:
     std::array<std::unique_ptr<juce::ToggleButton>, 5> bypassButtons;
     std::array<std::unique_ptr<BoolAttachment>, 5> bypassAttachments;
     std::array<std::unique_ptr<juce::TextButton>, 4> advancedButtons;
+    std::array<std::unique_ptr<juce::ToggleButton>, 4> ottBandBypassButtons;
+    std::array<std::unique_ptr<juce::ToggleButton>, 4> atypeBandBypassButtons;
+    std::array<std::unique_ptr<BoolAttachment>, 4> ottBandBypassAttachments;
+    std::array<std::unique_ptr<BoolAttachment>, 4> atypeBandBypassAttachments;
 
     std::unique_ptr<juce::ToggleButton> ottClipper;
     std::unique_ptr<BoolAttachment> ottClipperAttachment;
