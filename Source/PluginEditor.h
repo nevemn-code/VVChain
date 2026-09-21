@@ -67,6 +67,7 @@ private:
 
     juce::Rectangle<float> eqGraphBounds() const;
     float graphFrequencyToX(const juce::Rectangle<float>&, float hz) const;
+    float constrainXoverFrequency(int index, float hz) const;
     float graphXToFrequency(const juce::Rectangle<float>&, float x) const;
     float eqDbToY(const juce::Rectangle<float>&, float db) const;
     void drawEqGraph(juce::Graphics&, juce::Rectangle<float>);
@@ -82,6 +83,10 @@ private:
     std::vector<Knob> knobs;
     std::array<std::unique_ptr<juce::ToggleButton>, 5> bypassButtons;
     std::array<std::unique_ptr<BoolAttachment>, 5> bypassAttachments;
+    std::unique_ptr<juce::ToggleButton> masterBypassButton;
+    std::unique_ptr<BoolAttachment> masterBypassAttachment;
+    std::unique_ptr<juce::ToggleButton> deessBypassButton;
+    std::unique_ptr<BoolAttachment> deessBypassAttachment;
     std::array<std::unique_ptr<juce::TextButton>, 4> advancedButtons;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> ottBandBypassButtons;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> atypeBandBypassButtons;
@@ -94,6 +99,7 @@ private:
 
     int expandedBand = -1;
     int dragBand = -1;
+    int dragXover = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VVChainAudioProcessorEditor)
 };
