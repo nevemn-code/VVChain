@@ -37,7 +37,7 @@ required = [
     "bandBypass", "BAND ", "deessZone", "Math.exp(steps*.025)",
     'addEventListener("wheel"', "grid-template-columns:repeat(5,1fr)",
     "OTT：亮=啟用；按下=BYPASS", "TYPE-A：亮=啟用；按下=BYPASS",
-    "NO PAGE SCROLL", "s.freq", "const avg=s.type.degree.reduce",
+    "NO PAGE SCROLL", "s.freq", "typeFast", "typeSlow", "typeDc", "transientRatio",
 
 ]
 for token in required:
