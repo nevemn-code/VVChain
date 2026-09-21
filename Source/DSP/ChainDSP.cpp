@@ -14,8 +14,11 @@ static constexpr int kMasterBypassRampSamples = 64;
 
 float crossoverQFromOverlap(float overlap)
 {
-    const float t = juce::jlimit(0.f, 100.f, overlap) / 100.f;
-    return 0.90f - 0.35f * t;
+    // LR4 requires each 2nd-order Butterworth section to use Q = 1/sqrt(2).
+    // Keep the UI overlap control for the crossover display/spacing, but do
+    // not let it alter the reconstruction filter Q and therefore the phase.
+    juce::ignoreUnused(overlap);
+    return 0.70710678f;
 }
 }
 
@@ -345,6 +348,9 @@ void VVChainDSP::reset()
     typeXover1.reset();
     typeXover2.reset();
     typeXover3.reset();
+    typePhase2_B1.reset();
+    typePhase3_B1.reset();
+    typePhase3_B2.reset();
 
     deessSplit.reset();
 
@@ -760,14 +766,25 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
 void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    const float ax1 = 80.f;
-    const float ax2 = 3000.f;
-    const float ax3 = 9000.f;
-    const float typeQ = 0.70710678f;
+    const float tx1 =
+        juce::jlimit(40.f, 1000.f, p.ottX1);
+    const float tx2 =
+        juce::jlimit(tx1 + 80.f, 5000.f, p.ottX2);
+    const float tx3 =
+        juce::jlimit(tx2 + 200.f,
+                     static_cast<float>(sr * 0.42),
+                     p.ottX3);
+    constexpr float typeQ = 0.70710678f;
 
-    updateCrossover2nd(typeXover1, sr, ax1, typeQ);
-    updateCrossover2nd(typeXover2, sr, ax2, typeQ);
-    updateCrossover2nd(typeXover3, sr, ax3, typeQ);
+    updateCrossover(typeXover1, sr, tx1, typeQ);
+    updateCrossover(typeXover2, sr, tx2, typeQ);
+    updateCrossover(typeXover3, sr, tx3, typeQ);
+
+    // These compensators are persistent members, not stack temporaries:
+    // their IIR state must continue across audio blocks.
+    updateCrossover(typePhase2_B1, sr, tx2, typeQ);
+    updateCrossover(typePhase3_B1, sr, tx3, typeQ);
+    updateCrossover(typePhase3_B2, sr, tx3, typeQ);
 
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.atypeInputGainDb));
@@ -777,8 +794,18 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
         timeCoeff(sr, juce::jlimit(1.f, 100.f, p.atypeAttackMs));
     const float releaseCoeff =
         timeCoeff(sr, juce::jlimit(20.f, 500.f, p.atypeReleaseMs));
+    const float slowCoeff =
+        timeCoeff(sr,
+                  juce::jlimit(10.f, 1000.f,
+                               p.atypeReleaseMs * 1.75f));
+    const float dcCoeff = timeCoeff(sr, 20.f);
     const float mix =
         juce::jlimit(0.f, 1.f, p.atypeMix / 100.f);
+
+    constexpr std::array<float, 4> evenWeight
+    {
+        0.68f, 0.54f, 0.34f, 0.18f
+    };
 
     for (int ch = 0; ch < channels; ++ch)
     {
@@ -790,13 +817,25 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
             const float original = data[n];
             const float x = original * inputGain;
 
-            const float b1 = typeXover1.low(x, right);
-            const float b3 = typeXover2.high(x, right);
-            const float b4 = typeXover3.high(x, right);
-            const float b2 = x - b1 - b3;
+            // Serial LR4 split:
+            // B1 = X1-LP, B2 = X1-HP -> X2-LP,
+            // B3 = X1-HP -> X2-HP -> X3-LP,
+            // B4 = X1-HP -> X2-HP -> X3-HP.
+            const float b1 =
+                typeXover1.low(x, right);
+            const float x1High =
+                typeXover1.high(x, right);
+            const float b2 =
+                typeXover2.low(x1High, right);
+            const float x2High =
+                typeXover2.high(x1High, right);
+            const float b3 =
+                typeXover3.low(x2High, right);
+            const float b4 =
+                typeXover3.high(x2High, right);
 
             const float bands[4] = { b1, b2, b3, b4 };
-            float enhancement = 0.f;
+            float harmonicBands[4] = { 0.f, 0.f, 0.f, 0.f };
 
             for (int band = 0; band < 4; ++band)
             {
@@ -804,87 +843,132 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
                     continue;
 
                 const float degree =
-                    juce::jlimit(0.f, 100.f, p.atypeDegree[(size_t) band]);
+                    juce::jlimit(0.f, 100.f,
+                                 p.atypeDegree[(size_t) band]);
+
                 if (degree <= 0.f)
                     continue;
 
-                const float magnitude = std::abs(bands[band]);
-                float& fastEnv = typeFastEnv[(size_t) band][(size_t) ch];
-                float& slowEnv = typeSlowEnv[(size_t) band][(size_t) ch];
-                float& gainState = typeDc[(size_t) band][(size_t) ch];
+                const float input = bands[band];
+                const float magnitude = std::abs(input);
+
+                float& fastEnv =
+                    typeFastEnv[(size_t) band][(size_t) ch];
+                float& slowEnv =
+                    typeSlowEnv[(size_t) band][(size_t) ch];
+                float& dc =
+                    typeEvenDc[(size_t) band][(size_t) ch];
 
                 const float fastAlpha =
-                    magnitude > fastEnv ? attackCoeff : releaseCoeff;
-                fastEnv = fastAlpha * fastEnv
-                    + (1.f - fastAlpha) * magnitude;
-
-                const float slowAlpha =
-                    magnitude > slowEnv ? attackCoeff : releaseCoeff;
-                slowEnv = slowAlpha * slowEnv
-                    + (1.f - slowAlpha) * magnitude;
-
-                const float levelDb =
-                    gainToDb(std::max(slowEnv, 1.0e-7f));
-                const float depth = degree / 100.f;
-
-                const float thresholdDb =
-                    -56.f + 20.f * std::sqrt(depth);
-                const float ratio =
-                    1.f + 15.f * std::sqrt(depth);
-                const float slope =
-                    1.f - 1.f / juce::jmax(1.f, ratio);
-
-                const float kneeStart = thresholdDb - 3.f;
-                const float kneeEnd = thresholdDb + 3.f;
-
-                float targetGainDb = 0.f;
-                if (levelDb < kneeStart)
-                    targetGainDb =
-                        (thresholdDb - levelDb) * slope;
-                else if (levelDb < kneeEnd)
-                {
-                    const float xk = kneeEnd - levelDb;
-                    targetGainDb =
-                        slope / 12.f * xk * xk;
-                }
-
-                targetGainDb =
-                    juce::jlimit(0.f, 9.f, targetGainDb * depth);
-
-                const float gainAlpha =
-                    targetGainDb > gainState
+                    magnitude > fastEnv
                         ? attackCoeff
                         : releaseCoeff;
-                gainState =
-                    gainAlpha * gainState
-                    + (1.f - gainAlpha) * targetGainDb;
+                fastEnv =
+                    fastAlpha * fastEnv
+                    + (1.f - fastAlpha) * magnitude;
 
-                const float bandTrim =
-                    dbToGain(juce::jlimit(
-                        -6.f, 6.f,
-                        p.atypeBandLevelDb[(size_t) band]));
+                slowEnv =
+                    slowCoeff * slowEnv
+                    + (1.f - slowCoeff) * magnitude;
 
-                const float processed =
-                    bands[band]
-                    * dbToGain(gainState)
-                    * bandTrim;
+                const float slowSafe =
+                    std::max(slowEnv, 1.0e-7f);
 
-                enhancement += processed - bands[band];
+                const float transientRatio =
+                    fastEnv / slowSafe;
+                const float transient =
+                    juce::jlimit(
+                        0.f, 1.f,
+                        (transientRatio - 1.f) * 3.5f);
+
+                const float levelFactor =
+                    juce::jlimit(
+                        0.f, 1.25f,
+                        (gainToDb(slowSafe) + 48.f) / 36.f);
+
+                const float amount =
+                    (degree / 100.f)
+                    * (0.10f + 0.90f * transient);
+
+                if (amount <= 1.0e-6f)
+                    continue;
+
+                // Keep the nonlinear normalization bounded during startup
+                // and silence. This prevents a zero-envelope sample from
+                // exploding into a huge artificial harmonic burst.
+                const float norm =
+                    juce::jlimit(
+                        -4.0f, 4.0f,
+                        input / std::max(slowEnv, 1.0e-5f));
+
+                const float drive =
+                    1.10f
+                    + 4.20f * (degree / 100.f)
+                    * (0.35f + 0.65f * levelFactor);
+
+                const float linearRef =
+                    std::tanh(drive);
+
+                const float oddShape =
+                    linearRef > 1.0e-6f
+                        ? std::tanh(norm * drive) / linearRef
+                        : norm;
+
+                const float evenRaw =
+                    0.5f * norm * norm;
+
+                dc =
+                    dcCoeff * dc
+                    + (1.f - dcCoeff) * evenRaw;
+
+                const float ew =
+                    evenWeight[(size_t) band];
+
+                float harmonic =
+                    (1.f - ew) * (oddShape - norm)
+                    + ew * (evenRaw - dc);
+
+                harmonic =
+                    std::tanh(harmonic * 1.5f) / 1.5f;
+
+                harmonicBands[(size_t) band] =
+                    harmonic
+                    * magnitude
+                    * amount
+                    * (0.20f + 0.80f * levelFactor)
+                    * dbToGain(
+                        juce::jlimit(
+                            -6.f, 6.f,
+                            p.atypeBandLevelDb[(size_t) band]));
             }
 
-            float delta = enhancement * mix;
+            // Equalize crossover-path depth before summing the bands.
+            // Band 1 skips X2/X3, so give it both corresponding all-pass
+            // paths. Band 2 skips X3 and gets only X3's all-pass path.
+            const float h1 =
+                typePhase2_B1.allPass(
+                    harmonicBands[0] + b1, right);
+            const float h1Aligned =
+                typePhase3_B1.allPass(h1, right);
 
-            if ((x > 0.f && delta > 0.f) || (x < 0.f && delta < 0.f))
-            {
-                const float headroom = 0.985f - std::abs(x);
-                if (headroom <= 0.f)
-                    delta = 0.f;
-                else
-                    delta = std::copysign(
-                        std::min(std::abs(delta), headroom), delta);
-            }
+            const float h2Aligned =
+                typePhase3_B2.allPass(
+                    harmonicBands[1] + b2, right);
 
-            data[n] = (x + delta) * outputGain;
+            const float h3Aligned =
+                harmonicBands[2] + b3;
+            const float h4Aligned =
+                harmonicBands[3] + b4;
+
+            const float phaseAlignedProcessed =
+                h1Aligned
+                + h2Aligned
+                + h3Aligned
+                + h4Aligned;
+
+            data[n] =
+                (x + (phaseAlignedProcessed - x) * mix)
+                * outputGain;
         }
     }
 }
