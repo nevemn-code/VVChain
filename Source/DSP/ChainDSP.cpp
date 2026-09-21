@@ -400,20 +400,9 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
     const float xoverQ = crossoverQFromOverlap(p.ottXoverOverlap);
 
-    ottXover1.lp1 = makeLowPass(sr, x1, xoverQ);
-    ottXover1.lp2 = makeLowPass(sr, x1, xoverQ);
-    ottXover1.hp1 = makeHighPass(sr, x1, xoverQ);
-    ottXover1.hp2 = makeHighPass(sr, x1, xoverQ);
-
-    ottXover2.lp1 = makeLowPass(sr, x2, xoverQ);
-    ottXover2.lp2 = makeLowPass(sr, x2, xoverQ);
-    ottXover2.hp1 = makeHighPass(sr, x2, xoverQ);
-    ottXover2.hp2 = makeHighPass(sr, x2, xoverQ);
-
-    ottXover3.lp1 = makeLowPass(sr, x3, xoverQ);
-    ottXover3.lp2 = makeLowPass(sr, x3, xoverQ);
-    ottXover3.hp1 = makeHighPass(sr, x3, xoverQ);
-    ottXover3.hp2 = makeHighPass(sr, x3, xoverQ);
+    updateCrossover(ottXover1, sr, x1, xoverQ);
+    updateCrossover(ottXover2, sr, x2, xoverQ);
+    updateCrossover(ottXover3, sr, x3, xoverQ);
 
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.ottInputGainDb));
