@@ -409,35 +409,40 @@ def source_structure_checks():
     assert 'addKnob("DRY_WET", "MIX"' in editor
     assert 'addKnob("OUTPUT_LEVEL", "OUT"' in editor
     assert "void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;" in editor_h
-    # Four-band Type-A now follows the shared OTT X1/X2/X3 crossover.
-    assert "const float tx1 = juce::jlimit" in cpp
-    assert "const float tx2 = juce::jlimit" in cpp
-    assert "const float tx3 = juce::jlimit" in cpp
-    assert "crossoverQFromOverlap(p.ottXoverOverlap)" in cpp
-    assert "Crossover4th typeXover3" in text["dsp_h"]
-    assert "typeFastEnv" in text["dsp_h"]
-    assert "typeSlowEnv" in text["dsp_h"]
-    assert "typeDc" in text["dsp_h"]
-    assert "const float harmonicSum" in cpp
-    assert "const float transientRatio" in cpp
-    assert "const float levelFactor" in cpp
-    assert "std::tanh(norm * drive)" in cpp
-    assert "0.10f + 0.90f * transient" in cpp
-    assert "if (p.atypeBandBypass[(size_t) band])" in cpp
-    assert "directDb" not in cpp
-    assert "averageAmount" not in cpp
-    assert "processed = base + enhanced * mix" not in cpp
-    # True four-band OTT: each band has its own gate/detector state,
-    # downward-first/upward-second order, and unity at degree=0.
-    assert "std::array<float, 2> gateEnvDb" in text["dsp_h"]
-    assert "const float downRatio" in cpp
-    assert "const float upRatio" in cpp
-    assert "v = applyCompressor(" in cpp
-    assert "v = applyLifter(" in cpp
-    assert "gateEnv" in cpp
-    assert "applyGate(original" not in cpp
-    assert "if (degree <= 0.0001f)" in cpp
-    assert "if (p.ottBandBypass[(size_t) band])" in cpp
+    # Four-band Type-A: fixed 80 / 3 kHz / 9 kHz topology, stereo-linked detector.
+    assert "const float ax1 = 80.f" in cpp
+    assert "const float ax2 = 3000.f" in cpp
+    assert "const float ax3 = 9000.f" in cpp
+    assert "Crossover2nd typeXover3" in text["dsp_h"]
+    assert "std::array<float, 4> typeFastEnv" in text["dsp_h"]
+    assert "std::array<float, 4> typeSlowEnv" in text["dsp_h"]
+    assert "std::array<float, 4> typeDc" in text["dsp_h"]
+    assert "typeDetectorHP" in text["dsp_h"]
+    assert "const float magnitude =" in cpp
+    assert "std::max(std::abs(detectedL)" in cpp
+    assert "sharedGain" in cpp
+    assert "harmonicSum" not in cpp
+
+    # OTT uses one shared detector/gain envelope per band.
+    assert "float gateEnvDb = 0.f;" in text["dsp_h"]
+    assert "float lifterEnv = 1.f;" in text["dsp_h"]
+    assert "float compEnvDb = 0.f;" in text["dsp_h"]
+    assert "ottDownDetectorHP" in text["dsp_h"]
+    assert "ottUpDetectorHP" in text["dsp_h"]
+    assert "rmsDetectLinkedPDR" in cpp
+    assert "linkedCompressorGain" in cpp
+    assert "linkedLifterGain" in cpp
+    assert "linkedGateGain" in cpp
+    assert "std::max(leftDetector * leftDetector" in cpp
+    assert "vL *= downApplied" in cpp
+    assert "vR *= downApplied" in cpp
+    assert "vL *= upApplied" in cpp
+    assert "vR *= upApplied" in cpp
+    assert "masteringSoftClipper" in cpp
+    assert "std::tanh(wet * 1.7f)" not in cpp
+    assert "updateHighPass(ottDownDetectorHP" in cpp
+    assert "updateHighPass(ottUpDetectorHP" in cpp
+    assert "updateHighPass(typeDetectorHP" in cpp
     assert "亮 = 啟用；按下 = BYPASS" in text["editor_cpp"]
 
 
@@ -538,6 +543,9 @@ def realtime_safety_checks():
     assert "G1" in cpp
     assert "rmsDetectPDR" in cpp
     assert "programReleaseMs" in cpp
+    assert "analogDcLastInput" in cpp
+    assert "analogDcLastOutput" in cpp
+    assert "twoPi * 5.0f / safeRate" in cpp
     assert "updateCrossover(deessSplit" in cpp
     assert "lowBand + highBand * dbToGain(-state.gainDb)" in cpp
     # OTT/A-Type/analog-color regression invariants.
