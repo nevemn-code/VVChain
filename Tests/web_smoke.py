@@ -53,6 +53,8 @@ assert 'bypassLed("TAPE-A"' in text
 assert 'bypassLed("DE-ESS"' in text
 assert "this.N=512" in text
 assert "DE-ESSER no longer uses FFT/block buffering" in text or "DE-ESSER = ZERO-LATENCY SAMPLE-DOMAIN" in text
+assert "hp(f,q=.707)" in worklet
+assert "this.hp(this.clamp(Number(this.s.de.freq||8000)" in worklet
 assert "fft(re,im,inv)" not in worklet and "this.fft(" not in worklet
 assert "dryQueue" not in worklet
 
