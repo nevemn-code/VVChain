@@ -676,30 +676,41 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
                 // Standard OTT order: downward first, upward second.
                 // Each stage has its own RMS detector state for this band/channel.
-                const float downRms = rmsDetect(
-                    v, state.downRmsPower[(size_t) ch],
+                float downReleaseMs = p.ottCompRelease[(size_t) band];
+                const float downDb = rmsDetectPDR(
+                    v,
+                    state.downRmsPower[(size_t) ch],
+                    state.downSlowRmsPower[(size_t) ch],
                     p.ottCompAttack[(size_t) band],
-                    p.ottCompRelease[(size_t) band], sr);
-                const float downDb = gainToDb(downRms);
+                    p.ottCompRelease[(size_t) band],
+                    sr,
+                    downReleaseMs);
+
                 v = applyCompressorFromDetectorDb(
                     v, downDb, compEnv,
                     p.ottCompThreshold[(size_t) band],
                     p.ottCompAttack[(size_t) band],
-                    p.ottCompRelease[(size_t) band],
+                    downReleaseMs,
                     compMix, sr, downRatio);
 
-                const float upRms = rmsDetect(
-                    v, state.upRmsPower[(size_t) ch],
+                float upReleaseMs = p.ottLifterRelease[(size_t) band];
+                const float upDb = rmsDetectPDR(
+                    v,
+                    state.upRmsPower[(size_t) ch],
+                    state.upSlowRmsPower[(size_t) ch],
                     p.ottLifterAttack[(size_t) band],
-                    p.ottLifterRelease[(size_t) band], sr);
-                const float upDb = gainToDb(upRms);
+                    p.ottLifterRelease[(size_t) band],
+                    sr,
+                    upReleaseMs);
+
                 const float liftThreshold =
                     juce::jmax(p.ottLifterThreshold[(size_t) band], -48.f);
+
                 v = applyLifterFromDetectorDb(
                     v, upDb, lifterEnv,
                     liftThreshold,
                     p.ottLifterAttack[(size_t) band],
-                    p.ottLifterRelease[(size_t) band],
+                    upReleaseMs,
                     lifterMix, sr, upRatio);
 
                 v *= dbToGain(
@@ -715,9 +726,9 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 wet = std::tanh(wet * 1.7f);
 
             wet *= outputGain;
-            wet = applyLimiter(
-                wet, limiterEnvDb[(size_t) ch], sr);
 
+            // Do not clip the OTT reconstruction here. The final true-peak
+            // lookahead limiter operates on the complete mixed programme.
             data[n] =
                 original + globalMix * (wet - original);
         }
