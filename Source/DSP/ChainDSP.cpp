@@ -171,8 +171,9 @@ float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
 }
 
 float VVChainDSP::analogColor(float x, float amount01, bool solidState,
-                                    float& previousInput, float& evenDc,
-                                    float& levelPower, double sampleRate) noexcept
+                                    float& previousInput, float& dcLastInput,
+                                    float& dcLastOutput, float& levelPower,
+                                    double sampleRate) noexcept
 {
     const float a = juce::jlimit(0.f, 1.f, amount01);
     const float safeRate = static_cast<float>(std::max(8000.0, sampleRate));
@@ -199,7 +200,6 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
 
     if (solidState)
     {
-        // SS: symmetric soft knee, restrained upper-order content.
         const float drive = 1.15f + 2.15f * amount;
         const float norm = std::tanh(drive);
         shaped = norm > 1.0e-6f
@@ -209,7 +209,6 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
     }
     else
     {
-        // TT: smooth asymmetric curve, with DC tracked below.
         const float drive = 0.95f + 1.75f * amount;
         const float asymmetric =
             u + 0.055f * u * u;
@@ -222,17 +221,20 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
     float delta =
         amount * (shaped - u) * level;
 
-    const float dcAlpha =
-        std::exp(-1.0f / (0.200f * safeRate));
-    evenDc =
-        dcAlpha * evenDc
-        + (1.0f - dcAlpha) * delta;
-    delta -= evenDc;
+    // Remove DC from the nonlinear colour contribution with an actual
+    // one-pole DC blocker. The pole is calculated from a 5 Hz target,
+    // so the coefficient remains correct at 44.1/48/96/192 kHz and
+    // is not the incorrect fixed R=0.995 approximation.
+    const float r =
+        std::exp(-juce::MathConstants<float>::twoPi * 5.0f / safeRate);
 
-    // Hard limiting is deliberately avoided here. The FIR 4x oversampler
-    // around this nonlinear stage removes out-of-band products; this small
-    // headroom bound only prevents a colour stage from exceeding the input
-    // peak when there is insufficient internal headroom.
+    const float dcFiltered =
+        delta - dcLastInput + r * dcLastOutput;
+
+    dcLastInput = delta;
+    dcLastOutput = dcFiltered;
+    delta = dcFiltered;
+
     if ((x > 0.f && delta > 0.f)
         || (x < 0.f && delta < 0.f))
     {
@@ -415,6 +417,237 @@ float VVChainDSP::rmsDetectPDR(float input,
     return gainToDb(std::sqrt(std::max(finalPower, 1.0e-12f)));
 }
 
+float VVChainDSP::rmsDetectLinkedPDR(float left,
+                                       float right,
+                                       Biquad& sidechainHP,
+                                       float& fastPower,
+                                       float& slowPower,
+                                       float attackMs,
+                                       float releaseMs,
+                                       double sampleRate,
+                                       float& programReleaseMs) noexcept
+{
+    const float leftDetector =
+        sidechainHP.process(left, false);
+    const float rightDetector =
+        sidechainHP.process(right, true);
+
+    const float linkedTargetPower =
+        std::max(leftDetector * leftDetector,
+                 rightDetector * rightDetector);
+
+    const float fastAttack = timeCoeff(sampleRate, attackMs);
+    const float fastRelease =
+        timeCoeff(sampleRate, juce::jmax(0.5f, releaseMs * 0.35f));
+    const float slowAttack =
+        timeCoeff(sampleRate, juce::jmax(attackMs * 4.0f, 5.0f));
+    const float slowRelease =
+        timeCoeff(sampleRate, juce::jmax(releaseMs * 1.75f, 20.0f));
+
+    const bool fastRising = linkedTargetPower > fastPower;
+    const bool slowRising = linkedTargetPower > slowPower;
+    const float fastCoeff = fastRising ? fastAttack : fastRelease;
+    const float slowCoeff = slowRising ? slowAttack : slowRelease;
+
+    fastPower =
+        fastCoeff * fastPower
+        + (1.0f - fastCoeff) * linkedTargetPower;
+    slowPower =
+        slowCoeff * slowPower
+        + (1.0f - slowCoeff) * linkedTargetPower;
+
+    const float fastDb =
+        gainToDb(std::sqrt(std::max(fastPower, 1.0e-12f)));
+    const float slowDb =
+        gainToDb(std::sqrt(std::max(slowPower, 1.0e-12f)));
+    const float crestDb = fastDb - slowDb;
+
+    const float transientBlend =
+        juce::jlimit(0.0f, 1.0f, (crestDb - 1.0f) / 8.0f);
+
+    programReleaseMs =
+        releaseMs
+        * juce::jlimit(0.20f, 2.0f,
+                       2.0f - 1.80f * transientBlend);
+
+    const float finalPower =
+        fastPower * transientBlend
+        + slowPower * (1.0f - transientBlend);
+
+    return gainToDb(
+        std::sqrt(std::max(finalPower, 1.0e-12f)));
+}
+
+float VVChainDSP::linkedGateGain(float left,
+                                 float right,
+                                 float& envDb,
+                                 float thresholdDb,
+                                 double sampleRate) noexcept
+{
+    constexpr float kneeDb = kGateKneeDb;
+    const float detectorDb =
+        gainToDb(std::max(std::abs(left), std::abs(right)));
+
+    const float ratioSlope = kGateRatio - 1.0f;
+    const float kneeStart = thresholdDb - kneeDb * 0.5f;
+    const float kneeEnd = thresholdDb + kneeDb * 0.5f;
+
+    float targetGainDb = 0.f;
+    if (detectorDb < kneeStart)
+        targetGainDb = (detectorDb - thresholdDb) * ratioSlope;
+    else if (detectorDb < kneeEnd)
+    {
+        const float t =
+            juce::jlimit(0.f, 1.f,
+                         (detectorDb - kneeStart) / kneeDb);
+        const float hardGainDb =
+            (detectorDb - thresholdDb) * ratioSlope;
+        targetGainDb =
+            hardGainDb * (1.f - t) * (1.f - t);
+    }
+
+    targetGainDb = std::min(0.f, targetGainDb);
+
+    const float attack = timeCoeff(sampleRate, 100.f);
+    const float release = timeCoeff(sampleRate, 30.f);
+    const float alpha =
+        targetGainDb < envDb ? attack : release;
+
+    envDb =
+        alpha * envDb
+        + (1.f - alpha) * targetGainDb;
+
+    return 0.90f * dbToGain(envDb) + 0.10f;
+}
+
+float VVChainDSP::linkedCompressorGain(float detectorDb,
+                                       float& envDb,
+                                       float thresholdDb,
+                                       float attackMs,
+                                       float releaseMs,
+                                       double sampleRate,
+                                       float ratio) noexcept
+{
+    const float slope =
+        1.0f - (1.0f / juce::jmax(1.0f, ratio));
+
+    const float kneeStart =
+        thresholdDb - kCompressorKneeDb * 0.5f;
+    const float kneeEnd =
+        thresholdDb + kCompressorKneeDb * 0.5f;
+
+    float targetReductionDb = 0.f;
+    if (detectorDb > kneeEnd)
+        targetReductionDb =
+            (detectorDb - thresholdDb) * slope;
+    else if (detectorDb > kneeStart)
+    {
+        const float x = detectorDb - kneeStart;
+        targetReductionDb =
+            slope / (2.0f * kCompressorKneeDb) * x * x;
+    }
+
+    const float currentReductionDb = -envDb;
+    const float alpha =
+        targetReductionDb > currentReductionDb
+            ? timeCoeff(sampleRate, attackMs)
+            : timeCoeff(sampleRate, releaseMs);
+
+    envDb =
+        -juce::jlimit(
+            0.f, 60.f,
+            alpha * currentReductionDb
+                + (1.0f - alpha) * targetReductionDb);
+
+    return dbToGain(envDb);
+}
+
+float VVChainDSP::linkedLifterGain(float detectorDb,
+                                   float& env,
+                                   float thresholdDb,
+                                   float attackMs,
+                                   float releaseMs,
+                                   double sampleRate,
+                                   float ratio) noexcept
+{
+    const float safeRatio =
+        juce::jmax(1.0f, ratio);
+    const float slope =
+        1.0f - (1.0f / safeRatio);
+
+    const float kneeStart =
+        thresholdDb - kLifterKneeDb * 0.5f;
+    const float kneeEnd =
+        thresholdDb + kLifterKneeDb * 0.5f;
+
+    float targetGainDb = 0.f;
+    if (detectorDb < kneeStart)
+        targetGainDb =
+            (thresholdDb - detectorDb) * slope;
+    else if (detectorDb < kneeEnd)
+    {
+        const float x = kneeEnd - detectorDb;
+        targetGainDb =
+            slope / (2.0f * kLifterKneeDb) * x * x;
+    }
+
+    const float targetLinear =
+        dbToGain(juce::jlimit(0.f, 9.f, targetGainDb));
+
+    const float attack =
+        timeCoeff(sampleRate, attackMs);
+    const float release =
+        timeCoeff(sampleRate, releaseMs);
+
+    const float alpha =
+        targetLinear > env ? attack : release;
+
+    env =
+        alpha * env
+        + (1.0f - alpha) * targetLinear;
+
+    return env;
+}
+
+float VVChainDSP::masteringSoftClipper(float input,
+                                       float drive,
+                                       float knee) noexcept
+{
+    const float safeDrive = juce::jmax(1.0f, drive);
+    const float safeKnee =
+        juce::jlimit(0.02f, 0.90f, knee);
+
+    const float driven = input * safeDrive;
+    const float absDriven = std::abs(driven);
+
+    // Keep the low-level region exactly linear. The knee uses a quintic
+    // smoothstep so both slope and curvature transition continuously.
+    constexpr float threshold = 0.95f;
+    const float kneeWidth =
+        safeDrive - threshold > 0.02f
+            ? safeDrive - threshold
+            : 0.02f;
+
+    if (absDriven <= threshold)
+        return input;
+
+    const float t =
+        juce::jlimit(
+            0.f, 1.f,
+            (absDriven - threshold) / (kneeWidth / safeKnee));
+
+    const float smooth =
+        t * t * t
+        * (t * (t * 6.f - 15.f) + 10.f);
+
+    const float shaped =
+        threshold
+        + (kneeWidth / safeKnee) * smooth;
+
+    return std::copysign(
+        shaped / safeDrive,
+        input);
+}
 float VVChainDSP::applyLifterFromDetectorDb(float input, float detectorDb,
                                              float& env, float thresholdDb,
                                              float attackMs, float releaseMs,
@@ -581,7 +814,8 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                             amount,
                             p.eqColorSolidState[band],
                             analogPreviousInput[band][static_cast<size_t>(ch)],
-                            analogEvenDc[band][static_cast<size_t>(ch)],
+                            analogDcLastInput[band][static_cast<size_t>(ch)],
+                            analogDcLastOutput[band][static_cast<size_t>(ch)],
                             analogLevelPower[band][static_cast<size_t>(ch)],
                             osSr);
                     }
