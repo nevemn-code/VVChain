@@ -462,6 +462,23 @@ float VVChainAudioProcessorEditor::graphXToFrequency(
     return invLogMap(t, 20.f, 20000.f);
 }
 
+float VVChainAudioProcessorEditor::constrainXoverFrequency(int index, float hz) const
+{
+    const float x1 = parameterValue("OTT_X1");
+    const float x2 = parameterValue("OTT_X2");
+    const float x3 = parameterValue("OTT_X3");
+    const double sampleRate = audioProcessor.getSampleRate();
+    const float upper = sampleRate > 0.0
+        ? juce::jmin(18000.f, static_cast<float>(sampleRate * 0.42))
+        : 18000.f;
+
+    if (index == 0)
+        return juce::jlimit(40.f, juce::jmax(41.f, x2 - 80.f), hz);
+    if (index == 1)
+        return juce::jlimit(x1 + 80.f, juce::jmax(x1 + 81.f, x3 - 200.f), hz);
+    return juce::jlimit(x2 + 200.f, upper, hz);
+}
+
 float VVChainAudioProcessorEditor::eqDbToY(
     const juce::Rectangle<float>& graph, float db) const
 {
