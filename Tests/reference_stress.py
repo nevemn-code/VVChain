@@ -549,6 +549,12 @@ def realtime_safety_checks():
     assert "eqOversampler.processSamplesUp" in cpp
     assert "eqOversampler.processSamplesDown" in cpp
     assert "std::atan(asymmetric * drive)" in cpp
+    assert "juce::Colour(0xffef4444)" in editor_cpp
+    assert "juce::Colour(0xfffacc15)" in editor_cpp
+    assert "juce::Colour(0xff3b82f6)" in editor_cpp
+    assert "juce::Colour(0xff22c55e)" in editor_cpp
+    assert "juce::Colours::white.withAlpha(.96f)" in editor_cpp
+    assert "drawGraphDragHint" in editor_cpp
     assert "const float ax1 = 80.f" in cpp
     assert "const float ax2 = 3000.f" in cpp
     assert "const float ax3 = 9000.f" in cpp
@@ -561,7 +567,10 @@ def realtime_safety_checks():
     editor_cpp = (root / "Source/PluginEditor.cpp").read_text(encoding="utf-8")
     assert "class WheelSlider final : public juce::Slider" in editor_h
     assert "std::make_unique<WheelSlider>()" in editor_cpp
-    assert "deltaY) * 0.005" in editor_h
+    assert "setScrollWheelEnabled(true)" in editor_h
+    assert "wheelRemainder" in editor_h
+    assert "wheelLogarithmic" in editor_h
+    assert "filterHalfBandFIREquiripple" not in editor_h
 
     for forbidden in [
         "static Biquad makeAnalogPeak",
