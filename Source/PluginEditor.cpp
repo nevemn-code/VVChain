@@ -49,20 +49,21 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
     g.fillEllipse(cx - radius + 4.f, cy - radius + 4.f,
                   (radius - 4.f) * 2.f, (radius - 4.f) * 2.f);
 
-    juce::Path arcBg;
-    arcBg.addCentredArc(cx, cy, radius + 3.f, radius + 3.f, 0.f,
-                        rotaryStartAngle, rotaryEndAngle, true);
-    g.setColour(juce::Colours::black.withAlpha(.92f));
-    g.strokePath(arcBg, juce::PathStrokeType(2.f));
-
-    juce::Path arc;
-    arc.addCentredArc(cx, cy, radius + 3.f, radius + 3.f, 0.f,
-                      rotaryStartAngle, angle, true);
+    // Full accent ring is intentionally independent of the knob value.
+    // The value itself is shown by the rotating pointer.
+    juce::Path ring;
+    ring.addCentredArc(cx, cy, radius + 3.f, radius + 3.f, 0.f,
+                       rotaryStartAngle, rotaryEndAngle, true);
     g.setColour(accent.withAlpha(.96f));
-    g.strokePath(arc, juce::PathStrokeType(2.4f));
+    g.strokePath(ring, juce::PathStrokeType(2.4f));
 
-    g.setColour(juce::Colours::black);
-    g.fillRoundedRectangle(cx - 1.4f, cy - radius + 7.f, 2.8f, radius * .28f, 1.2f);
+    const float pointerLength = radius * .29f;
+    const float px = cx + std::cos(angle - juce::MathConstants<float>::halfPi) * pointerLength;
+    const float py = cy + std::sin(angle - juce::MathConstants<float>::halfPi) * pointerLength;
+    g.setColour(juce::Colours::black.withAlpha(.98f));
+    g.drawLine(cx, cy, px, py, 3.2f);
+    g.setColour(juce::Colours::white.withAlpha(.70f));
+    g.fillEllipse(cx - 2.2f, cy - 2.2f, 4.4f, 4.4f);
 }
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
@@ -193,16 +194,6 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
                 *atypeBandBypassButtons[(size_t) b]);
         addAndMakeVisible(*atypeBandBypassButtons[(size_t) b]);
 
-        if (b == 3)
-        {
-            addKnob("DEESS_FREQ", "DE-ESS FREQ", 6000, 18000, 10,
-                    parameterValue("DEESS_FREQ"), " Hz", b, 9,
-                    juce::Colour(0xff67d3aa));
-            addKnob("DEESS_INTENSITY", "DE-ESS %", 2, 10, .01,
-                    parameterValue("DEESS_INTENSITY"), " %", b, 10,
-                    juce::Colour(0xff67d3aa));
-        }
-
         // Seven band-specific OTT advanced controls. The defaults remain in DSP.
         addKnob("OTT_LIFT_T" + n, "LIFT THRESH", -80, 0, .1,
                 parameterValue("OTT_LIFT_T" + n), " dB", b, 20, c);
@@ -227,6 +218,14 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         };
         addAndMakeVisible(*advancedButtons[(size_t) b]);
     }
+
+    // Dedicated fifth zone: DE-ESSER is separate from BAND 4.
+    addKnob("DEESS_FREQ", "DE-ESS FREQ", 6000, 18000, 10,
+            parameterValue("DEESS_FREQ"), " Hz", 4, 0,
+            juce::Colour(0xff67d3aa));
+    addKnob("DEESS_INTENSITY", "DE-ESS %", 2, 10, .01,
+            parameterValue("DEESS_INTENSITY"), " %", 4, 1,
+            juce::Colour(0xff67d3aa));
 
     // Shared OTT advanced controls appear inside the currently expanded BAND.
     addKnob("OTT_X1", "XOVER 1", 80, 600, 1,
@@ -333,7 +332,7 @@ void VVChainAudioProcessorEditor::addKnob(
 
     k.slider->setLookAndFeel(&metalLook);
     k.slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-    k.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 64, 15);
+    k.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 68, 17);
     k.slider->setRange(min, max, step);
     k.slider->setDoubleClickReturnValue(true, defaultValue);
     k.slider->setColour(juce::Slider::rotarySliderFillColourId, accent);
@@ -360,7 +359,7 @@ void VVChainAudioProcessorEditor::addKnob(
     k.label->setText(title, juce::dontSendNotification);
     k.label->setColour(juce::Label::textColourId, accent.brighter(.35f));
     k.label->setJustificationType(juce::Justification::centred);
-    k.label->setFont(juce::FontOptions(8.f).withStyle("Bold"));
+    k.label->setFont(juce::FontOptions(8.8f).withStyle("Bold"));
 
     const auto parameterId = attachmentId.isNotEmpty() ? attachmentId : id;
     k.attachment = std::make_unique<Attachment>(
@@ -616,7 +615,8 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     const int cardY = 404;
     const int gap = 8;
     const int left = 18;
-    const int cardW = (getWidth() - left * 2 - gap * 3) / 4;
+    const int cardCount = 5;
+    const int cardW = (getWidth() - left * 2 - gap * (cardCount - 1)) / cardCount;
     const int cardH = 510;
 
     for (int b = 0; b < 4; ++b)
@@ -626,9 +626,16 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                  { (float) x, (float) cardY, (float) cardW, (float) cardH },
                  kBandColours[(size_t) b],
                  "BAND " + juce::String(b + 1),
-                 b == 3 ? "EQ / ANALOG · OTT · TAPE-A · DE-ESSER"
-                        : "EQ / ANALOG · OTT · TAPE-A");
+                 "EQ / ANALOG · OTT · TAPE-A");
+    }
 
+    {
+        const int x = left + 4 * (cardW + gap);
+        drawCard(g,
+                 { (float) x, (float) cardY, (float) cardW, (float) cardH },
+                 juce::Colour(0xff67d3aa),
+                 "DE-ESSER",
+                 "PRECISION SIBILANCE CONTROL · 6–18 kHz");
     }
 
     // Floating OTT Advanced popup: it overlays the controls and never changes band height.
@@ -719,10 +726,10 @@ void VVChainAudioProcessorEditor::resized()
 {
     const int w = getWidth();
     const int cardY = 399;
-    const int cardH = 500;
     const int gap = 8;
     const int left = 18;
-    const int cardW = (w - left * 2 - gap * 3) / 4;
+    const int cardCount = 5;
+    const int cardW = (w - left * 2 - gap * (cardCount - 1)) / cardCount;
 
     const int ledStart = w - 250;
     for (int i = 0; i < 5; ++i)
@@ -735,25 +742,20 @@ void VVChainAudioProcessorEditor::resized()
     for (int b = 0; b < 4; ++b)
     {
         const int x = left + b * (cardW + gap);
-
         if (advancedButtons[(size_t) b])
             advancedButtons[(size_t) b]->setBounds(x + cardW - 58, cardY + 8, 50, 20);
 
         const int innerX = x + 8;
         const int innerTop = cardY + 48;
         const int innerW = cardW - 16;
-        const int cols = (b == 3 ? 3 : 3);
         const int cellGap = 4;
-        const int sideGap = 6;
-        const int sideW = (b == 3 ? 72 : 0);
-        const int mainW = innerW - sideW - (b == 3 ? sideGap : 0);
-        const int cellW = (mainW - cellGap * 2) / cols;
+        const int cellW = (innerW - cellGap * 2) / 3;
         const int rowH = 92;
 
         const auto pos = [&](int slot)
         {
-            const int row = slot / cols;
-            const int col = slot % cols;
+            const int row = slot / 3;
+            const int col = slot % 3;
             return juce::Rectangle<int>(
                 innerX + col * (cellW + cellGap),
                 innerTop + row * rowH,
@@ -761,15 +763,12 @@ void VVChainAudioProcessorEditor::resized()
         };
 
         const auto n = juce::String(b + 1);
-
         placeKnob("EQ" + n + "_FREQ", pos(0));
         placeKnob("EQ" + n + "_GAIN", pos(1));
         placeKnob("EQ" + n + "_Q", pos(2));
-
         placeKnob("EQ_COLOR_B" + n, pos(3));
         placeKnob("HF_CORNER_B" + n, pos(4));
         placeKnob("OTT_DEGREE" + n, pos(5));
-
         placeKnob("OTT_COMP_A" + n, pos(6));
         placeKnob("OTT_COMP_R" + n, pos(7));
         placeKnob("ATYPE_DEGREE" + n, pos(8));
@@ -787,13 +786,17 @@ void VVChainAudioProcessorEditor::resized()
             atypeBandBypassButtons[(size_t) b]->setBounds(
                 typeCell.getRight() - 18, typeCell.getY() + 1, 16, 16);
         }
+    }
 
-        if (b == 3)
-        {
-            const int sx = x + cardW - 8 - sideW;
-            placeKnob("DEESS_FREQ", { sx, innerTop + 8, sideW, 82 });
-            placeKnob("DEESS_INTENSITY", { sx, innerTop + 104, sideW, 82 });
-        }
+    // Fifth zone: the DE-ESS controls get their own full section.
+    {
+        const int x = left + 4 * (cardW + gap);
+        const int innerX = x + 8;
+        const int innerTop = cardY + 48;
+        const int innerW = cardW - 16;
+        const int halfW = (innerW - 4) / 2;
+        placeKnob("DEESS_FREQ", { innerX, innerTop + 28, halfW, 150 });
+        placeKnob("DEESS_INTENSITY", { innerX + halfW + 4, innerTop + 28, halfW, 150 });
     }
 
     if (expandedBand >= 0)
@@ -897,4 +900,41 @@ void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
 void VVChainAudioProcessorEditor::mouseUp(const juce::MouseEvent&)
 {
     dragBand = -1;
+}
+
+void VVChainAudioProcessorEditor::mouseWheelMove(
+    const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel)
+{
+    const auto graph = eqGraphBounds();
+    if (!graph.contains(event.position) || std::abs(wheel.deltaY) < 0.0001f)
+        return;
+
+    float best = 22.f;
+    int band = -1;
+
+    for (int b = 0; b < 4; ++b)
+    {
+        const auto n = juce::String(b + 1);
+        const float x = graphFrequencyToX(graph, parameterValue("EQ" + n + "_FREQ"));
+        const float y = eqDbToY(graph, parameterValue("EQ" + n + "_GAIN"));
+        const float d = event.position.getDistanceFrom({ x, y });
+
+        if (d < best)
+        {
+            best = d;
+            band = b;
+        }
+    }
+
+    if (band < 0)
+        return;
+
+    const auto n = juce::String(band + 1);
+    const float q = juce::jmax(0.1f, parameterValue("EQ" + n + "_Q"));
+
+    // Small steps: wheel up lowers Q, wheel down raises Q.
+    const float nextQ = juce::jlimit(
+        0.1f, 18.f, q * std::exp(-wheel.deltaY * 0.25f));
+    setParameter("EQ" + n + "_Q", nextQ);
+    repaint();
 }
