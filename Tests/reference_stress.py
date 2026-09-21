@@ -578,8 +578,8 @@ def run():
             pos, _, _ = analog_color(x, amount, False)
             neg, _, _ = analog_color(-x, amount, False)
             assert math.isfinite(pos) and math.isfinite(neg)
-            assert abs(pos / x - 1.0) < 1.0e-6
-            assert abs(neg / -x - 1.0) < 1.0e-6
+            assert abs(pos / x - 1.0) < 1.0e-9
+            assert abs(neg / -x - 1.0) < 1.0e-9
         except AssertionError as exc:
             failures.append(("eq_color_gain", i, str(exc)))
 
