@@ -19,7 +19,7 @@ node = subprocess.run(
 assert node.returncode == 0, node.stderr
 
 ws_start = script.index("const WORKLET_SOURCE=") + len("const WORKLET_SOURCE=")
-ws_end = script.index(";\nfunction makeWorkletUrl", ws_start) + 1
+ws_end = script.index(";\nfunction makeWorkletUrl", ws_start)
 worklet_literal = script[ws_start:ws_end]
 worklet = json.loads(worklet_literal)
 node = subprocess.run(
