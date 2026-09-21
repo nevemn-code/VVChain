@@ -116,5 +116,5 @@ assert ".bandLed.ott{top:181px}" in text
 assert ".bandLed.type{top:334px}" in text
 assert ".modeSwitch{position:absolute;left:50%;top:-6px" in text
 assert "x+amount*harmonic" in worklet
-assert ".015*(i3(z)-i3(z0))" in worklet
+assert ".015*t3(z)" in worklet and "analogPower" in worklet
 print("header_and_analogue_layout: PASS")
