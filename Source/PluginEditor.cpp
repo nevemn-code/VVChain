@@ -1253,7 +1253,7 @@ void VVChainAudioProcessorEditor::resized()
         placeKnob("OTT_COMP_A" + n, pos(4));
         placeKnob("OTT_COMP_R" + n, pos(5));
 
-        const colorCell = pos(6);
+        const auto colorCell = pos(6);
         placeKnob("EQ_COLOR_B" + n,
                   { colorCell.getX(), colorCell.getY() + 17,
                     colorCell.getWidth(), colorCell.getHeight() - 17 });
