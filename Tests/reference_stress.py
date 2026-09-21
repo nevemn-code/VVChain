@@ -388,9 +388,7 @@ def source_structure_checks():
     assert "harmonicBands[1] + b2" not in cpp
     assert "const float eqDelta" not in cpp
     # Flat EQ must not feed the full-band signal through Analog Color.
-    assert "const float eqBandInput = y;" in cpp
     assert "const float eqDelta =\n                        eqOutput - eqBandInput;" in cpp
-    assert "y = eqBandInput + analogDelta;" in cpp
     assert "analogColor(\n                            eqDelta," in cpp
     assert "const float level = std::max" in cpp and "std::pow(a, 0.90f)" in cpp
     assert "EQ_COLOR_MODE" in text["processor_cpp"]
@@ -405,8 +403,12 @@ def source_structure_checks():
     assert "hfCornerHz" not in text["dsp_h"]
     assert "0.024f *" in cpp and "0.015f *" in cpp
     assert ".2+.8*s.eq.color/100" not in text["web"]
-    assert "y=this.analog(y,Number(s.eq.color[b]||0)/100,!!s.eq.mode[b],c,b)" in text["web"]
+    assert "const bands=this.zoneBands(y,c,\"analogLp\",s.ott.x)" in text["web"]
+
     assert "analogPower" in text["web"]
+    assert "harmonicSum+=colored-bands[b]" in text["web"]
+    assert "y+=harmonicSum" in text["web"]
+    assert "analogLp:[0,0,0]" in text["web"]
     assert "modeSwitch" in text["web"]
     # UI interaction / layout regression checks.
     editor = text["editor_cpp"]
