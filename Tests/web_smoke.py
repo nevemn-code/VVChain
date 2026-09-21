@@ -74,7 +74,7 @@ assert "dragXover" in text
 assert 'sensitivity:.20' in text
 assert "knobRefreshers=[]" in text and "knobRefreshers.push(render)" in text
 assert "knobRefreshers.forEach(fn=>fn())" in text
-assert "this.N=1024" in text
+assert "this.N=512" in text
 assert "native/reference DE-ESSER remains 8192-sample PDC" in text
 assert "if(this.s&&was!==now)" in text
 assert "bandLed de" in text
