@@ -271,6 +271,7 @@ private:
     };
     juce::dsp::DelayLine<float> eqDryDelay { 4096 };
     juce::dsp::DelayLine<float> limiterLookahead { 8192 };
+    juce::dsp::DelayLine<float> masterDryDelay { 8192 };
     juce::AudioBuffer<float> dryBuffer;
     juce::AudioBuffer<float> alignedDryBuffer;
 
