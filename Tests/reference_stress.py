@@ -371,6 +371,11 @@ def source_structure_checks():
     assert "std::array<float, 4> eqColor" in text["dsp_h"]
     assert "std::array<bool, 4> eqColorSolidState" in text["dsp_h"]
     assert "float VVChainDSP::analogColor" in cpp
+    # Flat EQ must not feed the full-band signal through Analog Color.
+    assert "const float eqBandInput = y;" in cpp
+    assert "const float eqDelta =\n                        eqOutput - eqBandInput;" in cpp
+    assert "y = eqBandInput + analogDelta;" in cpp
+    assert "analogColor(\n                            eqDelta," in cpp
     assert "const float level = std::max" in cpp and "std::pow(a, 0.90f)" in cpp
     assert "EQ_COLOR_MODE" in text["processor_cpp"]
     assert "ANALOG_MODE" in editor
