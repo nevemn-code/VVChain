@@ -524,11 +524,22 @@ def realtime_safety_checks():
     assert ".allPass(lowMid, right)" in phase_cpp
 
     # Master bypass must always be the 64-sample interpolation path.
-    process_master = cpp[cpp.index("const float target = p.masterBypass")
-                          : cpp.index("for (int ch = nCh;", cpp.index("const float target = p.masterBypass"))]
-    assert "masterBypassBlend" in process_master
-    assert "if (p.masterBypass) wet[n] =" not in process_master
+    process_master = cpp[cpp.index("processMasterLimiter(")
+                          : cpp.index("for (int ch = nCh;", cpp.index("processMasterLimiter("))]
+    assert "masterBypassBlend" in cpp
+    assert "masterDryDelay" in cpp
+    assert "processMasterLimiter(buffer, true)" in cpp
+    assert "if (p.masterBypass) wet[n] =" not in cpp
+    assert "eqOversampler.processSamplesUp" in cpp
+    assert "limiterOversampler.processSamplesUp" in cpp
+    assert "setLatencySamples(dsp.getLatencySamples())" in (root / "Source/PluginProcessor.cpp").read_text(encoding="utf-8")
 
+    assert "updateAnalogPeak" in cpp
+    assert "G1" in cpp
+    assert "rmsDetectPDR" in cpp
+    assert "programReleaseMs" in cpp
+    assert "updateCrossover(deessSplit" in cpp
+    assert "lowBand + highBand * dbToGain(-state.gainDb)" in cpp
     # OTT/A-Type/analog-color regression invariants.
     assert "applyLifterFromDetectorDb" in cpp
     assert "if (upDb > liftThreshold)" not in cpp
