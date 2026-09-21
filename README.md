@@ -1,92 +1,61 @@
 # VVChain
 
-四段式音訊鏈結 VST3 / AAX 專案。
+四段式音訊鏈結 VST3 / AAX 專案，主介面固定為單一 plugin 視窗。
 
 ## Signal Flow
 
 INPUT
-→ Analog-Colored 4Band EQ + HF/HPF
-→ 4Band OTT (Downward + Upward)
-→ Type-A 4Band Dynamic Enhancer
+→ 4-Band Parametric EQ + Analog Color
+→ 4-Band OTT
+→ 4-Band TAPE-A
 → Two-Edge Split-Band De-Esser
-→ Dry/Wet Mix
-→ Output Level
+→ MIX
+→ OUT
 → OUTPUT
 
-## Module design
+## Main UI
 
-### EQ / ANALOG
+- 上方 EQ response + realtime FFT。
+- 3 條可拖曳 Shared X-Over 線，分成 4 個頻段；線上滾輪調整 OVERLAP。
+- BAND 1–4：FREQ / GAIN / Q / ANALOG COLOR / OTT % / ATTACK / RELEASE / TAPE-A +。
+- 各 BAND 有獨立 OTT 與 TAPE-A BYPASS LED；亮 = 啟用，暗 = BYPASS。
+- DE-ESSER 框內四顆旋鈕垂直排列：DE-ESS FREQ / DE-ESS % / MIX / OUT。
+- DE-ESS FREQ 與 DE-ESS % 約為 MIX / OUT 旋鈕尺寸的 80%，仍保持同一垂直軸。
+- DE-ESSER BYPASS 使用與其他模組一致的亮燈邏輯：亮 = 啟用，暗 = BYPASS。
+- Master BYPASS 位於右上角，為全鏈旁通；啟用時 UI 灰階化。
 
-- 4-band parametric manual EQ.
-- 40–120 Hz HF/HPF corner.
-- Each EQ band is followed by a nonlinear analog-style coloration stage.
-- Analog Color is independently adjustable.
-- Web interaction intentionally uses an ear-first/manual-search UI language inspired by flowEQ; its original DSP remains a clean biquad implementation, so VVChain does not use it as the coloration model. citeturn634172search0
+## DSP
 
-### OTT
-
-- Four independently adjustable OTT degrees: Band 1–4.
-- Three crossover frequencies create four processing bands.
-- Downward compression followed by upward compression per band.
-- Shared threshold, upward ratio, downward ratio, attack and release.
-- Input drive, post gain and wet/dry mix.
-- The four-band architecture is based on the documented OTT signal flow of multiband crossover → downward compressor → upward compressor → band sum → depth mix. citeturn634172search1turn634172search3
-
-### TYPE-A
-
-Type-A follows the Dolby A encode-stage enhancer concept rather than a generic waveshaper exciter:
-
-- Band 1: low-pass around 80 Hz.
-- Band 2: 80 Hz–3 kHz.
-- Band 3: high-pass around 3 kHz.
-- Band 4: high-pass around 9 kHz.
-- The upper bands overlap.
-- Each band has an independently adjustable degree.
-- Each band also has a gain trim.
-- Attack / release and parallel mix are adjustable.
-- The process boosts quieter band content dynamically instead of intentionally generating new harmonics. citeturn979382search0turn979382search1turn979382search17
-
-### DE-ESSER
-
-- Two crossover edges define the active sibilance band.
-- Range sets maximum attenuation.
-- Strength sets how strongly the detected energy is reduced.
-- Attack / release are adjustable.
-- Listen mode exposes the detected band.
+- Native DSP 使用固定 8192-sample De-Esser PDC。
+- HP / CORNER 已移除，不再參與聲音計算。
+- De-Esser 預設強度為 0%，預設不改變聲音。
+- Master BYPASS 維持固定 PDC，切換使用短交叉淡化。
+- Realtime FFT 在背景執行緒計算，GUI 只讀已平滑的頻譜資料。
+- AAX 目標受 VVCHAIN_ENABLE_AAX 控制，需合法 AAX SDK / 開發環境。
 
 ## Web Preview
 
-The GitHub Pages preview supports:
+GitHub Pages 預覽支援：
 
-- drag-and-drop audio loading
-- waveform display
-- mouse range selection
-- loopStart / loopEnd loop playback
-- PLAY / STOP / LOOP / BYPASS / RESET
-- four draggable EQ nodes
-- button-gated OTT / TYPE-A / DE-ESSER detail panels
-- custom AudioWorklet DSP preview
+- LOAD AUDIO：選取音檔後解碼，再 PLAY / STOP / RESET。
+- 預設 De-Esser 強度為 0%，因此播放不需要先等 De-Esser 8192-sample block。
+- 強度大於 0% 且未 BYPASS 時，才進入 8192-sample De-Esser block path。
+- Master BYPASS 會切至原始輸入並將整個介面灰階化。
+- Worklet 發生處理錯誤時，狀態列顯示 DSP ERROR。
+- DE-ESSER 的 MIX / OUT 直接與 native UI 同樣放在 DE-ESSER 框內。
 
 Online preview:
 https://nevemn-code.github.io/VVChain/
 
-## Native build
+## Native Build
 
 - JUCE 9.0.2 / C++20
 - VST3 + Standalone
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
-- APVTS state save/restore
 
-AAX still requires the legitimate AAX SDK/developer environment and release signing.
+## Validation
 
-## Validation matrix
+- Tests/reference_stress.py：DSP / 參數空間 deterministic regression。
+- Tests/web_smoke.py：Web Preview JavaScript 語法、UI 結構、音檔載入 / 播放、BYPASS、DE-ESSER、MIX / OUT regression。
 
-Exactly 2,055 deterministic reference cases:
-
-- 280 planning / parameter-space cases
-- 120 boundary / debug cases
-- 180 all-feature control-mapping cases
-- 655 transient cases
-- 820 full-chain cases
-
-These reference tests are regression checks, not a substitute for final pluginval, DAW, or AAX certification.
+> Regression tests are not a substitute for final DAW pluginval or AAX certification.
