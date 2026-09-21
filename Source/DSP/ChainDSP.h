@@ -116,6 +116,8 @@ private:
         std::array<float, 2> gateEnvDb { 0.f, 0.f };
         std::array<float, 2> lifterEnv { 1.f, 1.f };
         std::array<float, 2> compEnvDb { 0.f, 0.f };
+        std::array<float, 2> upRmsPower { 0.f, 0.f };
+        std::array<float, 2> downRmsPower { 0.f, 0.f };
     };
 
     struct DeEssState
@@ -141,13 +143,21 @@ private:
     static float timeCoeff(double sampleRate, float ms) noexcept;
     static float softColor(float x, float amount01) noexcept;
 
-    static float applyLifter(float input, float& env, float thresholdDb,
-                             float attackMs, float releaseMs, float mix,
-                             double sampleRate, float ratio = 6.f);
+    static float rmsDetect(float input, float& power, float attackMs, float releaseMs,
+                           double sampleRate) noexcept;
 
-    static float applyCompressor(float input, float& envDb, float thresholdDb,
-                                 float attackMs, float releaseMs, float mix,
-                                 double sampleRate, float ratio = 8.f);
+    static float applyLifterFromDetectorDb(float input, float detectorDb,
+                                            float& env, float thresholdDb,
+                                            float attackMs, float releaseMs,
+                                            float mix, double sampleRate,
+                                            float ratio = 4.f);
+
+    static float applyCompressorFromDetectorDb(float input, float detectorDb,
+                                                float& envDb, float thresholdDb,
+                                                float attackMs, float releaseMs,
+                                                float mix, double sampleRate,
+                                                float ratio = 66.7f);
+
 
     static float applyGate(float input, float& envDb, float thresholdDb,
                            double sampleRate);
