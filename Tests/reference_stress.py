@@ -206,14 +206,8 @@ def analog_color(x: float, amount01: float) -> float:
         return x
     drive = 1.0 + 1.35 * a
     z = x + 0.012 * a * x * x
-    calibration = 0.25
-    pos = math.tanh((calibration + 0.012 * a * calibration * calibration) * drive) / drive
-    neg = math.tanh((-calibration + 0.012 * a * calibration * calibration) * drive) / drive
-    calibration_rms = math.sqrt(0.5 * (pos * pos + neg * neg))
-    makeup = calibration / calibration_rms if calibration_rms > 1e-6 else 1.0
-    return math.tanh(z * drive) / drive * makeup
-
-
+    makeup = 1.0 / drive
+    return math.tanh(z * drive) * makeup
 def source_structure_checks():
     root = Path(__file__).resolve().parents[1]
     files = {
@@ -281,10 +275,8 @@ def source_structure_checks():
     assert "if (p.atypeBandBypass[(size_t) band])" in text["dsp_cpp"]
     assert "ottBandBypassButtons" in text["editor_h"]
     assert "atypeBandBypassButtons" in text["editor_h"]
-    assert "const float calibration = 0.25f;" in cpp
-    assert "const float calibrationRms" in cpp
-    assert "const float makeup" in cpp
-    assert "return std::tanh(asym * drive) / drive * makeup;" in cpp
+    assert "const float makeupGain = 1.0f / drive;" in cpp
+    assert "return std::tanh(asym * drive) * makeupGain;" in cpp
     assert "y = softColor(y, colorAmount);" in cpp
     assert "0.20f + 0.80f * colorAmount" not in cpp
     assert ".2+.8*s.eq.color/100" not in text["web"]
@@ -439,22 +431,19 @@ def run():
         except AssertionError as exc:
             failures.append(("band_bypass", i, str(exc)))
 
-    # 50 EQ analog-color gain-matching probes. These specifically verify that
-    # the coloration stage preserves unity gain at its calibration level and
-    # remains finite across the full color range.
+    # 50 EQ analog-color gain-matching probes. These verify exact unity
+    # small-signal gain across the complete color range and finite saturation.
     for i in range(COUNTS["eq_color_gain"]):
         amount = (i % 51) / 50.0
-        calibration = 0.25
-        pos = analog_color(calibration, amount)
-        neg = analog_color(-calibration, amount)
-        low_pos = analog_color(1.0e-5, amount)
-        low_neg = analog_color(-1.0e-5, amount)
+        x = 1.0e-6
         try:
+            pos = analog_color(x, amount)
+            neg = analog_color(-x, amount)
             assert math.isfinite(pos) and math.isfinite(neg)
-            calibration_rms = math.sqrt(0.5 * (pos * pos + neg * neg))
-            assert abs(calibration_rms / calibration - 1.0) < 1.0e-6
-            assert abs(low_pos / 1.0e-5 - 1.0) < 0.02
-            assert abs(low_neg / -1.0e-5 - 1.0) < 0.02
+            assert abs(pos / x - 1.0) < 1.0e-6
+            assert abs(neg / -x - 1.0) < 1.0e-6
+            assert math.isfinite(analog_color(0.9, amount))
+            assert math.isfinite(analog_color(-0.9, amount))
         except AssertionError as exc:
             failures.append(("eq_color_gain", i, str(exc)))
 
