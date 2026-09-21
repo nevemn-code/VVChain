@@ -19,6 +19,7 @@ COUNTS = {
     "band_bypass": 50,
     "eq_color_gain": 50,
     "analog_modes": 500,
+    "analog_curve_sweep": 1200,
     "type_a_exciter": 50,
     "ott_four_band": 500,
 }
@@ -210,19 +211,45 @@ def analog_color(x: float, amount01: float, solid_state: bool = False,
     a = clamp(amount01, 0.0, 1.0)
     if a <= 0.0:
         return x, x, even_dc
-    if abs(x) < 1.0e-5 and abs(previous) < 1.0e-5:
+    if abs(x) < 1.0e-6 and abs(previous) < 1.0e-6:
         return x, x, even_dc
-    drive = 1.0 + (5.0 if solid_state else 2.4) * a
-    dx = x - previous
-    def log_cosh(v):
-        av = abs(v)
-        return av - math.log(2.0) if av > 12.0 else math.log(math.cosh(v))
-    F = lambda v: log_cosh(drive * v) / (drive * drive)
-    odd = (F(x) - F(previous)) / dx if abs(dx) > 1e-5 else math.tanh(drive * (x + previous) * .5) / drive
-    even = (x*x + x*previous + previous*previous) / 3.0
-    even_dc = .99974 * even_dc + .00026 * even
-    shape = odd if solid_state else odd + (even - even_dc) * (.10 + .22 * a)
-    return x + a * (shape - x), x, even_dc
+
+    amount = a ** 0.90
+    z = clamp(x, -1.0, 1.0)
+    z0 = clamp(previous, -1.0, 1.0)
+    dz = z - z0
+
+    t2 = lambda v: 2*v*v - 1
+    t3 = lambda v: 4*v*v*v - 3*v
+    t4 = lambda v: 8*v**4 - 8*v*v + 1
+    t5 = lambda v: 16*v**5 - 20*v**3 + 5*v
+    t7 = lambda v: 64*v**7 - 112*v**5 + 56*v**3 - 7*v
+    i2 = lambda v: (2/3)*v**3 - v
+    i3 = lambda v: v**4 - 1.5*v**2
+    i4 = lambda v: 1.6*v**5 - (8/3)*v**3 + v
+    i5 = lambda v: (8/3)*v**6 - 5*v**4 + 2.5*v**2
+    i7 = lambda v: 8*v**8 - (56/3)*v**6 + 14*v**4 - 3.5*v**2
+
+    if abs(dz) > 1e-5:
+        if solid_state:
+            harmonic = (0.015*(i3(z)-i3(z0)) + 0.004*(i5(z)-i5(z0)) + 0.001*(i7(z)-i7(z0))) / dz
+        else:
+            harmonic = (0.024*(i2(z)-i2(z0)) + 0.006*(i4(z)-i4(z0)) + 0.002*(i3(z)-i3(z0))) / dz
+            raw = 0.024*t2(z) + 0.006*t4(z) + 0.002*t3(z)
+            even_dc = 0.99990*even_dc + 0.00010*raw
+            harmonic -= even_dc
+    else:
+        mid = 0.5*(z+z0)
+        if solid_state:
+            harmonic = 0.015*t3(mid) + 0.004*t5(mid) + 0.001*t7(mid)
+        else:
+            raw = 0.024*t2(mid) + 0.006*t4(mid) + 0.002*t3(mid)
+            even_dc = 0.99990*even_dc + 0.00010*raw
+            harmonic = raw - even_dc
+
+    return x + amount*harmonic, x, even_dc
+
+
 def type_a_amount(transient: float, level_factor: float, degree: float) -> float:
     return (degree / 100.0) * (0.10 + 0.90 * clamp(transient, 0.0, 1.0))            * (0.20 + 0.80 * clamp(level_factor, 0.0, 1.25))
 
@@ -356,7 +383,7 @@ def source_structure_checks():
     assert "std::array<float, 4> eqColor" in text["dsp_h"]
     assert "std::array<bool, 4> eqColorSolidState" in text["dsp_h"]
     assert "float VVChainDSP::analogColor" in cpp
-    assert "First-order ADAA" in cpp
+    assert "Chebyshev" in cpp and "integral / dz" in cpp
     assert "EQ_COLOR_MODE" in text["processor_cpp"]
     assert "ANALOG_MODE" in editor
     assert "Maximum Reduction" in text["processor_cpp"]
@@ -367,7 +394,7 @@ def source_structure_checks():
     assert "VVChainSpectrumAnalyzer" not in combined
     assert "p.hfCornerHz" not in cpp
     assert "hfCornerHz" not in text["dsp_h"]
-    assert "0.20f + 0.80f * colorAmount" not in cpp
+    assert "0.024f *" in cpp and "0.015f *" in cpp
     assert ".2+.8*s.eq.color/100" not in text["web"]
     assert "y=this.analog(y,Number(s.eq.color[b]||0)/100,!!s.eq.mode[b],c,b)" in text["web"]
     assert "modeSwitch" in text["web"]
@@ -602,6 +629,50 @@ def run():
             assert y == y
         except AssertionError as exc:
             failures.append(("analog_modes", i, str(exc)))
+
+    # 1200 deterministic TT/SS curve sweeps: colour first,
+    # with essentially unity fundamental rather than compression.
+    for i in range(COUNTS["analog_curve_sweep"]):
+        solid = bool(i & 1)
+        amount = (i % 101) / 100.0
+        sr = SAMPLE_RATES[i % len(SAMPLE_RATES)]
+        n = 1024
+        freq = 8.0 * sr / n
+        amp = 0.35 + 0.60 * ((i * 37) % 100) / 100.0
+        phase = 0.13 * i
+        y = []
+        xref = []
+        prev = amp * math.sin(phase - 2 * math.pi * freq / sr)
+        dc = 0.0
+        for k in range(n):
+            ang = phase + 2 * math.pi * freq * k / sr
+            x = amp * math.sin(ang)
+            v, prev, dc = analog_color(x, amount, solid, prev, dc)
+            xref.append(x)
+            y.append(v)
+
+        sx = sum(v * math.sin(phase + 2 * math.pi * freq * k / sr) for k, v in enumerate(xref))
+        cx = sum(v * math.cos(phase + 2 * math.pi * freq * k / sr) for k, v in enumerate(xref))
+        sy = sum(v * math.sin(phase + 2 * math.pi * freq * k / sr) for k, v in enumerate(y))
+        cy = sum(v * math.cos(phase + 2 * math.pi * freq * k / sr) for k, v in enumerate(y))
+        fundamental_ratio = math.hypot(sy, cy) / max(math.hypot(sx, cx), 1e-12)
+
+        harmonics = {}
+        for h in range(2, 8):
+            sh = sum(v * math.sin(h * (phase + 2 * math.pi * freq * k / sr)) for k, v in enumerate(y))
+            ch = sum(v * math.cos(h * (phase + 2 * math.pi * freq * k / sr)) for k, v in enumerate(y))
+            harmonics[h] = math.hypot(sh, ch) / max(math.hypot(sy, cy), 1e-12)
+
+        try:
+            assert 0.985 <= fundamental_ratio <= 1.015
+            if amount >= 0.80:
+                if solid:
+                    assert max(harmonics[3], harmonics[5], harmonics[7]) > max(harmonics[2], harmonics[4], harmonics[6]) + 1e-4
+                else:
+                    assert max(harmonics[2], harmonics[4]) > max(harmonics[3], harmonics[5], harmonics[7]) + 1e-4
+            assert max(abs(v) for v in y) <= amp + 0.08
+        except AssertionError as exc:
+            failures.append(("analog_curve_sweep", i, str(exc)))
 
     # 50 Type-A four-band formula probes.
     for i in range(COUNTS["type_a_exciter"]):
