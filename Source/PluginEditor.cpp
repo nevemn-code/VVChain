@@ -236,20 +236,6 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     page.setSize(1480, 2050);
 }
 
-VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
-{
-    setLookAndFeel(nullptr);
-    for (auto& k : knobs)
-        if (k.slider)
-            k.slider->setLookAndFeel(nullptr);
-    for (auto& b : bypassButtons)
-        if (b)
-            b->setLookAndFeel(nullptr);
-    if (ottClipper)
-        ottClipper->setLookAndFeel(nullptr);
-    deEssVoice.setLookAndFeel(nullptr);
-}
-
 void VVChainAudioProcessorEditor::addKnob(
     const juce::String& id, const juce::String& title,
     double min, double max, double step, double defaultValue,
@@ -568,7 +554,7 @@ void VVChainAudioProcessorEditor::paintPage(
     {
         auto card = juce::Rectangle<int>(
             30 + b * ((width - 76) / 4), 455, (width - 86) / 4, 235);
-        drawCard(g, card, kBandColours[(size_t)b]);
+        drawCard(g, card.toFloat(), kBandColours[(size_t)b]);
         g.setColour(kBandColours[(size_t)b]);
         g.setFont(juce::FontOptions(11.f).withStyle("Bold"));
         g.drawText("BAND " + juce::String(b + 1),
