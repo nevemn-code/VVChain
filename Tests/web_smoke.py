@@ -33,7 +33,7 @@ required = [
     "TAPE-A", "OTT %", "ATTACK", "RELEASE",
     "DE-ESS FREQ", "DE-ESS %",
     "bandGrid", "advPopup", "advPopupGrid", "mixFader", "outFader", "leds",
-    "bandBypass", "BAND ", "deessZone", "repeat(5", "mouseWheelMove", "deltaY * 0.025", "std::exp(-wheel.deltaY * 0.25f)",
+    "bandBypass", "BAND ", "deessZone", "Math.exp(steps*.025)", "addEventListener("wheel"", "grid-template-columns:repeat(5,1fr)",
     "OTT：亮=啟用；按下=BYPASS", "TYPE-A：亮=啟用；按下=BYPASS",
     "NO PAGE SCROLL", "s.freq", "const avg=s.type.degree.reduce",
 ]
