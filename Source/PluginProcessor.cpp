@@ -1,6 +1,5 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-#include "SpectrumAnalyzer.h"
 
 VVChainAudioProcessor::VVChainAudioProcessor()
     : AudioProcessor(BusesProperties()
@@ -38,7 +37,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         f("EQ" + n + "_GAIN", "EQ " + n + " Gain", -24.f, 24.f, 0.f);
         f("EQ" + n + "_Q", "EQ " + n + " Q", 0.10f, 18.f, 0.707f, 0.35f);
     }
-    f("EQ_COLOR", "EQ Analog Color", 0.f, 100.f, 35.f);
+    // Legacy EQ_COLOR remains for old presets; the active UI/DSP uses one color per band.
+    f("EQ_COLOR", "Legacy EQ Analog Color", 0.f, 100.f, 35.f);
+    for (int i = 0; i < 4; ++i)
+    {
+        const auto n = juce::String(i + 1);
+        f("EQ_COLOR" + n, "EQ " + n + " Analog Color", 0.f, 100.f, 35.f);
+        p.push_back(std::make_unique<juce::AudioParameterBool>(
+            "EQ_COLOR_MODE" + n, "EQ " + n + " Analog Mode SS", false));
+    }
     f("HF_CORNER", "EQ High-pass Corner", 40.f, 120.f, 70.f);
 
     // Four-band OTT / PunkOTT-MB style controls.
@@ -96,7 +103,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         "DEESS_VOICE", "Legacy DeEsser Voice",
         juce::StringArray { "Male Vocal", "Female Vocal" }, 0));
     f("DEESS_FREQ", "DeEsser Frequency", 6000.f, 18000.f, 12500.f);
-    f("DEESS_INTENSITY", "DeEsser Intensity", 0.f, 10.f, 0.f);
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "DEESS_INTENSITY", "DeEsser Maximum Reduction",
+        juce::NormalisableRange<float>(0.f, 8.f, 0.1f), 0.f));
     f("DEESS_OFFSET", "DeEsser Average Offset", -0.1f, 0.1f, 0.f);
 
     f("DRY_WET", "Dry / Wet", 0.f, 100.f, 100.f);
@@ -108,7 +117,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
 void VVChainAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     dsp.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
-    spectrumAnalyzer.prepare(sampleRate);
     // The realtime DeEsser processes complete 8192-sample blocks.
     setLatencySamples(8192);
 }
@@ -149,6 +157,9 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.freq[(size_t)i] = value("EQ" + n + "_FREQ");
         p.gain[(size_t)i] = value("EQ" + n + "_GAIN");
         p.q[(size_t)i] = value("EQ" + n + "_Q");
+        p.eqColor[(size_t)i] = value("EQ_COLOR" + n);
+        p.eqColorSolidState[(size_t)i] =
+            value("EQ_COLOR_MODE" + n) > 0.5f;
 
         p.ottBandBypass[(size_t)i] = value("OTT_BAND_BYPASS" + n) > 0.5f;
         p.ottDegree[(size_t)i] = value("OTT_DEGREE" + n);
@@ -195,15 +206,8 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     dsp.process(buffer, p);
 
-    if (buffer.getNumChannels() > 0 && buffer.getNumSamples() > 0)
-        spectrumAnalyzer.pushSamples(
-            buffer.getReadPointer(0), buffer.getNumSamples());
 }
 
-float VVChainAudioProcessor::getSpectrumMagnitudeDb(int bin) const noexcept
-{
-    return spectrumAnalyzer.getMagnitudeDb(bin);
-}
 
 void VVChainAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
