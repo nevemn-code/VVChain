@@ -1020,7 +1020,7 @@ void VVChainAudioProcessorEditor::drawGraphDragHint(
     const float paddingY = 6.0f;
     const float boxW =
         juce::jlimit(175.0f, graph.getWidth() - 12.0f,
-                     g.getCurrentFont().getStringWidthFloat(graphDragHint)
+                     static_cast<float>(g.getCurrentFont().getStringWidth(graphDragHint))
                          + paddingX * 2.0f);
     const float boxH = 28.0f;
 
@@ -1448,6 +1448,7 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
             + "   Q " + juce::String(q, 2);
         repaint();
     }
+}
 
 void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
 {
