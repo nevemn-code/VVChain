@@ -22,10 +22,10 @@ public:
         std::array<float, 4> freq { 80.f, 350.f, 2500.f, 10000.f };
         std::array<float, 4> gain { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> q { 0.707f, 0.707f, 0.707f, 0.707f };
-        std::array<float, 4> eqColor { 35.f, 35.f, 35.f, 35.f };
+        std::array<float, 4> eqColor { 20.f, 20.f, 15.f, 10.f };
         std::array<bool, 4> eqColorBypass { false, false, false, false };
         // false = TT (Tube Saturation), true = SS (Solid-State Saturation)
-        std::array<bool, 4> eqColorSolidState { false, false, false, false };
+        std::array<bool, 4> eqColorSolidState { false, false, true, true };
 
         // Four-band OTT / PunkOTT-MB style chain.
         std::array<bool, 4> ottBandBypass { false, false, false, false };
@@ -244,6 +244,16 @@ private:
     Crossover4th analogPhase3_B1 {};
     Crossover4th analogPhase3_B2 {};
 
+    // Analog runs its nonlinear residual path at 8x. The full linear signal
+    // also traverses this oversampler so the direct programme and residual
+    // share the same reconstruction phase/latency.
+    juce::dsp::Oversampling<float> analogOversampler
+    {
+        3, 2,
+        juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple,
+        true, true
+    };
+
     Crossover4th ottXover1 {};
     Crossover4th ottXover2 {};
     Crossover4th ottXover3 {};
@@ -314,6 +324,7 @@ private:
     float limiterGain = 1.f;
     float masterBypassBlend = 0.f;
     int eqLatencySamples = 0;
+    int analogOversamplingLatencySamples = 0;
     int limiterOversamplingLatencySamples = 0;
     int limiterLookaheadSamples = 0;
     int totalLatencySamples = 0;
