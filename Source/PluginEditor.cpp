@@ -120,7 +120,6 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
     g.setColour(accent.withAlpha(.88f));
     g.fillEllipse(cx - 1.25f, cy - 1.25f, 2.5f, 2.5f);
 }
-}
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
     juce::Graphics& g, juce::ToggleButton& button,
