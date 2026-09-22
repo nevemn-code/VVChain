@@ -174,80 +174,27 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
                                     float& previousInput, float& evenDc,
                                     float& levelPower, double sampleRate) noexcept
 {
-    const float a = juce::jlimit(0.f, 1.f, amount01);
-    const float safeRate = static_cast<float>(std::max(8000.0, sampleRate));
-
-    if (a <= 0.0f)
-    {
-        previousInput = x;
-        return x;
-    }
-
-    const float alpha = std::exp(-1.0f / (0.020f * safeRate));
-    levelPower =
-        alpha * levelPower
-        + (1.0f - alpha) * (x * x);
-
-    const float level =
-        std::max(0.03f,
-                  std::sqrt(std::max(levelPower * 2.0f, 1.0e-10f)));
-
-    const float amount = std::pow(a, 0.85f);
-    const float u = juce::jlimit(-1.15f, 1.15f, x / level);
-
-    float shaped = u;
-
-    if (solidState)
-    {
-        // SS: symmetric soft knee, restrained upper-order content.
-        const float drive = 1.15f + 2.15f * amount;
-        const float norm = std::tanh(drive);
-        shaped = norm > 1.0e-6f
-            ? std::tanh(u * drive) / norm
-            : u;
-        shaped += 0.0125f * u * u * u;
-    }
-    else
-    {
-        // TT: smooth asymmetric curve, with DC tracked below.
-        const float drive = 0.95f + 1.75f * amount;
-        const float asymmetric =
-            u + 0.055f * u * u;
-        const float norm = std::atan(drive);
-        shaped = norm > 1.0e-6f
-            ? std::atan(asymmetric * drive) / norm
-            : u;
-    }
-
-    float delta =
-        amount * (shaped - u) * level;
-
-    const float dcAlpha =
-        std::exp(-1.0f / (0.200f * safeRate));
-    evenDc =
-        dcAlpha * evenDc
-        + (1.0f - dcAlpha) * delta;
-    delta -= evenDc;
-
-    // Hard limiting is deliberately avoided here. The FIR 4x oversampler
-    // around this nonlinear stage removes out-of-band products; this small
-    // headroom bound only prevents a colour stage from exceeding the input
-    // peak when there is insufficient internal headroom.
-    if ((x > 0.f && delta > 0.f)
-        || (x < 0.f && delta < 0.f))
-    {
-        const float headroom =
-            0.985f - std::abs(x);
-
-        delta = headroom > 0.f
-            ? std::copysign(
-                std::min(std::abs(delta), headroom),
-                delta)
-            : 0.f;
-    }
-
+    const float amount = juce::jlimit(0.0f, 1.0f, amount01);
     previousInput = x;
-    return x + delta;
+    evenDc = 0.0f;
+    levelPower = 0.0f;
+    juce::ignoreUnused(sampleRate);
+
+    if (amount <= 0.0f)
+        return x;
+
+    // V3: memoryless odd Chebyshev 3rd/5th harmonic injector.
+    // No dynamic DC correction and no previous-sample dependency.
+    const float u = juce::jlimit(-1.0f, 1.0f, x);
+    const float u2 = u * u;
+    const float t3 = 4.0f * u * u2 - 3.0f * u;
+    const float t5 =
+        16.0f * u * u2 * u2 - 20.0f * u * u2 + 5.0f * u;
+    const float h3 = solidState ? 0.020f : 0.014f;
+    const float h5 = solidState ? 0.006f : 0.004f;
+    const float shaped = u + amount * (h3 * t3 + h5 * t5);
+
+    return x + 0.90f * (shaped - u);
 }
 
 void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels)
