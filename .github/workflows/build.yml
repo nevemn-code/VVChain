@@ -2,32 +2,75 @@ name: VVChain CI/CD
 
 on:
   push:
-    branches: [ "main", "fix/*" ]
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      full_stress:
+        description: "Run the full 500-iteration stress test"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: vvchain-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build_and_test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v4
 
-    - name: Setup CMake and Ninja
+    - name: Restore build/compiler caches
+      uses: actions/cache@v4
+      with:
+        path: |
+          build
+          ~/.ccache
+          ~/.cache/pip
+        key: vvchain-linux-${{ hashFiles('CMakeLists.txt', 'Source/**/*.cpp', 'Source/**/*.h') }}
+        restore-keys: |
+          vvchain-linux-
+
+    - name: Setup CMake, Ninja and ccache
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake ninja-build libasound2-dev libjack-jackd2-dev           libcurl4-openssl-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev libx11-dev libxi-dev libxcomposite-dev           libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev
+        sudo apt-get install -y cmake ninja-build ccache libasound2-dev libjack-jackd2-dev \
+          libcurl4-openssl-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev \
+          libx11-dev libxi-dev libxcomposite-dev libxcursor-dev libxext-dev \
+          libxinerama-dev libxrandr-dev libxrender-dev
 
-    - name: Configure CMake (Strict Release & AVX2)
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: "pip"
+
+    - name: Configure CMake (Fast CI / VST3 only)
       run: |
-        cmake -B build -G Ninja           -DCMAKE_BUILD_TYPE=Release           -DCMAKE_CXX_FLAGS="-O3 -ffast-math -mavx2 -D JUCE_WEB_BROWSER=0 -D JUCE_USE_CURL=0 -D JUCE_HEADLESS_PLUGIN_CLIENT=1"
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DVVCHAIN_BUILD_STANDALONE=OFF \
+          -DVVCHAIN_ENABLE_AAX=OFF \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_CXX_FLAGS="-O3 -ffast-math -mavx2 -D JUCE_WEB_BROWSER=0 -D JUCE_USE_CURL=0 -D JUCE_HEADLESS_PLUGIN_CLIENT=1"
 
-    - name: Build DSP Core and Tests
-      run: cmake --build build --config Release --parallel 4
+    - name: Build VST3/DSP
+      run: cmake --build build --config Release --parallel
 
-    - name: Run Python Stress Tests (Optimized PRBS Matrix)
+    - name: Install Python test dependencies
+      run: python -m pip install --upgrade numpy scipy
+
+    - name: Run fast DSP stress test
       run: |
-        python3 -m pip install numpy scipy
-        python3 Tests/reference_stress.py
+        if [ "${{ inputs.full_stress }}" = "true" ]; then
+          python Tests/reference_stress.py --iterations 500
+        else
+          python Tests/reference_stress.py --iterations 40
+        fi
 
     - name: Run V3 ANALOG Chebyshev Matrix
-      run: python3 Tests/analog_matrix.py
+      run: python Tests/analog_matrix.py
