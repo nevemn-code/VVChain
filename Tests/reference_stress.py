@@ -37,6 +37,6 @@ def run_stress_test(iterations=500):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--iterations', type=int, default=40)
+    parser.add_argument('--iterations', type=int, default=50)
     args = parser.parse_args()
     run_stress_test(max(1, args.iterations))
