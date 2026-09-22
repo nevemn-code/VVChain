@@ -249,6 +249,15 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addKnob("EQ" + n + "_Q", "Q", .1, 18, .01,
                 parameterValue("EQ" + n + "_Q"), "", b, 2, c);
 
+        addKnob("DYN_THRESH" + n, "THRESH", -60, 0, .1,
+                parameterValue("DYN_THRESH" + n), " dB", b, 8, c);
+        addKnob("DYN_RATIO" + n, "RATIO", 1, 20, .01,
+                parameterValue("DYN_RATIO" + n), " :1", b, 9, c);
+        addKnob("DYN_ATTACK" + n, "ATTACK", .1, 200, .1,
+                parameterValue("DYN_ATTACK" + n), " ms", b, 10, c);
+        addKnob("DYN_RELEASE" + n, "RELEASE", 5, 2000, 1,
+                parameterValue("DYN_RELEASE" + n), " ms", b, 11, c);
+
         // The two EQ / ANALOG controls live inside every BAND card.
         // They intentionally remain attached to the shared DSP parameters.
         addKnob("EQ_COLOR_B" + n, "ANALOG COLOR", 0, 100, .1,
@@ -1067,7 +1076,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(juce::Colour(0xff8b949f));
     g.setFont(juce::FontOptions(8.f));
-    g.drawText("4-BAND EQ · SHARED X-OVER · OTT · TAPE-A · DE-ESSER", 20, 37, 430, 13,
+    g.drawText("4-BAND DYNAMIC EQ · OTT · ANALOG · TAPE-A · DE-ESSER", 20, 37, 430, 13,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -1087,7 +1096,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                  { (float) x, (float) cardY, (float) cardW, (float) cardH },
                  uiColour(kBandColours[(size_t) b]),
                  "BAND " + juce::String(b + 1),
-                 "EQ / ANALOG · OTT · TAPE-A");
+                 "DYNAMIC EQ · OTT · ANALOG · TAPE-A");
     }
 
     {
@@ -1233,7 +1242,7 @@ void VVChainAudioProcessorEditor::resized()
         const int cellW = (innerW - cellGap * 2) / 3;
         const int rowH = 92;
 
-        const auto pos = [&](int slot)
+        const auto pos3 = [&](int slot)
         {
             const int row = slot / 3;
             const int col = slot % 3;
@@ -1244,24 +1253,38 @@ void VVChainAudioProcessorEditor::resized()
         };
 
         const auto n = juce::String(b + 1);
-        placeKnob("EQ" + n + "_FREQ", pos(0));
-        placeKnob("EQ" + n + "_GAIN", pos(1));
-        placeKnob("EQ" + n + "_Q", pos(2));
 
-        placeKnob("OTT_DEGREE" + n, pos(3));
-        placeKnob("OTT_COMP_A" + n, pos(4));
-        placeKnob("OTT_COMP_R" + n, pos(5));
+        placeKnob("EQ" + n + "_FREQ", pos3(0));
+        placeKnob("EQ" + n + "_GAIN", pos3(1));
+        placeKnob("EQ" + n + "_Q", pos3(2));
 
-        const auto colorCell = pos(6);
-        placeKnob("EQ_COLOR_B" + n,
-                  { colorCell.getX(), colorCell.getY() + 17,
-                    colorCell.getWidth(), colorCell.getHeight() - 17 });
+        const int dynGap = 3;
+        const int dynW = (innerW - dynGap * 3) / 4;
+        const int dynY = innerTop + rowH;
+        const auto dynPos = [&](int i)
+        {
+            return juce::Rectangle<int>(
+                innerX + i * (dynW + dynGap),
+                dynY, dynW, 82);
+        };
+
+        placeKnob("DYN_THRESH" + n, dynPos(0));
+        placeKnob("DYN_RATIO" + n, dynPos(1));
+        placeKnob("DYN_ATTACK" + n, dynPos(2));
+        placeKnob("DYN_RELEASE" + n, dynPos(3));
+
+        placeKnob("OTT_DEGREE" + n, pos3(6));
+        placeKnob("OTT_COMP_A" + n, pos3(7));
+        placeKnob("OTT_COMP_R" + n, pos3(8));
+
+        const int lowerY = innerTop + rowH * 3;
+        placeKnob("EQ_COLOR_B" + n, { innerX, lowerY, cellW, 82 });
+        placeKnob("ATYPE_DEGREE" + n,
+                  { innerX + cellW + cellGap, lowerY, cellW, 82 });
+
         if (analogModeButtons[(size_t) b])
             analogModeButtons[(size_t) b]->setBounds(
-                colorCell.getX() + (colorCell.getWidth() - 36) / 2,
-                colorCell.getY() - 10, 36, 12);
-
-        placeKnob("ATYPE_DEGREE" + n, pos(7));
+                innerX + cellW - 8, lowerY + 4, 36, 12);
 
         if (ottBandBypassButtons[(size_t) b])
             if (auto* knob = findKnob("OTT_DEGREE" + n))
@@ -1440,7 +1463,7 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
         const float hz = parameterValue("EQ" + n + "_FREQ");
         const float db = parameterValue("EQ" + n + "_GAIN");
         const float q = parameterValue("EQ" + n + "_Q");
-        const juce::String prefix = "BAND " + n + "   ";
+        const juce::String prefix = "DYN EQ " + n + "   ";
         graphDragHint = prefix
             + formatGraphFrequency(hz)
             + "   " + juce::String(db >= 0.f ? "+" : "")
@@ -1491,7 +1514,7 @@ void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
 
     graphDragHintPosition = event.position;
     const float q = parameterValue("EQ" + n + "_Q");
-    graphDragHint = "BAND " + n
+    graphDragHint = "DYN EQ " + n
         + "   " + formatGraphFrequency(hz)
         + "   " + juce::String(db >= 0.f ? "+" : "")
         + juce::String(db, 1) + " dB"
