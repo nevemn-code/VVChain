@@ -1,4 +1,5 @@
 name: VVChain build
+# CI verification trigger: build the current PR head after compiler fixes.
 
 on:
   push:
