@@ -170,31 +170,111 @@ float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
     return std::exp(-1.0f / (0.001f * std::max(ms, 0.1f) * static_cast<float>(sampleRate)));
 }
 
-float VVChainDSP::analogColor(float x, float amount01, bool solidState,
-                                    float& previousInput, float& evenDc,
-                                    float& levelPower, double sampleRate) noexcept
+void VVChainDSP::processChebyshevAnalog(juce::dsp::AudioBlock<float>& block,
+                                           float drive, float amount)
 {
-    const float amount = juce::jlimit(0.0f, 1.0f, amount01);
-    previousInput = x;
-    evenDc = 0.0f;
-    levelPower = 0.0f;
-    juce::ignoreUnused(sampleRate);
+    if (amount <= 0.0f || drive <= 0.0f || block.getNumSamples() == 0)
+        return;
 
-    if (amount <= 0.0f)
-        return x;
+    const auto numChannels = block.getNumChannels();
+    const auto numSamples = block.getNumSamples();
 
-    // V3: memoryless odd Chebyshev 3rd/5th harmonic injector.
-    // No dynamic DC correction and no previous-sample dependency.
-    const float u = juce::jlimit(-1.0f, 1.0f, x);
-    const float u2 = u * u;
-    const float t3 = 4.0f * u * u2 - 3.0f * u;
-    const float t5 =
-        16.0f * u * u2 * u2 - 20.0f * u * u2 + 5.0f * u;
-    const float h3 = solidState ? 0.020f : 0.014f;
-    const float h5 = solidState ? 0.006f : 0.004f;
-    const float shaped = u + amount * (h3 * t3 + h5 * t5);
+    // Allocation-free scratch: one channel at a time.
+    jassert(analogTempBuffer.getNumChannels() >= 1);
+    jassert(static_cast<size_t>(analogTempBuffer.getNumSamples()) >= numSamples);
+    auto* tempPtr = analogTempBuffer.getWritePointer(0);
 
-    return x + 0.90f * (shaped - u);
+    for (size_t ch = 0; ch < numChannels; ++ch)
+    {
+        auto* channelData = block.getChannelPointer(ch);
+
+        // 1. Input RMS for level matching.
+        double inputSumSquares = 0.0;
+        for (size_t i = 0; i < numSamples; ++i)
+        {
+            const double v = static_cast<double>(channelData[i]);
+            inputSumSquares += v * v;
+        }
+
+        const float inputRms =
+            static_cast<float>(std::sqrt(inputSumSquares
+                                         / static_cast<double>(numSamples)));
+
+        if (inputRms < 0.0001f)
+            continue;
+
+        // 2. Chebyshev coloration in the oversampled domain.
+        // T2/T3 are deliberate low-order harmonic generators.
+        // tanh keeps the Chebyshev input bounded to [-1, 1].
+        double shapedMean = 0.0;
+
+        for (size_t i = 0; i < numSamples; ++i)
+        {
+            const float x = channelData[i];
+            const float xDriven = std::tanh(x * drive);
+
+            const float x2 = xDriven * xDriven;
+            const float t2 = 2.0f * x2 - 1.0f;
+            const float t3 = 4.0f * xDriven * x2 - 3.0f * xDriven;
+
+            // T2 itself is the even-harmonic term. Adding +1 does NOT
+            // "remove DC"; it shifts the whole term upward. We therefore
+            // de-mean the generated coloration below, preserving the original
+            // signal's own DC while preventing ANALOG from adding a DC bias.
+            const float shaped =
+                xDriven
+                + 0.25f * t2
+                + 0.15f * t3;
+
+            tempPtr[i] = shaped;
+            shapedMean += static_cast<double>(shaped);
+        }
+
+        shapedMean /= static_cast<double>(numSamples);
+
+        // Remove only the coloration DC component before RMS matching.
+        double outputSumSquares = 0.0;
+        for (size_t i = 0; i < numSamples; ++i)
+        {
+            const float shaped = tempPtr[i]
+                - static_cast<float>(shapedMean);
+            tempPtr[i] = shaped;
+
+            const double v = static_cast<double>(shaped);
+            outputSumSquares += v * v;
+        }
+
+        const float outputRms =
+            static_cast<float>(std::sqrt(outputSumSquares
+                                         / static_cast<double>(numSamples)));
+
+        const float gainComp =
+            outputRms > 0.0001f ? inputRms / outputRms : 1.0f;
+
+        // 3. Parallel residual / Delta mix:
+        // original + (matched-colour - original) * amount.
+        // The operation is memoryless: no IIR, no feedback, no added samples.
+        double deltaMean = 0.0;
+        for (size_t i = 0; i < numSamples; ++i)
+        {
+            const float delta =
+                tempPtr[i] * gainComp - channelData[i];
+            deltaMean += static_cast<double>(delta);
+        }
+
+        // Preserve the source DC component; remove only the newly introduced
+        // block-mean delta so T2 cannot bias the programme upward/downward.
+        deltaMean /= static_cast<double>(numSamples);
+
+        for (size_t i = 0; i < numSamples; ++i)
+        {
+            const float delta =
+                tempPtr[i] * gainComp - channelData[i]
+                - static_cast<float>(deltaMean);
+
+            channelData[i] += delta * amount;
+        }
+    }
 }
 
 void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels)
@@ -205,6 +285,7 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     const int maxBlock = juce::jmax(1, samplesPerBlock);
     dryBuffer.setSize(channels, maxBlock, false, true, true);
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
+    analogTempBuffer.setSize(1, maxBlock * 4, false, true, true);
 
     eqOversampler.reset();
     limiterOversampler.reset();
@@ -253,13 +334,6 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
 void VVChainDSP::reset()
 {
     for (auto& b : eq) b.reset();
-    for (auto& state : analogPreviousInput)
-        state = { 0.f, 0.f };
-    for (auto& state : analogEvenDc)
-        state = { 0.f, 0.f };
-    for (auto& state : analogLevelPower)
-        state = { 0.f, 0.f };
-
     soloPreXover1.reset(); soloPreXover2.reset(); soloPreXover3.reset();
     soloPostXover1.reset(); soloPostXover2.reset(); soloPostXover3.reset();
     soloBlend = 0.f;
@@ -318,6 +392,7 @@ void VVChainDSP::reset()
     limiterEnvDb = { 0.f, 0.f };
     dryBuffer.clear();
     alignedDryBuffer.clear();
+    analogTempBuffer.clear();
 }
 
 float VVChainDSP::rmsDetectPDR(float input,
@@ -503,39 +578,32 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     }
 
-    for (int ch = 0; ch < channels; ++ch)
+    if (!p.eqBypass)
     {
-        auto* data = osBlock.getChannelPointer(static_cast<size_t>(ch));
-        const bool right = ch == 1;
-
-        for (size_t n = 0; n < osBlock.getNumSamples(); ++n)
+        for (size_t band = 0; band < eq.size(); ++band)
         {
-            float y = data[n];
-
-            if (!p.eqBypass)
+            // EQ itself remains sample-accurate and causal.
+            for (int ch = 0; ch < channels; ++ch)
             {
-                for (size_t band = 0; band < eq.size(); ++band)
-                {
-                    y = eq[band].process(y, right);
+                auto* data = osBlock.getChannelPointer(static_cast<size_t>(ch));
+                const bool right = ch == 1;
 
-                    if (!p.eqColorGlobalBypass && !p.eqColorBypass[band])
-                    {
-                        const float amount =
-                            juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
-
-                        y = analogColor(
-                            y,
-                            amount,
-                            p.eqColorSolidState[band],
-                            analogPreviousInput[band][static_cast<size_t>(ch)],
-                            analogEvenDc[band][static_cast<size_t>(ch)],
-                            analogLevelPower[band][static_cast<size_t>(ch)],
-                            osSr);
-                    }
-                }
+                for (size_t n = 0; n < osBlock.getNumSamples(); ++n)
+                    data[n] = eq[band].process(data[n], right);
             }
 
-            data[n] = y;
+            if (!p.eqColorGlobalBypass && !p.eqColorBypass[band])
+            {
+                const float amount =
+                    juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
+
+                // TT/SS only selects the fixed drive character. Amount remains
+                // the user-facing colour mix, matching the existing UI.
+                const float drive =
+                    p.eqColorSolidState[band] ? 1.15f : 0.95f;
+
+                processChebyshevAnalog(osBlock, drive, amount);
+            }
         }
     }
 
