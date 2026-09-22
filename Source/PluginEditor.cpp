@@ -1020,7 +1020,7 @@ void VVChainAudioProcessorEditor::drawGraphDragHint(
     const float paddingY = 6.0f;
     const float boxW =
         juce::jlimit(175.0f, graph.getWidth() - 12.0f,
-                     static_cast<float>(g.getCurrentFont().getStringWidth(graphDragHint))
+                     (static_cast<float>(graphDragHint.length()) * g.getCurrentFont().getHeight() * 0.55f)
                          + paddingX * 2.0f);
     const float boxH = 28.0f;
 
@@ -1252,7 +1252,7 @@ void VVChainAudioProcessorEditor::resized()
         placeKnob("OTT_COMP_A" + n, pos(4));
         placeKnob("OTT_COMP_R" + n, pos(5));
 
-        const colorCell = pos(6);
+        const auto colorCell = pos(6);
         placeKnob("EQ_COLOR_B" + n,
                   { colorCell.getX(), colorCell.getY() + 17,
                     colorCell.getWidth(), colorCell.getHeight() - 17 });
@@ -1402,7 +1402,7 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
         dragBand = -1;
         showGraphDragHint = true;
         graphDragHintPosition = pos;
-        const hz = parameterValue(
+        const auto hz = parameterValue(
             dragXover == 0 ? "OTT_X1"
             : dragXover == 1 ? "OTT_X2" : "OTT_X3");
         graphDragHint = "X" + juce::String(dragXover + 1)
@@ -1457,7 +1457,7 @@ void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
     if (dragXover >= 0)
     {
         const float hz = constrainXoverFrequency(
-            dragXover, graphXToFrequency(graph, event.position.x));
+            dragXover, graphXToFrequency(graphForBand, event.position.x));
         setParameter(dragXover == 0 ? "OTT_X1"
                      : dragXover == 1 ? "OTT_X2" : "OTT_X3", hz);
 
@@ -1473,15 +1473,15 @@ void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
     if (dragBand < 0)
         return;
 
-    const auto graph = eqGraphBounds();
     const auto n = juce::String(dragBand + 1);
+    const auto graphForBand = eqGraphBounds();
 
     const float hz = juce::jlimit(
         20.f, 20000.f,
         graphXToFrequency(graph, event.position.x));
     const float db = juce::jlimit(
         -24.f, 24.f,
-        18.f - ((event.position.y - graph.getY()) / graph.getHeight()) * 36.f);
+        18.f - ((event.position.y - graphForBand.getY()) / graphForBand.getHeight()) * 36.f);
 
     setParameter("EQ" + n + "_FREQ", hz);
     setParameter("EQ" + n + "_GAIN", db);
