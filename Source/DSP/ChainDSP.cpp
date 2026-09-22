@@ -290,6 +290,8 @@ void VVChainDSP::reset()
 
     for (auto& b : ottDynamics)
     {
+        b.currentEnv = { 0.f, 0.f };
+        b.currentGain = { 1.f, 1.f };
         b.gateEnvDb = { 0.f, 0.f };
         b.lifterEnv = { 1.f, 1.f };
         b.compEnvDb = { 0.f, 0.f };
@@ -298,10 +300,6 @@ void VVChainDSP::reset()
         b.downRmsPower = { 0.f, 0.f };
         b.downSlowRmsPower = { 0.f, 0.f };
     }
-
-    // Start the real OTT gain at unity for every band/channel.
-    for (auto& bandGain : ottCurrentGain)
-        bandGain = { 1.f, 1.f };
 
     typeXover1.reset();
     typeXover2.reset();
@@ -570,9 +568,9 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
 void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    // Four independent OTT bands. Each band has its own detector state and
-    // now uses one industrial-grade linear-domain gain smoother. The target
-    // gain is calculated first; only the final gain trajectory is smoothed.
+    // Four independent OTT bands. Each band/channel owns persistent
+    // currentEnv + currentGain state. The detector and final gain are both
+    // explicitly smoothed to prevent zippering, clicks and transient tearing.
     const float x1 = juce::jlimit(80.f, 900.f, p.ottX1);
     const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.ottX2);
     const float x3 = juce::jlimit(x2 + 200.f, static_cast<float>(sr * 0.42), p.ottX3);
@@ -583,8 +581,6 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
     updateCrossover(ottXover2, sr, x2, xoverQ);
     updateCrossover(ottXover3, sr, x3, xoverQ);
 
-    // Equalize the number of crossover sections traversed by each branch.
-    // B1: X1 -> add all-pass X2 + X3. B2: X1+X2 -> add all-pass X3.
     updateCrossover(ottPhase2_B1, sr, x2, xoverQ);
     updateCrossover(ottPhase3_B1, sr, x3, xoverQ);
     updateCrossover(ottPhase3_B2, sr, x3, xoverQ);
@@ -613,8 +609,6 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
             const float midHigh = ottXover3.low(x2High, right);
             const float top = ottXover3.high(x2High, right);
 
-            // LP4 + HP4 compensation restores the phase path for skipped
-            // crossovers without adding host/plugin latency.
             low = ottPhase2_B1.allPass(low, right);
             low = ottPhase3_B1.allPass(low, right);
             lowMid = ottPhase3_B2.allPass(lowMid, right);
@@ -635,11 +629,68 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 auto& state = ottDynamics[(size_t) band];
                 float& gateEnv = state.gateEnvDb[(size_t) ch];
 
-                // Gate remains its own detector/gain stage.
-                // The new industrial smoother starts at the OTT gain target.
+                // Existing gate remains first in the OTT branch.
                 float v = applyGate(
                     bands[band], gateEnv,
                     p.ottGateThresholdDb, sr);
+
+                // ---------------------------------------------------------
+                // DEFENCE 1: band-adaptive envelope timing.
+                // Low band cannot use ultra-fast timing because the
+                // waveform period is much longer and fast gain motion can
+                // become audible as clicks / low-frequency tearing.
+                // ---------------------------------------------------------
+                const float minAttackMs =
+                    band == 0 ? 8.0f
+                    : (band == 1 ? 3.0f : 0.5f);
+
+                const float minReleaseMs =
+                    band == 0 ? 20.0f : 5.0f;
+
+                const float userAttackMs =
+                    p.ottCompAttack[(size_t) band];
+                const float userReleaseMs =
+                    p.ottLifterRelease[(size_t) band];
+
+                const float attackMs =
+                    std::max(minAttackMs, userAttackMs);
+                const float releaseMs =
+                    std::max(minReleaseMs, userReleaseMs);
+
+                const float attackCoef =
+                    std::exp(-1000.0f /
+                             (attackMs * static_cast<float>(sr)));
+
+                const float releaseCoef =
+                    std::exp(-1000.0f /
+                             (releaseMs * static_cast<float>(sr)));
+
+                // Persistent envelope state: NOT reset inside process().
+                float& currentEnv =
+                    state.currentEnv[(size_t) ch];
+
+                const float absIn = std::abs(v);
+
+                if (absIn > currentEnv)
+                {
+                    currentEnv =
+                        absIn
+                        + attackCoef * (currentEnv - absIn);
+                }
+                else
+                {
+                    currentEnv =
+                        absIn
+                        + releaseCoef * (currentEnv - absIn);
+                }
+
+                // ---------------------------------------------------------
+                // OTT target gain calculation from the smoothed envelope.
+                // Downward and upward components are combined into one
+                // theoretical linear target before the final gain smoother.
+                // ---------------------------------------------------------
+                const float envDb =
+                    gainToDb(std::max(currentEnv, 1.0e-9f));
 
                 const float depth = degree / 100.f;
 
@@ -650,43 +701,25 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 const float upRatio =
                     1.f + depth * (kLifterRatio - 1.f);
 
-                const float compMix =
-                    juce::jlimit(0.f, 100.f,
-                                 p.ottCompMix[(size_t) band]) / 100.f;
-                const float lifterMix =
-                    juce::jlimit(0.f, 100.f,
-                                 p.ottLifterMix[(size_t) band]) / 100.f;
-
-                // ---------------------------------------------------------
-                // 1. Downward detector -> TARGET gain (no gain smoothing here)
-                // ---------------------------------------------------------
-                float downReleaseMs = p.ottCompRelease[(size_t) band];
-                const float downDb = rmsDetectPDR(
-                    v,
-                    state.downRmsPower[(size_t) ch],
-                    state.downSlowRmsPower[(size_t) ch],
-                    p.ottCompAttack[(size_t) band],
-                    p.ottCompRelease[(size_t) band],
-                    sr,
-                    downReleaseMs);
-
                 const float downSlope =
                     1.f - (1.f / juce::jmax(1.f, downRatio));
+                const float downThreshold =
+                    p.ottCompThreshold[(size_t) band];
                 const float downKneeStart =
-                    p.ottCompThreshold[(size_t) band] - kCompressorKneeDb * 0.5f;
+                    downThreshold - kCompressorKneeDb * 0.5f;
                 const float downKneeEnd =
-                    p.ottCompThreshold[(size_t) band] + kCompressorKneeDb * 0.5f;
+                    downThreshold + kCompressorKneeDb * 0.5f;
 
                 float targetReductionDb = 0.f;
 
-                if (downDb > downKneeEnd)
+                if (envDb > downKneeEnd)
                 {
                     targetReductionDb =
-                        (downDb - p.ottCompThreshold[(size_t) band]) * downSlope;
+                        (envDb - downThreshold) * downSlope;
                 }
-                else if (downDb > downKneeStart)
+                else if (envDb > downKneeStart)
                 {
-                    const float kneeX = downDb - downKneeStart;
+                    const float kneeX = envDb - downKneeStart;
                     targetReductionDb =
                         downSlope / (2.f * kCompressorKneeDb)
                         * kneeX * kneeX;
@@ -698,31 +731,32 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 const float downTargetGain =
                     dbToGain(-targetReductionDb);
 
-                // Preserve the existing advanced per-stage MIX control without
-                // introducing a second smoothing state.
+                const float compMix =
+                    juce::jlimit(
+                        0.f, 1.f,
+                        p.ottCompMix[(size_t) band] / 100.f);
+
                 const float downStageGain =
                     1.f + (downTargetGain - 1.f) * compMix;
 
                 const float afterDown = v * downStageGain;
 
-                // ---------------------------------------------------------
-                // 2. Upward detector -> TARGET gain (no gain smoothing here)
-                // ---------------------------------------------------------
-                float upReleaseMs = p.ottLifterRelease[(size_t) band];
-                const float upDb = rmsDetectPDR(
-                    afterDown,
-                    state.upRmsPower[(size_t) ch],
-                    state.upSlowRmsPower[(size_t) ch],
-                    p.ottLifterAttack[(size_t) band],
-                    p.ottLifterRelease[(size_t) band],
-                    sr,
-                    upReleaseMs);
+                const float afterDownEnvelope =
+                    std::abs(afterDown) > 1.0e-9f
+                        ? std::abs(afterDown)
+                        : currentEnv;
+
+                const float afterDownDb =
+                    gainToDb(std::max(afterDownEnvelope, 1.0e-9f));
 
                 const float liftThreshold =
-                    juce::jmax(p.ottLifterThreshold[(size_t) band], -48.f);
+                    juce::jmax(
+                        p.ottLifterThreshold[(size_t) band],
+                        -48.f);
 
                 const float upSlope =
                     1.f - (1.f / juce::jmax(1.f, upRatio));
+
                 const float upKneeStart =
                     liftThreshold - kLifterKneeDb * 0.5f;
                 const float upKneeEnd =
@@ -730,14 +764,14 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
                 float targetGainDb = 0.f;
 
-                if (upDb < upKneeStart)
+                if (afterDownDb < upKneeStart)
                 {
                     targetGainDb =
-                        (liftThreshold - upDb) * upSlope;
+                        (liftThreshold - afterDownDb) * upSlope;
                 }
-                else if (upDb < upKneeEnd)
+                else if (afterDownDb < upKneeEnd)
                 {
-                    const float kneeX = upKneeEnd - upDb;
+                    const float kneeX = upKneeEnd - afterDownDb;
                     targetGainDb =
                         upSlope / (2.f * kLifterKneeDb)
                         * kneeX * kneeX;
@@ -749,76 +783,63 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 const float upTargetGain =
                     dbToGain(targetGainDb);
 
+                const float lifterMix =
+                    juce::jlimit(
+                        0.f, 1.f,
+                        p.ottLifterMix[(size_t) band] / 100.f);
+
                 const float upStageGain =
                     1.f + (upTargetGain - 1.f) * lifterMix;
 
-                // ---------------------------------------------------------
-                // 3. Final TARGET GAIN in linear domain
-                // ---------------------------------------------------------
-                const float targetGainLinear =
-                    juce::jlimit(0.001f, 8.0f,
-                                 downStageGain * upStageGain);
+                const float targetGain =
+                    juce::jlimit(
+                        0.001f, 8.0f,
+                        downStageGain * upStageGain);
 
                 // ---------------------------------------------------------
-                // 4. INDUSTRIAL-GRADE ATTACK / RELEASE GAIN SMOOTHING
-                //    One persistent real-gain state per band/channel.
+                // DEFENCE 2: dedicated 5 ms second-stage Gain smoothing.
+                // Even if targetGain jumps instantly, the real gain itself
+                // is forbidden from moving faster than this time constant.
                 // ---------------------------------------------------------
+                const float gainSmoothCoef =
+                    std::exp(-1000.0f /
+                             (5.0f * static_cast<float>(sr)));
+
                 float& currentGain =
-                    ottCurrentGain[(size_t) band][(size_t) ch];
+                    state.currentGain[(size_t) ch];
 
-                // Attack controls downward movement.
-                // Release controls return toward unity / upward movement.
-                const float attackMs =
-                    std::max(0.5f,
-                             p.ottCompAttack[(size_t) band]);
-                const float releaseMs =
-                    std::max(5.0f,
-                             p.ottLifterRelease[(size_t) band]);
+                currentGain =
+                    targetGain
+                    + gainSmoothCoef
+                    * (currentGain - targetGain);
 
-                const float attackCoeff =
-                    std::exp(-1000.0f /
-                             (attackMs * static_cast<float>(sr)));
-                const float releaseCoeff =
-                    std::exp(-1000.0f /
-                             (releaseMs * static_cast<float>(sr)));
-
-                if (targetGainLinear < currentGain)
-                {
-                    currentGain =
-                        targetGainLinear
-                        + attackCoeff * (currentGain - targetGainLinear);
-                }
-                else
-                {
-                    currentGain =
-                        targetGainLinear
-                        + releaseCoeff * (currentGain - targetGainLinear);
-                }
-
-                // The existing OTT mix remains the single final Dry/Wet
-                // control, avoiding double application of p.ottMix.
+                // The per-band stage mixes above already determine how much
+                // processing enters targetGain. Plugin-level ottMix remains
+                // the single overall Dry/Wet control, so amount here is 1.
                 const float finalGain =
                     1.0f + (currentGain - 1.0f) * 1.0f;
 
                 v *= finalGain;
 
                 v *= dbToGain(
-                    juce::jlimit(-24.f, 12.f,
-                                 p.ottBandLevelDb[(size_t) band]));
+                    juce::jlimit(
+                        -24.f, 12.f,
+                        p.ottBandLevelDb[(size_t) band]));
 
                 bands[band] = v;
             }
 
-            float wet = bands[0] + bands[1] + bands[2] + bands[3];
+            float wet =
+                bands[0] + bands[1] + bands[2] + bands[3];
 
             if (p.ottClipper)
                 wet = std::tanh(wet * 1.7f);
 
             wet *= outputGain;
 
-            // Preserve the existing plugin-level OTT Dry/Wet behaviour.
             data[n] =
-                original + globalMix * (wet - original);
+                original
+                + globalMix * (wet - original);
         }
     }
 }
