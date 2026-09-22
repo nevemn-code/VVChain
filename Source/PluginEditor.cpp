@@ -1457,7 +1457,7 @@ void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
     if (dragXover >= 0)
     {
         const float hz = constrainXoverFrequency(
-            dragXover, graphXToFrequency(graphForBand, event.position.x));
+            dragXover, graphXToFrequency(graph, event.position.x));
         setParameter(dragXover == 0 ? "OTT_X1"
                      : dragXover == 1 ? "OTT_X2" : "OTT_X3", hz);
 
