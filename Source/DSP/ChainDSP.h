@@ -86,6 +86,8 @@ public:
     void reset();
     void process(juce::AudioBuffer<float>& buffer, const Parameters& p);
 
+    // Live Dynamic EQ metering for the editor graph.
+
     int getLatencySamples() const noexcept { return totalLatencySamples; }
 
 private:
