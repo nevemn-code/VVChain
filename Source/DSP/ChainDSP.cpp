@@ -182,7 +182,7 @@ void VVChainDSP::processChebyshevAnalog(
     const float safeDrive = juce::jmax(0.0f, drive);
     const float safeAmount = juce::jlimit(0.0f, 1.0f, amount);
 
-    // Allocation-free scratch. One channel is processed at a time.
+    // One-channel scratch, preallocated in prepare(); no realtime allocation.
     jassert(analogTempBuffer.getNumChannels() >= 1);
     jassert(static_cast<size_t>(analogTempBuffer.getNumSamples()) >= numSamples);
 
@@ -192,8 +192,7 @@ void VVChainDSP::processChebyshevAnalog(
     {
         auto* channelData = block.getChannelPointer(ch);
 
-        // Input RMS is measured once per channel/block, matching the requested
-        // high-density Analog recipe.
+        // 1. Calculate input RMS.
         double inputSumSquares = 0.0;
 
         for (size_t i = 0; i < numSamples; ++i)
@@ -209,56 +208,53 @@ void VVChainDSP::processChebyshevAnalog(
         if (inputRms < 0.0001f)
             continue;
 
-        // High-density Analog recipe:
-        // asymmetric Grid-Bias -> tanh -> Chebyshev T2/T3 -> partial
-        // auto-gain compensation. The current VVChain path is serial, so the
-        // separate isParallelPath branch is intentionally not enabled here.
-        const float analogBias = 0.08f * safeDrive;
-        const float biasTanh = std::tanh(analogBias);
-
+        // 2. High-purity analogue colouring.
         double outputSumSquares = 0.0;
 
         for (size_t i = 0; i < numSamples; ++i)
         {
             const float x = channelData[i];
 
-            const float xDriven =
-                std::tanh(x * safeDrive + analogBias) - biasTanh;
+            // Gentle soft clipping.
+            const float xDriven = std::tanh(x * safeDrive);
 
-            const float x2 = xDriven * xDriven;
-            const float t2 = 2.0f * x2 - 1.0f;
-            const float t3 =
-                4.0f * xDriven * x2
-                - 3.0f * xDriven;
+            // Pure harmonic extraction requested by the final recipe.
+            const float evenHarmonics =
+                2.0f * xDriven * xDriven - 1.0f;
 
+            const float oddHarmonics =
+                4.0f * xDriven * xDriven * xDriven;
+
+            // Fundamental-preserving source + requested harmonic colour.
             const float shaped =
                 xDriven
-                + 0.6f * (t2 + 1.0f)
-                + 0.3f * t3;
+                + 0.25f * evenHarmonics
+                + 0.15f * oddHarmonics;
 
             tempPtr[i] = shaped;
             outputSumSquares +=
                 static_cast<double>(shaped) * static_cast<double>(shaped);
         }
 
+        // 3. 100% Auto-Gain Match.
         const float outputRms =
             static_cast<float>(std::sqrt(
                 outputSumSquares / static_cast<double>(numSamples)));
 
-        // Requested 80% auto-gain compensation: retain 20% of the raw
-        // level rise so the Drive setting still feels denser/louder.
         const float gainComp =
             outputRms > 0.0001f
-                ? (inputRms / outputRms) * 0.8f + 0.2f
+                ? inputRms / outputRms
                 : 1.0f;
 
+        // 4. Serial routing in VVChain: original + pure Delta * amount.
+        // No parallel-path route currently exists in the production signal
+        // path, so the requested isParallelPath branch is intentionally
+        // represented by the existing serial path only.
         for (size_t i = 0; i < numSamples; ++i)
         {
             const float delta =
                 (tempPtr[i] * gainComp) - channelData[i];
 
-            // VVChain currently has no separate parallel-path routing flag.
-            // Therefore the normal serial colour path is used.
             channelData[i] =
                 channelData[i] + (delta * safeAmount);
         }
