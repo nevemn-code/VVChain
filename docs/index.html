@@ -237,11 +237,20 @@ eqCanvas.addEventListener("pointerdown",e=>{
   for(let i=0;i<3;i++)if(Math.abs(xo[i]-x)<14){
     dragXover=i;eqCanvas.setPointerCapture(e.pointerId);showGraphHint(e,"X"+(i+1)+"   "+graphFrequencyText(state.ott.x[i])+"   CURVE "+fmt((state.ott.overlap??[50,50,50])[i]??50,0)+"%");return
   }
-  let nearest=-1,best=28;
+  let nearest=-1,best=24;
+  const hzAtPointer=invLog(x/r.width);
+  let curveDb=0;
   for(let b=0;b<4;b++){
-    const px=logX(state.eq.freq[b],r.width),py=r.height-(clamp(state.eq.gain[b],-18,18)+18)/36*r.height;
-    const d=Math.hypot(px-x,py-y);
-    if(d<best){best=d;nearest=b}
+    const f=state.eq.freq[b],q=Math.max(.1,state.eq.q[b]),xx=Math.log(Math.max(hzAtPointer,20)/Math.max(f,20)),wd=Math.max(.02,1/(q*1.8));
+    curveDb+=state.eq.gain[b]*Math.exp(-(xx*xx)/(2*wd*wd));
+  }
+  const curveY=r.height-(clamp(curveDb,-18,18)+18)/36*r.height;
+  if(Math.abs(curveY-y)<=best){
+    let nearestFreq=Infinity;
+    for(let b=0;b<4;b++){
+      const d=Math.abs(Math.log(Math.max(hzAtPointer,20)/Math.max(state.eq.freq[b],20)));
+      if(d<nearestFreq){nearestFreq=d;nearest=b}
+    }
   }
   if(nearest>=0){
     drag=nearest;eqCanvas.setPointerCapture(e.pointerId);
