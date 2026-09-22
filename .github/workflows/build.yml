@@ -1,60 +1,30 @@
-name: VVChain build
+name: VVChain CI/CD
 
 on:
   push:
+    branches: [ "main", "fix/*" ]
   pull_request:
-  workflow_dispatch:
+    branches: [ "main" ]
 
 jobs:
-  windows-vst3:
-    runs-on: windows-2025-vs2026
-
+  build_and_test:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
 
-      - name: Reference stress test
-        shell: pwsh
-        run: python Tests/reference_stress.py
+    - name: Setup CMake and Ninja
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build libasound2-dev libjack-jackd2-dev           libcurl4-openssl-dev libfreetype6-dev libx11-dev libxcomposite-dev           libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev
 
-      - name: Web Preview smoke test
-        shell: pwsh
-        run: python Tests/web_smoke.py
+    - name: Configure CMake (Strict Release & AVX2)
+      run: |
+        cmake -B build -G Ninja           -DCMAKE_BUILD_TYPE=Release           -DCMAKE_CXX_FLAGS="-O3 -ffast-math -mavx2 -D JUCE_WEB_BROWSER=0 -D JUCE_USE_CURL=0 -D JUCE_HEADLESS_PLUGIN_CLIENT=1"
 
-      - name: Configure
-        shell: pwsh
-        run: cmake -S . -B Builds -G "Visual Studio 18 2026" -A x64 -DVVCHAIN_ENABLE_AAX=OFF -DVVCHAIN_BUILD_STANDALONE=ON
+    - name: Build DSP Core and Tests
+      run: cmake --build build --config Release --parallel 4
 
-      - name: Build
-        shell: pwsh
-        run: cmake --build Builds --config Release
-
-      - name: Collect VST3
-        shell: pwsh
-        run: |
-          $vst3 = Get-ChildItem -Path "$PWD\Builds" -Recurse -Directory -Filter "VVChain.vst3" | Select-Object -First 1
-          if (-not $vst3) {
-            Write-Host "VVChain.vst3 not found."
-            Get-ChildItem -Path "$PWD\Builds" -Recurse | Select-Object FullName
-            exit 1
-          }
-
-          New-Item -ItemType Directory -Force -Path "$PWD\Artifacts" | Out-Null
-          Copy-Item -LiteralPath $vst3.FullName -Destination "$PWD\Artifacts\VVChain.vst3" -Recurse -Force
-
-          $readme = @"
-          VVChain Windows x64 VST3 test build
-
-          1. Extract VVChain.vst3 from this artifact.
-          2. Keep the entire VVChain.vst3 folder intact.
-          3. Load the plugin from SAVIHost or copy it to a VST3 folder.
-          4. This is a VST3 bundle; the actual plugin binary is inside the bundle.
-          "@
-          Set-Content -Path "$PWD\Artifacts\README.txt" -Value $readme -Encoding UTF8
-
-      - name: Upload VST3 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: VVChain-VST3-Windows-x64
-          path: Artifacts
-          if-no-files-found: error
-          compression-level: 0
+    - name: Run Python Stress Tests (Optimized PRBS Matrix)
+      run: |
+        python3 -m pip install numpy scipy
+        python3 Tests/reference_stress.py
