@@ -18,12 +18,6 @@ float crossoverQFromOverlap(float overlap)
     return 0.90f - 0.35f * t;
 }
 
-float getBandBaseAttack(int bandIndex) noexcept
-{
-    static constexpr float baseAttackMs[4] = { 15.0f, 8.0f, 3.0f, 1.0f };
-    const int safeBand = juce::jlimit(0, 3, bandIndex);
-    return baseAttackMs[safeBand];
-}
 }
 
 void VVChainDSP::updateAnalogPeak(Biquad& filter, double fs, double f0, double gainDb, double q)
@@ -393,7 +387,8 @@ float VVChainDSP::rmsDetectPDR(float input,
                                   float releaseMs,
                                   double sampleRate,
                                   float& programReleaseMs,
-                                  float attackCoeffOverride) noexcept
+                                  float attackCoeffOverride,
+                                  float releaseCoeffOverride) noexcept
 {
     const float target = input * input;
 
@@ -402,7 +397,9 @@ float VVChainDSP::rmsDetectPDR(float input,
             ? juce::jlimit(0.0f, 1.0f, attackCoeffOverride)
             : timeCoeff(sampleRate, attackMs);
     const float fastRelease =
-        timeCoeff(sampleRate, juce::jmax(0.5f, releaseMs * 0.35f));
+        releaseCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, releaseCoeffOverride)
+            : timeCoeff(sampleRate, juce::jmax(0.5f, releaseMs * 0.35f));
     const float slowAttack =
         timeCoeff(sampleRate, juce::jmax(attackMs * 4.0f, 5.0f));
     const float slowRelease =
@@ -452,7 +449,10 @@ float VVChainDSP::applyLifterFromDetectorDb(float input, float detectorDb,
         targetGainDb = slope / (2.0f * kLifterKneeDb) * x * x;
     }
 
-    const float targetLinear = dbToGain(juce::jlimit(0.f, 9.f, targetGainDb));
+    // Hard upward-gain ceiling: +12dB = 3.981x, prevents noise-floor lift.
+    const float targetGainDbClamped =
+        juce::jmin(12.0f, juce::jmax(0.0f, targetGainDb));
+    const float targetLinear = dbToGain(targetGainDbClamped);
     const float attack = timeCoeff(sampleRate, attackMs);
     const float release = timeCoeff(sampleRate, releaseMs);
     const float alpha = targetLinear > env ? attack : release;
@@ -468,7 +468,8 @@ float VVChainDSP::applyCompressorFromDetectorDb(float input, float detectorDb,
                                                 float attackMs, float releaseMs,
                                                 float mix, double sampleRate,
                                                 float ratio,
-                                                float attackCoeffOverride)
+                                                float attackCoeffOverride,
+                                                float releaseCoeffOverride)
 {
     const float slope = 1.0f - (1.0f / juce::jmax(1.0f, ratio));
     const float kneeStart = thresholdDb - kCompressorKneeDb * 0.5f;
@@ -488,7 +489,9 @@ float VVChainDSP::applyCompressorFromDetectorDb(float input, float detectorDb,
         ? (attackCoeffOverride >= 0.0f
             ? juce::jlimit(0.0f, 1.0f, attackCoeffOverride)
             : timeCoeff(sampleRate, attackMs))
-        : timeCoeff(sampleRate, releaseMs);
+        : (releaseCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, releaseCoeffOverride)
+            : timeCoeff(sampleRate, releaseMs));
     const float smoothedReduction =
         alpha * currentReductionDb + (1.0f - alpha) * targetReductionDb;
 
@@ -651,6 +654,23 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
     const float outputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.ottOutputGainDb));
 
+    float amountSum = 0.0f;
+    int amountCount = 0;
+    for (int band = 0; band < 4; ++band)
+    {
+        if (p.ottBandBypass[(size_t) band])
+            continue;
+        amountSum += juce::jlimit(
+            0.0f, 100.0f, p.ottDegree[(size_t) band]) / 100.0f;
+        ++amountCount;
+    }
+
+    const float averageAmount =
+        amountCount > 0 ? amountSum / static_cast<float>(amountCount) : 0.0f;
+    // Nominal level compensation: 70% Amount -> -1.75dB.
+    const float autoTrimDb = -2.5f * averageAmount;
+    const float autoTrimGain = dbToGain(autoTrimDb);
+
     for (int ch = 0; ch < channels; ++ch)
     {
         auto* data = buffer.getWritePointer(ch);
@@ -721,12 +741,18 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 // The user's Attack is automatically lengthened as OTT Amount
                 // (degree) rises, reducing high-depth click / transient tearing.
                 const float amount = depth;
-                const float baseAttackMs =
-                    getBandBaseAttack(band);
 
+                // The Compressor Attack parameter is the actual user base time.
+                // Defaults are Low=15ms, LowMid=8ms, HighMid=3ms, High=1ms.
+                const float baseAttackMs =
+                    juce::jlimit(0.1f, 120.0f,
+                                 p.ottCompAttack[(size_t) band]);
+
+                // Amount^2 curve: Amount=70% maps exactly to 120ms.
                 const float targetLimitMs = 120.0f;
                 const float k =
-                    (targetLimitMs - baseAttackMs) / 0.49f;
+                    juce::jmax(0.0f,
+                               (targetLimitMs - baseAttackMs) / 0.49f);
                 const float dynamicAttackMs =
                     baseAttackMs + k * (amount * amount);
 
@@ -737,9 +763,20 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 const float finalAttackMs =
                     juce::jmax(minAttackLimit, dynamicAttackMs);
 
+                const float baseReleaseMs =
+                    juce::jlimit(10.0f, 2500.0f,
+                                 p.ottCompRelease[(size_t) band]);
+                const float dynamicReleaseMs =
+                    baseReleaseMs + (amount * 100.0f);
+                const float finalReleaseMs =
+                    juce::jmax(20.0f, dynamicReleaseMs);
+
                 const float attackCoef =
                     std::exp(-1000.0f
                              / (finalAttackMs * static_cast<float>(sr)));
+                const float releaseCoef =
+                    std::exp(-1000.0f
+                             / (finalReleaseMs * static_cast<float>(sr)));
 
                 // Each stage has its own RMS detector state for this band/channel.
                 float downReleaseMs = p.ottCompRelease[(size_t) band];
@@ -748,18 +785,20 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     state.downRmsPower[(size_t) ch],
                     state.downSlowRmsPower[(size_t) ch],
                     finalAttackMs,
-                    p.ottCompRelease[(size_t) band],
+                    finalReleaseMs,
                     sr,
                     downReleaseMs,
-                    attackCoef);
+                    attackCoef,
+                    releaseCoef);
 
                 v = applyCompressorFromDetectorDb(
                     v, downDb, compEnv,
                     p.ottCompThreshold[(size_t) band],
                     finalAttackMs,
-                    downReleaseMs,
+                    finalReleaseMs,
                     compMix, sr, downRatio,
-                    attackCoef);
+                    attackCoef,
+                    releaseCoef);
 
                 float upReleaseMs = p.ottLifterRelease[(size_t) band];
                 const float upDb = rmsDetectPDR(
@@ -798,7 +837,8 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
             // Do not clip the OTT reconstruction here. The final true-peak
             // lookahead limiter operates on the complete mixed programme.
             data[n] =
-                original + globalMix * (wet - original);
+                (original + globalMix * (wet - original))
+                * autoTrimGain;
         }
     }
 }
