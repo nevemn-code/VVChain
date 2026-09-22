@@ -184,7 +184,8 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
         return x;
 
     // FULL V3: memoryless odd Chebyshev 3rd/5th harmonic injector.
-    // No dynamic state, DC correction, feedback, variable delay or phase state.
+    // Fundamental endpoint is unity-normalized so four EQ bands cannot
+    // accumulate an unintended fixed gain. No dynamic state or delay.
     const float u = juce::jlimit(-1.0f, 1.0f, x);
     const float u2 = u * u;
     const float t3 = 4.0f * u * u2 - 3.0f * u;
@@ -192,7 +193,10 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
         16.0f * u * u2 * u2 - 20.0f * u * u2 + 5.0f * u;
     const float h3 = solidState ? 0.020f : 0.014f;
     const float h5 = solidState ? 0.006f : 0.004f;
-    const float shaped = u + amount * (h3 * t3 + h5 * t5);
+    const float shaped =
+        u + amount
+            * (h3 * (t3 - u)
+               + h5 * (t5 - u));
 
     return x + 0.90f * (shaped - u);
 }
