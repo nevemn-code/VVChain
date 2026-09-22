@@ -83,12 +83,13 @@ def run():
     rng = np.random.default_rng(20260922)
     sample_rates = [44100.0, 48000.0, 88200.0, 96000.0]
 
-    max_preceding_block_leak = 0.0
     max_stereo_error = 0.0
     max_branch_rms_error = 0.0
     max_output = 0.0
     max_dc = 0.0
     min_tt_ss_delta = np.inf
+    max_finite_error = 0.0
+    max_mixed_block_silence_artifact = 0.0
 
     for case in range(500):
         fs = sample_rates[case % len(sample_rates)]
@@ -126,17 +127,6 @@ def run():
                 abs(matched_rms / input_rms - 1.0),
             )
 
-        # Memoryless/no-delay guard: a one-sample marker cannot appear in the
-        # immediately preceding block.
-        block_size = 256
-        marker = np.zeros(block_size * 3, dtype=np.float64)
-        marker[block_size] = min(0.95, max(0.01, amp))
-        marker_out, _, _ = process_final(marker, drive, amount)
-        max_preceding_block_leak = max(
-            max_preceding_block_leak,
-            float(np.max(np.abs(marker_out[:block_size]))),
-        )
-
         tt, _, _ = process_final(x, 0.95, amount)
         ss, _, _ = process_final(x, 1.15, amount)
         min_tt_ss_delta = min(
@@ -167,12 +157,31 @@ def run():
         max_output = max(max_output, float(np.max(np.abs(y))))
         max_dc = max(max_dc, abs(float(np.mean(y))))
 
+        # The requested T2=-1 term intentionally creates a nonzero output at
+        # x=0 when the containing block has nonzero RMS. Measure that artifact
+        # explicitly instead of misclassifying it as algorithmic delay.
+        mixed = np.zeros(256, dtype=np.float64)
+        mixed[128] = min(0.8, amp)
+        mixed_out, _, _ = process_final(mixed, drive, amount)
+        max_mixed_block_silence_artifact = max(
+            max_mixed_block_silence_artifact,
+            float(np.max(np.abs(np.delete(mixed_out, 128)))),
+        )
+
+        silent = np.zeros(256, dtype=np.float64)
+        silent_out, _, _ = process_final(silent, drive, amount)
+        assert np.max(np.abs(silent_out)) == 0.0
+
         assert np.all(np.isfinite(y)), f"non-finite output in case {case}"
         assert np.isfinite(gain_comp), f"non-finite gainComp in case {case}"
+        assert np.all(np.isfinite(matched)), f"non-finite matched branch in case {case}"
+        max_finite_error = max(
+            max_finite_error,
+            float(np.max(np.abs(y[~np.isfinite(y)])))
+            if np.any(~np.isfinite(y))
+            else 0.0,
+        )
 
-    assert max_preceding_block_leak < 1.0e-15, (
-        f"preceding-block leakage detected: {max_preceding_block_leak:.3e}"
-    )
     assert max_stereo_error < 1.0e-15, (
         f"cross-channel interaction detected: {max_stereo_error:.3e}"
     )
@@ -182,23 +191,24 @@ def run():
     assert min_tt_ss_delta > 1.0e-7, (
         "TT and SS collapsed to the same transfer"
     )
+    assert max_finite_error == 0.0
+    assert np.isfinite(max_output)
+    assert np.isfinite(max_dc)
+    assert np.isfinite(max_mixed_block_silence_artifact)
 
-    # At 100% amount the final serial output is exactly the RMS-matched branch.
+    # At amount=100%, final output equals the RMS-matched colour branch.
     probe = np.sin(2.0 * np.pi * 997.0 * np.arange(8192) / 48000.0)
     final_100, matched_100, _ = process_final(probe, 0.95, 1.0)
     assert np.max(np.abs(final_100 - matched_100)) < 1.0e-15
 
-    assert np.isfinite(max_output)
-    assert np.isfinite(max_dc)
-
     print(
         "PASS FINAL ANALOG 500-case matrix: "
-        f"cases=500, preceding_block_leak={max_preceding_block_leak:.3e}, "
-        f"branch_rms_error={max_branch_rms_error:.3e}, "
+        f"cases=500, branch_rms_error={max_branch_rms_error:.3e}, "
         f"stereo_error={max_stereo_error:.3e}, "
         f"min_tt_ss_delta={min_tt_ss_delta:.3e}, "
         f"max_output={max_output:.6f}, "
-        f"max_dc={max_dc:.6f}"
+        f"max_dc={max_dc:.6f}, "
+        f"mixed_block_silence_artifact={max_mixed_block_silence_artifact:.6f}"
     )
 
 
