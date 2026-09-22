@@ -51,6 +51,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
           0.1f, 200.f, dynAttackDefaults[i], 0.35f);
         f("DYN_RELEASE" + n, "Dynamic EQ " + n + " Release",
           5.f, 2000.f, dynReleaseDefaults[i], 0.35f);
+        f("DYN_MS" + n, "Dynamic EQ " + n + " Mid Weight",
+          0.f, 100.f, 50.f);
     }
     // Legacy EQ_COLOR remains for old presets; the active UI/DSP uses one color per band.
     f("EQ_COLOR", "Legacy EQ Analog Color", 0.f, 100.f, 35.f);
@@ -187,6 +189,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.dynRatio[(size_t)i] = value("DYN_RATIO" + n);
         p.dynAttack[(size_t)i] = value("DYN_ATTACK" + n);
         p.dynRelease[(size_t)i] = value("DYN_RELEASE" + n);
+        p.dynMSBalance[(size_t)i] = value("DYN_MS" + n);
         p.eqColor[(size_t)i] = value("EQ_COLOR" + n);
         p.eqColorBypass[(size_t)i] = value("EQ_COLOR_BYPASS" + n) > 0.5f;
         p.eqColorSolidState[(size_t)i] =
