@@ -189,9 +189,8 @@ private:
     static float dbToGain(float db) noexcept;
     static float gainToDb(float gain) noexcept;
     static float timeCoeff(double sampleRate, float ms) noexcept;
-    static float analogColor(float x, float amount01, bool solidState,
-                             float& previousInput, float& evenDc,
-                             float& levelPower, double sampleRate) noexcept;
+    void processChebyshevAnalog(juce::dsp::AudioBlock<float>& block,
+                                float drive, float amount);
 
     static float rmsDetectPDR(float input,
                                float& fastPower,
@@ -229,9 +228,8 @@ private:
     void alignDryBuffer(int numSamples);
 
     std::array<Biquad, 4> eq {};
-    std::array<std::array<float, 2>, 4> analogPreviousInput {};
-    std::array<std::array<float, 2>, 4> analogEvenDc {};
-    std::array<std::array<float, 2>, 4> analogLevelPower {};
+    // Reusable 1-channel scratch buffer for allocation-free ANALOG processing.
+    juce::AudioBuffer<float> analogTempBuffer;
 
     Crossover4th ottXover1 {};
     Crossover4th ottXover2 {};

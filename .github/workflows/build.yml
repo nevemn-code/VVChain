@@ -2,7 +2,7 @@ name: VVChain CI/CD
 
 on:
   push:
-    branches: [ "main", "fix/*" ]
+    branches: [ "main", "fix/*", "deploy/*" ]
   pull_request:
     branches: [ "main" ]
 
@@ -28,3 +28,6 @@ jobs:
       run: |
         python3 -m pip install numpy scipy
         python3 Tests/reference_stress.py
+
+    - name: Run V3 ANALOG Chebyshev Matrix
+      run: python3 Tests/analog_matrix.py
