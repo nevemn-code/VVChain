@@ -344,7 +344,6 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
     analogTempBuffer.setSize(1, maxBlock * 4, false, true, true);
     dynamicDetectorInput.setSize(channels, maxBlock * 4, false, true, true);
-    dynamicMsTempBuffer.setSize(2, maxBlock * 4, false, true, true);
 
     eqOversampler.reset();
     limiterOversampler.reset();
@@ -462,7 +461,6 @@ void VVChainDSP::reset()
     dryBuffer.clear();
     alignedDryBuffer.clear();
     dynamicDetectorInput.clear();
-    dynamicMsTempBuffer.clear();
     analogTempBuffer.clear();
 }
 
