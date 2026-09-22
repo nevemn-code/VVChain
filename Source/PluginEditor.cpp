@@ -1158,7 +1158,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(juce::Colours::white.withAlpha(.12f));
     g.drawRoundedRectangle(10.f, 10.f, (float) getWidth() - 20.f, 60.f, 10.f, 1.f);
     g.setColour(juce::Colours::black.withAlpha(.65f));
-    g.fillRect(10.f, 68.f, getWidth() - 20, 2);
+    g.fillRect(10.0f, 68.0f, static_cast<float>(getWidth() - 20), 2.0f);
 
     g.setColour(juce::Colours::black.withAlpha(.26f));
     g.fillRoundedRectangle(16.f, 16.f, 160.f, 40.f, 7.f);
