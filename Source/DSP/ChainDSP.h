@@ -275,7 +275,6 @@ private:
 
     // Feed-forward detector source shared by all four Dynamic EQ bands.
     juce::AudioBuffer<float> dynamicDetectorInput;
-    juce::AudioBuffer<float> dynamicMsTempBuffer;
 
     // Reusable one-channel scratch for allocation-free high-density ANALOG.
     juce::AudioBuffer<float> analogTempBuffer;
