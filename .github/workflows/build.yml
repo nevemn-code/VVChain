@@ -40,10 +40,28 @@ jobs:
             exit 1
           }
 
-          & $probe.FullName
-          if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
+          # Each probe execution contains 10 rounds x 50 cases = 500
+          # independent audio-domain cases. Repeat the complete 500-case
+          # suite 10 times for final confirmation (5,000 audio cases total).
+          for ($pass = 1; $pass -le 10; $pass++) {
+            Write-Host "=== Audio verification pass $pass / 10 ==="
+            & $probe.FullName
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "Audio verification failed on pass $pass."
+              exit $LASTEXITCODE
+            }
+
+            $report = Join-Path $PWD "VVChain_audio_probe.csv"
+            if (-not (Test-Path $report)) {
+              Write-Host "Audio probe CSV was not produced on pass $pass."
+              exit 1
+            }
+
+            $passName = "VVChain_audio_probe_pass_{0:D2}.csv" -f $pass
+            Copy-Item -LiteralPath $report -Destination (Join-Path $PWD $passName) -Force
           }
+
+          Copy-Item -LiteralPath "$PWD\VVChain_audio_probe_pass_10.csv" -Destination "$PWD\VVChain_audio_probe.csv" -Force
 
       - name: Collect VST3
         shell: pwsh
@@ -58,11 +76,19 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$PWD\Artifacts" | Out-Null
           Copy-Item -LiteralPath $vst3.FullName -Destination "$PWD\Artifacts\VVChain.vst3" -Recurse -Force
 
+          $probeReports = Get-ChildItem -Path $PWD -File -Filter "VVChain_audio_probe_pass_*.csv"
+          if (-not $probeReports) {
+            Write-Host "Audio probe pass CSVs were not produced."
+            exit 1
+          }
+
+          Copy-Item -LiteralPath $probeReports.FullName -Destination "$PWD\Artifacts" -Force
+
           $probeReport = Join-Path $PWD "VVChain_audio_probe.csv"
           if (Test-Path $probeReport) {
             Copy-Item -LiteralPath $probeReport -Destination "$PWD\Artifacts\VVChain_audio_probe.csv" -Force
           } else {
-            Write-Host "Audio probe CSV was not produced."
+            Write-Host "Final audio probe CSV was not produced."
             exit 1
           }
 
