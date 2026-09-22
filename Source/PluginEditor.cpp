@@ -666,6 +666,65 @@ float VVChainAudioProcessorEditor::eqDbToY(
         * juce::jlimit(0.f, 1.f, (db + 18.f) / 36.f);
 }
 
+juce::Rectangle<float> VVChainAudioProcessorEditor::dynamicMsPopupBounds(int band) const
+{
+    const auto graph = eqGraphBounds();
+    const auto n = juce::String(band + 1);
+    const float x = graphFrequencyToX(graph, parameterValue("EQ" + n + "_FREQ"));
+    const float y = eqDbToY(graph, parameterValue("EQ" + n + "_GAIN"));
+
+    const float w = 190.f;
+    const float h = 72.f;
+    float px = x - w * 0.5f;
+    float py = y - h - 28.f;
+
+    if (py < graph.getY() + 6.f)
+        py = y + 28.f;
+
+    px = juce::jlimit(graph.getX() + 6.f, graph.getRight() - w - 6.f, px);
+    py = juce::jlimit(graph.getY() + 6.f, graph.getBottom() - h - 6.f, py);
+    return { px, py, w, h };
+}
+
+bool VVChainAudioProcessorEditor::pointNearDynamicNode(
+    juce::Point<float> p, int& band) const
+{
+    const auto graph = eqGraphBounds();
+    float best = 20.f;
+    band = -1;
+
+    for (int b = 0; b < 4; ++b)
+    {
+        const auto n = juce::String(b + 1);
+        const float x = graphFrequencyToX(graph, parameterValue("EQ" + n + "_FREQ"));
+        const float y = eqDbToY(graph, parameterValue("EQ" + n + "_GAIN"));
+        const float d = p.getDistanceFrom({ x, y });
+
+        if (d < best)
+        {
+            best = d;
+            band = b;
+        }
+    }
+
+    return band >= 0;
+}
+
+float VVChainAudioProcessorEditor::dynamicAverageReductionDb(int band) const
+{
+    return audioProcessor.getDynamicAverageReductionDb(band);
+}
+
+float VVChainAudioProcessorEditor::dynamicMidReductionDb(int band) const
+{
+    return audioProcessor.getDynamicMidReductionDb(band);
+}
+
+float VVChainAudioProcessorEditor::dynamicSideReductionDb(int band) const
+{
+    return audioProcessor.getDynamicSideReductionDb(band);
+}
+
 void VVChainAudioProcessorEditor::drawEqGraph(
     juce::Graphics& g, juce::Rectangle<float> graph)
 {
@@ -762,10 +821,13 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                600, 13, juce::Justification::left);
 
     juce::Path response;
+    juce::Path dynamicResponse;
+
     for (int i = 0; i <= 420; ++i)
     {
         const float hz = invLogMap(i / 420.f, 20.f, 20000.f);
-        float db = 0.f;
+        float staticDb = 0.f;
+        float liveDb = 0.f;
 
         for (int b = 0; b < 4; ++b)
         {
@@ -774,42 +836,174 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             const float gain = parameterValue("EQ" + n + "_GAIN");
             const float q = juce::jmax(.1f, parameterValue("EQ" + n + "_Q"));
             const float width = juce::jmax(.02f, 1.f / (q * 1.8f));
-            const float xx = std::log(std::max(hz, 20.f) / std::max(f0, 20.f));
-            db += gain * std::exp(-(xx * xx) / (2.f * width * width));
+            const float xx = std::log(
+                std::max(hz, 20.f) / std::max(f0, 20.f));
+            const float shape =
+                std::exp(-(xx * xx) / (2.f * width * width));
+
+            staticDb += gain * shape;
+            liveDb += (gain + dynamicAverageReductionDb(b)) * shape;
         }
 
-        const auto pt = juce::Point<float>(
-            graphFrequencyToX(graph, hz), eqDbToY(graph, db));
+        const auto ptStatic = juce::Point<float>(
+            graphFrequencyToX(graph, hz), eqDbToY(graph, staticDb));
+        const auto ptLive = juce::Point<float>(
+            graphFrequencyToX(graph, hz), eqDbToY(graph, liveDb));
 
-        if (i == 0) response.startNewSubPath(pt);
-        else response.lineTo(pt);
+        if (i == 0)
+        {
+            response.startNewSubPath(ptStatic);
+            dynamicResponse.startNewSubPath(ptLive);
+        }
+        else
+        {
+            response.lineTo(ptStatic);
+            dynamicResponse.lineTo(ptLive);
+        }
     }
 
-    g.setColour(juce::Colours::white.withAlpha(.94f));
-    g.strokePath(response, juce::PathStrokeType(2.2f));
+    g.setColour(juce::Colours::white.withAlpha(.28f));
+    g.strokePath(response, juce::PathStrokeType(1.15f));
+    g.setColour(juce::Colours::white.withAlpha(.96f));
+    g.strokePath(dynamicResponse, juce::PathStrokeType(2.35f));
 
     for (int b = 0; b < 4; ++b)
     {
         const auto n = juce::String(b + 1);
         const float x = graphFrequencyToX(
             graph, parameterValue("EQ" + n + "_FREQ"));
-        const float y = eqDbToY(
-            graph, parameterValue("EQ" + n + "_GAIN"));
-        const auto c = kBandColours[(size_t) b];
+        const float staticGain = parameterValue("EQ" + n + "_GAIN");
+        const float staticY = eqDbToY(graph, staticGain);
+        const float currentDb = dynamicAverageReductionDb(b);
+        const float liveY = eqDbToY(graph, staticGain + currentDb);
+        const auto c = uiColour(kBandColours[(size_t) b]);
 
-        g.setColour(c.withAlpha(.16f));
-        g.fillEllipse(x - 15.f, y - 15.f, 30.f, 30.f);
+        g.setColour(c.withAlpha(.10f));
+        g.fillEllipse(x - 20.f, staticY - 20.f, 40.f, 40.f);
+
+        g.setColour(c.withAlpha(.18f));
+        g.fillEllipse(x - 12.f, liveY - 12.f, 24.f, 24.f);
+
+        g.setColour(c.withAlpha(.65f));
+        g.drawLine(x, staticY, x, liveY, 1.5f);
+
+        const float midReduction =
+            juce::jlimit(0.f, 12.f, -dynamicMidReductionDb(b));
+        const float sideReduction =
+            juce::jlimit(0.f, 12.f, -dynamicSideReductionDb(b));
+
+        juce::Path midRing;
+        midRing.addCentredArc(
+            x, staticY, 15.f, 15.f, 0.f,
+            -juce::MathConstants<float>::halfPi,
+            -juce::MathConstants<float>::halfPi
+                + juce::MathConstants<float>::pi
+                    * (midReduction / 12.f),
+            true);
+        g.setColour(c.brighter(.30f));
+        g.strokePath(midRing, juce::PathStrokeType(2.7f));
+
+        juce::Path sideRing;
+        sideRing.addCentredArc(
+            x, staticY, 15.f, 15.f, 0.f,
+            juce::MathConstants<float>::halfPi,
+            juce::MathConstants<float>::halfPi
+                + juce::MathConstants<float>::pi
+                    * (sideReduction / 12.f),
+            true);
+        g.setColour(juce::Colours::white.withAlpha(.82f));
+        g.strokePath(sideRing, juce::PathStrokeType(2.3f));
+
         g.setColour(c);
-        g.fillEllipse(x - 7.f, y - 7.f, 14.f, 14.f);
-        g.setColour(juce::Colours::black);
+        g.fillEllipse(x - 7.f, staticY - 7.f, 14.f, 14.f);
+        g.setColour(juce::Colours::black.withAlpha(.88f));
         g.setFont(juce::FontOptions(8.f).withStyle("Bold"));
-        g.drawText(juce::String(b + 1), (int) x - 6, (int) y - 5, 12, 10,
+        g.drawText(n, (int)x - 6, (int)staticY - 5, 12, 10,
                    juce::Justification::centred);
+
+        g.setColour(juce::Colours::white.withAlpha(.96f));
+        g.fillEllipse(x - 4.f, liveY - 4.f, 8.f, 8.f);
+
+        if (expandedDynamicBand == b)
+        {
+            const auto popup = dynamicMsPopupBounds(b);
+            g.setColour(juce::Colours::black.withAlpha(.76f));
+            g.fillRoundedRectangle(popup.translated(5.f, 6.f), 8.f);
+
+            juce::ColourGradient panel(
+                juce::Colour(0xff30343a), popup.getX(), popup.getY(),
+                juce::Colour(0xff12151a), popup.getRight(), popup.getBottom(),
+                false);
+            g.setGradientFill(panel);
+            g.fillRoundedRectangle(popup, 8.f);
+
+            g.setColour(c.withAlpha(.86f));
+            g.drawRoundedRectangle(popup, 8.f, 1.1f);
+
+            g.setColour(juce::Colours::white);
+            g.setFont(juce::FontOptions(9.f).withStyle("Bold"));
+            g.drawText(
+                "BAND " + n + " · DYNAMIC M/S",
+                (int)popup.getX() + 10, (int)popup.getY() + 7,
+                170, 13, juce::Justification::left);
+
+            const float midPct = juce::jlimit(
+                0.f, 100.f, parameterValue("DYN_MS" + n));
+            const float sidePct = 100.f - midPct;
+
+            g.setColour(c.brighter(.25f));
+            g.setFont(juce::FontOptions(8.f).withStyle("Bold"));
+            g.drawText(
+                "MID " + juce::String(midPct, 0) + "%",
+                (int)popup.getX() + 10, (int)popup.getY() + 22,
+                70, 11, juce::Justification::left);
+
+            g.setColour(juce::Colours::white.withAlpha(.82f));
+            g.drawText(
+                "SIDE " + juce::String(sidePct, 0) + "%",
+                (int)popup.getRight() - 75, (int)popup.getY() + 22,
+                65, 11, juce::Justification::right);
+
+            const auto bar = popup.reduced(10.f)
+                .withY(popup.getY() + 40.f).withHeight(10.f);
+
+            g.setColour(juce::Colour(0xff090c10));
+            g.fillRoundedRectangle(bar, 5.f);
+
+            const float splitX =
+                bar.getX() + bar.getWidth() * midPct / 100.f;
+
+            if (splitX > bar.getX())
+            {
+                g.setColour(c.withAlpha(.94f));
+                g.fillRoundedRectangle(
+                    { bar.getX(), bar.getY(),
+                      splitX - bar.getX(), bar.getHeight() }, 5.f);
+            }
+
+            if (splitX < bar.getRight())
+            {
+                g.setColour(juce::Colours::white.withAlpha(.56f));
+                g.fillRoundedRectangle(
+                    { splitX, bar.getY(),
+                      bar.getRight() - splitX, bar.getHeight() }, 5.f);
+            }
+
+            g.setColour(juce::Colours::white);
+            g.fillEllipse(splitX - 5.f, bar.getCentreY() - 5.f, 10.f, 10.f);
+
+            g.setColour(juce::Colour(0xff9aa1aa));
+            g.setFont(juce::FontOptions(6.8f));
+            g.drawText(
+                "CLICK NODE / DRAG / WHEEL",
+                (int)popup.getX() + 10, (int)popup.getBottom() - 17,
+                (int)popup.getWidth() - 20, 11, juce::Justification::centred);
+        }
     }
 
     g.setColour(juce::Colour(0xffc4cad2));
     g.setFont(juce::FontOptions(9.f).withStyle("Bold"));
-    g.drawText("EQ RESPONSE · 20 Hz — 20 kHz · DRAG NODES",
+    g.drawText("DYNAMIC EQ · LIVE GAIN · CLICK NODE = M/S · 20 Hz — 20 kHz",
                (int) graph.getX() + 12, (int) graph.getY() + 9,
                330, 14, juce::Justification::left);
 
@@ -1006,6 +1200,8 @@ void VVChainAudioProcessorEditor::timerCallback()
     if (bypassButtons[4])
         bypassButtons[4]->setToggleState(deessBypassed,
                                          juce::dontSendNotification);
+
+    repaint();
 }
 
 juce::String VVChainAudioProcessorEditor::formatGraphFrequency(float hz) const
@@ -1401,6 +1597,54 @@ void VVChainAudioProcessorEditor::mouseDown(const juce::MouseEvent& event)
     if (!graph.contains(pos))
         return;
 
+    if (expandedDynamicBand >= 0)
+    {
+        const auto popup = dynamicMsPopupBounds(expandedDynamicBand);
+        if (popup.contains(pos))
+        {
+            const auto bar = popup.reduced(10.f)
+                .withY(popup.getY() + 40.f).withHeight(10.f);
+            if (bar.expanded(0.f, 12.f).contains(pos))
+            {
+                const float midPct = juce::jlimit(
+                    0.f, 100.f,
+                    (pos.x - bar.getX()) / bar.getWidth() * 100.f);
+                setParameter(
+                    "DYN_MS" + juce::String(expandedDynamicBand + 1),
+                    midPct);
+                dragDynamicMsBand = expandedDynamicBand;
+                repaint();
+            }
+            return;
+        }
+    }
+
+    int clickedDynamicBand = -1;
+    if (pointNearDynamicNode(pos, clickedDynamicBand))
+    {
+        expandedDynamicBand =
+            (expandedDynamicBand == clickedDynamicBand)
+                ? -1
+                : clickedDynamicBand;
+
+        dragDynamicMsBand = -1;
+        dragBand = clickedDynamicBand;
+
+        const auto n = juce::String(clickedDynamicBand + 1);
+        showGraphDragHint = true;
+        graphDragHintPosition = pos;
+        graphDragHint =
+            "DYN EQ " + n
+            + "  MID " + juce::String(
+                parameterValue("DYN_MS" + n), 0) + "%"
+            + " / SIDE " + juce::String(
+                100.f - parameterValue("DYN_MS" + n), 0) + "%"
+            + "  GR " + juce::String(
+                dynamicAverageReductionDb(clickedDynamicBand), 1) + " dB";
+        repaint();
+        return;
+    }
+
     const float xovers[3]
     {
         graphFrequencyToX(graph, parameterValue("OTT_X1")),
@@ -1477,6 +1721,22 @@ void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
 {
     const auto graph = eqGraphBounds();
 
+    if (dragDynamicMsBand >= 0)
+    {
+        const auto popup = dynamicMsPopupBounds(dragDynamicMsBand);
+        const auto bar = popup.reduced(10.f)
+            .withY(popup.getY() + 40.f).withHeight(10.f);
+
+        const float midPct = juce::jlimit(
+            0.f, 100.f,
+            (event.position.x - bar.getX()) / bar.getWidth() * 100.f);
+        setParameter(
+            "DYN_MS" + juce::String(dragDynamicMsBand + 1),
+            midPct);
+        repaint();
+        return;
+    }
+
     if (dragXover >= 0)
     {
         const float hz = constrainXoverFrequency(
@@ -1527,6 +1787,7 @@ void VVChainAudioProcessorEditor::mouseUp(const juce::MouseEvent&)
 {
     dragBand = -1;
     dragXover = -1;
+    dragDynamicMsBand = -1;
     showGraphDragHint = false;
     graphDragHint.clear();
     repaint();
@@ -1538,6 +1799,34 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
     const auto graph = eqGraphBounds();
     if (!graph.contains(event.position) || std::abs(wheel.deltaY) < 0.0001f)
         return;
+
+    int wheelBand = -1;
+    if (pointNearDynamicNode(event.position, wheelBand))
+    {
+        const auto id = "DYN_MS" + juce::String(wheelBand + 1);
+        const float next = juce::jlimit(
+            0.f, 100.f,
+            parameterValue(id) + wheel.deltaY * 4.0f);
+        setParameter(id, next);
+        expandedDynamicBand = wheelBand;
+        repaint();
+        return;
+    }
+
+    if (expandedDynamicBand >= 0)
+    {
+        const auto popup = dynamicMsPopupBounds(expandedDynamicBand);
+        if (popup.contains(event.position))
+        {
+            const auto id = "DYN_MS" + juce::String(expandedDynamicBand + 1);
+            const float next = juce::jlimit(
+                0.f, 100.f,
+                parameterValue(id) + wheel.deltaY * 4.0f);
+            setParameter(id, next);
+            repaint();
+            return;
+        }
+    }
 
     float bestXover = 12.f;
     int xover = -1;
