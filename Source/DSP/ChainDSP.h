@@ -35,7 +35,7 @@ public:
         std::array<float, 4> ottLifterRelease { 50.f, 50.f, 50.f, 50.f };
         std::array<float, 4> ottLifterMix { 100.f, 100.f, 100.f, 100.f };
         std::array<float, 4> ottCompThreshold { -18.f, -18.f, -18.f, -18.f };
-        std::array<float, 4> ottCompAttack { 1.f, 1.f, 1.f, 1.f };
+        std::array<float, 4> ottCompAttack { 15.f, 8.f, 3.f, 1.f };
         std::array<float, 4> ottCompRelease { 50.f, 50.f, 50.f, 50.f };
         std::array<float, 4> ottCompMix { 100.f, 100.f, 100.f, 100.f };
         std::array<float, 4> ottBandLevelDb { 0.f, 0.f, 0.f, 0.f };
@@ -199,7 +199,8 @@ private:
                                float releaseMs,
                                double sampleRate,
                                float& programReleaseMs,
-                               float attackCoeffOverride = -1.0f) noexcept;
+                               float attackCoeffOverride = -1.0f,
+                               float releaseCoeffOverride = -1.0f) noexcept;
 
     static float applyLifterFromDetectorDb(float input, float detectorDb,
                                             float& env, float thresholdDb,
@@ -212,7 +213,8 @@ private:
                                                 float attackMs, float releaseMs,
                                                 float mix, double sampleRate,
                                                 float ratio = 66.7f,
-                                                float attackCoeffOverride = -1.0f);
+                                                float attackCoeffOverride = -1.0f,
+                                                float releaseCoeffOverride = -1.0f);
 
 
     static float applyGate(float input, float& envDb, float thresholdDb,
