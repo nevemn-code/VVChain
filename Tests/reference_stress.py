@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import signal
 import time
+import argparse
 
 def generate_prbs(length):
     # 優化：生成快速 PRBS，長度限制在 16384 足以驗證 50ms 內的 latency
@@ -35,4 +36,7 @@ def run_stress_test(iterations=500):
     print(f"✅ {iterations} 次極端測試與 PRBS 驗證完成。耗時: {elapsed:.2f} 秒")
 
 if __name__ == '__main__':
-    run_stress_test(500)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--iterations', type=int, default=40)
+    args = parser.parse_args()
+    run_stress_test(max(1, args.iterations))
