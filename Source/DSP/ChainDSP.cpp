@@ -298,6 +298,8 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
 
     eqDryDelay.prepare(drySpec);
     eqDryDelay.setDelay(static_cast<float>(eqLatencySamples));
+    eqUnityDelay.prepare(drySpec);
+    eqUnityDelay.setDelay(static_cast<float>(eqLatencySamples));
 
     juce::dsp::ProcessSpec limiterSpec
     {
@@ -373,6 +375,7 @@ void VVChainDSP::reset()
     eqOversampler.reset();
     limiterOversampler.reset();
     eqDryDelay.reset();
+    eqUnityDelay.reset();
     limiterLookahead.reset();
     masterDryDelay.reset();
 
@@ -565,6 +568,37 @@ float VVChainDSP::applyLimiter(float input, float& envDb, double sampleRate)
 
 void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
+    bool hasAudibleEqChange = !p.eqBypass;
+
+    if (hasAudibleEqChange)
+    {
+        hasAudibleEqChange = false;
+        for (const auto gain : p.gain)
+        {
+            if (std::abs(gain) > 1.0e-5f)
+            {
+                hasAudibleEqChange = true;
+                break;
+            }
+        }
+    }
+
+    if (!hasAudibleEqChange)
+    {
+        // Unity/bypass must not be forced through the oversampling FIR.
+        // Keep the exact same declared PDC with a pure integer delay instead.
+        for (int ch = 0; ch < channels; ++ch)
+        {
+            auto* data = buffer.getWritePointer(ch);
+            for (int n = 0; n < buffer.getNumSamples(); ++n)
+            {
+                eqUnityDelay.pushSample(ch, data[n]);
+                data[n] = eqUnityDelay.popSample(ch);
+            }
+        }
+        return;
+    }
+
     juce::dsp::AudioBlock<const float> inputBlock(buffer);
     juce::dsp::AudioBlock<float> outputBlock(buffer);
     auto osBlock = eqOversampler.processSamplesUp(inputBlock);
@@ -572,19 +606,16 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
     const double osSr =
         sr * static_cast<double>(eqOversampler.getOversamplingFactor());
 
-    if (!p.eqBypass)
+    for (size_t i = 0; i < eq.size(); ++i)
     {
-        for (size_t i = 0; i < eq.size(); ++i)
-        {
-            updateAnalogPeak(
-                eq[i], osSr,
-                juce::jlimit(20.0, osSr * 0.45,
-                             static_cast<double>(p.freq[i])),
-                juce::jlimit(-24.0, 24.0,
-                             static_cast<double>(p.gain[i])),
-                juce::jlimit(0.1, 18.0,
-                             static_cast<double>(p.q[i])));
-        }
+        updateAnalogPeak(
+            eq[i], osSr,
+            juce::jlimit(20.0, osSr * 0.45,
+                         static_cast<double>(p.freq[i])),
+            juce::jlimit(-24.0, 24.0,
+                         static_cast<double>(p.gain[i])),
+            juce::jlimit(0.1, 18.0,
+                         static_cast<double>(p.q[i])));
     }
 
     for (int ch = 0; ch < channels; ++ch)
@@ -595,16 +626,12 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         for (size_t n = 0; n < osBlock.getNumSamples(); ++n)
         {
             float y = data[n];
-
-            if (!p.eqBypass)
-                for (size_t band = 0; band < eq.size(); ++band)
-                    y = eq[band].process(y, right);
-
+            for (size_t band = 0; band < eq.size(); ++band)
+                y = eq[band].process(y, right);
             data[n] = y;
         }
     }
 
-    juce::ignoreUnused(osSr);
     eqOversampler.processSamplesDown(outputBlock);
 }
 
@@ -719,10 +746,10 @@ void VVChainDSP::applyAnalogColor(
 
 void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    // Four independent OTT bands. Each band has its own detector state and
-    // runs downward compression first, then upward compression, followed by
-    // per-band makeup. The gate is also applied after the crossover so it
-    // cannot make one frequency band modulate another.
+    // Four independent OTT bands. The crossover bank is only an analysis/
+    // reconstruction scaffold. When the dynamics are doing nothing, the
+    // complete OTT stage must collapse to the original full-band signal,
+    // not to the crossover bank's all-pass phase response.
     const float x1 = juce::jlimit(80.f, 900.f, p.ottX1);
     const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.ottX2);
     const float x3 = juce::jlimit(x2 + 200.f, static_cast<float>(sr * 0.42), p.ottX3);
@@ -733,8 +760,6 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
     updateCrossover(ottXover2, sr, x2, xoverQ);
     updateCrossover(ottXover3, sr, x3, xoverQ);
 
-    // Equalize the number of crossover sections traversed by each branch.
-    // B1: X1 -> add all-pass X2 + X3. B2: X1+X2 -> add all-pass X3.
     updateCrossover(ottPhase2_B1, sr, x2, xoverQ);
     updateCrossover(ottPhase3_B1, sr, x3, xoverQ);
     updateCrossover(ottPhase3_B2, sr, x3, xoverQ);
@@ -763,12 +788,12 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
             const float midHigh = ottXover3.low(x2High, right);
             const float top = ottXover3.high(x2High, right);
 
-            // LP4 + HP4 compensation restores the phase path for skipped
-            // crossovers without adding host/plugin latency.
+            // Bring every crossover branch to the same phase depth.
             low = ottPhase2_B1.allPass(low, right);
             low = ottPhase3_B1.allPass(low, right);
             lowMid = ottPhase3_B2.allPass(lowMid, right);
 
+            const float linearBands[4] = { low, lowMid, midHigh, top };
             float bands[4] = { low, lowMid, midHigh, top };
 
             for (int band = 0; band < 4; ++band)
@@ -787,20 +812,11 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 float& lifterEnv = state.lifterEnv[(size_t) ch];
                 float& compEnv = state.compEnvDb[(size_t) ch];
 
-                // The existing GATE control is now independent per frequency band.
                 float v = applyGate(
                     bands[band], gateEnv,
                     p.ottGateThresholdDb, sr);
 
-                // Degree=0 means true unity ratio. Degree=100 reaches the
-                // OTT-style maximum ratios while preserving the user's
-                // existing per-band controls.
                 const float depth = degree / 100.f;
-
-                // Classic OTT-style scaling: upward reaches 4:1.
-                // Downward is intentionally much stronger, matching the
-                // documented Ableton/Xfer family character. The top band
-                // uses the slightly harder target.
                 const float downMaxRatio = band == 3 ? 100.f : kCompressorRatio;
                 const float downRatio =
                     1.f + depth * (downMaxRatio - 1.f);
@@ -812,8 +828,6 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 const float lifterMix =
                     juce::jlimit(0.f, 100.f, p.ottLifterMix[(size_t) band]);
 
-                // Standard OTT order: downward first, upward second.
-                // Each stage has its own RMS detector state for this band/channel.
                 float downReleaseMs = p.ottCompRelease[(size_t) band];
                 const float downDb = rmsDetectPDR(
                     v,
@@ -853,22 +867,32 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
                 v *= dbToGain(
                     juce::jlimit(-24.f, 12.f,
-                        p.ottBandLevelDb[(size_t) band]));
+                                 p.ottBandLevelDb[(size_t) band]));
 
                 bands[band] = v;
             }
 
-            float wet = bands[0] + bands[1] + bands[2] + bands[3];
+            float processedWet =
+                bands[0] + bands[1] + bands[2] + bands[3];
 
             if (p.ottClipper)
-                wet = std::tanh(wet * 1.7f);
+                processedWet = std::tanh(processedWet * 1.7f);
 
-            wet *= outputGain;
+            processedWet *= outputGain;
 
-            // Do not clip the OTT reconstruction here. The final true-peak
-            // lookahead limiter operates on the complete mixed programme.
+            // Subtract the untouched crossover reconstruction first. This
+            // leaves only the actual dynamics/clipper residual. The direct
+            // programme therefore stays phase-neutral at unity settings.
+            const float linearWet =
+                (linearBands[0] + linearBands[1]
+                 + linearBands[2] + linearBands[3])
+                * outputGain;
+
+            const float outputWithoutMix =
+                x + (processedWet - linearWet);
+
             data[n] =
-                original + globalMix * (wet - original);
+                original + globalMix * (outputWithoutMix - original);
         }
     }
 }
@@ -1084,9 +1108,6 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
         juce::jlimit(6000.f, 18000.f, p.deessReferenceHz);
     const float q = 0.70710678f;
 
-    // Split-band de-essing: only the high band is gain-reduced. The low band
-    // is carried through untouched and recombined, matching the standard
-    // split-band approach used in professional de-essers.
     updateCrossover(deessSplit, sr, referenceHz, q);
 
     const float fastAttack = timeCoeff(sr, 0.25f);
@@ -1107,28 +1128,25 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
             const float input = data[n];
             const float lowBand = deessSplit.low(input, right);
             const float highBand = deessSplit.high(input, right);
-            const float detector = std::abs(highBand);
 
+            const float fastInput = std::abs(highBand);
             const float fastCoeff =
-                detector > state.fastEnv ? fastAttack : fastRelease;
+                fastInput > state.fastEnv ? fastAttack : fastRelease;
             state.fastEnv =
                 fastCoeff * state.fastEnv
-                + (1.f - fastCoeff) * detector;
+                + (1.f - fastCoeff) * fastInput;
 
             const float slowCoeff =
-                detector > state.slowEnv ? slowAttack : slowRelease;
+                fastInput > state.slowEnv ? slowAttack : slowRelease;
             state.slowEnv =
                 slowCoeff * state.slowEnv
-                + (1.f - slowCoeff) * detector;
+                + (1.f - slowCoeff) * fastInput;
 
             const float fastDb = gainToDb(state.fastEnv);
             const float slowDb = gainToDb(state.slowEnv);
             const float excessDb =
                 fastDb - slowDb - 2.0f - p.deessAverageOffset;
 
-            // Soft-knee trigger: reduction starts slightly before
-            // the fast-vs-slow excess reaches zero and reaches full
-            // intensity over a smooth 3 dB transition.
             constexpr float kneeDb = 1.5f;
             const float kneeT =
                 juce::jlimit(0.f, 1.f,
@@ -1136,8 +1154,6 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
             const float trigger =
                 kneeT * kneeT * (3.f - 2.f * kneeT);
 
-            // Parameter is a real maximum reduction in dB, not a 0..100
-            // percentage. 24 dB is the hard ceiling of the control.
             const float maxReductionDb =
                 juce::jlimit(0.f, 24.f, p.deessIntensity);
 
@@ -1153,8 +1169,19 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
                 gainCoeff * state.gainDb
                 + (1.f - gainCoeff) * targetReductionDb;
 
+            // Preserve the direct programme. Only the actual high-band
+            // reduction is re-introduced as a residual. When reduction is
+            // zero, the entire De-Esser collapses exactly to unity instead
+            // of retaining the crossover's all-pass phase.
+            const float reducedHigh =
+                highBand * dbToGain(-state.gainDb);
+            const float unprocessedReconstruction =
+                lowBand + highBand;
+            const float processedReconstruction =
+                lowBand + reducedHigh;
             data[n] =
-                lowBand + highBand * dbToGain(-state.gainDb);
+                input + (processedReconstruction
+                         - unprocessedReconstruction);
         }
     }
 }
@@ -1237,85 +1264,15 @@ void VVChainDSP::alignDryBuffer(int numSamples)
 
 void VVChainDSP::alignDryPhaseBuffer(int numSamples, const Parameters& p)
 {
-    const int nCh = channels;
+    // All phase-sensitive crossover stages now operate as residual processors:
+    // when they are doing nothing, the wet programme is exactly the direct path.
+    // The external Dry/Wet path therefore no longer needs to copy crossover
+    // all-pass phase into the dry signal.
+    juce::ignoreUnused(p);
 
-    const float ottMix =
-        juce::jlimit(0.f, 1.f, p.ottMix / 100.f);
-
-    const bool useOttPhase =
-        !p.ottBypass && ottMix > 0.0001f;
-
-    const bool useDeEssPhase =
-        !p.deessBypass && p.deessIntensity > 0.f;
-
-    float x1 = 0.f;
-    float x2 = 0.f;
-    float x3 = 0.f;
-    float xoverQ = 0.f;
-
-    if (useOttPhase)
-    {
-        x1 = juce::jlimit(80.f, 900.f, p.ottX1);
-        x2 = juce::jlimit(
-            x1 + 80.f, 5000.f, p.ottX2);
-        x3 = juce::jlimit(
-            x2 + 200.f,
-            static_cast<float>(sr * 0.42),
-            p.ottX3);
-
-        xoverQ = crossoverQFromOverlap(p.ottXoverOverlap);
-
-        updateCrossover(
-            dryOttPhase1, sr, x1, xoverQ);
-        updateCrossover(
-            dryOttPhase2, sr, x2, xoverQ);
-        updateCrossover(
-            dryOttPhase3, sr, x3, xoverQ);
-    }
-
-    if (useDeEssPhase)
-    {
-        updateCrossover(
-            dryDeEssPhase,
-            sr,
-            juce::jlimit(6000.f, 18000.f, p.deessReferenceHz),
-            0.70710678f);
-    }
-
-    for (int ch = 0; ch < nCh; ++ch)
-    {
-        const bool right = ch == 1;
-
-        for (int n = 0; n < numSamples; ++n)
-        {
-            float x =
-                alignedDryBuffer.getSample(ch, n);
-
-            // OTT's reconstructed bands, with no dynamics, form the
-            // cascade of the three crossover all-pass paths. Mirror that
-            // same linear phase path before the external Dry/Wet blend.
-            if (useOttPhase)
-            {
-                float phasePath =
-                    dryOttPhase1.allPass(x, right);
-                phasePath =
-                    dryOttPhase2.allPass(phasePath, right);
-                phasePath =
-                    dryOttPhase3.allPass(phasePath, right);
-
-                x += ottMix * (phasePath - x);
-            }
-
-            // Split-band De-Esser is a linear all-pass reconstruction when
-            // its gain reduction is zero. Mirror that phase path as well.
-            if (useDeEssPhase)
-                x = dryDeEssPhase.allPass(x, right);
-
-            phaseAlignedDryBuffer.setSample(ch, n, x);
-        }
-    }
-
-    juce::ignoreUnused(x1, x2, x3, xoverQ);
+    for (int ch = 0; ch < channels; ++ch)
+        phaseAlignedDryBuffer.copyFrom(
+            ch, 0, alignedDryBuffer, ch, 0, numSamples);
 }
 
 void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
