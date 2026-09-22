@@ -170,35 +170,22 @@ float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
     return std::exp(-1.0f / (0.001f * std::max(ms, 0.1f) * static_cast<float>(sampleRate)));
 }
 
-void VVChainDSP::processChebyshevAnalog(juce::dsp::AudioBlock<float>& block,
-                                           float drive, float amount)
+void VVChainDSP::processChebyshevAnalog(
+    juce::dsp::AudioBlock<float>& block,
+    float amount,
+    bool solidState)
 {
-    juce::ignoreUnused(drive);
-
-    if (block.getNumSamples() == 0)
+    if (amount <= 0.0f || block.getNumSamples() == 0)
         return;
 
-    // V3 SAFE SINE CORE:
-    // Keep the V2 SINE transfer exactly:
-    //     y = x + 0.50 * amount * (sin(pi/2 * clamp(x,-1,1)) - clamp(x,-1,1))
-    //
-    // The V3 safety requirement is structural rather than tonal:
-    // - memoryless: no envelope, no block RMS, no DC state, no history
-    // - zero added samples / zero algorithmic latency
-    // - no cross-channel or cross-band state
-    // - residual-only colour injection, so the dry path is never replaced
-    // - bounded nonlinear residual: |x| > 1 is passed through unchanged
-    //
-    // This intentionally keeps the V2 sonic transfer instead of the older
-    // Chebyshev/T2/T3 shaping. The function name is retained for compatibility
-    // with the existing EQ path and V3 versioning.
+    const float safeAmount = juce::jlimit(0.0f, 1.0f, amount);
 
-    const auto safeAmount = juce::jlimit(0.0f, 1.0f, amount);
-    if (safeAmount <= 0.0f)
-        return;
+    // Exact V3 CHEBYSHEV transfer used by the selected V3 web version.
+    // TT and SS are intentionally different harmonic balances.
+    constexpr float kMix = 0.90f;
 
-    constexpr float kHalfPi = juce::MathConstants<float>::halfPi;
-    constexpr float kSineWet = 0.50f;
+    const float h3 = solidState ? 0.020f : 0.014f;
+    const float h5 = solidState ? 0.006f : 0.004f;
 
     for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
     {
@@ -207,6 +194,7 @@ void VVChainDSP::processChebyshevAnalog(juce::dsp::AudioBlock<float>& block,
         for (size_t n = 0; n < block.getNumSamples(); ++n)
         {
             const float input = data[n];
+
             if (!std::isfinite(input))
             {
                 data[n] = 0.0f;
@@ -214,11 +202,21 @@ void VVChainDSP::processChebyshevAnalog(juce::dsp::AudioBlock<float>& block,
             }
 
             const float u = juce::jlimit(-1.0f, 1.0f, input);
-            const float shaped = std::sin(kHalfPi * u);
+            const float u2 = u * u;
 
-            // V2 SINE residual. No state, no delay line, no phase-history term.
-            const float residual = shaped - u;
-            data[n] = input + kSineWet * safeAmount * residual;
+            const float t3 = 4.0f * u * u2 - 3.0f * u;
+            const float t5 =
+                16.0f * u * u2 * u2
+                - 20.0f * u * u2
+                + 5.0f * u;
+
+            const float shaped =
+                u
+                + safeAmount
+                    * (h3 * (t3 - u) + h5 * (t5 - u));
+
+            data[n] =
+                input + kMix * (shaped - u);
         }
     }
 }
