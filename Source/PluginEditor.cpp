@@ -1474,14 +1474,13 @@ void VVChainAudioProcessorEditor::mouseDrag(const juce::MouseEvent& event)
         return;
 
     const auto n = juce::String(dragBand + 1);
-    const auto graphForBand = eqGraphBounds();
 
     const float hz = juce::jlimit(
         20.f, 20000.f,
         graphXToFrequency(graph, event.position.x));
     const float db = juce::jlimit(
         -24.f, 24.f,
-        18.f - ((event.position.y - graphForBand.getY()) / graphForBand.getHeight()) * 36.f);
+        18.f - ((event.position.y - graph.getY()) / graph.getHeight()) * 36.f);
 
     setParameter("EQ" + n + "_FREQ", hz);
     setParameter("EQ" + n + "_GAIN", db);
