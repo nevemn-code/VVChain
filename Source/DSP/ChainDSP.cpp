@@ -273,12 +273,16 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     phaseAlignedDryBuffer.setSize(channels, maxBlock, false, true, true);
 
     eqOversampler.reset();
+    analogOversampler.reset();
     limiterOversampler.reset();
     eqOversampler.initProcessing(static_cast<size_t>(maxBlock));
+    analogOversampler.initProcessing(static_cast<size_t>(maxBlock));
     limiterOversampler.initProcessing(static_cast<size_t>(maxBlock));
 
     eqLatencySamples =
         static_cast<int>(std::lround(eqOversampler.getLatencyInSamples()));
+    analogOversamplingLatencySamples =
+        static_cast<int>(std::lround(analogOversampler.getLatencyInSamples()));
     limiterOversamplingLatencySamples =
         static_cast<int>(std::lround(limiterOversampler.getLatencyInSamples()));
     limiterLookaheadSamples =
@@ -286,6 +290,7 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
 
     totalLatencySamples =
         eqLatencySamples
+        + analogOversamplingLatencySamples
         + limiterOversamplingLatencySamples
         + limiterLookaheadSamples;
 
@@ -297,7 +302,8 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     };
 
     eqDryDelay.prepare(drySpec);
-    eqDryDelay.setDelay(static_cast<float>(eqLatencySamples));
+    eqDryDelay.setDelay(static_cast<float>(
+        eqLatencySamples + analogOversamplingLatencySamples));
     eqUnityDelay.prepare(drySpec);
     eqUnityDelay.setDelay(static_cast<float>(eqLatencySamples));
 
@@ -373,6 +379,7 @@ void VVChainDSP::reset()
     deessSplit.reset();
 
     eqOversampler.reset();
+    analogOversampler.reset();
     limiterOversampler.reset();
     eqDryDelay.reset();
     eqUnityDelay.reset();
@@ -638,22 +645,15 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 void VVChainDSP::applyAnalogColor(
     juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    if (p.eqColorGlobalBypass)
-        return;
+    // The complete Analog stage always traverses the 8x oversampling path.
+    // This keeps the declared latency stable even when Analog is bypassed,
+    // while protecting the nonlinear residual from high-frequency aliasing.
+    juce::dsp::AudioBlock<const float> inputBlock(buffer);
+    juce::dsp::AudioBlock<float> outputBlock(buffer);
+    auto osBlock = analogOversampler.processSamplesUp(inputBlock);
 
-    bool anyActive = false;
-    for (size_t band = 0; band < 4; ++band)
-    {
-        if (!p.eqColorBypass[band]
-            && p.eqColor[band] > 0.0001f)
-        {
-            anyActive = true;
-            break;
-        }
-    }
-
-    if (!anyActive)
-        return;
+    const double osSr =
+        sr * static_cast<double>(analogOversampler.getOversamplingFactor());
 
     const float x1 =
         juce::jlimit(80.f, 900.f, p.ottX1);
@@ -661,87 +661,110 @@ void VVChainDSP::applyAnalogColor(
         juce::jlimit(x1 + 80.f, 5000.f, p.ottX2);
     const float x3 =
         juce::jlimit(x2 + 200.f,
-                     static_cast<float>(sr * 0.42),
+                     static_cast<float>(osSr * 0.42),
                      p.ottX3);
     constexpr float q = 0.70710678f;
 
-    updateCrossover(analogXover1, sr, x1, q);
-    updateCrossover(analogXover2, sr, x2, q);
-    updateCrossover(analogXover3, sr, x3, q);
+    updateCrossover(analogXover1, osSr, x1, q);
+    updateCrossover(analogXover2, osSr, x2, q);
+    updateCrossover(analogXover3, osSr, x3, q);
 
-    // These all-pass paths align the NEW harmonic content only.
-    // The original programme never passes through the crossover bank.
-    updateCrossover(analogPhase2_B1, sr, x2, q);
-    updateCrossover(analogPhase3_B1, sr, x3, q);
-    updateCrossover(analogPhase3_B2, sr, x3, q);
+    // Harmonic residuals from Band 1 skip X2/X3; Band 2 skips X3.
+    // Bands 3/4 already traverse all crossover stages, so no additional
+    // all-pass stage is inserted for them.
+    updateCrossover(analogPhase2_B1, osSr, x2, q);
+    updateCrossover(analogPhase3_B1, osSr, x3, q);
+    updateCrossover(analogPhase3_B2, osSr, x3, q);
 
-    for (int ch = 0; ch < channels; ++ch)
-    {
-        auto* data = buffer.getWritePointer(ch);
-        const bool right = ch == 1;
-
-        for (int n = 0; n < buffer.getNumSamples(); ++n)
+    const bool active =
+        !p.eqColorGlobalBypass
+        && ([&]()
         {
-            const float original = data[n];
+            for (size_t band = 0; band < 4; ++band)
+                if (!p.eqColorBypass[band]
+                    && p.eqColor[band] > 0.0001f)
+                    return true;
+            return false;
+        })();
 
-            const float b1 =
-                analogXover1.low(original, right);
-            const float x1High =
-                analogXover1.high(original, right);
-            const float b2 =
-                analogXover2.low(x1High, right);
-            const float x2High =
-                analogXover2.high(x1High, right);
-            const float b3 =
-                analogXover3.low(x2High, right);
-            const float b4 =
-                analogXover3.high(x2High, right);
+    if (active)
+    {
+        for (int ch = 0; ch < channels; ++ch)
+        {
+            auto* data =
+                osBlock.getChannelPointer(static_cast<size_t>(ch));
+            const bool right = ch == 1;
 
-            const float bands[4] = { b1, b2, b3, b4 };
-            float harmonic[4] = { 0.f, 0.f, 0.f, 0.f };
-
-            for (int band = 0; band < 4; ++band)
+            for (size_t n = 0; n < osBlock.getNumSamples(); ++n)
             {
-                if (p.eqColorBypass[(size_t) band])
-                    continue;
+                const float original = data[n];
 
-                const float amount =
-                    juce::jlimit(
-                        0.f, 100.f,
-                        p.eqColor[(size_t) band]) / 100.f;
+                const float b1 =
+                    analogXover1.low(original, right);
+                const float x1High =
+                    analogXover1.high(original, right);
+                const float b2 =
+                    analogXover2.low(x1High, right);
+                const float x2High =
+                    analogXover2.high(x1High, right);
+                const float b3 =
+                    analogXover3.low(x2High, right);
+                const float b4 =
+                    analogXover3.high(x2High, right);
 
-                if (amount <= 0.f)
-                    continue;
+                const float bands[4] = { b1, b2, b3, b4 };
+                float harmonic[4] = { 0.f, 0.f, 0.f, 0.f };
 
-                const float colored =
-                    analogColor(
-                        bands[band],
-                        amount,
-                        p.eqColorSolidState[(size_t) band],
-                        analogPreviousInput[(size_t) band][(size_t) ch],
-                        analogEvenDc[(size_t) band][(size_t) ch],
-                        analogLevelPower[(size_t) band][(size_t) ch],
-                        sr);
+                for (int band = 0; band < 4; ++band)
+                {
+                    if (p.eqColorBypass[(size_t) band])
+                        continue;
 
-                harmonic[band] = colored - bands[band];
+                    const float amount =
+                        juce::jlimit(
+                            0.f, 100.f,
+                            p.eqColor[(size_t) band]) / 100.f;
+
+                    if (amount <= 0.f)
+                        continue;
+
+                    const float colored =
+                        analogColor(
+                            bands[band],
+                            amount,
+                            p.eqColorSolidState[(size_t) band],
+                            analogPreviousInput[(size_t) band][(size_t) ch],
+                            analogEvenDc[(size_t) band][(size_t) ch],
+                            analogLevelPower[(size_t) band][(size_t) ch],
+                            osSr);
+
+                    // Delta extraction: keep the crossover reference out of
+                    // the output and inject only the nonlinear change.
+                    harmonic[band] = colored - bands[band];
+                }
+
+                const float h1 =
+                    analogPhase3_B1.allPass(
+                        analogPhase2_B1.allPass(
+                            harmonic[0], right), right);
+
+                const float h2 =
+                    analogPhase3_B2.allPass(
+                        harmonic[1], right);
+
+                const float phaseAlignedHarmonics =
+                    h1 + h2 + harmonic[2] + harmonic[3];
+
+                // The original and the nonlinear delta are now summed inside
+                // the same 8x oversampled domain. Downsampling reconstructs
+                // the complete Analog output as one coherent signal.
+                data[n] =
+                    original + phaseAlignedHarmonics;
             }
-
-            const float h1 =
-                analogPhase3_B1.allPass(
-                    analogPhase2_B1.allPass(
-                        harmonic[0], right), right);
-
-            const float h2 =
-                analogPhase3_B2.allPass(
-                    harmonic[1], right);
-
-            const float phaseAlignedHarmonics =
-                h1 + h2 + harmonic[2] + harmonic[3];
-
-            data[n] =
-                original + phaseAlignedHarmonics;
         }
     }
+
+    analogOversampler.processSamplesDown(outputBlock);
 }
 
 void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
