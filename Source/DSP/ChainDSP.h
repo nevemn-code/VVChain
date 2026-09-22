@@ -190,7 +190,7 @@ private:
     static float gainToDb(float gain) noexcept;
     static float timeCoeff(double sampleRate, float ms) noexcept;
     void processChebyshevAnalog(juce::dsp::AudioBlock<float>& block,
-                                float amount, bool solidState);
+                                float drive, float amount);
 
     static float rmsDetectPDR(float input,
                                float& fastPower,
@@ -228,6 +228,8 @@ private:
     void alignDryBuffer(int numSamples);
 
     std::array<Biquad, 4> eq {};
+    // Reusable one-channel scratch for allocation-free high-density ANALOG.
+    juce::AudioBuffer<float> analogTempBuffer;
     Crossover4th ottXover1 {};
     Crossover4th ottXover2 {};
     Crossover4th ottXover3 {};
