@@ -175,88 +175,46 @@ void VVChainDSP::processChebyshevAnalog(
     float drive,
     float amount)
 {
-    if (amount <= 0.0f || drive <= 0.0f || block.getNumSamples() == 0)
+    if (amount <= 0.0f || drive <= 0.0f)
         return;
 
+    const auto numChannels = block.getNumChannels();
     const auto numSamples = block.getNumSamples();
-    const float safeDrive = juce::jmax(0.0f, drive);
-    const float safeAmount = juce::jlimit(0.0f, 1.0f, amount);
 
-    // One-channel scratch, preallocated in prepare(); no realtime allocation.
-    jassert(analogTempBuffer.getNumChannels() >= 1);
-    jassert(static_cast<size_t>(analogTempBuffer.getNumSamples()) >= numSamples);
-
-    auto* tempPtr = analogTempBuffer.getWritePointer(0);
-
-    for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
+    for (size_t ch = 0; ch < numChannels; ++ch)
     {
         auto* channelData = block.getChannelPointer(ch);
-
-        // 1. Calculate input RMS.
-        double inputSumSquares = 0.0;
-
-        for (size_t i = 0; i < numSamples; ++i)
-        {
-            const double v = static_cast<double>(channelData[i]);
-            inputSumSquares += v * v;
-        }
-
-        const float inputRms =
-            static_cast<float>(std::sqrt(
-                inputSumSquares / static_cast<double>(numSamples)));
-
-        if (inputRms < 0.0001f)
-            continue;
-
-        // 2. High-purity analogue colouring.
-        double outputSumSquares = 0.0;
 
         for (size_t i = 0; i < numSamples; ++i)
         {
             const float x = channelData[i];
 
-            // Gentle soft clipping.
-            const float xDriven = std::tanh(x * safeDrive);
+            // 1. Gentle soft clipping for extreme peaks.
+            const float xDriven = std::tanh(x * drive);
 
-            // Pure harmonic extraction requested by the final recipe.
+            // 2. Chebyshev harmonic injection only.
+            // T2 + 1 removes the explicit -1 DC term, leaving 2*x^2.
+            // T3 here is the requested 4*x^3 harmonic component.
             const float evenHarmonics =
-                2.0f * xDriven * xDriven - 1.0f;
+                (2.0f * xDriven * xDriven) - 1.0f + 1.0f;
 
             const float oddHarmonics =
                 4.0f * xDriven * xDriven * xDriven;
 
-            // Fundamental-preserving source + requested harmonic colour.
-            const float shaped =
-                xDriven
-                + 0.25f * evenHarmonics
+            // 3. Fixed harmonic injection:
+            // 25% even-order + 15% odd-order colour.
+            // No input RMS measurement, no output RMS measurement,
+            // and absolutely no Auto-Gain compensation.
+            const float pureHarmonics =
+                0.25f * evenHarmonics
                 + 0.15f * oddHarmonics;
 
-            tempPtr[i] = shaped;
-            outputSumSquares +=
-                static_cast<double>(shaped) * static_cast<double>(shaped);
-        }
-
-        // 3. 100% Auto-Gain Match.
-        const float outputRms =
-            static_cast<float>(std::sqrt(
-                outputSumSquares / static_cast<double>(numSamples)));
-
-        const float gainComp =
-            outputRms > 0.0001f
-                ? inputRms / outputRms
-                : 1.0f;
-
-        // 4. Serial routing in VVChain: original + pure Delta * amount.
-        // No parallel-path route currently exists in the production signal
-        // path, so the requested isParallelPath branch is intentionally
-        // represented by the existing serial path only.
-        for (size_t i = 0; i < numSamples; ++i)
-        {
-            const float delta =
-                (tempPtr[i] * gainComp) - channelData[i];
-
+            // 4. Deterministic serial injection.
+            // The original sample is retained directly and the harmonic
+            // component is added at a fixed 0.5 scale.
             channelData[i] =
-                channelData[i] + (delta * safeAmount);
+                channelData[i]
+                + (pureHarmonics * amount * 0.5f);
         }
     }
 }
@@ -269,7 +227,6 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     const int maxBlock = juce::jmax(1, samplesPerBlock);
     dryBuffer.setSize(channels, maxBlock, false, true, true);
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
-    analogTempBuffer.setSize(1, maxBlock * 4, false, true, true);
 
     eqOversampler.reset();
     limiterOversampler.reset();
@@ -380,7 +337,6 @@ void VVChainDSP::reset()
     limiterEnvDb = { 0.f, 0.f };
     dryBuffer.clear();
     alignedDryBuffer.clear();
-    analogTempBuffer.clear();
 }
 
 float VVChainDSP::rmsDetectPDR(float input,
