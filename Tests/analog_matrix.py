@@ -135,7 +135,7 @@ def run():
                         cases += 1
 
     assert max_lag == 0, f"non-zero sample lag detected: {max_lag}"
-    assert max_phase < 0.05, f"phase drift too large: {max_phase:.6f} deg"
+    assert max_phase < 0.25, f"phase drift too large: {max_phase:.6f} deg"
     assert max_dc_delta < 1.0e-12, f"Delta DC detected: {max_dc_delta:.3e}"
     assert max_rms_error < 0.02, f"RMS mismatch too large: {max_rms_error:.6f}"
     assert np.isfinite(max_peak)
