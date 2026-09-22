@@ -231,7 +231,6 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     const int maxBlock = juce::jmax(1, samplesPerBlock);
     dryBuffer.setSize(channels, maxBlock, false, true, true);
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
-    analogTempBuffer.setSize(1, maxBlock * 4, false, true, true);
 
     eqOversampler.reset();
     limiterOversampler.reset();
@@ -338,7 +337,6 @@ void VVChainDSP::reset()
     limiterEnvDb = { 0.f, 0.f };
     dryBuffer.clear();
     alignedDryBuffer.clear();
-    analogTempBuffer.clear();
 }
 
 float VVChainDSP::rmsDetectPDR(float input,
