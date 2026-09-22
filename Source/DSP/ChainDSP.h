@@ -209,9 +209,6 @@ private:
     static float dbToGain(float db) noexcept;
     static float gainToDb(float gain) noexcept;
     static float timeCoeff(double sampleRate, float ms) noexcept;
-    float dynamicMidReductionDb(int band) const noexcept;
-    float dynamicSideReductionDb(int band) const noexcept;
-    float dynamicAverageReductionDb(int band) const noexcept;
     void processChebyshevAnalog(juce::dsp::AudioBlock<float>& block,
                                 float drive, float amount);
 
