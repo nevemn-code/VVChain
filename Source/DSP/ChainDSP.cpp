@@ -17,6 +17,13 @@ float crossoverQFromOverlap(float overlap)
     const float t = juce::jlimit(0.f, 100.f, overlap) / 100.f;
     return 0.90f - 0.35f * t;
 }
+
+float getBandBaseAttack(int bandIndex) noexcept
+{
+    static constexpr float baseAttackMs[4] = { 15.0f, 8.0f, 3.0f, 1.0f };
+    const int safeBand = juce::jlimit(0, 3, bandIndex);
+    return baseAttackMs[safeBand];
+}
 }
 
 void VVChainDSP::updateAnalogPeak(Biquad& filter, double fs, double f0, double gainDb, double q)
@@ -385,11 +392,15 @@ float VVChainDSP::rmsDetectPDR(float input,
                                   float attackMs,
                                   float releaseMs,
                                   double sampleRate,
-                                  float& programReleaseMs) noexcept
+                                  float& programReleaseMs,
+                                  float attackCoeffOverride) noexcept
 {
     const float target = input * input;
 
-    const float fastAttack = timeCoeff(sampleRate, attackMs);
+    const float fastAttack =
+        attackCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, attackCoeffOverride)
+            : timeCoeff(sampleRate, attackMs);
     const float fastRelease =
         timeCoeff(sampleRate, juce::jmax(0.5f, releaseMs * 0.35f));
     const float slowAttack =
@@ -456,7 +467,8 @@ float VVChainDSP::applyCompressorFromDetectorDb(float input, float detectorDb,
                                                 float& envDb, float thresholdDb,
                                                 float attackMs, float releaseMs,
                                                 float mix, double sampleRate,
-                                                float ratio)
+                                                float ratio,
+                                                float attackCoeffOverride)
 {
     const float slope = 1.0f - (1.0f / juce::jmax(1.0f, ratio));
     const float kneeStart = thresholdDb - kCompressorKneeDb * 0.5f;
@@ -473,7 +485,9 @@ float VVChainDSP::applyCompressorFromDetectorDb(float input, float detectorDb,
 
     const float currentReductionDb = -envDb;
     const float alpha = targetReductionDb > currentReductionDb
-        ? timeCoeff(sampleRate, attackMs)
+        ? (attackCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, attackCoeffOverride)
+            : timeCoeff(sampleRate, attackMs))
         : timeCoeff(sampleRate, releaseMs);
     const float smoothedReduction =
         alpha * currentReductionDb + (1.0f - alpha) * targetReductionDb;
@@ -708,11 +722,24 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 // (degree) rises, reducing high-depth click / transient tearing.
                 const float amount = depth;
                 const float baseAttackMs =
-                    p.ottCompAttack[(size_t) band];
+                    getBandBaseAttack(band);
+
+                const float targetLimitMs = 120.0f;
+                const float k =
+                    (targetLimitMs - baseAttackMs) / 0.49f;
                 const float dynamicAttackMs =
-                    baseAttackMs + (amount * 8.0f);
+                    baseAttackMs + k * (amount * amount);
+
+                const float minAttackLimit =
+                    (band == 0) ? 15.0f
+                                : ((band == 1) ? 8.0f : 1.0f);
+
                 const float finalAttackMs =
-                    juce::jmax(0.5f, dynamicAttackMs);
+                    juce::jmax(minAttackLimit, dynamicAttackMs);
+
+                const float attackCoef =
+                    std::exp(-1000.0f
+                             / (finalAttackMs * static_cast<float>(sr)));
 
                 // Each stage has its own RMS detector state for this band/channel.
                 float downReleaseMs = p.ottCompRelease[(size_t) band];
@@ -723,14 +750,16 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     finalAttackMs,
                     p.ottCompRelease[(size_t) band],
                     sr,
-                    downReleaseMs);
+                    downReleaseMs,
+                    attackCoef);
 
                 v = applyCompressorFromDetectorDb(
                     v, downDb, compEnv,
                     p.ottCompThreshold[(size_t) band],
                     finalAttackMs,
                     downReleaseMs,
-                    compMix, sr, downRatio);
+                    compMix, sr, downRatio,
+                    attackCoef);
 
                 float upReleaseMs = p.ottLifterRelease[(size_t) band];
                 const float upDb = rmsDetectPDR(
