@@ -172,51 +172,95 @@ float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
 
 void VVChainDSP::processChebyshevAnalog(
     juce::dsp::AudioBlock<float>& block,
-    float amount,
-    bool solidState)
+    float drive,
+    float amount)
 {
-    if (amount <= 0.0f || block.getNumSamples() == 0)
+    if (amount <= 0.0f || drive <= 0.0f || block.getNumSamples() == 0)
         return;
 
+    const auto numSamples = block.getNumSamples();
+    const float safeDrive = juce::jmax(0.0f, drive);
     const float safeAmount = juce::jlimit(0.0f, 1.0f, amount);
 
-    // Exact V3 CHEBYSHEV transfer used by the selected V3 web version.
-    // TT and SS are intentionally different harmonic balances.
-    constexpr float kMix = 0.90f;
+    // Allocation-free scratch. One channel is processed at a time.
+    jassert(analogTempBuffer.getNumChannels() >= 1);
+    jassert(static_cast<size_t>(analogTempBuffer.getNumSamples()) >= numSamples);
 
-    const float h3 = solidState ? 0.020f : 0.014f;
-    const float h5 = solidState ? 0.006f : 0.004f;
+    auto* tempPtr = analogTempBuffer.getWritePointer(0);
 
     for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
     {
-        auto* data = block.getChannelPointer(ch);
+        auto* channelData = block.getChannelPointer(ch);
 
-        for (size_t n = 0; n < block.getNumSamples(); ++n)
+        // Input RMS is measured once per channel/block, matching the requested
+        // high-density Analog recipe.
+        double inputSumSquares = 0.0;
+
+        for (size_t i = 0; i < numSamples; ++i)
         {
-            const float input = data[n];
+            const double v = static_cast<double>(channelData[i]);
+            inputSumSquares += v * v;
+        }
 
-            if (!std::isfinite(input))
-            {
-                data[n] = 0.0f;
-                continue;
-            }
+        const float inputRms =
+            static_cast<float>(std::sqrt(
+                inputSumSquares / static_cast<double>(numSamples)));
 
-            const float u = juce::jlimit(-1.0f, 1.0f, input);
-            const float u2 = u * u;
+        if (inputRms < 0.0001f)
+            continue;
 
-            const float t3 = 4.0f * u * u2 - 3.0f * u;
-            const float t5 =
-                16.0f * u * u2 * u2
-                - 20.0f * u * u2
-                + 5.0f * u;
+        // High-density Analog recipe:
+        // asymmetric Grid-Bias -> tanh -> Chebyshev T2/T3 -> partial
+        // auto-gain compensation. The current VVChain path is serial, so the
+        // separate isParallelPath branch is intentionally not enabled here.
+        const float analogBias = 0.08f * safeDrive;
+        const float biasTanh = std::tanh(analogBias);
+
+        double outputSumSquares = 0.0;
+
+        for (size_t i = 0; i < numSamples; ++i)
+        {
+            const float x = channelData[i];
+
+            const float xDriven =
+                std::tanh(x * safeDrive + analogBias) - biasTanh;
+
+            const float x2 = xDriven * xDriven;
+            const float t2 = 2.0f * x2 - 1.0f;
+            const float t3 =
+                4.0f * xDriven * x2
+                - 3.0f * xDriven;
 
             const float shaped =
-                u
-                + safeAmount
-                    * (h3 * (t3 - u) + h5 * (t5 - u));
+                xDriven
+                + 0.6f * (t2 + 1.0f)
+                + 0.3f * t3;
 
-            data[n] =
-                input + kMix * (shaped - u);
+            tempPtr[i] = shaped;
+            outputSumSquares +=
+                static_cast<double>(shaped) * static_cast<double>(shaped);
+        }
+
+        const float outputRms =
+            static_cast<float>(std::sqrt(
+                outputSumSquares / static_cast<double>(numSamples)));
+
+        // Requested 80% auto-gain compensation: retain 20% of the raw
+        // level rise so the Drive setting still feels denser/louder.
+        const float gainComp =
+            outputRms > 0.0001f
+                ? (inputRms / outputRms) * 0.8f + 0.2f
+                : 1.0f;
+
+        for (size_t i = 0; i < numSamples; ++i)
+        {
+            const float delta =
+                (tempPtr[i] * gainComp) - channelData[i];
+
+            // VVChain currently has no separate parallel-path routing flag.
+            // Therefore the normal serial colour path is used.
+            channelData[i] =
+                channelData[i] + (delta * safeAmount);
         }
     }
 }
@@ -229,6 +273,7 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     const int maxBlock = juce::jmax(1, samplesPerBlock);
     dryBuffer.setSize(channels, maxBlock, false, true, true);
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
+    analogTempBuffer.setSize(1, maxBlock * 4, false, true, true);
 
     eqOversampler.reset();
     limiterOversampler.reset();
@@ -335,6 +380,7 @@ void VVChainDSP::reset()
     limiterEnvDb = { 0.f, 0.f };
     dryBuffer.clear();
     alignedDryBuffer.clear();
+    analogTempBuffer.clear();
 }
 
 float VVChainDSP::rmsDetectPDR(float input,
@@ -549,10 +595,15 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                         100.f,
                         p.eqColor[band]) / 100.f;
 
+                // TT and SS use distinct Drive values for the high-density
+                // asymmetric-bias recipe.
+                const float drive =
+                    p.eqColorSolidState[band] ? 1.15f : 0.95f;
+
                 processChebyshevAnalog(
                     osBlock,
-                    amount,
-                    p.eqColorSolidState[band]);
+                    drive,
+                    amount);
             }
         }
     }
