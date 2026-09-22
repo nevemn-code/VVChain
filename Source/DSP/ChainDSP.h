@@ -87,6 +87,9 @@ public:
     void process(juce::AudioBuffer<float>& buffer, const Parameters& p);
 
     // Live Dynamic EQ metering for the editor graph.
+    float dynamicMidReductionDb(int band) const noexcept;
+    float dynamicSideReductionDb(int band) const noexcept;
+    float dynamicAverageReductionDb(int band) const noexcept;
 
     int getLatencySamples() const noexcept { return totalLatencySamples; }
 
