@@ -250,8 +250,21 @@ StageResult renderStage(
             Measurement m;
 
             const int start = kWarmup;
+            const int available =
+                static_cast<int>(result.latencyOut.size())
+                - start
+                - declaredLatency
+                - kLatencyRadius
+                - 1;
+
+            // Leave enough output samples after the candidate lag. The prior
+            // version consumed the entire tail, which silently collapsed the
+            // correlation search to lag=0 and falsely reported huge latency
+            // errors.
             const int count =
-                kProbeSamples - kWarmup;
+                std::min(
+                    2048,
+                    std::max(512, available));
 
             const int first =
                 std::max(
