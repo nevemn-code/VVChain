@@ -514,58 +514,83 @@ VVChainDSP::Parameters combine(
 {
     auto p = baseParameters();
 
-    p.eqBypass = a.eqBypass && b.eqBypass;
+    const auto& eqSource =
+        !a.eqBypass ? a : b;
+
+    p.eqBypass =
+        a.eqBypass && b.eqBypass;
+
+    if (!p.eqBypass)
+    {
+        p.gain = eqSource.gain;
+        p.freq = eqSource.freq;
+        p.q = eqSource.q;
+    }
+
+    const auto& colorSource =
+        !a.eqColorGlobalBypass ? a : b;
+
     p.eqColorGlobalBypass =
         a.eqColorGlobalBypass && b.eqColorGlobalBypass;
-    if (!a.eqBypass)
+
+    if (!p.eqColorGlobalBypass)
     {
-        p.gain = a.gain;
-        p.freq = a.freq;
-        p.q = a.q;
+        p.eqColor = colorSource.eqColor;
+        p.eqColorBypass = colorSource.eqColorBypass;
+        p.eqColorSolidState = colorSource.eqColorSolidState;
     }
 
-    if (!a.eqColorGlobalBypass)
+    const auto& ottSource =
+        !a.ottBypass ? a : b;
+
+    p.ottBypass =
+        a.ottBypass && b.ottBypass;
+
+    if (!p.ottBypass)
     {
-        p.eqColor = a.eqColor;
-        p.eqColorSolidState = a.eqColorSolidState;
+        p.ottBandBypass = ottSource.ottBandBypass;
+        p.ottDegree = ottSource.ottDegree;
+        p.ottCompThreshold = ottSource.ottCompThreshold;
+        p.ottLifterThreshold = ottSource.ottLifterThreshold;
+        p.ottCompMix = ottSource.ottCompMix;
+        p.ottLifterMix = ottSource.ottLifterMix;
+        p.ottBandLevelDb = ottSource.ottBandLevelDb;
+        p.ottMix = ottSource.ottMix;
+        p.ottInputGainDb = ottSource.ottInputGainDb;
+        p.ottOutputGainDb = ottSource.ottOutputGainDb;
+        p.ottGateThresholdDb = ottSource.ottGateThresholdDb;
+        p.ottClipper = ottSource.ottClipper;
     }
 
-    p.ottBypass = a.ottBypass && b.ottBypass;
-    if (!a.ottBypass)
+    const auto& tapeSource =
+        !a.atypeBypass ? a : b;
+
+    p.atypeBypass =
+        a.atypeBypass && b.atypeBypass;
+
+    if (!p.atypeBypass)
     {
-        p.ottBandBypass = a.ottBandBypass;
-        p.ottDegree = a.ottDegree;
-        p.ottCompThreshold = a.ottCompThreshold;
-        p.ottLifterThreshold = a.ottLifterThreshold;
-        p.ottCompMix = a.ottCompMix;
-        p.ottLifterMix = a.ottLifterMix;
-        p.ottBandLevelDb = a.ottBandLevelDb;
-        p.ottMix = a.ottMix;
-        p.ottInputGainDb = a.ottInputGainDb;
-        p.ottOutputGainDb = a.ottOutputGainDb;
-        p.ottGateThresholdDb = a.ottGateThresholdDb;
-        p.ottClipper = a.ottClipper;
+        p.atypeBandBypass = tapeSource.atypeBandBypass;
+        p.atypeDegree = tapeSource.atypeDegree;
+        p.atypeBandLevelDb = tapeSource.atypeBandLevelDb;
+        p.atypeAttackMs = tapeSource.atypeAttackMs;
+        p.atypeReleaseMs = tapeSource.atypeReleaseMs;
+        p.atypeMix = tapeSource.atypeMix;
+        p.atypeInputGainDb = tapeSource.atypeInputGainDb;
+        p.atypeOutputGainDb = tapeSource.atypeOutputGainDb;
     }
 
-    p.atypeBypass = a.atypeBypass && b.atypeBypass;
-    if (!a.atypeBypass)
-    {
-        p.atypeBandBypass = a.atypeBandBypass;
-        p.atypeDegree = a.atypeDegree;
-        p.atypeBandLevelDb = a.atypeBandLevelDb;
-        p.atypeAttackMs = a.atypeAttackMs;
-        p.atypeReleaseMs = a.atypeReleaseMs;
-        p.atypeMix = a.atypeMix;
-        p.atypeInputGainDb = a.atypeInputGainDb;
-        p.atypeOutputGainDb = a.atypeOutputGainDb;
-    }
+    const auto& deessSource =
+        !a.deessBypass ? a : b;
 
-    p.deessBypass = a.deessBypass && b.deessBypass;
-    if (!a.deessBypass)
+    p.deessBypass =
+        a.deessBypass && b.deessBypass;
+
+    if (!p.deessBypass)
     {
-        p.deessReferenceHz = a.deessReferenceHz;
-        p.deessIntensity = a.deessIntensity;
-        p.deessAverageOffset = a.deessAverageOffset;
+        p.deessReferenceHz = deessSource.deessReferenceHz;
+        p.deessIntensity = deessSource.deessIntensity;
+        p.deessAverageOffset = deessSource.deessAverageOffset;
     }
 
     p.masterBypass = false;
