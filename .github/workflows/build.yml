@@ -2,7 +2,7 @@ name: VVChain CI/CD
 
 on:
   push:
-    branches: [ "main", "fix/*", "deploy/*" ]
+    branches: [ "main", "fix/*" ]
   pull_request:
     branches: [ "main" ]
 
