@@ -4,6 +4,7 @@
 #include <juce_dsp/juce_dsp.h>
 #include <array>
 #include <complex>
+#include <atomic>
 
 class VVChainDSP
 {
@@ -29,6 +30,8 @@ public:
         std::array<float, 4> dynRatio { 2.5f, 2.5f, 2.0f, 2.0f };
         std::array<float, 4> dynAttack { 8.f, 8.f, 5.f, 3.f };
         std::array<float, 4> dynRelease { 120.f, 120.f, 100.f, 80.f };
+        // 0 = Side only, 50 = equal Mid/Side, 100 = Mid only.
+        std::array<float, 4> dynMSBalance { 50.f, 50.f, 50.f, 50.f };
 
         std::array<float, 4> eqColor { 35.f, 35.f, 35.f, 35.f };
         std::array<bool, 4> eqColorBypass { false, false, false, false };
@@ -201,6 +204,9 @@ private:
     static float dbToGain(float db) noexcept;
     static float gainToDb(float gain) noexcept;
     static float timeCoeff(double sampleRate, float ms) noexcept;
+    float dynamicMidReductionDb(int band) const noexcept;
+    float dynamicSideReductionDb(int band) const noexcept;
+    float dynamicAverageReductionDb(int band) const noexcept;
     void processChebyshevAnalog(juce::dsp::AudioBlock<float>& block,
                                 float drive, float amount);
 
@@ -244,15 +250,32 @@ private:
     void alignDryBuffer(int numSamples);
 
     std::array<Biquad, 4> eq {};
-    std::array<Biquad, 4> dynDetectors {};
-    std::array<float, 4> dynEnvelopeDb
+    std::array<Biquad, 4> dynMidEq {};
+    std::array<Biquad, 4> dynSideEq {};
+    std::array<Biquad, 4> dynMidDetectors {};
+    std::array<Biquad, 4> dynSideDetectors {};
+
+    std::array<float, 4> dynMidEnvelopeDb
+    {
+        -120.f, -120.f, -120.f, -120.f
+    };
+    std::array<float, 4> dynSideEnvelopeDb
     {
         -120.f, -120.f, -120.f, -120.f
     };
 
+    std::array<std::atomic<float>, 4> dynMidReductionDb
+    {
+        0.f, 0.f, 0.f, 0.f
+    };
+    std::array<std::atomic<float>, 4> dynSideReductionDb
+    {
+        0.f, 0.f, 0.f, 0.f
+    };
+
     // Feed-forward detector source shared by all four Dynamic EQ bands.
-    // This prevents self-modulation and inter-band detector coupling.
     juce::AudioBuffer<float> dynamicDetectorInput;
+    juce::AudioBuffer<float> dynamicMsTempBuffer;
 
     // Reusable one-channel scratch for allocation-free high-density ANALOG.
     juce::AudioBuffer<float> analogTempBuffer;
