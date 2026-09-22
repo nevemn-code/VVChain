@@ -159,13 +159,8 @@ private:
 
     struct BandDynamics
     {
-        // Persistent state: never reinitialised inside process().
-        // Each OTT band/channel keeps its own envelope and real gain history.
-        std::array<float, 2> currentEnv { 0.f, 0.f };
-        std::array<float, 2> currentGain { 1.f, 1.f };
-
-        // Existing per-stage detector state is retained for compatibility
-        // with the rest of the OTT DSP state machine.
+        // Independent state for each OTT band / channel.
+        // Gate, upward and downward envelopes never share detector state.
         std::array<float, 2> gateEnvDb { 0.f, 0.f };
         std::array<float, 2> lifterEnv { 1.f, 1.f };
         std::array<float, 2> compEnvDb { 0.f, 0.f };
@@ -233,6 +228,8 @@ private:
     void alignDryBuffer(int numSamples);
 
     std::array<Biquad, 4> eq {};
+    // Reusable one-channel scratch for allocation-free high-density ANALOG.
+    juce::AudioBuffer<float> analogTempBuffer;
     Crossover4th ottXover1 {};
     Crossover4th ottXover2 {};
     Crossover4th ottXover3 {};
