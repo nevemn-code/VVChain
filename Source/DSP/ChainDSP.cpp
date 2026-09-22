@@ -173,106 +173,52 @@ float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
 void VVChainDSP::processChebyshevAnalog(juce::dsp::AudioBlock<float>& block,
                                            float drive, float amount)
 {
-    if (amount <= 0.0f || drive <= 0.0f || block.getNumSamples() == 0)
+    juce::ignoreUnused(drive);
+
+    if (block.getNumSamples() == 0)
         return;
 
-    const auto numChannels = block.getNumChannels();
-    const auto numSamples = block.getNumSamples();
+    // V3 SAFE SINE CORE:
+    // Keep the V2 SINE transfer exactly:
+    //     y = x + 0.50 * amount * (sin(pi/2 * clamp(x,-1,1)) - clamp(x,-1,1))
+    //
+    // The V3 safety requirement is structural rather than tonal:
+    // - memoryless: no envelope, no block RMS, no DC state, no history
+    // - zero added samples / zero algorithmic latency
+    // - no cross-channel or cross-band state
+    // - residual-only colour injection, so the dry path is never replaced
+    // - bounded nonlinear residual: |x| > 1 is passed through unchanged
+    //
+    // This intentionally keeps the V2 sonic transfer instead of the older
+    // Chebyshev/T2/T3 shaping. The function name is retained for compatibility
+    // with the existing EQ path and V3 versioning.
 
-    // Allocation-free scratch: one channel at a time.
-    jassert(analogTempBuffer.getNumChannels() >= 1);
-    jassert(static_cast<size_t>(analogTempBuffer.getNumSamples()) >= numSamples);
-    auto* tempPtr = analogTempBuffer.getWritePointer(0);
+    const auto safeAmount = juce::jlimit(0.0f, 1.0f, amount);
+    if (safeAmount <= 0.0f)
+        return;
 
-    for (size_t ch = 0; ch < numChannels; ++ch)
+    constexpr float kHalfPi = juce::MathConstants<float>::halfPi;
+    constexpr float kSineWet = 0.50f;
+
+    for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
     {
-        auto* channelData = block.getChannelPointer(ch);
+        auto* data = block.getChannelPointer(ch);
 
-        // 1. Input RMS for level matching.
-        double inputSumSquares = 0.0;
-        for (size_t i = 0; i < numSamples; ++i)
+        for (size_t n = 0; n < block.getNumSamples(); ++n)
         {
-            const double v = static_cast<double>(channelData[i]);
-            inputSumSquares += v * v;
-        }
+            const float input = data[n];
+            if (!std::isfinite(input))
+            {
+                data[n] = 0.0f;
+                continue;
+            }
 
-        const float inputRms =
-            static_cast<float>(std::sqrt(inputSumSquares
-                                         / static_cast<double>(numSamples)));
+            const float u = juce::jlimit(-1.0f, 1.0f, input);
+            const float shaped = std::sin(kHalfPi * u);
 
-        if (inputRms < 0.0001f)
-            continue;
-
-        // 2. Chebyshev coloration in the oversampled domain.
-        // T2/T3 are deliberate low-order harmonic generators.
-        // tanh keeps the Chebyshev input bounded to [-1, 1].
-        double shapedMean = 0.0;
-
-        for (size_t i = 0; i < numSamples; ++i)
-        {
-            const float x = channelData[i];
-            const float xDriven = std::tanh(x * drive);
-
-            const float x2 = xDriven * xDriven;
-            const float t2 = 2.0f * x2 - 1.0f;
-            const float t3 = 4.0f * xDriven * x2 - 3.0f * xDriven;
-
-            // T2 itself is the even-harmonic term. Adding +1 does NOT
-            // "remove DC"; it shifts the whole term upward. We therefore
-            // de-mean the generated coloration below, preserving the original
-            // signal's own DC while preventing ANALOG from adding a DC bias.
-            const float shaped =
-                xDriven
-                + 0.25f * t2
-                + 0.15f * t3;
-
-            tempPtr[i] = shaped;
-            shapedMean += static_cast<double>(shaped);
-        }
-
-        shapedMean /= static_cast<double>(numSamples);
-
-        // Remove only the coloration DC component before RMS matching.
-        double outputSumSquares = 0.0;
-        for (size_t i = 0; i < numSamples; ++i)
-        {
-            const float shaped = tempPtr[i]
-                - static_cast<float>(shapedMean);
-            tempPtr[i] = shaped;
-
-            const double v = static_cast<double>(shaped);
-            outputSumSquares += v * v;
-        }
-
-        const float outputRms =
-            static_cast<float>(std::sqrt(outputSumSquares
-                                         / static_cast<double>(numSamples)));
-
-        const float gainComp =
-            outputRms > 0.0001f ? inputRms / outputRms : 1.0f;
-
-        // 3. Parallel residual / Delta mix:
-        // original + (matched-colour - original) * amount.
-        // The operation is memoryless: no IIR, no feedback, no added samples.
-        double deltaMean = 0.0;
-        for (size_t i = 0; i < numSamples; ++i)
-        {
-            const float delta =
-                tempPtr[i] * gainComp - channelData[i];
-            deltaMean += static_cast<double>(delta);
-        }
-
-        // Preserve the source DC component; remove only the newly introduced
-        // block-mean delta so T2 cannot bias the programme upward/downward.
-        deltaMean /= static_cast<double>(numSamples);
-
-        for (size_t i = 0; i < numSamples; ++i)
-        {
-            const float delta =
-                tempPtr[i] * gainComp - channelData[i]
-                - static_cast<float>(deltaMean);
-
-            channelData[i] += delta * amount;
+            // V2 SINE residual. No state, no delay line, no phase-history term.
+            const float residual = shaped - u;
+            data[n] = input + kSineWet * safeAmount * residual;
         }
     }
 }
