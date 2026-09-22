@@ -508,55 +508,53 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
     const double osSr =
         sr * static_cast<double>(eqOversampler.getOversamplingFactor());
 
-    // EQ remains a serial four-band parametric stage.
     if (!p.eqBypass)
     {
-        for (size_t i = 0; i < eq.size(); ++i)
+        for (size_t band = 0; band < eq.size(); ++band)
         {
             updateAnalogPeak(
-                eq[i], osSr,
-                juce::jlimit(20.0, osSr * 0.45, static_cast<double>(p.freq[i])),
-                juce::jlimit(-24.0, 24.0, static_cast<double>(p.gain[i])),
-                juce::jlimit(0.1, 18.0, static_cast<double>(p.q[i])));
+                eq[band], osSr,
+                juce::jlimit(
+                    20.0,
+                    osSr * 0.45,
+                    static_cast<double>(p.freq[band])),
+                juce::jlimit(
+                    -24.0,
+                    24.0,
+                    static_cast<double>(p.gain[band])),
+                juce::jlimit(
+                    0.1,
+                    18.0,
+                    static_cast<double>(p.q[band])));
 
+            // V3 architecture: each EQ band owns its own ANALOG stage.
+            // TT/SS is read from that same band and never averaged with other
+            // bands. This preserves the V3 four-band content exactly.
             for (int ch = 0; ch < channels; ++ch)
             {
-                auto* data = osBlock.getChannelPointer(static_cast<size_t>(ch));
+                auto* data =
+                    osBlock.getChannelPointer(static_cast<size_t>(ch));
                 const bool right = ch == 1;
 
                 for (size_t n = 0; n < osBlock.getNumSamples(); ++n)
-                    data[n] = eq[i].process(data[n], right);
+                    data[n] = eq[band].process(data[n], right);
+            }
+
+            if (!p.eqColorGlobalBypass
+                && !p.eqColorBypass[band])
+            {
+                const float amount =
+                    juce::jlimit(
+                        0.f,
+                        100.f,
+                        p.eqColor[band]) / 100.f;
+
+                processChebyshevAnalog(
+                    osBlock,
+                    amount,
+                    p.eqColorSolidState[band]);
             }
         }
-    }
-
-    // ANALOG is a single full-band residual stage, never one stage per EQ
-    // pass. The old implementation injected the same full-band SINE transfer
-    // after each of the four EQ bands, causing the same signal to be coloured
-    // four times even when every EQ band was at 0 dB.
-    //
-    // The four UI colour controls therefore combine to ONE colour amount.
-    // Averaging active bands preserves the established 35% default instead of
-    // multiplying the coloration when multiple bands are enabled.
-    if (!p.eqColorGlobalBypass)
-    {
-        float colourSum = 0.0f;
-        int colourCount = 0;
-
-        for (size_t band = 0; band < eq.size(); ++band)
-        {
-            if (p.eqColorBypass[band])
-                continue;
-
-            colourSum += juce::jlimit(0.0f, 100.0f, p.eqColor[band]) / 100.0f;
-            ++colourCount;
-        }
-
-        const float amount =
-            colourCount > 0 ? colourSum / static_cast<float>(colourCount) : 0.0f;
-
-        if (amount > 0.0f)
-            processChebyshevAnalog(osBlock, 1.0f, amount);
     }
 
     // Even when EQ is bypassed, keep the fixed oversampling latency stable.
