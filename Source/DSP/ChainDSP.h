@@ -159,8 +159,8 @@ private:
 
     struct BandDynamics
     {
-        // Independent state for each OTT band / channel.
-        // Gate, upward and downward envelopes never share detector state.
+        // Independent detector state for each OTT band / channel.
+        // Final OTT gain smoothing is stored separately in ottCurrentGain.
         std::array<float, 2> gateEnvDb { 0.f, 0.f };
         std::array<float, 2> lifterEnv { 1.f, 1.f };
         std::array<float, 2> compEnvDb { 0.f, 0.f };
@@ -241,6 +241,11 @@ private:
     Crossover4th ottPhase3_B2 {};
 
     std::array<BandDynamics, 4> ottDynamics {};
+
+    // Industrial-grade OTT gain smoothing state.
+    // Independent "previous real gain" for each band and channel.
+    // This prevents gain smoothing from coupling stereo channels or bands.
+    std::array<std::array<float, 2>, 4> ottCurrentGain {};
 
     // Four independent Type-A exciter bands.
     // Fixed crossovers follow a practical 4-band exciter layout:
