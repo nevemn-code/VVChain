@@ -149,7 +149,7 @@ def run():
 
         input_rms = float(np.sqrt(np.mean(x * x)))
         driven = np.tanh(x * drive)
-        shaped = driven + 0.25 * (2.0 * driven * driven - 1.0) + 0.15 * (4.0 * driven ** 3)
+        shaped = driven + 0.25 * (2.0 * driven * driven - 1.0) + 0.15 * (4.0 * driven * driven * driven)
         output_rms = float(np.sqrt(np.mean(shaped * shaped)))
         gain_comp = input_rms / output_rms if output_rms > 0.0001 else 1.0
         y2 = x + ((shaped * gain_comp) - x) * amount
