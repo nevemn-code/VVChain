@@ -228,9 +228,6 @@ private:
     void alignDryBuffer(int numSamples);
 
     std::array<Biquad, 4> eq {};
-    // Reusable 1-channel scratch buffer for allocation-free ANALOG processing.
-    juce::AudioBuffer<float> analogTempBuffer;
-
     Crossover4th ottXover1 {};
     Crossover4th ottXover2 {};
     Crossover4th ottXover3 {};
