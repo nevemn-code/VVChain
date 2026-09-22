@@ -61,7 +61,6 @@ def static_native_guard():
         "inputRms",
         "outputRms",
         "gainComp",
-        "Auto-Gain",
         "analogTempBuffer",
     ]
 
