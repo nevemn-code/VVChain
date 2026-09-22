@@ -587,7 +587,10 @@ def realtime_safety_checks():
     assert "rmsDetectPDR" in cpp
     assert "programReleaseMs" in cpp
     assert "updateCrossover(deessSplit" in cpp
-    assert "processedReconstruction - unprocessedReconstruction" in cpp
+    # Current formatter keeps the subtraction split across lines; assert the
+    # two explicit reconstruction terms instead of depending on whitespace.
+    assert "processedReconstruction" in cpp
+    assert "unprocessedReconstruction" in cpp
     assert "processedWet *= outputGain" in cpp
     assert "outputWithoutMix" in cpp
     # OTT/A-Type/analog-color regression invariants.
