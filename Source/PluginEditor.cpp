@@ -27,48 +27,99 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
     juce::Slider& slider)
 {
     const auto area = juce::Rectangle<float>((float) x, (float) y,
-                                             (float) width, (float) height).reduced(3.f);
+                                             (float) width, (float) height).reduced(4.f);
     const float cx = area.getCentreX();
-    const float cy = area.getCentreY() - 3.f;
-    const float radius = juce::jmin(area.getWidth(), area.getHeight()) * 0.5f - 6.f;
+    const float cy = area.getCentreY() - 4.f;
+    const float radius = juce::jmin(area.getWidth(), area.getHeight()) * 0.5f - 7.f;
     const auto accent = monochrome
         ? slider.findColour(juce::Slider::rotarySliderFillColourId).withSaturation(0.0f)
         : slider.findColour(juce::Slider::rotarySliderFillColourId);
     const float angle = juce::jmap(sliderPosProportional, rotaryStartAngle, rotaryEndAngle);
 
-    g.setColour(juce::Colours::black.withAlpha(0.92f));
-    g.fillEllipse(cx - radius - 3.f, cy - radius - 3.f,
-                  (radius + 3.f) * 2.f, (radius + 3.f) * 2.f);
+    g.setColour(juce::Colours::black.withAlpha(.68f));
+    g.fillEllipse(cx - radius - 5.f, cy - radius + 3.f,
+                  (radius + 5.f) * 2.f, (radius + 5.f) * 2.f);
+    g.setColour(juce::Colours::black.withAlpha(.26f));
+    g.fillEllipse(cx - radius - 1.f, cy + radius * .72f,
+                  (radius + 1.f) * 2.f, radius * .34f);
 
-    juce::ColourGradient rim(juce::Colour(0xff70757e), cx, cy - radius,
-                             juce::Colour(0xff1a1d22), cx, cy + radius, false);
-    g.setGradientFill(rim);
-    g.fillEllipse(cx - radius, cy - radius, radius * 2.f, radius * 2.f);
+    juce::ColourGradient bezel(juce::Colour(0xffe0e4e8), cx, cy - radius,
+                               juce::Colour(0xff5a6068), cx, cy + radius, false);
+    g.setGradientFill(bezel);
+    g.fillEllipse(cx - radius - 1.5f, cy - radius - 1.5f,
+                  (radius + 1.5f) * 2.f, (radius + 1.5f) * 2.f);
 
-    juce::ColourGradient face(juce::Colour(0xff4a4f57), cx, cy - radius * .8f,
-                              juce::Colour(0xff171a1f), cx, cy + radius, false);
+    juce::ColourGradient bezelEdge(juce::Colour(0xff31363d), cx, cy - radius,
+                                  juce::Colour(0xff0c0f13), cx, cy + radius, false);
+    g.setGradientFill(bezelEdge);
+    g.fillEllipse(cx - radius + 1.f, cy - radius + 1.f,
+                  (radius - 1.f) * 2.f, (radius - 1.f) * 2.f);
+
+    juce::ColourGradient face(juce::Colour(0xff66707b), cx, cy - radius * .78f,
+                              juce::Colour(0xff20252b), cx, cy + radius, false);
     g.setGradientFill(face);
-    g.fillEllipse(cx - radius + 4.f, cy - radius + 4.f,
-                  (radius - 4.f) * 2.f, (radius - 4.f) * 2.f);
+    g.fillEllipse(cx - radius + 5.f, cy - radius + 5.f,
+                  (radius - 5.f) * 2.f, (radius - 5.f) * 2.f);
 
-    // Full accent ring is intentionally independent of the knob value.
-    // The value itself is shown by the rotating pointer.
-    juce::Path ring;
-    ring.addCentredArc(cx, cy, radius + 3.f, radius + 3.f, 0.f,
+    g.saveState();
+    g.reduceClipRegion(juce::Rectangle<int>(
+        juce::roundToInt(cx - radius + 5.f),
+        juce::roundToInt(cy - radius + 5.f),
+        juce::roundToInt((radius - 5.f) * 2.f),
+        juce::roundToInt((radius - 5.f) * 2.f)));
+    g.setColour(juce::Colours::white.withAlpha(.035f));
+    for (int yy = juce::roundToInt(cy - radius); yy < juce::roundToInt(cy + radius); yy += 3)
+        g.drawHorizontalLine(yy, cx - radius, cx + radius);
+    g.restoreState();
+
+    juce::ColourGradient gloss(juce::Colours::white.withAlpha(.17f), cx, cy - radius * .72f,
+                               juce::Colours::white.withAlpha(0.0f), cx, cy + radius * .15f, false);
+    g.setGradientFill(gloss);
+    g.fillEllipse(cx - radius + 6.f, cy - radius + 6.f,
+                  (radius - 6.f) * 2.f, (radius - 6.f) * 1.05f);
+
+    juce::Path rail;
+    rail.addCentredArc(cx, cy, radius - 0.5f, radius - 0.5f, 0.f,
                        rotaryStartAngle, rotaryEndAngle, true);
-    g.setColour(accent.withAlpha(.96f));
-    g.strokePath(ring, juce::PathStrokeType(2.4f));
+    g.setColour(juce::Colours::black.withAlpha(.68f));
+    g.strokePath(rail, juce::PathStrokeType(4.2f));
 
-    const float pointerLength = radius * .29f;
+    juce::Path valueArc;
+    valueArc.addCentredArc(cx, cy, radius - 0.5f, radius - 0.5f, 0.f,
+                           rotaryStartAngle, angle, true);
+    g.setColour(accent.withAlpha(.94f));
+    g.strokePath(valueArc, juce::PathStrokeType(2.6f));
+
+    const int ticks = 13;
+    for (int i = 0; i < ticks; ++i)
+    {
+        const float t = static_cast<float>(i) / static_cast<float>(ticks - 1);
+        const float a = juce::jmap(t, rotaryStartAngle, rotaryEndAngle);
+        const float r0 = radius + 3.f;
+        const float r1 = radius + (i == (ticks / 2) ? 8.f : 6.f);
+        const float sx0 = cx + std::cos(a - juce::MathConstants<float>::halfPi) * r0;
+        const float sy0 = cy + std::sin(a - juce::MathConstants<float>::halfPi) * r0;
+        const float sx1 = cx + std::cos(a - juce::MathConstants<float>::halfPi) * r1;
+        const float sy1 = cy + std::sin(a - juce::MathConstants<float>::halfPi) * r1;
+        g.setColour((i <= static_cast<int>(sliderPosProportional * (ticks - 1)))
+                        ? accent.withAlpha(.80f)
+                        : juce::Colours::white.withAlpha(.18f));
+        g.drawLine(sx0, sy0, sx1, sy1, i == (ticks / 2) ? 1.5f : 1.0f);
+    }
+
+    const float pointerLength = radius * .40f;
     const float px = cx + std::cos(angle - juce::MathConstants<float>::halfPi) * pointerLength;
     const float py = cy + std::sin(angle - juce::MathConstants<float>::halfPi) * pointerLength;
-    // White pointer / scale mark for clear visibility on the dark knob face.
-    g.setColour(juce::Colours::black.withAlpha(.85f));
-    g.drawLine(cx, cy, px, py, 4.4f);
+    g.setColour(juce::Colours::black.withAlpha(.86f));
+    g.drawLine(cx, cy + 1.0f, px, py + 1.0f, 4.8f);
     g.setColour(juce::Colours::white.withAlpha(.96f));
-    g.drawLine(cx, cy, px, py, 2.4f);
-    g.setColour(juce::Colours::white.withAlpha(.70f));
-    g.fillEllipse(cx - 2.2f, cy - 2.2f, 4.4f, 4.4f);
+    g.drawLine(cx, cy, px, py, 2.0f);
+
+    g.setColour(juce::Colours::white.withAlpha(.58f));
+    g.fillEllipse(cx - 2.6f, cy - 2.6f, 5.2f, 5.2f);
+    g.setColour(accent.withAlpha(.88f));
+    g.fillEllipse(cx - 1.25f, cy - 1.25f, 2.5f, 2.5f);
+}
 }
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
@@ -664,8 +715,10 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                             juce::Colour(0xff20242a), graph.getRight(), graph.getBottom(), false);
     g.setGradientFill(bg);
     g.fillRoundedRectangle(graph, 8.f);
-    g.setColour(juce::Colours::black.withAlpha(.95f));
-    g.drawRoundedRectangle(graph, 8.f, 1.f);
+    g.setColour(juce::Colours::black.withAlpha(.96f));
+    g.drawRoundedRectangle(graph, 8.f, 1.1f);
+    g.setColour(juce::Colours::white.withAlpha(.065f));
+    g.drawRoundedRectangle(graph.reduced(1.2f), 7.f, .8f);
 
     for (int i = 0; i <= 8; ++i)
     {
@@ -820,51 +873,81 @@ void VVChainAudioProcessorEditor::drawCard(
     juce::Graphics& g, juce::Rectangle<float> r, juce::Colour accent,
     const juce::String& title, const juce::String& subtitle)
 {
-    juce::ColourGradient bg(juce::Colour(0xff292d33), r.getX(), r.getY(),
-                            juce::Colour(0xff12151a), r.getRight(), r.getBottom(), false);
-    g.setGradientFill(bg);
-    g.fillRoundedRectangle(r, 8.f);
+    g.setColour(juce::Colours::black.withAlpha(.62f));
+    g.fillRoundedRectangle(r.translated(0.f, 6.f).expanded(2.f), 10.f);
 
-    g.setColour(juce::Colours::black.withAlpha(.94f));
-    g.drawRoundedRectangle(r, 8.f, 1.f);
+    juce::ColourGradient frame(juce::Colour(0xff5c646d), r.getX(), r.getY(),
+                               juce::Colour(0xff171b20), r.getRight(), r.getBottom(), false);
+    g.setGradientFill(frame);
+    g.fillRoundedRectangle(r, 10.f);
+
+    const auto inner = r.reduced(2.f);
+    juce::ColourGradient body(juce::Colour(0xff30363d), inner.getX(), inner.getY(),
+                              juce::Colour(0xff12161b), inner.getX(), inner.getBottom(), false);
+    g.setGradientFill(body);
+    g.fillRoundedRectangle(inner, 8.f);
+
+    g.setColour(juce::Colours::white.withAlpha(.075f));
+    g.drawRoundedRectangle(inner.reduced(.7f), 7.f, 1.f);
+    g.setColour(juce::Colours::black.withAlpha(.76f));
+    g.drawRoundedRectangle(inner.translated(0.f, 1.5f), 8.f, 1.2f);
 
     accent = uiColour(accent);
-    g.setColour(accent.withAlpha(.8f));
-    g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
+    g.setColour(accent.withAlpha(.92f));
+    g.fillRoundedRectangle(r.getX() + 1.5f, r.getY() + 1.5f, 4.f, r.getHeight() - 3.f, 2.f);
 
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::FontOptions(12.f).withStyle("Bold"));
-    g.drawText(title, (int) r.getX() + 13, (int) r.getY() + 8, 100, 17,
+    g.setColour(juce::Colours::black.withAlpha(.30f));
+    g.fillRoundedRectangle(inner.getX() + 6.f, inner.getY() + 6.f,
+                           inner.getWidth() - 12.f, 34.f, 5.f);
+    g.setColour(juce::Colours::white.withAlpha(.055f));
+    g.drawHorizontalLine((int) inner.getY() + 7, inner.getX() + 10.f, inner.getRight() - 10.f);
+
+    g.setColour(juce::Colours::white.withAlpha(.96f));
+    g.setFont(juce::FontOptions(11.5f).withStyle("Bold"));
+    g.drawText(title, (int) r.getX() + 14, (int) r.getY() + 7, 110, 17,
                juce::Justification::left);
 
-    g.setColour(juce::Colour(0xff8b929c));
-    g.setFont(juce::FontOptions(7.5f));
-    g.drawText(subtitle, (int) r.getX() + 13, (int) r.getY() + 25,
-               (int) r.getWidth() - 80, 12, juce::Justification::left);
+    g.setColour(juce::Colour(0xffa4abb3));
+    g.setFont(juce::FontOptions(7.2f).withStyle("Bold"));
+    g.drawText(subtitle, (int) r.getX() + 14, (int) r.getY() + 25,
+               (int) r.getWidth() - 72, 11, juce::Justification::left);
 
-    g.setColour(accent.withAlpha(.28f));
-    g.drawRoundedRectangle(r.reduced(2.f), 6.f, 1.f);
-
+    g.setColour(juce::Colours::black.withAlpha(.70f));
+    g.fillEllipse(r.getRight() - 21.f, r.getY() + 9.f, 10.f, 10.f);
+    g.setColour(accent.withAlpha(.92f));
+    g.fillEllipse(r.getRight() - 19.5f, r.getY() + 10.5f, 7.f, 7.f);
 }
 
 void VVChainAudioProcessorEditor::drawPanel(
     juce::Graphics& g, juce::Rectangle<float> r,
     const juce::String& title, const juce::String& subtitle, juce::Colour accent)
 {
-    juce::ColourGradient bg(juce::Colour(0xff24282e), r.getX(), r.getY(),
-                            juce::Colour(0xff12151a), r.getX(), r.getBottom(), false);
-    g.setGradientFill(bg);
-    g.fillRoundedRectangle(r, 8.f);
-    g.setColour(juce::Colours::black.withAlpha(.92f));
-    g.drawRoundedRectangle(r, 8.f, 1.f);
-    g.setColour(accent.withAlpha(.72f));
-    g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
+    g.setColour(juce::Colours::black.withAlpha(.50f));
+    g.fillRoundedRectangle(r.translated(0.f, 4.f).expanded(1.5f), 9.f);
 
-    g.setColour(juce::Colours::white);
+    juce::ColourGradient frame(juce::Colour(0xff6a727c), r.getX(), r.getY(),
+                               juce::Colour(0xff171b20), r.getRight(), r.getBottom(), false);
+    g.setGradientFill(frame);
+    g.fillRoundedRectangle(r, 9.f);
+
+    const auto inner = r.reduced(2.f);
+    juce::ColourGradient bg(juce::Colour(0xff292f36), inner.getX(), inner.getY(),
+                            juce::Colour(0xff11151a), inner.getX(), inner.getBottom(), false);
+    g.setGradientFill(bg);
+    g.fillRoundedRectangle(inner, 7.f);
+
+    accent = uiColour(accent);
+    g.setColour(accent.withAlpha(.82f));
+    g.fillRoundedRectangle(r.getX() + 1.5f, r.getY() + 1.5f, 4.f, r.getHeight() - 3.f, 2.f);
+
+    g.setColour(juce::Colours::white.withAlpha(.08f));
+    g.drawRoundedRectangle(inner.reduced(.7f), 6.f, 1.f);
+
+    g.setColour(juce::Colours::white.withAlpha(.92f));
     g.setFont(juce::FontOptions(10.f).withStyle("Bold"));
     g.drawText(title, (int) r.getX() + 12, (int) r.getY() + 7, 280, 16,
                juce::Justification::left);
-    g.setColour(juce::Colour(0xff7f8791));
+    g.setColour(juce::Colour(0xff929aa4));
     g.setFont(juce::FontOptions(7.5f));
     g.drawText(subtitle, (int) r.getX() + 12, (int) r.getY() + 23,
                (int) r.getWidth() - 20, 12, juce::Justification::left);
@@ -1052,26 +1135,61 @@ void VVChainAudioProcessorEditor::drawGraphDragHint(
 
 void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff080a0d));
+    g.fillAll(juce::Colour(0xff07090c));
 
-    juce::ColourGradient top(juce::Colour(0xff343840), 0.f, 0.f,
-                             juce::Colour(0xff17191e), 0.f, 70.f, false);
+    juce::ColourGradient chassis(juce::Colour(0xff343a42), 0.f, 0.f,
+                                 juce::Colour(0xff101318), 0.f, (float) getHeight(), false);
+    g.setGradientFill(chassis);
+    g.fillRoundedRectangle(7.f, 7.f, (float) getWidth() - 14.f,
+                           (float) getHeight() - 14.f, 14.f);
+
+    g.setColour(juce::Colours::black.withAlpha(.90f));
+    g.drawRoundedRectangle(7.f, 7.f, (float) getWidth() - 14.f,
+                           (float) getHeight() - 14.f, 14.f, 1.5f);
+
+    g.setColour(juce::Colours::white.withAlpha(.018f));
+    for (int yy = 14; yy < getHeight() - 14; yy += 4)
+        g.drawHorizontalLine(yy, 12.f, (float) getWidth() - 12.f);
+
+    juce::ColourGradient top(juce::Colour(0xff606872), 0.f, 8.f,
+                             juce::Colour(0xff1b2026), 0.f, 70.f, false);
     g.setGradientFill(top);
-    g.fillRect(0, 0, getWidth(), 70);
+    g.fillRoundedRectangle(10.f, 10.f, (float) getWidth() - 20.f, 60.f, 10.f);
 
-    g.setColour(juce::Colours::black.withAlpha(.86f));
-    g.fillRect(0, 68, getWidth(), 2);
+    g.setColour(juce::Colours::white.withAlpha(.12f));
+    g.drawRoundedRectangle(10.f, 10.f, (float) getWidth() - 20.f, 60.f, 10.f, 1.f);
+    g.setColour(juce::Colours::black.withAlpha(.65f));
+    g.fillRect(10.f, 68.f, getWidth() - 20, 2);
 
-    g.setColour(juce::Colours::white);
+    g.setColour(juce::Colours::black.withAlpha(.26f));
+    g.fillRoundedRectangle(16.f, 16.f, 160.f, 40.f, 7.f);
+    g.setColour(juce::Colours::white.withAlpha(.08f));
+    g.drawRoundedRectangle(16.f, 16.f, 160.f, 40.f, 7.f, 1.f);
+
+    g.setColour(juce::Colours::white.withAlpha(.98f));
     g.setFont(juce::FontOptions(22.f).withStyle("Bold"));
-    g.drawText("VVCHAIN", 18, 8, 240, 27, juce::Justification::left);
+    g.drawText("VVCHAIN", 26, 14, 145, 27, juce::Justification::left);
 
-    g.setColour(juce::Colour(0xff8b949f));
-    g.setFont(juce::FontOptions(8.f));
-    g.drawText("4-BAND EQ · SHARED X-OVER · OTT · TAPE-A · DE-ESSER", 20, 37, 430, 13,
+    g.setColour(juce::Colour(0xffaeb6c0));
+    g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
+    g.drawText("4-BAND EQ · SHARED X-OVER · OTT · TAPE-A · DE-ESSER", 27, 39, 420, 13,
                juce::Justification::left);
 
+    for (float rx : { 186.f, 202.f, 218.f })
+    {
+        g.setColour(juce::Colours::black.withAlpha(.62f));
+        g.fillEllipse(rx, 25.f, 9.f, 9.f);
+        g.setColour(juce::Colour(0xff8a939d).withAlpha(.55f));
+        g.fillEllipse(rx + 2.f, 27.f, 5.f, 5.f);
+    }
+
     const auto graph = eqGraphBounds();
+    g.setColour(juce::Colours::black.withAlpha(.60f));
+    g.fillRoundedRectangle(graph.translated(0.f, 5.f).expanded(2.f), 10.f);
+    juce::ColourGradient graphFrame(juce::Colour(0xff6a727a), graph.getX(), graph.getY(),
+                                    juce::Colour(0xff171b20), graph.getRight(), graph.getBottom(), false);
+    g.setGradientFill(graphFrame);
+    g.fillRoundedRectangle(graph.expanded(2.f), 10.f);
     drawEqGraph(g, graph);
 
     const int cardY = 404;
@@ -1133,10 +1251,13 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                    juce::Justification::left);
     }
 
-    g.setColour(juce::Colour(0xff606873));
-    g.setFont(juce::FontOptions(7.f));
+    g.setColour(juce::Colour(0xff8d96a0).withAlpha(.82f));
+    g.setFont(juce::FontOptions(7.f).withStyle("Bold"));
     g.drawText("SHARED X-OVER = 3 LINES / 4 ZONES · WHEEL ON LINE = OVERLAP",
-               18, 919, 780, 10, juce::Justification::left);
+               24, 918, 780, 10, juce::Justification::left);
+
+    g.setColour(juce::Colours::white.withAlpha(.05f));
+    g.drawHorizontalLine(912, 24.f, (float) getWidth() - 24.f);
 }
 
 void VVChainAudioProcessorEditor::setExpandedBand(int band)
