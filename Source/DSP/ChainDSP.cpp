@@ -320,6 +320,7 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     dryBuffer.setSize(channels, maxBlock, false, true, true);
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
     analogTempBuffer.setSize(1, maxBlock * 4, false, true, true);
+    dynamicDetectorInput.setSize(channels, maxBlock * 4, false, true, true);
 
     eqOversampler.reset();
     limiterOversampler.reset();
@@ -428,6 +429,7 @@ void VVChainDSP::reset()
     limiterEnvDb = { 0.f, 0.f };
     dryBuffer.clear();
     alignedDryBuffer.clear();
+    dynamicDetectorInput.clear();
     analogTempBuffer.clear();
 }
 
@@ -617,6 +619,17 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
     const double osSr =
         sr * static_cast<double>(eqOversampler.getOversamplingFactor());
+    const int osSamples = static_cast<int>(osBlock.getNumSamples());
+    const int osChannels = static_cast<int>(osBlock.getNumChannels());
+
+    // Freeze one pristine feed-forward detector source for the complete
+    // Dynamic EQ stage. Every detector sees the same pre-EQ signal.
+    for (int ch = 0; ch < osChannels; ++ch)
+    {
+        auto* dst = dynamicDetectorInput.getWritePointer(ch);
+        const auto* src = osBlock.getChannelPointer(static_cast<size_t>(ch));
+        std::copy(src, src + osSamples, dst);
+    }
 
     if (!p.eqBypass)
     {
@@ -627,8 +640,6 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             const double q = juce::jlimit(
                 0.1, 18.0, static_cast<double>(p.q[band]));
 
-            // True Dynamic EQ detector: narrow band-pass around this EQ node.
-            // No OTT crossovers are involved in the detection path.
             updateDynamicDetector(
                 dynDetectors[band], osSr, frequency, q);
 
@@ -643,21 +654,21 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
             float& envelopeDb = dynEnvelopeDb[band];
 
-            for (size_t n = 0; n < osBlock.getNumSamples(); ++n)
+            for (int n = 0; n < osSamples; ++n)
             {
-                auto* left = osBlock.getChannelPointer(0);
+                auto* detectorLeft = dynamicDetectorInput.getReadPointer(0);
                 const float detectorL =
-                    dynDetectors[band].process(left[n], false);
+                    dynDetectors[band].process(detectorLeft[n], false);
 
                 float detectorPower = detectorL * detectorL;
 
-                if (osBlock.getNumChannels() > 1)
+                if (osChannels > 1)
                 {
-                    auto* right = osBlock.getChannelPointer(1);
+                    auto* detectorRight = dynamicDetectorInput.getReadPointer(1);
                     const float detectorR =
-                        dynDetectors[band].process(right[n], true);
+                        dynDetectors[band].process(detectorRight[n], true);
 
-                    // Stereo-linked detector keeps the same EQ motion in L/R.
+                    // Stereo-linked detector keeps identical gain motion in L/R.
                     detectorPower =
                         0.5f * (detectorPower + detectorR * detectorR);
                 }
@@ -674,13 +685,11 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 const float overThreshold =
                     juce::jmax(0.f, envelopeDb - thresholdDb);
 
-                // Same slope equation as a compressor, but only the EQ
-                // band's gain moves rather than a full crossover band.
                 const float slope =
                     1.f - (1.f / juce::jmax(1.f, ratio));
 
-                // Hard ceiling keeps default mastering use from becoming
-                // an unintended limiter-like action.
+                // Downward Dynamic EQ: the frequency-specific EQ gain moves
+                // down when the band-limited detector exceeds Threshold.
                 const float dynamicGainDb =
                     -juce::jlimit(0.f, 12.f, overThreshold * slope);
 
@@ -688,14 +697,18 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     -24.f, 24.f,
                     p.gain[band] + dynamicGainDb);
 
-                // The gain target is smoothed sample-by-sample, avoiding
-                // zipper steps when the dynamic envelope moves.
-                updateDynamicPeak(
-                    eq[band], osSr, frequency, totalGainDb, q);
+                // The detector envelope changes every sample, but coefficients
+                // are refreshed every 4 oversampled samples. At 4x oversampling
+                // this is ~20.8 us at 48 kHz, effectively continuous while
+                // avoiding unnecessary trig/pow CPU load.
+                if ((n & 3) == 0)
+                    updateDynamicPeak(
+                        eq[band], osSr, frequency, totalGainDb, q);
 
-                for (size_t ch = 0; ch < osBlock.getNumChannels(); ++ch)
+                for (int ch = 0; ch < osChannels; ++ch)
                 {
-                    auto* data = osBlock.getChannelPointer(ch);
+                    auto* data = osBlock.getChannelPointer(
+                        static_cast<size_t>(ch));
                     data[n] = eq[band].process(data[n], ch == 1);
                 }
             }
