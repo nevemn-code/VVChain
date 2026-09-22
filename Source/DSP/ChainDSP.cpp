@@ -704,13 +704,23 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     juce::jlimit(0.f, 100.f, p.ottLifterMix[(size_t) band]);
 
                 // Standard OTT order: downward first, upward second.
+                // The user's Attack is automatically lengthened as OTT Amount
+                // (degree) rises, reducing high-depth click / transient tearing.
+                const float amount = depth;
+                const float baseAttackMs =
+                    p.ottCompAttack[(size_t) band];
+                const float dynamicAttackMs =
+                    baseAttackMs + (amount * 8.0f);
+                const float finalAttackMs =
+                    juce::jmax(0.5f, dynamicAttackMs);
+
                 // Each stage has its own RMS detector state for this band/channel.
                 float downReleaseMs = p.ottCompRelease[(size_t) band];
                 const float downDb = rmsDetectPDR(
                     v,
                     state.downRmsPower[(size_t) ch],
                     state.downSlowRmsPower[(size_t) ch],
-                    p.ottCompAttack[(size_t) band],
+                    finalAttackMs,
                     p.ottCompRelease[(size_t) band],
                     sr,
                     downReleaseMs);
@@ -718,7 +728,7 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 v = applyCompressorFromDetectorDb(
                     v, downDb, compEnv,
                     p.ottCompThreshold[(size_t) band],
-                    p.ottCompAttack[(size_t) band],
+                    finalAttackMs,
                     downReleaseMs,
                     compMix, sr, downRatio);
 
