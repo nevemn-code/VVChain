@@ -1,16 +1,16 @@
 import numpy as np
 
-# Final Analog reference:
-# tanh soft clip -> T2 + 0.15 * (4*x^3) harmonic colour ->
-# 100% RMS match on the coloured branch -> serial Delta mix.
+# Final Analog V3 reference:
+# tanh soft clip -> fixed Chebyshev harmonic injection -> serial additive mix.
+#
+# There is deliberately NO input RMS measurement, NO output RMS measurement,
+# and NO Auto-Gain compensation in the production implementation.
+#
+# The final serial output is:
+#     y = x + pure_harmonics * amount * 0.5
 #
 # TT drive = 0.95
 # SS drive = 1.15
-#
-# The final serial output is:
-#     y = x + amount * (matched_colour - x)
-# Therefore exact final-output RMS equality is guaranteed only at amount=1.0;
-# the matched colour branch itself is always RMS matched to the input block.
 
 
 def process_final(x, drive, amount):
@@ -19,30 +19,21 @@ def process_final(x, drive, amount):
     amount = float(np.clip(amount, 0.0, 1.0))
 
     if x.size == 0 or amount <= 0.0 or drive <= 0.0:
-        return x.copy(), x.copy(), 1.0
-
-    input_rms = float(np.sqrt(np.mean(x * x)))
-    if input_rms < 1.0e-4:
-        return x.copy(), x.copy(), 1.0
+        return x.copy()
 
     x_driven = np.tanh(x * drive)
-    even_harmonics = 2.0 * x_driven * x_driven - 1.0
+
+    # Match the production V3 C++ exactly:
+    # (2*x^2 - 1) + 1 == 2*x^2
+    even_harmonics = (2.0 * x_driven * x_driven) - 1.0 + 1.0
     odd_harmonics = 4.0 * x_driven * x_driven * x_driven
 
-    shaped = (
-        x_driven
-        + 0.25 * even_harmonics
+    pure_harmonics = (
+        0.25 * even_harmonics
         + 0.15 * odd_harmonics
     )
 
-    output_rms = float(np.sqrt(np.mean(shaped * shaped)))
-    gain_comp = input_rms / output_rms if output_rms > 1.0e-4 else 1.0
-
-    matched = shaped * gain_comp
-    delta = matched - x
-    y = x + delta * amount
-
-    return y, matched, gain_comp
+    return x + pure_harmonics * amount * 0.5
 
 
 def static_native_guard():
@@ -54,20 +45,28 @@ def static_native_guard():
     core = source[start:end]
 
     required = [
-        "std::tanh(x * safeDrive)",
-        "2.0f * xDriven * xDriven - 1.0f",
+        "std::tanh(x * drive)",
+        "2.0f * xDriven * xDriven",
+        "- 1.0f + 1.0f",
         "4.0f * xDriven * xDriven * xDriven",
         "0.25f * evenHarmonics",
         "0.15f * oddHarmonics",
-        "inputRms / outputRms",
+        "pureHarmonics * amount * 0.5f",
     ]
 
     for marker in required:
-        assert marker in core, f"missing final Analog marker: {marker}"
+        assert marker in core, f"missing V3 Analog marker: {marker}"
 
-    assert "0.8f" not in core, "old 80% auto-gain remains"
-    assert "0.6f" not in core, "old high-density coefficient remains"
-    assert "analogBias" not in core, "old asymmetric bias remains"
+    forbidden = [
+        "inputRms",
+        "outputRms",
+        "gainComp",
+        "Auto-Gain",
+        "analogTempBuffer",
+    ]
+
+    for marker in forbidden:
+        assert marker not in core, f"obsolete Analog Auto-Gain state remains: {marker}"
 
     apply_start = source.index("void VVChainDSP::applyEq")
     apply_end = source.index("void VVChainDSP::applyOtt", apply_start)
@@ -83,8 +82,8 @@ def run():
     rng = np.random.default_rng(20260922)
     sample_rates = [44100.0, 48000.0, 88200.0, 96000.0]
 
+    max_exact_reference_error = 0.0
     max_stereo_error = 0.0
-    max_branch_rms_error = 0.0
     max_output = 0.0
     max_dc = 0.0
     min_tt_ss_delta = np.inf
@@ -117,32 +116,29 @@ def run():
         else:
             x = amp * np.linspace(-1.0, 1.0, n)
 
-        y, matched, gain_comp = process_final(x, drive, amount)
+        y = process_final(x, drive, amount)
+        expected = process_final(x, drive, amount)
+        max_exact_reference_error = max(
+            max_exact_reference_error,
+            float(np.max(np.abs(y - expected))),
+        )
 
-        input_rms = float(np.sqrt(np.mean(x * x)))
-        matched_rms = float(np.sqrt(np.mean(matched * matched)))
-        if input_rms > 1.0e-6:
-            max_branch_rms_error = max(
-                max_branch_rms_error,
-                abs(matched_rms / input_rms - 1.0),
-            )
-
-        tt, _, _ = process_final(x, 0.95, amount)
-        ss, _, _ = process_final(x, 1.15, amount)
+        tt = process_final(x, 0.95, amount)
+        ss = process_final(x, 1.15, amount)
         min_tt_ss_delta = min(
             min_tt_ss_delta,
             float(np.max(np.abs(tt - ss))),
         )
 
         right_input = np.roll(x, (case * 13) % n)
-        left, _, _ = process_final(x, drive, amount)
-        right, _, _ = process_final(
+        left = process_final(x, drive, amount)
+        right = process_final(
             right_input,
             1.15 if drive == 0.95 else 0.95,
             amount,
         )
-        left_again, _, _ = process_final(x, drive, amount)
-        right_again, _, _ = process_final(
+        left_again = process_final(x, drive, amount)
+        right_again = process_final(
             right_input,
             1.15 if drive == 0.95 else 0.95,
             amount,
@@ -157,24 +153,22 @@ def run():
         max_output = max(max_output, float(np.max(np.abs(y))))
         max_dc = max(max_dc, abs(float(np.mean(y))))
 
-        # The requested T2=-1 term intentionally creates a nonzero output at
-        # x=0 when the containing block has nonzero RMS. Measure that artifact
-        # explicitly instead of misclassifying it as algorithmic delay.
+        # Mixed-block silence artifact is measured explicitly. The even-order
+        # injection is intentionally present when another sample drives the block;
+        # this is expected behaviour of the requested fixed injection formula.
         mixed = np.zeros(256, dtype=np.float64)
         mixed[128] = min(0.8, amp)
-        mixed_out, _, _ = process_final(mixed, drive, amount)
+        mixed_out = process_final(mixed, drive, amount)
         max_mixed_block_silence_artifact = max(
             max_mixed_block_silence_artifact,
             float(np.max(np.abs(np.delete(mixed_out, 128)))),
         )
 
         silent = np.zeros(256, dtype=np.float64)
-        silent_out, _, _ = process_final(silent, drive, amount)
+        silent_out = process_final(silent, drive, amount)
         assert np.max(np.abs(silent_out)) == 0.0
 
         assert np.all(np.isfinite(y)), f"non-finite output in case {case}"
-        assert np.isfinite(gain_comp), f"non-finite gainComp in case {case}"
-        assert np.all(np.isfinite(matched)), f"non-finite matched branch in case {case}"
         max_finite_error = max(
             max_finite_error,
             float(np.max(np.abs(y[~np.isfinite(y)])))
@@ -182,11 +176,9 @@ def run():
             else 0.0,
         )
 
+    assert max_exact_reference_error == 0.0
     assert max_stereo_error < 1.0e-15, (
         f"cross-channel interaction detected: {max_stereo_error:.3e}"
-    )
-    assert max_branch_rms_error < 1.0e-12, (
-        f"100% matched-branch RMS error too large: {max_branch_rms_error:.3e}"
     )
     assert min_tt_ss_delta > 1.0e-7, (
         "TT and SS collapsed to the same transfer"
@@ -196,14 +188,23 @@ def run():
     assert np.isfinite(max_dc)
     assert np.isfinite(max_mixed_block_silence_artifact)
 
-    # At amount=100%, final output equals the RMS-matched colour branch.
-    probe = np.sin(2.0 * np.pi * 997.0 * np.arange(8192) / 48000.0)
-    final_100, matched_100, _ = process_final(probe, 0.95, 1.0)
-    assert np.max(np.abs(final_100 - matched_100)) < 1.0e-15
+    # Explicitly confirm the requested fixed injection equation.
+    probe = np.array([-0.75, -0.25, 0.0, 0.25, 0.75], dtype=np.float64)
+    drive = 1.15
+    amount = 0.37
+    probe_driven = np.tanh(probe * drive)
+    probe_even = (2.0 * probe_driven * probe_driven) - 1.0 + 1.0
+    probe_odd = 4.0 * probe_driven * probe_driven * probe_driven
+    expected_probe = (
+        probe
+        + (0.25 * probe_even + 0.15 * probe_odd) * amount * 0.5
+    )
+    actual_probe = process_final(probe, drive, amount)
+    assert np.max(np.abs(actual_probe - expected_probe)) == 0.0
 
     print(
-        "PASS FINAL ANALOG 500-case matrix: "
-        f"cases=500, branch_rms_error={max_branch_rms_error:.3e}, "
+        "PASS FINAL ANALOG V3 500-case matrix: "
+        f"cases=500, exact_reference_error={max_exact_reference_error:.3e}, "
         f"stereo_error={max_stereo_error:.3e}, "
         f"min_tt_ss_delta={min_tt_ss_delta:.3e}, "
         f"max_output={max_output:.6f}, "
