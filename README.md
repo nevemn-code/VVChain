@@ -46,6 +46,11 @@ https://nevemn-code.github.io/VVChain/
 - VST3 + Standalone
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
+## GitHub 開發規則
+- 強制規則文件：`.github/VVCHAIN_RULES.md`
+- 任何 `docs/*.html` 修改，都必須同步更新頁面內 `LAST MODIFIED YYYY-MM-DD HH:MM`，時間使用台灣時間（Asia/Taipei）。
+- ANALOG 正式架構固定為 4-band V3 CHEBYSHEV；TT/SS 各段獨立，不得合併成單一全頻處理。
+
 ## Validation
 - Tests/reference_stress.py：DSP / 參數空間 deterministic regression，包含 500 組 TT/SS 與 1,200 組頻率／振幅染色掃描，共 3,685 組案例。
 - Tests/web_smoke.py：Web Preview JavaScript 語法、UI 結構、音檔載入 / 播放、BYPASS、DE-ESSER、MIX / OUT regression。
