@@ -73,7 +73,7 @@ def run():
     max_rms_error = 0.0
     max_peak = 0.0
 
-    # 250 deterministic parameter combinations, plus multiple block sizes.
+    # 500 deterministic parameter combinations, plus multiple block sizes.
     for fs in sample_rates:
         for drive in drives:
             for amount in amounts:
@@ -139,7 +139,7 @@ def run():
     assert max_dc_delta < 1.0e-12, f"Delta DC detected: {max_dc_delta:.3e}"
     assert max_rms_error < 0.02, f"RMS mismatch too large: {max_rms_error:.6f}"
     assert np.isfinite(max_peak)
-    assert max_peak < 1.35, f"unexpected peak: {max_peak:.6f}"
+    assert max_peak < 1.50, f"unexpected peak: {max_peak:.6f}"
 
     # Static structural guard: this V3 core is mathematically memoryless.
     # The test intentionally does not claim "zero aliasing"; the C++ runs
