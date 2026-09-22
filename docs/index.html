@@ -26,7 +26,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span><span class="tiny" id="cursorTime">0:00.000</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">LAST MODIFIED 2026-09-22 20:56</div></div><div class="sub">FREQUALIZER ENGINE · VVCHAIN · CHEBYSHEV · FULL CHAIN · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">LAST MODIFIED 2026-09-22 21:48</div></div><div class="sub">FREQUALIZER ENGINE · VVCHAIN · CHEBYSHEV · FULL CHAIN · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -118,7 +118,7 @@ function makeKnob(parent,cfg){
   d.addEventListener("pointerup",()=>{dragging=false});
   d.addEventListener("pointercancel",()=>{dragging=false});
   d.addEventListener("wheel",e=>{
-    e.preventDefault();wheelRemainder+=clamp(e.deltaY,-4,4);
+    e.preventDefault();wheelRemainder-=clamp(e.deltaY,-4,4);
     const ticks=Math.trunc(wheelRemainder);if(ticks===0)return;
     wheelRemainder-=ticks;let next=get();
     if(logarithmic)next*=Math.pow(2,ticks/24);else next+=ticks*wheelStep;
@@ -165,6 +165,30 @@ function openAdvanced(b){const popup=$("#advPopup");if(b<0){popup.hidden=true;re
 document.addEventListener("pointerdown",e=>{const popup=$("#advPopup");if(!popup.hidden&&!popup.contains(e.target)&&!e.target.closest(".advBtn"))openAdvanced(-1)});
 function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRatio||1;eqCanvas.width=Math.max(1,Math.round(r.width*d));eqCanvas.height=Math.max(1,Math.round(r.height*d));eqCtx.setTransform(d,0,0,d,0,0);drawEQ()}
 function drawEQ(){const r=eqCanvas.getBoundingClientRect(),w=r.width,h=r.height;eqCtx.clearRect(0,0,w,h);eqCtx.fillStyle="#111318";eqCtx.fillRect(0,0,w,h);eqCtx.strokeStyle="#4b556044";for(let i=0;i<10;i++){const x=i*w/10;eqCtx.beginPath();eqCtx.moveTo(x,0);eqCtx.lineTo(x,h);eqCtx.stroke()}for(let i=0;i<=4;i++){const y=i*h/4;eqCtx.beginPath();eqCtx.moveTo(0,y);eqCtx.lineTo(w,y);eqCtx.stroke()}eqCtx.strokeStyle="#fff8";eqCtx.beginPath();eqCtx.moveTo(0,h/2);eqCtx.lineTo(w,h/2);eqCtx.stroke();eqCtx.strokeStyle="#fff";eqCtx.lineWidth=2;eqCtx.beginPath();for(let i=0;i<=240;i++){const x=i/240*w,hz=invLog(i/240);let db=0;for(let b=0;b<4;b++){const f=state.eq.freq[b],q=Math.max(.1,state.eq.q[b]),xx=Math.log(Math.max(hz,20)/Math.max(f,20)),wd=Math.max(.02,1/(q*1.8));db+=state.eq.gain[b]*Math.exp(-(xx*xx)/(2*wd*wd))}const y=h-(clamp(db,-18,18)+18)/36*h;i?eqCtx.lineTo(x,y):eqCtx.moveTo(x,y)}eqCtx.stroke();
+  // Axis scales: logarithmic frequency X axis + dB Y axis.
+  const xTicks=[20,50,100,200,500,1000,2000,5000,10000,20000];
+  const yTicks=[18,12,6,0,-6,-12,-18];
+  eqCtx.save();
+  eqCtx.font="8px Consolas";
+  eqCtx.fillStyle="#aeb6c0";
+  eqCtx.strokeStyle="#7f899366";
+  eqCtx.lineWidth=1;
+  eqCtx.textBaseline="top";
+  xTicks.forEach(f=>{
+    const x=logX(f,w);
+    eqCtx.beginPath();eqCtx.moveTo(x,h-16);eqCtx.lineTo(x,h-10);eqCtx.stroke();
+    const label=f>=1000?(f/1000)+"k":String(f);
+    eqCtx.textAlign=x<28?"left":(x>w-28?"right":"center");
+    eqCtx.fillText(label,x,h-9);
+  });
+  eqCtx.textAlign="right";
+  eqCtx.textBaseline="middle";
+  yTicks.forEach(db=>{
+    const y=h-(db+18)/36*h;
+    eqCtx.beginPath();eqCtx.moveTo(0,y);eqCtx.lineTo(6,y);eqCtx.stroke();
+    eqCtx.fillText((db>0?"+":"")+db+" dB",42,clamp(y,9,h-17));
+  });
+  eqCtx.restore();
   const xo=state.ott.x.map(v=>logX(v,w)),ov=clamp(state.ott.overlap,0,100),spread=16+ov*.52;
   const bounds=[0,xo[0],xo[1],xo[2],w];
   for(let b=0;b<4;b++){const alpha=clamp(state.eq.color[b],0,100)/100*.70;if(alpha>0){eqCtx.fillStyle=cols[b]+Math.round(alpha*255).toString(16).padStart(2,"0");eqCtx.fillRect(bounds[b],0,bounds[b+1]-bounds[b],h)}}  for(let b=0;b<3;b++){const x=xo[b];eqCtx.strokeStyle="#facc15cc";eqCtx.lineWidth=1;eqCtx.beginPath();eqCtx.moveTo(x,16);eqCtx.lineTo(x,h-18);eqCtx.stroke();eqCtx.strokeStyle="#facc1588";eqCtx.beginPath();eqCtx.moveTo(Math.max(0,x-spread),h/2+20);eqCtx.bezierCurveTo(x-spread*.5,h/2+20,x-spread*.2,h/2-10,x,h/2-2);eqCtx.bezierCurveTo(x+spread*.2,h/2-10,x+spread*.5,h/2+20,Math.min(w,x+spread),h/2+20);eqCtx.stroke();eqCtx.fillStyle="#ffe36a";eqCtx.font="bold 8px Consolas";eqCtx.fillText("X"+(b+1)+" "+hz(state.ott.x[b]),x+4,24)}
