@@ -198,7 +198,8 @@ private:
                                float attackMs,
                                float releaseMs,
                                double sampleRate,
-                               float& programReleaseMs) noexcept;
+                               float& programReleaseMs,
+                               float attackCoeffOverride = -1.0f) noexcept;
 
     static float applyLifterFromDetectorDb(float input, float detectorDb,
                                             float& env, float thresholdDb,
@@ -210,7 +211,8 @@ private:
                                                 float& envDb, float thresholdDb,
                                                 float attackMs, float releaseMs,
                                                 float mix, double sampleRate,
-                                                float ratio = 66.7f);
+                                                float ratio = 66.7f,
+                                                float attackCoeffOverride = -1.0f);
 
 
     static float applyGate(float input, float& envDb, float thresholdDb,
