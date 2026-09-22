@@ -250,6 +250,10 @@ private:
         -120.f, -120.f, -120.f, -120.f
     };
 
+    // Feed-forward detector source shared by all four Dynamic EQ bands.
+    // This prevents self-modulation and inter-band detector coupling.
+    juce::AudioBuffer<float> dynamicDetectorInput;
+
     // Reusable one-channel scratch for allocation-free high-density ANALOG.
     juce::AudioBuffer<float> analogTempBuffer;
     Crossover4th ottXover1 {};
