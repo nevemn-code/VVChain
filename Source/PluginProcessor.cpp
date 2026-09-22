@@ -39,15 +39,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         f("EQ" + n + "_Q", "EQ " + n + " Q", 0.10f, 18.f, 0.707f, 0.35f);
     }
     // Legacy EQ_COLOR remains for old presets; the active UI/DSP uses one color per band.
-    f("EQ_COLOR", "Legacy EQ Analog Color", 0.f, 100.f, 35.f);
+    f("EQ_COLOR", "Legacy EQ Analog Color", 0.f, 100.f, 20.f);
     for (int i = 0; i < 4; ++i)
     {
         const auto n = juce::String(i + 1);
-        f("EQ_COLOR" + n, "EQ " + n + " Analog Color", 0.f, 100.f, 35.f);
+        f("EQ_COLOR" + n, "EQ " + n + " Analog Color", 0.f, 100.f,
+          std::array<float, 4>{ 20.f, 20.f, 15.f, 10.f }[(size_t) i]);
         p.push_back(std::make_unique<juce::AudioParameterBool>(
             "EQ_COLOR_BYPASS" + n, "EQ " + n + " Analog Color Bypass", false));
         p.push_back(std::make_unique<juce::AudioParameterBool>(
-            "EQ_COLOR_MODE" + n, "EQ " + n + " Analog Mode SS", false));
+            "EQ_COLOR_MODE" + n, "EQ " + n + " Analog Mode SS", i >= 2));
     }
     f("HF_CORNER", "EQ High-pass Corner", 40.f, 120.f, 70.f);
 
