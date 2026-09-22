@@ -741,10 +741,11 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
                 const float afterDown = v * downStageGain;
 
+                // Keep the upward detector in the same smoothed envelope
+                // domain. Do not reintroduce instantaneous-sample modulation
+                // after the first envelope follower.
                 const float afterDownEnvelope =
-                    std::abs(afterDown) > 1.0e-9f
-                        ? std::abs(afterDown)
-                        : currentEnv;
+                    currentEnv * std::abs(downStageGain);
 
                 const float afterDownDb =
                     gainToDb(std::max(afterDownEnvelope, 1.0e-9f));
