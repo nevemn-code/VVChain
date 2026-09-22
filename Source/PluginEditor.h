@@ -147,6 +147,11 @@ private:
     juce::Colour uiColour(juce::Colour) const noexcept;
     void updateBypassVisuals();
     bool isMasterBypassed() const noexcept;
+    juce::Rectangle<float> dynamicMsPopupBounds(int band) const;
+    bool pointNearDynamicNode(juce::Point<float>, int& band) const;
+    float dynamicAverageReductionDb(int band) const;
+    float dynamicMidReductionDb(int band) const;
+    float dynamicSideReductionDb(int band) const;
 
     VVChainAudioProcessor& audioProcessor;
     MetalLookAndFeel metalLook;
@@ -175,8 +180,10 @@ private:
     std::unique_ptr<juce::TextButton> closeAdvanced;
 
     int expandedBand = -1;
+    int expandedDynamicBand = -1;
     int dragBand = -1;
     int dragXover = -1;
+    int dragDynamicMsBand = -1;
     bool showGraphDragHint = false;
     juce::String graphDragHint;
     juce::Point<float> graphDragHintPosition {};
