@@ -292,6 +292,10 @@ private:
         true, true
     };
     juce::dsp::DelayLine<float> eqDryDelay { 4096 };
+    // Pure integer-delay path used when EQ is bypassed or mathematically unity.
+    // This keeps PDC identical to the active-EQ path without introducing the
+    // oversampling filter's frequency-dependent phase when no EQ work is done.
+    juce::dsp::DelayLine<float> eqUnityDelay { 4096 };
     juce::dsp::DelayLine<float> limiterLookahead { 8192 };
     juce::dsp::DelayLine<float> masterDryDelay { 8192 };
     juce::AudioBuffer<float> dryBuffer;
