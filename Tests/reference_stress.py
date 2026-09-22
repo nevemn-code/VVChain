@@ -587,11 +587,13 @@ def realtime_safety_checks():
     assert "rmsDetectPDR" in cpp
     assert "programReleaseMs" in cpp
     assert "updateCrossover(deessSplit" in cpp
-    assert "lowBand + highBand * dbToGain(-state.gainDb)" in cpp
+    assert "processedReconstruction - unprocessedReconstruction" in cpp
+    assert "processedWet *= outputGain" in cpp
+    assert "outputWithoutMix" in cpp
     # OTT/A-Type/analog-color regression invariants.
     assert "applyLifterFromDetectorDb" in cpp
     assert "if (upDb > liftThreshold)" not in cpp
-    assert "wet *= outputGain" in cpp
+    assert "linearWet" in cpp
     assert "ceilingDb = -0.8f" in cpp
     assert "filterHalfBandFIREquiripple" in header
     assert "eqOversampler.processSamplesUp" in cpp
