@@ -178,25 +178,26 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
     previousInput = x;
     evenDc = 0.0f;
     levelPower = 0.0f;
-    juce::ignoreUnused(sampleRate);
+    juce::ignoreUnused(levelPower, sampleRate);
 
     if (amount <= 0.0f)
         return x;
 
-    // V3: memoryless odd Chebyshev 3rd/5th harmonic injector.
-    // No dynamic DC correction and no previous-sample dependency.
-    const float u = juce::jlimit(-1.0f, 1.0f, x);
-    const float u2 = u * u;
-    const float t3 = 4.0f * u * u2 - 3.0f * u;
-    const float t5 =
-        16.0f * u * u2 * u2 - 20.0f * u * u2 + 5.0f * u;
-    const float h3 = solidState ? 0.020f : 0.014f;
-    const float h5 = solidState ? 0.006f : 0.004f;
-    const float shaped = u + amount * (h3 * t3 + h5 * t5);
+    // FULL V1: memoryless odd-exponential colour.
+    // The curve is normalized to unity at |u|=1 so ANALOG cannot become
+    // an accidental multi-band gain stage. No state, feedback or delay.
+    const float drive = (solidState ? 1.10f : 0.95f) + 1.25f * amount;
+    const float u = juce::jlimit(-1.20f, 1.20f, x);
+    const float endpoint =
+        std::max(1.0f - std::exp(-drive), 1.0e-6f);
+    const float shaped =
+        std::copysign(
+            1.0f - std::exp(-drive * std::abs(u)),
+            u)
+        / endpoint;
 
-    return x + 0.90f * (shaped - u);
+    return x + 0.55f * amount * (shaped - u);
 }
-
 void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels)
 {
     sr = std::max(8000.0, sampleRate);
