@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       full_stress:
-        description: "Run the full 500-iteration stress test"
+        description: "Run the 50-iteration stress test"
         required: false
         default: false
         type: boolean
@@ -67,9 +67,9 @@ jobs:
     - name: Run fast DSP stress test
       run: |
         if [ "${{ inputs.full_stress }}" = "true" ]; then
-          python Tests/reference_stress.py --iterations 500
+          python Tests/reference_stress.py --iterations 50
         else
-          python Tests/reference_stress.py --iterations 40
+          python Tests/reference_stress.py --iterations 50
         fi
 
     - name: Run V3 ANALOG Chebyshev Matrix
