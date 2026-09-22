@@ -22,6 +22,14 @@ public:
         std::array<float, 4> freq { 80.f, 350.f, 2500.f, 10000.f };
         std::array<float, 4> gain { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> q { 0.707f, 0.707f, 0.707f, 0.707f };
+
+        // Four independent Dynamic EQ bands. Each detector is frequency-selective
+        // and stereo-linked so L/R dynamics cannot wander independently.
+        std::array<float, 4> dynThreshold { -24.f, -24.f, -24.f, -24.f };
+        std::array<float, 4> dynRatio { 2.5f, 2.5f, 2.0f, 2.0f };
+        std::array<float, 4> dynAttack { 8.f, 8.f, 5.f, 3.f };
+        std::array<float, 4> dynRelease { 120.f, 120.f, 100.f, 80.f };
+
         std::array<float, 4> eqColor { 35.f, 35.f, 35.f, 35.f };
         std::array<bool, 4> eqColorBypass { false, false, false, false };
         // false = TT (Tube Saturation), true = SS (Solid-State Saturation)
@@ -180,6 +188,10 @@ private:
 
     static void updateAnalogPeak(Biquad& filter, double fs, double f0,
                                  double gainDb, double q);
+    static void updateDynamicPeak(Biquad& filter, double fs, double f0,
+                                  double gainDb, double q);
+    static void updateDynamicDetector(Biquad& filter, double fs, double f0,
+                                      double q);
     static void updateAnalogHighPass(Biquad& filter, double fs, double f0, double q);
     static void updateLowPass(Biquad& filter, double fs, double f0, double q);
     static void updateHighPass(Biquad& filter, double fs, double f0, double q);
@@ -232,6 +244,12 @@ private:
     void alignDryBuffer(int numSamples);
 
     std::array<Biquad, 4> eq {};
+    std::array<Biquad, 4> dynDetectors {};
+    std::array<float, 4> dynEnvelopeDb
+    {
+        -120.f, -120.f, -120.f, -120.f
+    };
+
     // Reusable one-channel scratch for allocation-free high-density ANALOG.
     juce::AudioBuffer<float> analogTempBuffer;
     Crossover4th ottXover1 {};
