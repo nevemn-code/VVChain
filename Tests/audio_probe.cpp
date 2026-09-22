@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <complex>
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
@@ -393,12 +394,8 @@ double stereoMismatchDb(
     VVChainDSP dsp;
     dsp.prepare(sr, block, 2);
 
-    const auto output =
-        render(dsp, p, input, block, true);
-
-    // Re-run the stereo path is unnecessary: render() feeds identical
-    // samples to L/R, so compare its left output with a matching right-only
-    // render. This keeps this check focused on stereo state independence.
+    // Feed identical samples to L/R and inspect the two output channels
+    // directly. A single stereo render is sufficient for this regression.
     dsp.reset();
     juce::AudioBuffer<float> buffer(2, block);
 
@@ -430,8 +427,6 @@ double stereoMismatchDb(
             ref += l * l;
         }
     }
-
-    (void) output;
 
     if (ref < 1.0e-24)
         return -300.0;
