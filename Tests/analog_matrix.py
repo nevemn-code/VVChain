@@ -19,6 +19,34 @@ import numpy as np
 # Exactly 500 deterministic cases are executed.
 
 
+
+from pathlib import Path
+
+
+def static_eq_analog_guard():
+    """Prevent regression to fourfold full-band ANALOG stacking."""
+    source = Path("Source/DSP/ChainDSP.cpp").read_text(encoding="utf-8")
+    start = source.index("void VVChainDSP::applyEq")
+    end = source.index("void VVChainDSP::applyOtt", start)
+    apply_eq = source[start:end]
+
+    # There must be exactly one ANALOG invocation in applyEq, and it must
+    # occur after the four-band EQ loop rather than inside it.
+    assert apply_eq.count("processChebyshevAnalog(") == 1, (
+        "ANALOG must be invoked exactly once in applyEq"
+    )
+    analog_pos = apply_eq.index("processChebyshevAnalog(")
+    loop_end = apply_eq.index("    }\n\n    // ANALOG is a single full-band residual stage")
+    assert analog_pos > loop_end, (
+        "ANALOG invocation has regressed into the EQ-band loop"
+    )
+
+
+def combine_colour_amounts(colours):
+    active = [float(np.clip(v, 0.0, 100.0)) / 100.0 for v in colours]
+    return float(np.mean(active)) if active else 0.0
+
+
 def process_v3_safe(x, amount):
     x = np.asarray(x, dtype=np.float64)
     amount = float(np.clip(amount, 0.0, 1.0))
@@ -50,6 +78,7 @@ def phase_deg(signal, freq, fs):
 
 
 def run():
+    static_eq_analog_guard()
     rng = np.random.default_rng(20260922)
 
     sample_rates = [44100.0, 48000.0, 88200.0, 96000.0]
