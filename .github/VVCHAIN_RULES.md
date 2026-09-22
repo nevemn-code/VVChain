@@ -1,6 +1,6 @@
 # VVChain GitHub 開發規則
 
-LAST MODIFIED 2026-09-22 21:28（Asia/Taipei / UTC+8）
+LAST MODIFIED 2026-09-22 21:42（Asia/Taipei / UTC+8）
 
 ## 全部 GitHub 動作時間碼（最高優先、強制）
 
@@ -87,3 +87,31 @@ LAST MODIFIED 2026-09-22 21:28（Asia/Taipei / UTC+8）
 - 所有本次 GitHub 寫入行為都有時間碼。
 - 被修改的 Web 頁面都有頁面內時間碼。
 - 變更未重新引入 V1/V2/V3 舊版切換頁。
+
+## Native VST3 / Web 雙版本同步（最高優先、強制）
+
+凡是任何會改變 DSP 行為的改版，都必須同時修改 Native VST3 與 Web Preview，兩邊不得再分開演進。
+
+強制同步範圍包含但不限於：
+- 演算法、公式、waveshaping、harmonic injection。
+- Attack / Release、Envelope、Detector、Gain smoothing。
+- Crossover、頻段分割、Phase compensation、Latency。
+- Threshold、Ratio、Depth、Mix、Gain、Output、Dry/Wet。
+- Processing order、state machine、persistent state、reset 行為。
+- Bypass、Solo、Stereo / Dual-Mono 行為，只要會影響聲音結果也必須同步。
+
+規則：
+1. Native 端的 Source/DSP/* 為正式 VST3 DSP 實作。
+2. Web 端 docs/index.html 的 AudioWorklet DSP 必須同步實作同一版核心邏輯，不得使用簡化版、舊版或臨時替代演算法冒充同步。
+3. 每次 DSP 改版至少要同時檢查兩邊的公式、參數範圍、state、processing order 與 bypass 行為。
+4. 只有 UI 文字或排版可以單獨改；只要可能改變聲音結果，就視為 DSP 改版，必須 Native + Web 一起改。
+5. 未完成其中一端時，不得宣稱該版本已完成、已同步或可發版。
+6. GitHub Commit 必須使用本次實際台灣時間碼；若同一改版涉及多個檔案，可分 Commit，但不得讓其中一端長期停留在另一端的舊演算法。
+7. CI / regression 必須至少確認 Native VST3 DSP 可建置，且 Web Worklet 可正常解析；兩端核心規則應以同一組測試基準比對。
+
+### 同步驗收
+發版前必須確認：
+- Native VST3 與 Web Preview 核心 DSP 使用相同公式。
+- 兩端的頻段 crossover / phase / detector / smoothing / gain 結構一致。
+- 四頻段與左右聲道 state 定義一致。
+- 不得再出現「Native 已更新，但 Web 還在跑舊演算法」的情況。
