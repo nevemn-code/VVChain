@@ -210,8 +210,13 @@ eqCanvas.addEventListener("wheel",e=>{
 },{passive:false});
 let drag=-1,dragXover=-1;
 function showGraphHint(e,text){
-  const r=eqCanvas.getBoundingClientRect(),x=clamp(e.clientX-r.left+14,8,r.width-198),y=clamp(e.clientY-r.top-42,8,r.height-34);
-  graphHint.textContent=text;graphHint.style.left=x+"px";graphHint.style.top=y+"px";graphHint.hidden=false
+  const r=eqCanvas.getBoundingClientRect();
+  const x=clamp(e.clientX-r.left+12,6,r.width-graphHint.offsetWidth-6);
+  const y=clamp(e.clientY-r.top+12,6,r.height-graphHint.offsetHeight-6);
+  graphHint.textContent=text;
+  graphHint.style.left=x+"px";
+  graphHint.style.top=y+"px";
+  graphHint.hidden=false
 }
 function hideGraphHint(){graphHint.hidden=true}
 eqCanvas.addEventListener("wheel",e=>{
