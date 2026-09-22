@@ -75,7 +75,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         f("OTT_LIFT_R" + n, "OTT Band " + n + " Lifter Release", 10.f, 2500.f, 80.f, 0.35f);
         f("OTT_LIFT_M" + n, "OTT Band " + n + " Lifter Mix", 0.f, 100.f, ottLifterMixDefaults[i]);
         f("OTT_COMP_T" + n, "OTT Band " + n + " Compressor Threshold", -40.f, 0.f, -24.f);
-        f("OTT_COMP_A" + n, "OTT Band " + n + " Compressor Attack", 0.1f, 250.f, 1.f, 0.35f);
+        const float ottAttackDefaults[4] = { 15.f, 8.f, 3.f, 1.f };
+        f("OTT_COMP_A" + n, "OTT Band " + n + " Compressor Attack", 0.1f, 120.f, ottAttackDefaults[i], 0.35f);
         f("OTT_COMP_R" + n, "OTT Band " + n + " Compressor Release", 10.f, 2500.f, 60.f, 0.35f);
         f("OTT_COMP_M" + n, "OTT Band " + n + " Compressor Mix", 0.f, 100.f, 85.f);
         f("OTT_LEVEL" + n, "OTT Band " + n + " Level", -24.f, 12.f, 0.f);
