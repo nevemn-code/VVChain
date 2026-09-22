@@ -183,8 +183,8 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
     if (amount <= 0.0f)
         return x;
 
-    // V3: memoryless odd Chebyshev 3rd/5th harmonic injector.
-    // No dynamic DC correction and no previous-sample dependency.
+    // FULL V3: memoryless odd Chebyshev 3rd/5th harmonic injector.
+    // No dynamic state, DC correction, feedback, variable delay or phase state.
     const float u = juce::jlimit(-1.0f, 1.0f, x);
     const float u2 = u * u;
     const float t3 = 4.0f * u * u2 - 3.0f * u;
@@ -196,7 +196,6 @@ float VVChainDSP::analogColor(float x, float amount01, bool solidState,
 
     return x + 0.90f * (shaped - u);
 }
-
 void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels)
 {
     sr = std::max(8000.0, sampleRate);
