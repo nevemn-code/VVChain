@@ -104,6 +104,55 @@ void VVChainDSP::updateAnalogPeak(Biquad& filter, double fs, double f0, double g
     filter.updateCoefficients(b0, b1, b2, a1, a2);
 }
 
+void VVChainDSP::updateDynamicPeak(Biquad& filter, double fs, double f0,
+                                      double gainDb, double q)
+{
+    const double safeF = juce::jlimit(10.0, fs * 0.45, f0);
+    const double safeQ = juce::jlimit(0.05, 30.0, q);
+    const double A = std::pow(
+        10.0, juce::jlimit(-24.0, 24.0, gainDb) / 40.0);
+    const double w0 = juce::MathConstants<double>::twoPi * safeF / fs;
+    const double c = std::cos(w0);
+    const double s = std::sin(w0);
+    const double alpha = s / (2.0 * safeQ);
+
+    const double b0 = 1.0 + alpha * A;
+    const double b1 = -2.0 * c;
+    const double b2 = 1.0 - alpha * A;
+    const double a0 = 1.0 + alpha / A;
+    const double a1 = -2.0 * c;
+    const double a2 = 1.0 - alpha / A;
+    const double invA0 = 1.0 / std::max(1.0e-12, a0);
+
+    filter.updateCoefficients(
+        b0 * invA0, b1 * invA0, b2 * invA0,
+        a1 * invA0, a2 * invA0);
+}
+
+void VVChainDSP::updateDynamicDetector(Biquad& filter, double fs, double f0, double q)
+{
+    // Constant-peak-gain band-pass detector: approximately unity at the
+    // target frequency so Threshold behaves like an audio level control.
+    const double safeF = juce::jlimit(10.0, fs * 0.45, f0);
+    const double safeQ = juce::jlimit(0.05, 30.0, q);
+    const double w0 = juce::MathConstants<double>::twoPi * safeF / fs;
+    const double c = std::cos(w0);
+    const double s = std::sin(w0);
+    const double alpha = s / (2.0 * safeQ);
+
+    const double b0 = alpha;
+    const double b1 = 0.0;
+    const double b2 = -alpha;
+    const double a0 = 1.0 + alpha;
+    const double a1 = -2.0 * c;
+    const double a2 = 1.0 - alpha;
+    const double invA0 = 1.0 / std::max(1.0e-12, a0);
+
+    filter.updateCoefficients(
+        b0 * invA0, b1 * invA0, b2 * invA0,
+        a1 * invA0, a2 * invA0);
+}
+
 void VVChainDSP::updateAnalogHighPass(Biquad& filter, double fs, double f0, double q)
 {
     const double safeF = juce::jlimit(10.0, fs * 0.45, f0);
@@ -319,6 +368,8 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
 void VVChainDSP::reset()
 {
     for (auto& b : eq) b.reset();
+    for (auto& b : dynDetectors) b.reset();
+    dynEnvelopeDb = { -120.f, -120.f, -120.f, -120.f };
     soloPreXover1.reset(); soloPreXover2.reset(); soloPreXover3.reset();
     soloPostXover1.reset(); soloPostXover2.reset(); soloPostXover3.reset();
     soloBlend = 0.f;
@@ -571,57 +622,99 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
     {
         for (size_t band = 0; band < eq.size(); ++band)
         {
-            updateAnalogPeak(
-                eq[band], osSr,
-                juce::jlimit(
-                    20.0,
-                    osSr * 0.45,
-                    static_cast<double>(p.freq[band])),
-                juce::jlimit(
-                    -24.0,
-                    24.0,
-                    static_cast<double>(p.gain[band])),
-                juce::jlimit(
-                    0.1,
-                    18.0,
-                    static_cast<double>(p.q[band])));
+            const double frequency = juce::jlimit(
+                20.0, osSr * 0.45, static_cast<double>(p.freq[band]));
+            const double q = juce::jlimit(
+                0.1, 18.0, static_cast<double>(p.q[band]));
 
-            // V3 architecture: each EQ band owns its own ANALOG stage.
-            // TT/SS is read from that same band and never averaged with other
-            // bands. This preserves the V3 four-band content exactly.
-            for (int ch = 0; ch < channels; ++ch)
+            // True Dynamic EQ detector: narrow band-pass around this EQ node.
+            // No OTT crossovers are involved in the detection path.
+            updateDynamicDetector(
+                dynDetectors[band], osSr, frequency, q);
+
+            const float thresholdDb = juce::jlimit(
+                -60.f, 0.f, p.dynThreshold[band]);
+            const float ratio = juce::jlimit(
+                1.f, 20.f, p.dynRatio[band]);
+            const float attackCoeff = timeCoeff(
+                osSr, juce::jlimit(0.1f, 200.f, p.dynAttack[band]));
+            const float releaseCoeff = timeCoeff(
+                osSr, juce::jlimit(5.f, 2000.f, p.dynRelease[band]));
+
+            float& envelopeDb = dynEnvelopeDb[band];
+
+            for (size_t n = 0; n < osBlock.getNumSamples(); ++n)
             {
-                auto* data =
-                    osBlock.getChannelPointer(static_cast<size_t>(ch));
-                const bool right = ch == 1;
+                auto* left = osBlock.getChannelPointer(0);
+                const float detectorL =
+                    dynDetectors[band].process(left[n], false);
 
-                for (size_t n = 0; n < osBlock.getNumSamples(); ++n)
-                    data[n] = eq[band].process(data[n], right);
+                float detectorPower = detectorL * detectorL;
+
+                if (osBlock.getNumChannels() > 1)
+                {
+                    auto* right = osBlock.getChannelPointer(1);
+                    const float detectorR =
+                        dynDetectors[band].process(right[n], true);
+
+                    // Stereo-linked detector keeps the same EQ motion in L/R.
+                    detectorPower =
+                        0.5f * (detectorPower + detectorR * detectorR);
+                }
+
+                const float detectorDb = gainToDb(
+                    std::sqrt(std::max(detectorPower, 1.0e-12f)));
+
+                const bool rising = detectorDb > envelopeDb;
+                const float alpha = rising ? attackCoeff : releaseCoeff;
+                envelopeDb =
+                    alpha * envelopeDb
+                    + (1.f - alpha) * detectorDb;
+
+                const float overThreshold =
+                    juce::jmax(0.f, envelopeDb - thresholdDb);
+
+                // Same slope equation as a compressor, but only the EQ
+                // band's gain moves rather than a full crossover band.
+                const float slope =
+                    1.f - (1.f / juce::jmax(1.f, ratio));
+
+                // Hard ceiling keeps default mastering use from becoming
+                // an unintended limiter-like action.
+                const float dynamicGainDb =
+                    -juce::jlimit(0.f, 12.f, overThreshold * slope);
+
+                const float totalGainDb = juce::jlimit(
+                    -24.f, 24.f,
+                    p.gain[band] + dynamicGainDb);
+
+                // The gain target is smoothed sample-by-sample, avoiding
+                // zipper steps when the dynamic envelope moves.
+                updateDynamicPeak(
+                    eq[band], osSr, frequency, totalGainDb, q);
+
+                for (size_t ch = 0; ch < osBlock.getNumChannels(); ++ch)
+                {
+                    auto* data = osBlock.getChannelPointer(ch);
+                    data[n] = eq[band].process(data[n], ch == 1);
+                }
             }
 
             if (!p.eqColorGlobalBypass
                 && !p.eqColorBypass[band])
             {
                 const float amount =
-                    juce::jlimit(
-                        0.f,
-                        100.f,
-                        p.eqColor[band]) / 100.f;
+                    juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
 
-                // TT and SS use distinct Drive values for the high-density
-                // asymmetric-bias recipe.
                 const float drive =
                     p.eqColorSolidState[band] ? 1.15f : 0.95f;
 
                 processChebyshevAnalog(
-                    osBlock,
-                    drive,
-                    amount);
+                    osBlock, drive, amount);
             }
         }
     }
 
-    // Even when EQ is bypassed, keep the fixed oversampling latency stable.
     eqOversampler.processSamplesDown(outputBlock);
 }
 
