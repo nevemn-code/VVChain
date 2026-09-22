@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <complex>
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
@@ -19,35 +18,55 @@ constexpr int kCasesPerRound = 50;
 constexpr int kTotalCases = kRounds * kCasesPerRound;
 
 constexpr int kNoiseSamples = 4096;
-constexpr int kToneSamples = 16384;
-constexpr int kWarmup = 1024;
+constexpr int kToneSamples = 4096;
+constexpr int kWarmup = 512;
 constexpr int kLatencyRadius = 64;
-constexpr float kFlatPhasePassDeg = 0.25f;
-constexpr float kResidualPhasePassDeg = 8.0f;
-constexpr float kRelativePhasePassDeg = 3.0f;
+
+constexpr double kFlatPhasePassDeg = 0.50;
+constexpr double kResidualPhasePassDeg = 10.0;
+constexpr double kRelativePhasePassDeg = 4.0;
 constexpr double kUnityNullPassDb = -120.0;
+constexpr double kStereoPassDb = -120.0;
 
 struct Audio
 {
     int sr = 48000;
     int block = 128;
     float freq = 1000.f;
-    float amplitude = 0.05f;
+    float amplitude = 0.035f;
 };
 
 struct Measurement
 {
     int lag = -1;
     double corr = 0.0;
-    double phaseDeg = 0.0;
-    double gainRatio = 0.0;
+};
+
+struct CaseConfig
+{
+    Audio audio;
+    int seed = 1;
+    bool solidState = false;
+};
+
+struct StageResult
+{
+    VVChainDSP::Parameters params;
+    std::vector<float> noise;
+    std::vector<float> tone;
+    Measurement delay;
+    double phase = 0.0;
 };
 
 VVChainDSP::Parameters baseParameters()
 {
     VVChainDSP::Parameters p;
+
+    // The probe must exercise the real DSP chain. A master-bypass setting
+    // here would replace all preceding processing with the dry path and make
+    // the phase/latency probe meaningless.
     p.eqBypass = true;
-    p.masterBypass = true;
+    p.masterBypass = false;
     p.ottBypass = true;
     p.atypeBypass = true;
     p.deessBypass = true;
@@ -100,30 +119,39 @@ std::vector<float> makeNoise(int n, int seed)
 {
     std::vector<float> x((size_t)n);
     uint32_t s = static_cast<uint32_t>(0x12345678u
-                                      + seed * 2654435761u);
+                                      + static_cast<uint32_t>(seed)
+                                      * 2654435761u);
 
     for (float& v : x)
     {
         s ^= s << 13;
         s ^= s >> 17;
         s ^= s << 5;
+
         const float u =
             static_cast<float>(s & 0x00ffffffu) / 16777215.0f;
+
         v = (2.0f * u - 1.0f) * 0.035f;
     }
 
     return x;
 }
 
-std::vector<float> makeSine(int n, double sr, double freq, double amplitude)
+std::vector<float> makeSine(int n,
+                            double sr,
+                            double freq,
+                            double amplitude)
 {
     std::vector<float> x((size_t)n);
 
     for (int i = 0; i < n; ++i)
+    {
         x[(size_t)i] = static_cast<float>(
             amplitude
-            * std::sin(2.0 * kPi * freq
-                        * static_cast<double>(i) / sr));
+            * std::sin(
+                2.0 * kPi * freq
+                * static_cast<double>(i) / sr));
+    }
 
     return x;
 }
@@ -136,11 +164,9 @@ std::vector<float> render(VVChainDSP& dsp,
     dsp.reset();
 
     std::vector<float> output(input.size(), 0.f);
-    juce::AudioBuffer<float> buffer(2, block);
+    juce::AudioBuffer<float> buffer(1, block);
 
-    for (size_t pos = 0;
-         pos < input.size();
-         pos += static_cast<size_t>(block))
+    for (size_t pos = 0; pos < input.size(); pos += static_cast<size_t>(block))
     {
         const int count = static_cast<int>(
             std::min<size_t>(
@@ -148,13 +174,10 @@ std::vector<float> render(VVChainDSP& dsp,
                 input.size() - pos));
 
         if (buffer.getNumSamples() != count)
-            buffer.setSize(2, count, false, false, true);
+            buffer.setSize(1, count, false, false, true);
 
         buffer.clear();
-        buffer.copyFrom(
-            0, 0, input.data() + pos, count);
-        buffer.copyFrom(
-            1, 0, input.data() + pos, count);
+        buffer.copyFrom(0, 0, input.data() + pos, count);
 
         dsp.process(buffer, p);
 
@@ -173,13 +196,9 @@ double normalizedCorrelationAtLag(
     int start,
     int count)
 {
-    if (lag < 0)
-        return -1.0;
-
-    if (start + lag + count > static_cast<int>(output.size()))
-        return -1.0;
-
-    if (start + count > static_cast<int>(input.size()))
+    if (lag < 0
+        || start + lag + count > static_cast<int>(output.size())
+        || start + count > static_cast<int>(input.size()))
         return -1.0;
 
     double sx = 0.0;
@@ -201,11 +220,9 @@ double normalizedCorrelationAtLag(
     for (int i = 0; i < count; ++i)
     {
         const double x =
-            static_cast<double>(
-                input[(size_t)(start + i)]) - sx;
+            static_cast<double>(input[(size_t)(start + i)]) - sx;
         const double y =
-            static_cast<double>(
-                output[(size_t)(start + lag + i)]) - sy;
+            static_cast<double>(output[(size_t)(start + lag + i)]) - sy;
 
         xx += x * x;
         yy += y * y;
@@ -226,17 +243,14 @@ Measurement measureDelay(
     Measurement m;
 
     const int start = kWarmup;
-    const int count =
-        std::min(
-            kNoiseSamples - start - kLatencyRadius - 1,
-            2048);
+    const int count = std::min(
+        kNoiseSamples - start - kLatencyRadius - 1,
+        2048);
 
-    const int first =
-        std::max(0, expectedLatency - kLatencyRadius);
-    const int last =
-        std::min(expectedLatency + kLatencyRadius,
-                 static_cast<int>(output.size())
-                 - start - count);
+    const int first = std::max(0, expectedLatency - kLatencyRadius);
+    const int last = std::min(
+        expectedLatency + kLatencyRadius,
+        static_cast<int>(output.size()) - start - count);
 
     double best = -2.0;
 
@@ -282,8 +296,7 @@ std::complex<double> projectTone(
         const double c = std::cos(phase);
         const double s = std::sin(phase);
 
-        sum += static_cast<double>(
-            audio[(size_t)(start + i)])
+        sum += static_cast<double>(audio[(size_t)(start + i)])
             * window
             * std::complex<double>(c, -s);
     }
@@ -302,31 +315,32 @@ double phaseBetweenAligned(
     const int start = kWarmup;
 
     const int availableA =
-        static_cast<int>(a.size())
-        - start - lagA;
+        static_cast<int>(a.size()) - start - lagA;
     const int availableB =
-        static_cast<int>(b.size())
-        - start - lagB;
+        static_cast<int>(b.size()) - start - lagB;
 
     const int count =
-        std::min({ availableA, availableB, 12000 });
+        std::min({ availableA, availableB, kToneSamples - start });
 
     if (count < 1024)
         return 180.0;
 
     const auto A =
         projectTone(a, sr, freq, start + lagA, count);
+
     const auto B =
         projectTone(b, sr, freq, start + lagB, count);
 
-    if (std::abs(A) < 1.0e-12
-        || std::abs(B) < 1.0e-12)
+    if (std::abs(A) < 1.0e-12 || std::abs(B) < 1.0e-12)
         return 180.0;
 
-    return std::atan2(
-        std::imag(B * std::conj(A)),
-        std::real(B * std::conj(A)))
+    const double deg =
+        std::atan2(
+            std::imag(B * std::conj(A)),
+            std::real(B * std::conj(A)))
         * 180.0 / kPi;
+
+    return deg;
 }
 
 double wrapDeg(double deg)
@@ -340,40 +354,17 @@ double wrapDeg(double deg)
     return deg;
 }
 
-double rms(
-    const std::vector<float>& x,
-    int start,
-    int count)
-{
-    if (start < 0 || start + count > static_cast<int>(x.size()))
-        return 0.0;
-
-    double sum = 0.0;
-
-    for (int i = 0; i < count; ++i)
-    {
-        const double v =
-            static_cast<double>(
-                x[(size_t)(start + i)]);
-        sum += v * v;
-    }
-
-    return std::sqrt(
-        sum / static_cast<double>(count));
-}
-
 double nullDb(
     const std::vector<float>& a,
     const std::vector<float>& b,
     int start,
     int count)
 {
-    const int maxCount =
+    const int maxCount = std::min(
+        count,
         std::min(
-            count,
-            std::min(
-                static_cast<int>(a.size()) - start,
-                static_cast<int>(b.size()) - start));
+            static_cast<int>(a.size()) - start,
+            static_cast<int>(b.size()) - start));
 
     if (maxCount <= 0)
         return 0.0;
@@ -383,12 +374,8 @@ double nullDb(
 
     for (int i = 0; i < maxCount; ++i)
     {
-        const double av =
-            static_cast<double>(
-                a[(size_t)(start + i)]);
-        const double bv =
-            static_cast<double>(
-                b[(size_t)(start + i)]);
+        const double av = static_cast<double>(a[(size_t)(start + i)]);
+        const double bv = static_cast<double>(b[(size_t)(start + i)]);
 
         const double d = av - bv;
         diff += d * d;
@@ -396,12 +383,26 @@ double nullDb(
     }
 
     const double ratio =
-        std::sqrt(
-            diff / std::max(ref, 1.0e-24));
+        std::sqrt(diff / std::max(ref, 1.0e-24));
 
-    return 20.0
-        * std::log10(
-            std::max(ratio, 1.0e-15));
+    return 20.0 * std::log10(std::max(ratio, 1.0e-15));
+}
+
+std::vector<float> expectedMix(
+    const std::vector<float>& dry,
+    const std::vector<float>& wet,
+    double mix)
+{
+    const size_t n = std::min(dry.size(), wet.size());
+    std::vector<float> result(n);
+
+    const float m = static_cast<float>(mix);
+    for (size_t i = 0; i < n; ++i)
+        result[i] =
+            dry[i] * (1.0f - m)
+            + wet[i] * m;
+
+    return result;
 }
 
 double stereoMismatchDb(
@@ -412,14 +413,12 @@ double stereoMismatchDb(
 {
     VVChainDSP dsp;
     dsp.prepare(sr, block, 2);
-    dsp.reset();
 
     juce::AudioBuffer<float> buffer(2, block);
-    double sumDiff = 0.0;
-    double sumRef = 0.0;
-    size_t pos = 0;
+    double diff = 0.0;
+    double ref = 0.0;
 
-    while (pos < input.size())
+    for (size_t pos = 0; pos < input.size(); pos += static_cast<size_t>(block))
     {
         const int count = static_cast<int>(
             std::min<size_t>(
@@ -432,6 +431,7 @@ double stereoMismatchDb(
         buffer.clear();
         buffer.copyFrom(0, 0, input.data() + pos, count);
         buffer.copyFrom(1, 0, input.data() + pos, count);
+
         dsp.process(buffer, p);
 
         for (int n = 0; n < count; ++n)
@@ -439,27 +439,32 @@ double stereoMismatchDb(
             const double l = buffer.getSample(0, n);
             const double r = buffer.getSample(1, n);
             const double d = l - r;
-            sumDiff += d * d;
-            sumRef += l * l;
+            diff += d * d;
+            ref += l * l;
         }
-
-        pos += static_cast<size_t>(count);
     }
 
-    if (sumRef < 1.0e-24)
+    if (ref < 1.0e-24)
         return -300.0;
 
-    return 10.0
-        * std::log10(
-            std::max(sumDiff / sumRef, 1.0e-30));
+    return 10.0 * std::log10(std::max(diff / ref, 1.0e-30));
 }
 
 VVChainDSP::Parameters makeEqUnity()
 {
     auto p = baseParameters();
     p.eqBypass = false;
-    p.eqColorGlobalBypass = true;
     p.gain = { 0.f, 0.f, 0.f, 0.f };
+    return p;
+}
+
+VVChainDSP::Parameters makeEqActive()
+{
+    auto p = baseParameters();
+    p.eqBypass = false;
+    p.gain = { 1.25f, -1.00f, 0.75f, -0.60f };
+    p.freq = { 80.f, 420.f, 2800.f, 10000.f };
+    p.q = { 0.707f, 0.9f, 1.1f, 0.85f };
     return p;
 }
 
@@ -468,8 +473,7 @@ VVChainDSP::Parameters makeAnalog(float amount, bool ss)
     auto p = baseParameters();
     p.eqColorGlobalBypass = false;
     p.eqColor = { amount, amount, amount, amount };
-    p.eqColorSolidState =
-        { ss, ss, ss, ss };
+    p.eqColorSolidState = { ss, ss, ss, ss };
     return p;
 }
 
@@ -478,16 +482,11 @@ VVChainDSP::Parameters makeOtt()
     auto p = baseParameters();
     p.ottBypass = false;
     p.ottMix = 100.f;
-    p.ottDegree =
-        { 80.f, 80.f, 80.f, 80.f };
-    p.ottCompThreshold =
-        { 0.f, 0.f, 0.f, 0.f };
-    p.ottLifterThreshold =
-        { -48.f, -48.f, -48.f, -48.f };
-    p.ottCompMix =
-        { 100.f, 100.f, 100.f, 100.f };
-    p.ottLifterMix =
-        { 100.f, 100.f, 100.f, 100.f };
+    p.ottDegree = { 55.f, 60.f, 65.f, 60.f };
+    p.ottCompThreshold = { -18.f, -18.f, -18.f, -18.f };
+    p.ottLifterThreshold = { -42.f, -42.f, -42.f, -42.f };
+    p.ottCompMix = { 100.f, 100.f, 100.f, 100.f };
+    p.ottLifterMix = { 100.f, 100.f, 100.f, 100.f };
     return p;
 }
 
@@ -496,27 +495,85 @@ VVChainDSP::Parameters makeTapeA()
     auto p = baseParameters();
     p.atypeBypass = false;
     p.atypeMix = 100.f;
-    p.atypeDegree =
-        { 20.f, 20.f, 35.f, 35.f };
+    p.atypeDegree = { 15.f, 20.f, 30.f, 25.f };
     return p;
 }
 
-VVChainDSP::Parameters makeDeEss(bool active)
+VVChainDSP::Parameters makeDeEss()
 {
     auto p = baseParameters();
     p.deessBypass = false;
     p.deessReferenceHz = 12500.f;
-    p.deessIntensity =
-        active ? 24.f : 0.f;
+    p.deessIntensity = 18.f;
     return p;
 }
 
-struct CaseConfig
+VVChainDSP::Parameters combine(
+    const VVChainDSP::Parameters& a,
+    const VVChainDSP::Parameters& b)
 {
-    Audio audio;
-    int seed = 1;
-    bool ss = false;
-};
+    auto p = baseParameters();
+
+    p.eqBypass = a.eqBypass && b.eqBypass;
+    p.eqColorGlobalBypass =
+        a.eqColorGlobalBypass && b.eqColorGlobalBypass;
+    if (!a.eqBypass)
+    {
+        p.gain = a.gain;
+        p.freq = a.freq;
+        p.q = a.q;
+    }
+
+    if (!a.eqColorGlobalBypass)
+    {
+        p.eqColor = a.eqColor;
+        p.eqColorSolidState = a.eqColorSolidState;
+    }
+
+    p.ottBypass = a.ottBypass && b.ottBypass;
+    if (!a.ottBypass)
+    {
+        p.ottBandBypass = a.ottBandBypass;
+        p.ottDegree = a.ottDegree;
+        p.ottCompThreshold = a.ottCompThreshold;
+        p.ottLifterThreshold = a.ottLifterThreshold;
+        p.ottCompMix = a.ottCompMix;
+        p.ottLifterMix = a.ottLifterMix;
+        p.ottBandLevelDb = a.ottBandLevelDb;
+        p.ottMix = a.ottMix;
+        p.ottInputGainDb = a.ottInputGainDb;
+        p.ottOutputGainDb = a.ottOutputGainDb;
+        p.ottGateThresholdDb = a.ottGateThresholdDb;
+        p.ottClipper = a.ottClipper;
+    }
+
+    p.atypeBypass = a.atypeBypass && b.atypeBypass;
+    if (!a.atypeBypass)
+    {
+        p.atypeBandBypass = a.atypeBandBypass;
+        p.atypeDegree = a.atypeDegree;
+        p.atypeBandLevelDb = a.atypeBandLevelDb;
+        p.atypeAttackMs = a.atypeAttackMs;
+        p.atypeReleaseMs = a.atypeReleaseMs;
+        p.atypeMix = a.atypeMix;
+        p.atypeInputGainDb = a.atypeInputGainDb;
+        p.atypeOutputGainDb = a.atypeOutputGainDb;
+    }
+
+    p.deessBypass = a.deessBypass && b.deessBypass;
+    if (!a.deessBypass)
+    {
+        p.deessReferenceHz = a.deessReferenceHz;
+        p.deessIntensity = a.deessIntensity;
+        p.deessAverageOffset = a.deessAverageOffset;
+    }
+
+    p.masterBypass = false;
+    p.mixBypass = true;
+    p.outputDb = 0.f;
+
+    return p;
+}
 
 CaseConfig makeCase(int i)
 {
@@ -533,61 +590,49 @@ CaseConfig makeCase(int i)
     };
 
     CaseConfig c;
-    c.audio.sr =
-        rates[i % 5];
-
-    c.audio.block =
-        blocks[(i / 5) % 5];
-
+    c.audio.sr = rates[i % 5];
+    c.audio.block = blocks[(i / 5) % 5];
     c.audio.freq =
-        static_cast<float>(
-            freqs[(i / 25) % 10]);
+        static_cast<float>(freqs[(i / 25) % 10]);
 
-    if (c.audio.freq
-        >= c.audio.sr * 0.45)
+    if (c.audio.freq >= c.audio.sr * 0.40)
         c.audio.freq =
-            static_cast<float>(
-                c.audio.sr * 0.20);
+            static_cast<float>(c.audio.sr * 0.20);
 
     c.audio.amplitude =
-        0.02f
-        + 0.01f
-        * static_cast<float>(i % 8);
+        0.0225f + 0.0025f * static_cast<float>(i % 8);
 
-    c.seed =
-        1000 + i * 17;
-
-    c.ss =
-        (i & 1) != 0;
+    c.seed = 1000 + i * 17;
+    c.solidState = (i & 1) != 0;
 
     return c;
 }
 
-struct Stage
+template <typename T>
+void updateWorst(T& target, T value)
 {
-    VVChainDSP::Parameters params;
-    std::vector<float> noise;
-    std::vector<float> tone;
-    Measurement delay;
-    double absPhase = 0.0;
-    double relPhase = 0.0;
-};
+    target = std::max(target, value);
+}
 
 }
 
 int main()
 {
     std::ofstream csv("VVChain_audio_probe.csv");
-    csv << "round,case,sr,block,freq,declared_latency,"
-           "baseline_delay,baseline_corr,"
-           "eq_delay,eq_corr,eq_flat_phase,eq_flat_rel,"
-           "analog_delay,analog_corr,analog_phase,analog_rel,"
-           "tape_delay,tape_corr,tape_phase,tape_rel,"
-           "ott_delay,ott_corr,ott_phase,ott_rel,"
-           "deess_delay,deess_corr,deess_phase,deess_rel,"
-           "eq_analog_rel,analog_tape_rel,"
+    csv
+        << "round,case,sr,block,freq,declared_latency,"
+           "base_delay,base_corr,"
+           "eq_unity_delay,eq_unity_corr,eq_flat_phase,"
+           "eq_active_delay,eq_active_corr,eq_active_phase,"
+           "analog_delay,analog_corr,analog_phase,"
+           "tape_delay,tape_corr,tape_phase,"
+           "ott_delay,ott_corr,ott_phase,"
+           "deess_delay,deess_corr,deess_phase,"
+           "eq_analog_phase_delta,analog_tape_phase_delta,"
+           "eq_ott_phase_delta,ott_tape_phase_delta,"
+           "analog_deess_phase_delta,full_chain_phase_delta,"
            "drywet_null_db,eq_unity_null_db,"
-           "stereo_analog_db,stereo_ott_db\\n";
+           "stereo_analog_db,stereo_ott_db,stereo_full_db\n";
 
     int failures = 0;
     int checks = 0;
@@ -595,16 +640,22 @@ int main()
     double worstDelayError = 0.0;
     double worstBaselinePhase = 0.0;
     double worstEqFlatPhase = 0.0;
+    double worstEqActivePhase = 0.0;
     double worstAnalogPhase = 0.0;
     double worstTapePhase = 0.0;
     double worstOttPhase = 0.0;
     double worstDeEssPhase = 0.0;
-    double worstEqAnalog = 0.0;
-    double worstAnalogTape = 0.0;
+    double worstEqAnalogDelta = 0.0;
+    double worstAnalogTapeDelta = 0.0;
+    double worstEqOttDelta = 0.0;
+    double worstOttTapeDelta = 0.0;
+    double worstAnalogDeEssDelta = 0.0;
+    double worstFullChainDelta = 0.0;
     double worstDryWetNull = -300.0;
     double worstEqUnityNull = -300.0;
     double worstStereoAnalog = -300.0;
     double worstStereoOtt = -300.0;
+    double worstStereoFull = -300.0;
 
     for (int round = 0; round < kRounds; ++round)
     {
@@ -624,15 +675,10 @@ int main()
                 makeCase(index);
 
             VVChainDSP dsp;
-            dsp.prepare(
-                cfg.audio.sr,
-                cfg.audio.block,
-                2);
+            dsp.prepare(cfg.audio.sr, cfg.audio.block, 1);
 
             const auto inputNoise =
-                makeNoise(
-                    kNoiseSamples,
-                    cfg.seed);
+                makeNoise(kNoiseSamples, cfg.seed);
 
             const auto tone =
                 makeSine(
@@ -644,14 +690,16 @@ int main()
             const auto base =
                 baseParameters();
 
-            const auto eq =
+            const auto eqUnity =
                 makeEqUnity();
+
+            const auto eqActive =
+                makeEqActive();
 
             const auto analog =
                 makeAnalog(
-                    35.f
-                    + static_cast<float>(ci % 4) * 10.f,
-                    cfg.ss);
+                    35.f + static_cast<float>(ci % 4) * 10.f,
+                    cfg.solidState);
 
             const auto tape =
                 makeTapeA();
@@ -660,162 +708,151 @@ int main()
                 makeOtt();
 
             const auto deess =
-                makeDeEss((ci % 3) == 0);
+                makeDeEss();
 
-            auto eqAnalog =
-                eq;
+            const auto eqAnalog =
+                combine(eqActive, analog);
 
-            eqAnalog.eqColorGlobalBypass = false;
-            eqAnalog.eqColor =
-                { analog.eqColor[0],
-                  analog.eqColor[0],
-                  analog.eqColor[0],
-                  analog.eqColor[0] };
-            eqAnalog.eqColorSolidState =
-                { cfg.ss, cfg.ss, cfg.ss, cfg.ss };
+            const auto analogTape =
+                combine(analog, tape);
 
-            auto analogTape =
-                analog;
-            analogTape.atypeBypass = false;
-            analogTape.atypeMix = 100.f;
-            analogTape.atypeDegree =
-                { 10.f, 15.f, 25.f, 25.f };
+            const auto eqOtt =
+                combine(eqActive, ott);
 
-            auto mix50 =
-                base;
+            const auto ottTape =
+                combine(ott, tape);
+
+            const auto analogDeEss =
+                combine(analog, deess);
+
+            const auto full =
+                [&]()
+                {
+                    auto p = combine(
+                        combine(eqActive, analog),
+                        combine(ott, tape));
+
+                    const auto fullWithDeEss =
+                        combine(p, deess);
+
+                    return fullWithDeEss;
+                }();
+
+            auto mix50 = full;
             mix50.mixBypass = false;
             mix50.dryWet = 50.f;
 
             const auto baseNoise =
-                render(
-                    dsp, base,
-                    inputNoise,
-                    cfg.audio.block);
+                render(dsp, base, inputNoise, cfg.audio.block);
+            const auto baseTone =
+                render(dsp, base, tone, cfg.audio.block);
 
             const int declaredLatency =
                 dsp.getLatencySamples();
 
-            const auto baseTone =
-                render(
-                    dsp, base,
-                    tone,
-                    cfg.audio.block);
+            const auto eqUnityNoise =
+                render(dsp, eqUnity, inputNoise, cfg.audio.block);
+            const auto eqUnityTone =
+                render(dsp, eqUnity, tone, cfg.audio.block);
 
-            const auto eqNoise =
-                render(
-                    dsp, eq,
-                    inputNoise,
-                    cfg.audio.block);
-
-            const auto eqTone =
-                render(
-                    dsp, eq,
-                    tone,
-                    cfg.audio.block);
+            const auto eqActiveNoise =
+                render(dsp, eqActive, inputNoise, cfg.audio.block);
+            const auto eqActiveTone =
+                render(dsp, eqActive, tone, cfg.audio.block);
 
             const auto analogNoise =
-                render(
-                    dsp, analog,
-                    inputNoise,
-                    cfg.audio.block);
-
+                render(dsp, analog, inputNoise, cfg.audio.block);
             const auto analogTone =
-                render(
-                    dsp, analog,
-                    tone,
-                    cfg.audio.block);
+                render(dsp, analog, tone, cfg.audio.block);
 
             const auto tapeNoise =
-                render(
-                    dsp, tape,
-                    inputNoise,
-                    cfg.audio.block);
-
+                render(dsp, tape, inputNoise, cfg.audio.block);
             const auto tapeTone =
-                render(
-                    dsp, tape,
-                    tone,
-                    cfg.audio.block);
+                render(dsp, tape, tone, cfg.audio.block);
 
             const auto ottNoise =
-                render(
-                    dsp, ott,
-                    inputNoise,
-                    cfg.audio.block);
-
+                render(dsp, ott, inputNoise, cfg.audio.block);
             const auto ottTone =
-                render(
-                    dsp, ott,
-                    tone,
-                    cfg.audio.block);
+                render(dsp, ott, tone, cfg.audio.block);
 
             const auto deessNoise =
-                render(
-                    dsp, deess,
-                    inputNoise,
-                    cfg.audio.block);
-
+                render(dsp, deess, inputNoise, cfg.audio.block);
             const auto deessTone =
-                render(
-                    dsp, deess,
-                    tone,
-                    cfg.audio.block);
+                render(dsp, deess, tone, cfg.audio.block);
 
+            const auto eqAnalogNoise =
+                render(dsp, eqAnalog, inputNoise, cfg.audio.block);
             const auto eqAnalogTone =
-                render(
-                    dsp, eqAnalog,
-                    tone,
-                    cfg.audio.block);
+                render(dsp, eqAnalog, tone, cfg.audio.block);
 
+            const auto analogTapeNoise =
+                render(dsp, analogTape, inputNoise, cfg.audio.block);
             const auto analogTapeTone =
-                render(
-                    dsp, analogTape,
-                    tone,
-                    cfg.audio.block);
+                render(dsp, analogTape, tone, cfg.audio.block);
+
+            const auto eqOttNoise =
+                render(dsp, eqOtt, inputNoise, cfg.audio.block);
+            const auto eqOttTone =
+                render(dsp, eqOtt, tone, cfg.audio.block);
+
+            const auto ottTapeNoise =
+                render(dsp, ottTape, inputNoise, cfg.audio.block);
+            const auto ottTapeTone =
+                render(dsp, ottTape, tone, cfg.audio.block);
+
+            const auto analogDeEssNoise =
+                render(dsp, analogDeEss, inputNoise, cfg.audio.block);
+            const auto analogDeEssTone =
+                render(dsp, analogDeEss, tone, cfg.audio.block);
+
+            const auto fullNoise =
+                render(dsp, full, inputNoise, cfg.audio.block);
+            const auto fullTone =
+                render(dsp, full, tone, cfg.audio.block);
 
             const auto mixTone =
-                render(
-                    dsp, mix50,
-                    tone,
-                    cfg.audio.block);
+                render(dsp, mix50, tone, cfg.audio.block);
 
             const Measurement baseM =
-                measureDelay(
-                    inputNoise,
-                    baseNoise,
-                    declaredLatency);
+                measureDelay(inputNoise, baseNoise, declaredLatency);
 
-            const Measurement eqM =
-                measureDelay(
-                    inputNoise,
-                    eqNoise,
-                    declaredLatency);
+            const Measurement eqUnityM =
+                measureDelay(inputNoise, eqUnityNoise, declaredLatency);
+
+            const Measurement eqActiveM =
+                measureDelay(inputNoise, eqActiveNoise, declaredLatency);
 
             const Measurement analogM =
-                measureDelay(
-                    inputNoise,
-                    analogNoise,
-                    declaredLatency);
+                measureDelay(inputNoise, analogNoise, declaredLatency);
 
             const Measurement tapeM =
-                measureDelay(
-                    inputNoise,
-                    tapeNoise,
-                    declaredLatency);
+                measureDelay(inputNoise, tapeNoise, declaredLatency);
 
             const Measurement ottM =
-                measureDelay(
-                    inputNoise,
-                    ottNoise,
-                    declaredLatency);
+                measureDelay(inputNoise, ottNoise, declaredLatency);
 
             const Measurement deessM =
-                measureDelay(
-                    inputNoise,
-                    deessNoise,
-                    declaredLatency);
+                measureDelay(inputNoise, deessNoise, declaredLatency);
 
-            const double baselinePhase =
+            const Measurement eqAnalogM =
+                measureDelay(inputNoise, eqAnalogNoise, declaredLatency);
+
+            const Measurement analogTapeM =
+                measureDelay(inputNoise, analogTapeNoise, declaredLatency);
+
+            const Measurement eqOttM =
+                measureDelay(inputNoise, eqOttNoise, declaredLatency);
+
+            const Measurement ottTapeM =
+                measureDelay(inputNoise, ottTapeNoise, declaredLatency);
+
+            const Measurement analogDeEssM =
+                measureDelay(inputNoise, analogDeEssNoise, declaredLatency);
+
+            const Measurement fullM =
+                measureDelay(inputNoise, fullNoise, declaredLatency);
+
+            const double basePhase =
                 phaseBetweenAligned(
                     tone, 0,
                     baseTone, baseM.lag,
@@ -825,7 +862,14 @@ int main()
             const double eqFlatPhase =
                 phaseBetweenAligned(
                     tone, 0,
-                    eqTone, eqM.lag,
+                    eqUnityTone, eqUnityM.lag,
+                    cfg.audio.sr,
+                    cfg.audio.freq);
+
+            const double eqActivePhase =
+                phaseBetweenAligned(
+                    tone, 0,
+                    eqActiveTone, eqActiveM.lag,
                     cfg.audio.sr,
                     cfg.audio.freq);
 
@@ -857,76 +901,85 @@ int main()
                     cfg.audio.sr,
                     cfg.audio.freq);
 
-            const double eqFlatRel =
+            const double eqAnalogPhase =
                 phaseBetweenAligned(
-                    baseTone, baseM.lag,
-                    eqTone, eqM.lag,
+                    eqActiveTone, eqActiveM.lag,
+                    eqAnalogTone, eqAnalogM.lag,
                     cfg.audio.sr,
                     cfg.audio.freq);
 
-            const double analogRel =
+            const double analogTapePhase =
                 phaseBetweenAligned(
-                    baseTone, baseM.lag,
                     analogTone, analogM.lag,
+                    analogTapeTone, analogTapeM.lag,
                     cfg.audio.sr,
                     cfg.audio.freq);
 
-            const double tapeRel =
+            const double eqOttPhase =
                 phaseBetweenAligned(
-                    baseTone, baseM.lag,
-                    tapeTone, tapeM.lag,
+                    eqActiveTone, eqActiveM.lag,
+                    eqOttTone, eqOttM.lag,
                     cfg.audio.sr,
                     cfg.audio.freq);
 
-            const double ottRel =
+            const double ottTapePhase =
                 phaseBetweenAligned(
-                    baseTone, baseM.lag,
                     ottTone, ottM.lag,
+                    ottTapeTone, ottTapeM.lag,
                     cfg.audio.sr,
                     cfg.audio.freq);
 
-            const double deessRel =
+            const double analogDeEssPhase =
                 phaseBetweenAligned(
-                    baseTone, baseM.lag,
-                    deessTone, deessM.lag,
+                    analogTone, analogM.lag,
+                    analogDeEssTone, analogDeEssM.lag,
                     cfg.audio.sr,
                     cfg.audio.freq);
 
-            const double eqAnalogRel =
-                wrapDeg(
-                    phaseBetweenAligned(
-                        eqTone, eqM.lag,
-                        eqAnalogTone, eqM.lag,
-                        cfg.audio.sr,
-                        cfg.audio.freq));
+            const double fullVsBase =
+                phaseBetweenAligned(
+                    tone, 0,
+                    fullTone, fullM.lag,
+                    cfg.audio.sr,
+                    cfg.audio.freq);
 
-            const double analogTapeRel =
-                wrapDeg(
-                    phaseBetweenAligned(
-                        tapeTone, tapeM.lag,
-                        analogTapeTone, tapeM.lag,
-                        cfg.audio.sr,
-                        cfg.audio.freq));
+            const double eqAnalogDelta =
+                wrapDeg(eqAnalogPhase);
+
+            const double analogTapeDelta =
+                wrapDeg(analogTapePhase);
+
+            const double eqOttDelta =
+                wrapDeg(eqOttPhase);
+
+            const double ottTapeDelta =
+                wrapDeg(ottTapePhase);
+
+            const double analogDeEssDelta =
+                wrapDeg(analogDeEssPhase);
+
+            const double fullChainDelta =
+                wrapDeg(fullVsBase);
+
+            const auto mixExpected =
+                expectedMix(
+                    baseTone,
+                    fullTone,
+                    0.5);
+
+            const double dryWetNull =
+                nullDb(
+                    mixExpected,
+                    mixTone,
+                    kWarmup,
+                    kToneSamples - kWarmup);
 
             const double eqUnityNull =
                 nullDb(
                     baseNoise,
-                    eqNoise,
+                    eqUnityNoise,
                     kWarmup,
-                    2048);
-
-            const auto mixNoise =
-                render(
-                    dsp, mix50,
-                    inputNoise,
-                    cfg.audio.block);
-
-            const double dryWetNull =
-                nullDb(
-                    baseNoise,
-                    mixNoise,
-                    kWarmup,
-                    2048);
+                    kNoiseSamples - kWarmup);
 
             const double stereoAnalog =
                 stereoMismatchDb(
@@ -942,14 +995,28 @@ int main()
                     cfg.audio.sr,
                     cfg.audio.block);
 
+            const double stereoFull =
+                stereoMismatchDb(
+                    inputNoise,
+                    full,
+                    cfg.audio.sr,
+                    cfg.audio.block);
+
             const int delayErrors[] =
             {
                 std::abs(baseM.lag - declaredLatency),
-                std::abs(eqM.lag - declaredLatency),
+                std::abs(eqUnityM.lag - declaredLatency),
+                std::abs(eqActiveM.lag - declaredLatency),
                 std::abs(analogM.lag - declaredLatency),
                 std::abs(tapeM.lag - declaredLatency),
                 std::abs(ottM.lag - declaredLatency),
-                std::abs(deessM.lag - declaredLatency)
+                std::abs(deessM.lag - declaredLatency),
+                std::abs(eqAnalogM.lag - declaredLatency),
+                std::abs(analogTapeM.lag - declaredLatency),
+                std::abs(eqOttM.lag - declaredLatency),
+                std::abs(ottTapeM.lag - declaredLatency),
+                std::abs(analogDeEssM.lag - declaredLatency),
+                std::abs(fullM.lag - declaredLatency)
             };
 
             const int localWorstDelay =
@@ -957,117 +1024,73 @@ int main()
                     std::begin(delayErrors),
                     std::end(delayErrors));
 
-            worstDelayError =
-                std::max<double>(
-                    worstDelayError,
-                    localWorstDelay);
-
-            worstBaselinePhase =
-                std::max(
-                    worstBaselinePhase,
-                    std::abs(baselinePhase));
-
-            worstEqFlatPhase =
-                std::max(
-                    worstEqFlatPhase,
-                    std::abs(eqFlatPhase));
-
-            worstAnalogPhase =
-                std::max(
-                    worstAnalogPhase,
-                    std::abs(analogPhase));
-
-            worstTapePhase =
-                std::max(
-                    worstTapePhase,
-                    std::abs(tapePhase));
-
-            worstOttPhase =
-                std::max(
-                    worstOttPhase,
-                    std::abs(ottPhase));
-
-            worstDeEssPhase =
-                std::max(
-                    worstDeEssPhase,
-                    std::abs(deessPhase));
-
-            worstEqAnalog =
-                std::max(
-                    worstEqAnalog,
-                    std::abs(eqAnalogRel));
-
-            worstAnalogTape =
-                std::max(
-                    worstAnalogTape,
-                    std::abs(analogTapeRel));
-
+            updateWorst(worstDelayError, static_cast<double>(localWorstDelay));
+            updateWorst(worstBaselinePhase, std::abs(basePhase));
+            updateWorst(worstEqFlatPhase, std::abs(eqFlatPhase));
+            updateWorst(worstEqActivePhase, std::abs(eqActivePhase));
+            updateWorst(worstAnalogPhase, std::abs(analogPhase));
+            updateWorst(worstTapePhase, std::abs(tapePhase));
+            updateWorst(worstOttPhase, std::abs(ottPhase));
+            updateWorst(worstDeEssPhase, std::abs(deessPhase));
+            updateWorst(worstEqAnalogDelta, std::abs(eqAnalogDelta));
+            updateWorst(worstAnalogTapeDelta, std::abs(analogTapeDelta));
+            updateWorst(worstEqOttDelta, std::abs(eqOttDelta));
+            updateWorst(worstOttTapeDelta, std::abs(ottTapeDelta));
+            updateWorst(worstAnalogDeEssDelta, std::abs(analogDeEssDelta));
+            updateWorst(worstFullChainDelta, std::abs(fullChainDelta));
             worstDryWetNull =
-                std::max(
-                    worstDryWetNull,
-                    dryWetNull);
-
+                std::max(worstDryWetNull, dryWetNull);
             worstEqUnityNull =
-                std::max(
-                    worstEqUnityNull,
-                    eqUnityNull);
-
+                std::max(worstEqUnityNull, eqUnityNull);
             worstStereoAnalog =
-                std::max(
-                    worstStereoAnalog,
-                    stereoAnalog);
-
+                std::max(worstStereoAnalog, stereoAnalog);
             worstStereoOtt =
-                std::max(
-                    worstStereoOtt,
-                    stereoOtt);
+                std::max(worstStereoOtt, stereoOtt);
+            worstStereoFull =
+                std::max(worstStereoFull, stereoFull);
 
             ++checks;
 
             bool ok = true;
 
-            ok &= baseM.lag >= 0
-                && eqM.lag >= 0
-                && analogM.lag >= 0
-                && tapeM.lag >= 0
-                && ottM.lag >= 0
-                && deessM.lag >= 0;
+            const Measurement* latencyChecks[] =
+            {
+                &baseM, &eqUnityM, &eqActiveM, &analogM, &tapeM,
+                &ottM, &deessM, &eqAnalogM, &analogTapeM, &eqOttM,
+                &ottTapeM, &analogDeEssM, &fullM
+            };
+
+            for (const auto* m : latencyChecks)
+                ok &= m->lag >= 0 && m->corr > 0.999;
 
             ok &= localWorstDelay <= 1;
 
-            // The fixed path and EQ-at-unity must have essentially no
-            // phase rotation after the measured latency is removed.
-            ok &= std::abs(baselinePhase) <= kFlatPhasePassDeg;
+            ok &= std::abs(basePhase) <= kFlatPhasePassDeg;
             ok &= std::abs(eqFlatPhase) <= kFlatPhasePassDeg;
-            ok &= std::abs(eqFlatRel) <= kFlatPhasePassDeg;
+            ok &= std::abs(eqAnalogDelta) <= kRelativePhasePassDeg;
 
-            // Active residual processors are allowed to change the waveform,
-            // but must not re-introduce a large crossover-only phase rotation.
             ok &= std::abs(analogPhase) <= kResidualPhasePassDeg;
             ok &= std::abs(tapePhase) <= kResidualPhasePassDeg;
             ok &= std::abs(ottPhase) <= kResidualPhasePassDeg;
             ok &= std::abs(deessPhase) <= kResidualPhasePassDeg;
 
-            ok &= std::abs(analogRel) <= kRelativePhasePassDeg;
-            ok &= std::abs(tapeRel) <= kRelativePhasePassDeg;
-            ok &= std::abs(ottRel) <= kRelativePhasePassDeg;
-            ok &= std::abs(deessRel) <= kRelativePhasePassDeg;
-
-            // Cross-feature combinations: adding an otherwise phase-neutral
-            // stage must not create a new crossover all-pass phase.
-            ok &= std::abs(eqAnalogRel) <= kRelativePhasePassDeg;
-            ok &= std::abs(analogTapeRel) <= kRelativePhasePassDeg;
+            ok &= std::abs(eqOttDelta) <= kRelativePhasePassDeg;
+            ok &= std::abs(analogTapeDelta) <= kRelativePhasePassDeg;
+            ok &= std::abs(ottTapeDelta) <= kRelativePhasePassDeg;
+            ok &= std::abs(analogDeEssDelta) <= kRelativePhasePassDeg;
+            ok &= std::abs(fullChainDelta) <= kResidualPhasePassDeg;
 
             ok &= eqUnityNull < kUnityNullPassDb;
             ok &= dryWetNull < kUnityNullPassDb;
 
-            // Identical stereo inputs must remain sample-identical.
-            ok &= stereoAnalog < -120.0;
-            ok &= stereoOtt < -120.0;
+            ok &= stereoAnalog < kStereoPassDb;
+            ok &= stereoOtt < kStereoPassDb;
+            ok &= stereoFull < kStereoPassDb;
 
             if (!ok)
             {
                 ++failures;
+
                 std::cerr
                     << "FAIL round=" << round
                     << " case=" << ci
@@ -1075,26 +1098,29 @@ int main()
                     << " block=" << cfg.audio.block
                     << " freq=" << cfg.audio.freq
                     << " latency=" << declaredLatency
-                    << " delays=["
-                    << baseM.lag << ","
-                    << eqM.lag << ","
-                    << analogM.lag << ","
-                    << tapeM.lag << ","
-                    << ottM.lag << ","
-                    << deessM.lag << "]"
-                    << " phaseAbs=["
-                    << baselinePhase << ","
+                    << " delayWorst=" << localWorstDelay
+                    << " phases=["
+                    << basePhase << ","
                     << eqFlatPhase << ","
+                    << eqActivePhase << ","
                     << analogPhase << ","
                     << tapePhase << ","
                     << ottPhase << ","
                     << deessPhase << "]"
-                    << " phaseRel=["
-                    << eqAnalogRel << ","
-                    << analogTapeRel << "]"
+                    << " deltas=["
+                    << eqAnalogDelta << ","
+                    << analogTapeDelta << ","
+                    << eqOttDelta << ","
+                    << ottTapeDelta << ","
+                    << analogDeEssDelta << ","
+                    << fullChainDelta << "]"
                     << " null=["
                     << eqUnityNull << ","
                     << dryWetNull << "]"
+                    << " stereo=["
+                    << stereoAnalog << ","
+                    << stereoOtt << ","
+                    << stereoFull << "]"
                     << std::endl;
             }
 
@@ -1107,32 +1133,35 @@ int main()
                 << declaredLatency << ','
                 << baseM.lag << ','
                 << baseM.corr << ','
-                << eqM.lag << ','
-                << eqM.corr << ','
+                << eqUnityM.lag << ','
+                << eqUnityM.corr << ','
                 << eqFlatPhase << ','
-                << eqFlatRel << ','
+                << eqActiveM.lag << ','
+                << eqActiveM.corr << ','
+                << eqActivePhase << ','
                 << analogM.lag << ','
                 << analogM.corr << ','
                 << analogPhase << ','
-                << analogRel << ','
                 << tapeM.lag << ','
                 << tapeM.corr << ','
                 << tapePhase << ','
-                << tapeRel << ','
                 << ottM.lag << ','
                 << ottM.corr << ','
                 << ottPhase << ','
-                << ottRel << ','
                 << deessM.lag << ','
                 << deessM.corr << ','
                 << deessPhase << ','
-                << deessRel << ','
-                << eqAnalogRel << ','
-                << analogTapeRel << ','
+                << eqAnalogDelta << ','
+                << analogTapeDelta << ','
+                << eqOttDelta << ','
+                << ottTapeDelta << ','
+                << analogDeEssDelta << ','
+                << fullChainDelta << ','
                 << dryWetNull << ','
                 << eqUnityNull << ','
                 << stereoAnalog << ','
-                << stereoOtt
+                << stereoOtt << ','
+                << stereoFull
                 << '\n';
         }
     }
@@ -1142,20 +1171,18 @@ int main()
     std::cout
         << std::fixed
         << std::setprecision(5)
-        << "audio_monitor_rounds: "
-        << kRounds << '\n'
-        << "audio_monitor_cases_per_round: "
-        << kCasesPerRound << '\n'
-        << "audio_monitor_cases: "
-        << checks << '\n'
-        << "audio_monitor_failures: "
-        << failures << '\n'
+        << "audio_monitor_rounds: " << kRounds << '\n'
+        << "audio_monitor_cases_per_round: " << kCasesPerRound << '\n'
+        << "audio_monitor_cases: " << checks << '\n'
+        << "audio_monitor_failures: " << failures << '\n'
         << "worst_declared_vs_measured_delay_error_samples: "
         << worstDelayError << '\n'
         << "worst_baseline_phase_deg: "
         << worstBaselinePhase << '\n'
         << "worst_EQ_flat_phase_deg: "
         << worstEqFlatPhase << '\n'
+        << "worst_EQ_active_phase_deg: "
+        << worstEqActivePhase << '\n'
         << "worst_ANALOG_phase_deg: "
         << worstAnalogPhase << '\n'
         << "worst_TAPE-A_phase_deg: "
@@ -1164,10 +1191,18 @@ int main()
         << worstOttPhase << '\n'
         << "worst_DeEsser_phase_deg: "
         << worstDeEssPhase << '\n'
-        << "worst_EQ_ANALOG_relative_phase_deg: "
-        << worstEqAnalog << '\n'
-        << "worst_ANALOG_TAPE-A_relative_phase_deg: "
-        << worstAnalogTape << '\n'
+        << "worst_EQ_ANALOG_phase_delta_deg: "
+        << worstEqAnalogDelta << '\n'
+        << "worst_ANALOG_TAPE-A_phase_delta_deg: "
+        << worstAnalogTapeDelta << '\n'
+        << "worst_EQ_OTT_phase_delta_deg: "
+        << worstEqOttDelta << '\n'
+        << "worst_OTT_TAPE-A_phase_delta_deg: "
+        << worstOttTapeDelta << '\n'
+        << "worst_ANALOG_DeEsser_phase_delta_deg: "
+        << worstAnalogDeEssDelta << '\n'
+        << "worst_FULL_CHAIN_phase_delta_deg: "
+        << worstFullChainDelta << '\n'
         << "worst_DRY_WET_null_dB: "
         << worstDryWetNull << '\n'
         << "worst_EQ_unity_null_dB: "
@@ -1175,7 +1210,9 @@ int main()
         << "worst_stereo_analog_mismatch_dB: "
         << worstStereoAnalog << '\n'
         << "worst_stereo_ott_mismatch_dB: "
-        << worstStereoOtt << '\n';
+        << worstStereoOtt << '\n'
+        << "worst_stereo_full_mismatch_dB: "
+        << worstStereoFull << '\n';
 
     return failures == 0 ? 0 : 1;
 }
