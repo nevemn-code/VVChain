@@ -211,12 +211,13 @@ eqCanvas.addEventListener("wheel",e=>{
 let drag=-1,dragXover=-1;
 function showGraphHint(e,text){
   const r=eqCanvas.getBoundingClientRect();
-  const x=clamp(e.clientX-r.left+12,6,r.width-graphHint.offsetWidth-6);
-  const y=clamp(e.clientY-r.top+12,6,r.height-graphHint.offsetHeight-6);
   graphHint.textContent=text;
+  graphHint.hidden=false;
+  const pad=6,ox=12,oy=12;
+  const x=clamp(e.clientX-r.left+ox,pad,r.width-graphHint.offsetWidth-pad);
+  const y=clamp(e.clientY-r.top+oy,pad,r.height-graphHint.offsetHeight-pad);
   graphHint.style.left=x+"px";
   graphHint.style.top=y+"px";
-  graphHint.hidden=false
 }
 function hideGraphHint(){graphHint.hidden=true}
 eqCanvas.addEventListener("wheel",e=>{
@@ -232,21 +233,32 @@ eqCanvas.addEventListener("wheel",e=>{
 },{passive:false});
 eqCanvas.addEventListener("pointerdown",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,xo=state.ott.x.map(v=>logX(v,r.width));
-  for(let i=0;i<3;i++)if(Math.abs(xo[i]-x)<11){
-    dragXover=i;eqCanvas.setPointerCapture(e.pointerId);showGraphHint(e,"X"+(i+1)+"  "+graphFrequencyText(state.ott.x[i])+"   OVERLAP "+fmt(state.ott.overlap??50,0)+"%");return
+  showGraphHint(e,"CURSOR   "+graphFrequencyText(invLog(x/r.width))+"   "+(18-(y/r.height)*36>=0?"+":"")+fmt(18-(y/r.height)*36,1)+" dB");
+  for(let i=0;i<3;i++)if(Math.abs(xo[i]-x)<14){
+    dragXover=i;eqCanvas.setPointerCapture(e.pointerId);showGraphHint(e,"X"+(i+1)+"   "+graphFrequencyText(state.ott.x[i])+"   OVERLAP "+fmt(state.ott.overlap??50,0)+"%");return
   }
+  let nearest=-1,best=28;
   for(let b=0;b<4;b++){
     const px=logX(state.eq.freq[b],r.width),py=r.height-(clamp(state.eq.gain[b],-18,18)+18)/36*r.height;
-    if(Math.hypot(px-x,py-y)<15){drag=b;eqCanvas.setPointerCapture(e.pointerId);showGraphHint(e,"BAND "+(b+1)+"   "+graphFrequencyText(state.eq.freq[b])+"   "+(state.eq.gain[b]>=0?"+":"")+fmt(state.eq.gain[b],1)+" dB   Q "+fmt(state.eq.q[b],2));break}
+    const d=Math.hypot(px-x,py-y);
+    if(d<best){best=d;nearest=b}
+  }
+  if(nearest>=0){
+    drag=nearest;eqCanvas.setPointerCapture(e.pointerId);
+    showGraphHint(e,"BAND "+(drag+1)+"   "+graphFrequencyText(state.eq.freq[drag])+"   "+(state.eq.gain[drag]>=0?"+":"")+fmt(state.eq.gain[drag],1)+" dB   Q "+fmt(state.eq.q[drag],2));
   }
 });
 eqCanvas.addEventListener("pointermove",e=>{
   if(dragXover>=0){
     const r=eqCanvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,0,r.width);let f=invLog(x/r.width);
     if(dragXover===0)f=clamp(f,40,Math.min(1000,state.ott.x[1]-80));else if(dragXover===1)f=clamp(f,state.ott.x[0]+80,Math.min(5000,state.ott.x[2]-200));else f=clamp(f,state.ott.x[1]+200,18000);
-    state.ott.x[dragXover]=f;showGraphHint(e,"X"+(dragXover+1)+"  "+graphFrequencyText(f)+"   OVERLAP "+fmt(state.ott.overlap??50,0)+"%");sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return
+    state.ott.x[dragXover]=f;showGraphHint(e,"X"+(dragXover+1)+"   "+graphFrequencyText(f)+"   OVERLAP "+fmt(state.ott.overlap??50,0)+"%");sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return
   }
-  if(drag<0)return;
+  if(drag<0){
+    const r=eqCanvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,0,r.width),y=clamp(e.clientY-r.top,0,r.height);
+    showGraphHint(e,"CURSOR   "+graphFrequencyText(invLog(x/r.width))+"   "+(18-(y/r.height)*36>=0?"+":"")+fmt(18-(y/r.height)*36,1)+" dB");
+    return
+  }
   const r=eqCanvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,0,r.width),y=clamp(e.clientY-r.top,0,r.height);
   state.eq.freq[drag]=clamp(invLog(x/r.width),20,20000);state.eq.gain[drag]=clamp(18-(y/r.height)*36,-24,24);
   showGraphHint(e,"BAND "+(drag+1)+"   "+graphFrequencyText(state.eq.freq[drag])+"   "+(state.eq.gain[drag]>=0?"+":"")+fmt(state.eq.gain[drag],1)+" dB   Q "+fmt(state.eq.q[drag],2));
