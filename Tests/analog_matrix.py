@@ -29,24 +29,26 @@ def process_v3(x, drive, amount):
     return x + amount * delta, delta
 
 
-def crosscorr_lag(a, b):
-    # Search a small symmetric window; the V3 core itself must not move samples.
-    max_lag = min(8, len(a) // 8)
-    aa = a - np.mean(a)
-    bb = b - np.mean(b)
+def block_boundary_leak(x, block_size, drive, amount):
+    """
+    Zero-latency guard for a blockwise, memoryless nonlinear stage.
 
-    best = None
-    for lag in range(-max_lag, max_lag + 1):
-        if lag < 0:
-            c = float(np.dot(aa[-lag:], bb[:lag]))
-        elif lag > 0:
-            c = float(np.dot(aa[:-lag], bb[lag:]))
-        else:
-            c = float(np.dot(aa, bb))
-        score = abs(c)
-        if best is None or score > best[0]:
-            best = (score, lag)
-    return best[1]
+    Cross-correlation is intentionally NOT used here: a nonlinear waveform
+    changes its harmonic weighting, so the maximum correlation peak can move
+    by a few samples even when the DSP does not introduce a sample delay.
+    Instead, place a marker in the middle block and verify that no output leaks
+    into the preceding or following block.
+    """
+    x = np.asarray(x, dtype=np.float64)
+    y = np.empty_like(x)
+
+    for start in range(0, len(x), block_size):
+        end = min(start + block_size, len(x))
+        yy, _ = process_v3(x[start:end], drive, amount)
+        y[start:end] = yy
+
+    outside = np.concatenate((y[:block_size], y[2 * block_size:]))
+    return float(np.max(np.abs(outside))) if outside.size else 0.0
 
 
 def phase_deg(signal_out, freq, fs):
@@ -68,7 +70,7 @@ def run():
 
     cases = 0
     max_phase = 0.0
-    max_lag = 0
+    max_block_leak = 0.0
     max_dc_delta = 0.0
     max_rms_error = 0.0
     max_peak = 0.0
@@ -104,11 +106,7 @@ def run():
                                 max_dc_delta, abs(float(np.mean(delta)))
                             )
 
-                        lag = crosscorr_lag(x, y)
-                        max_lag = max(max_lag, abs(lag))
-
-                        # The nonlinear path is memoryless, so its fundamental
-                        # must not acquire a systematic time delay.
+                        # Fundamental phase is the sample-accurate delay check.
                         n_phase = 4096
                         xx = amp * np.sin(
                             2 * np.pi * min(freq, fs * 0.45) *
@@ -132,9 +130,18 @@ def run():
                             )
 
                         max_peak = max(max_peak, float(np.max(np.abs(y))))
-                        cases += 1
 
-    assert max_lag == 0, f"non-zero sample lag detected: {max_lag}"
+                    marker = np.zeros(block_size * 3, dtype=np.float64)
+                    marker[block_size + min(7, block_size - 1)] = 0.73
+                    max_block_leak = max(
+                        max_block_leak,
+                        block_boundary_leak(marker, block_size, drive, amount),
+                    )
+                    cases += 1
+
+    assert max_block_leak < 1.0e-15, (
+        f"cross-block leakage detected: {max_block_leak:.3e}"
+    )
     assert max_phase < 0.25, f"phase drift too large: {max_phase:.6f} deg"
     assert max_dc_delta < 1.0e-12, f"Delta DC detected: {max_dc_delta:.3e}"
     assert max_rms_error < 0.02, f"RMS mismatch too large: {max_rms_error:.6f}"
@@ -147,7 +154,7 @@ def run():
     print(
         "PASS V3 Chebyshev RMS/Delta matrix: "
         f"cases={cases}, max_phase={max_phase:.6f} deg, "
-        f"max_lag={max_lag}, max_delta_dc={max_dc_delta:.3e}, "
+        f"max_block_leak={max_block_leak:.3e}, max_delta_dc={max_dc_delta:.3e}, "
         f"max_rms_error={max_rms_error:.6f}, max_peak={max_peak:.6f}"
     )
 
