@@ -984,11 +984,11 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
     if (analogActive)
     {
         const float x1 = juce::jlimit(
-            40.f, 1000.f, p.ottX1);
+            80.f, 900.f, p.ottX1);
         const float x2 = juce::jlimit(
             x1 + 80.f, 5000.f, p.ottX2);
         const float x3 = juce::jlimit(
-            x2 + 200.f, static_cast<float>(osSr * 0.45), p.ottX3);
+            x2 + 200.f, static_cast<float>(osSr * 0.42), p.ottX3);
         const float crossoverQ =
             crossoverQFromOverlap(p.ottXoverOverlap);
 
