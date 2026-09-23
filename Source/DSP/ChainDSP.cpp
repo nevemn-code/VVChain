@@ -660,9 +660,9 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
     constexpr float dynKneeDb = 10.0f;
 
     // Sonnox-style Dynamic EQ:
-    // Offset = p.gain, Target = p.dynTarget.
-    // The dynamic gain is constrained between them. Dynamics is a 0..100%
-    // depth control, with a 10 dB soft knee around Threshold.
+    // Offset = p.gain. DYN_TARGET defines the maximum dynamic span.
+    // DYNAMICS is signed: negative = downward compression, positive = upward
+    // expansion; 0% = no dynamic movement. A 10 dB soft knee controls drive.
     // Detection remains feed-forward from pristine pre-EQ audio.
     for (int ch = 0; ch < osChannels; ++ch)
     {
@@ -682,8 +682,15 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 juce::jlimit(-24.f, 24.f, p.gain[band]);
             const float targetGain =
                 juce::jlimit(-24.f, 24.f, p.dynTarget[band]);
-            const float dynamics =
-                juce::jlimit(0.f, 100.f, p.dynDynamics[band]) * 0.01f;
+            const float dynamicsSigned =
+                juce::jlimit(-100.f, 100.f, p.dynDynamics[band]) * 0.01f;
+            const float dynamicsAmount = std::abs(dynamicsSigned);
+            const float dynamicsDirection =
+                dynamicsSigned >= 0.f ? 1.f : -1.f;
+            const float dynamicSpan =
+                std::abs(targetGain - offsetGain);
+            const float dynamicDelta =
+                dynamicsDirection * dynamicSpan;
             const double baseQ = juce::jlimit(
                 0.1, 18.0, static_cast<double>(p.q[band]));
 
@@ -716,7 +723,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             float& midActivation = dynMidActivation[band];
             float& sideActivation = dynSideActivation[band];
 
-            const float gainDelta = targetGain - offsetGain;
+            const float gainDelta = dynamicDelta;
 
             for (int sample = 0; sample < osSamples; ++sample)
             {
@@ -770,7 +777,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                         + (1.f - onsetSlowCoeff) * sideDb;
                 }
 
-                auto activationFor = [thresholdDb, dynamics](
+                auto activationFor = [thresholdDb, dynamicsAmount](
                     float detectorDb,
                     bool triggerBelow) noexcept
                 {
@@ -806,7 +813,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                         }
                     }
 
-                    return juce::jlimit(0.f, 1.f, a * dynamics);
+                    return juce::jlimit(0.f, 1.f, a * dynamicsAmount);
                 };
 
                 float midTriggerDb = midEnv;
