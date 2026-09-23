@@ -32,10 +32,10 @@ private:
     {
     public:
         FloatingValueBox()
+            : m_font(juce::FontOptions(9.0f).withStyle("Bold"))
         {
             setInterceptsMouseClicks(false, false);
             setMouseCursor(juce::MouseCursor::NormalCursor);
-            m_font = juce::FontOptions(9.0f).withStyle("Bold");
             setVisible(false);
         }
 
@@ -57,9 +57,9 @@ private:
             if (textChanged || m_boxWidth <= 0)
             {
                 const int wFreq =
-                    static_cast<int>(m_font.getStringWidthFloat(m_freqText));
+                    m_font.getStringWidth(m_freqText);
                 const int wGain =
-                    static_cast<int>(m_font.getStringWidthFloat(m_gainText));
+                    m_font.getStringWidth(m_gainText);
                 m_boxWidth = juce::jlimit(
                     118, 190, juce::jmax(wFreq, wGain) + 18);
             }
