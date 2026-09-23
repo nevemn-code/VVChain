@@ -242,7 +242,7 @@ def test_eq_xy_drag_math():
     assert 'DSP ERROR · AudioWorklet processor failed' in web
     assert '.knob.graphActive .dial' in web
 
-    # v1.0.5 module isolation / auto-bypass / hover value-box invariants.
+    # v1.0.6 module isolation / auto-bypass / hover value-box invariants.
     dsp_text = DSP.read_text(encoding='utf-8')
     assert 'ANALOG COLOR is an independent module' in dsp_text
     assert 'if (p.eqColorGlobalBypass || p.eqColorBypass[band])' in dsp_text
@@ -321,6 +321,17 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "VVCHAIN v1.0.6" in web
     assert "VVCHAIN v1.0.6" in editor
     assert "LAST 2026-09-23 22:10 TST" not in editor
+
+    # ANALOG must use the same shared four-band crossover topology as OTT/Type-A.
+    assert "std::array<juce::AudioBuffer<float>, 4> analogBandBuffers" in (
+        (ROOT / "Source" / "DSP" / "ChainDSP.h").read_text(encoding="utf-8"))
+    assert "updateCrossover(analogXover1, osSr, x1, crossoverQ)" in cpp
+    assert "updateCrossover(analogXover2, osSr, x2, crossoverQ)" in cpp
+    assert "updateCrossover(analogXover3, osSr, x3, crossoverQ)" in cpp
+    assert "analogBandBuffers[0]" in cpp
+    assert "analogBandBuffers[3]" in cpp
+    assert 'const bands=this.zoneBands(y,c,"analogLp",s.ott.x);' in worklet
+    assert "ANALOG COLOR is an independent four-band module" in cpp
 
 def test_deess_500_candidate_matrix():
     """Evaluate exactly 500 Attack/Release/Ratio candidates and lock four operating profiles."""
@@ -538,7 +549,7 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.5" in web
+    assert "VVCHAIN v1.0.6" in web
     assert "VVCHAIN v1.0.6" in cpp
     assert "LAST 2026-09-23 22:10 TST" not in web
     assert "LAST 2026-09-23 22:10 TST" not in cpp
