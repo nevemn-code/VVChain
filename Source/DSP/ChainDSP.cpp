@@ -1190,16 +1190,36 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
 void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    // TAPE-A is intentionally stateless: no envelope/attack/release dependent
-    // gain jump is allowed when a new transient enters the processor.
-    // The transfer curve is normalized so a 0 dBFS sample (|x| = 1) remains
-    // at unity. The degree control determines both drive depth and wet amount.
+    // TAPE-A startup fix: stateless normalized tanh. Attack / Release and
+    // envelope states are intentionally removed from the gain path.
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.atypeInputGainDb));
     const float outputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.atypeOutputGainDb));
     const float mix =
         juce::jlimit(0.f, 1.f, p.atypeMix / 100.f);
+
+    std::array<float, 4> driveParam {};
+    std::array<float, 4> staticMakeupMultiplier {};
+    std::array<float, 4> bandTrim {};
+
+    // Parameter/update section: calculate each band's fixed drive and makeup
+    // once per audio block, avoiding per-sample division.
+    for (size_t band = 0; band < 4; ++band)
+    {
+        const float depth =
+            juce::jlimit(0.f, 1.f, p.atypeDegree[band] / 100.f);
+        const float rawDriveParam = 1.0f + 1.5f * depth;
+        driveParam[band] = juce::jmax(1.0f, rawDriveParam);
+
+        float makeupDenominator = std::tanh(driveParam[band]);
+        makeupDenominator =
+            juce::jmax(makeupDenominator, 1.0e-6f);
+        staticMakeupMultiplier[band] = 1.0f / makeupDenominator;
+
+        bandTrim[band] = dbToGain(juce::jlimit(
+            -6.f, 6.f, p.atypeBandLevelDb[band]));
+    }
 
     for (int ch = 0; ch < channels; ++ch)
     {
@@ -1209,64 +1229,46 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
         {
             const float original = data[n];
             const float x = original * inputGain;
+            const bool right = ch == 1;
 
-            const float b1 = typeXover1.low(x, ch == 1);
-            const float b3 = typeXover2.high(x, ch == 1);
-            const float b4 = typeXover3.high(x, ch == 1);
-            const float b2 = x - b1 - b3;
-            const float bands[4] = { b1, b2, b3, b4 };
+            // Proper 4-band reconstruction:
+            // LP1 / (LP2-LP1) / (LP3-LP2) / HP3.
+            const float low1 = typeXover1.low(x, right);
+            const float low2 = typeXover2.low(x, right);
+            const float low3 = typeXover3.low(x, right);
+            const float band4 = typeXover3.high(x, right);
+            const float bands[4] = {
+                low1,
+                low2 - low1,
+                low3 - low2,
+                band4
+            };
 
             float enhancement = 0.f;
 
-            for (int band = 0; band < 4; ++band)
+            for (size_t band = 0; band < 4; ++band)
             {
-                if (p.atypeBandBypass[static_cast<size_t>(band)])
+                if (p.atypeBandBypass[band])
                     continue;
 
                 const float depth =
-                    juce::jlimit(0.f, 1.f,
-                                 p.atypeDegree[static_cast<size_t>(band)] / 100.f);
+                    juce::jlimit(0.f, 1.f, p.atypeDegree[band] / 100.f);
                 if (depth <= 0.f)
                     continue;
 
-                // Conservative drive mapping: defaults stay subtle, while 100%
-                // reaches a materially stronger tape-like transfer curve.
-                const float rawDriveParam = 1.0f + 1.5f * depth;
-                const float driveParam =
-                    juce::jmax(1.0f, rawDriveParam);
-
-                float makeupDenominator = std::tanh(driveParam);
-                makeupDenominator =
-                    juce::jmax(makeupDenominator, 1.0e-6f);
-
-                const float staticMakeupMultiplier =
-                    1.0f / makeupDenominator;
-
-                // Normalized tanh: an input of +1/-1 maps exactly to +1/-1.
-                // No envelope state, Attack or Release participates in the
-                // TAPE-A gain path, so the first incoming transient cannot
-                // acquire a state-dependent startup boost.
+                // Requested core:
+                // tanh(input * drive) / tanh(drive).
+                // For |input| <= 1, the 0 dBFS reference maps to unity.
                 const float driven =
-                    std::tanh(bands[band] * driveParam)
-                    * staticMakeupMultiplier;
+                    std::tanh(bands[band] * driveParam[band])
+                    * staticMakeupMultiplier[band];
+                const float processed = driven * bandTrim[band];
 
-                const float bandTrim =
-                    dbToGain(juce::jlimit(
-                        -6.f, 6.f,
-                        p.atypeBandLevelDb[static_cast<size_t>(band)]));
-
-                const float processed = driven * bandTrim;
-
-                // Degree also controls wetness: 0% is mathematically
-                // transparent, avoiding any hidden coloration at zero.
-                enhancement +=
-                    (processed - bands[band]) * depth;
+                enhancement += (processed - bands[band]) * depth;
             }
 
-            const float processed =
+            data[n] =
                 (x + enhancement * mix) * outputGain;
-
-            data[n] = processed;
         }
     }
 }
