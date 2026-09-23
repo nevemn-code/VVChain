@@ -1726,7 +1726,8 @@ void VVChainAudioProcessorEditor::setGraphControlState(
 
 void VVChainAudioProcessorEditor::clearGraphControlState()
 {
-    setGraphControlState({}, false);
+    juce::StringArray none;
+    setGraphControlState(none, false);
 }
 
 void VVChainAudioProcessorEditor::setGraphControlMoving(bool moving)
