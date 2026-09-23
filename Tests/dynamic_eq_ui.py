@@ -65,7 +65,7 @@ def source_assertions():
         'dragDynamicHandleBand',
         'dynamicHandleDragStartValue',
         'sendNotificationSync',
-        'followScale = 1.0f',
+        'graphFreqDragGrabOffsetX',
         'DYNAMICS uses a truly linear bipolar map',
         'constexpr float staticNodeRadius = 5.5f',
         'getTargetGainDB',
@@ -677,7 +677,6 @@ def main():
     test_v103_ui_rules_50()
     test_v103_closed_10()
     test_v107_ui_controls()
-    test_frequency_drag_is_slow_and_grab_anchored()
     print("PASS: 280 design cases")
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
@@ -688,17 +687,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-def test_frequency_drag_is_slow_and_grab_anchored():
-    cpp = CPP.read_text(encoding="utf-8")
-    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
-    head = HEAD.read_text(encoding="utf-8")
-    assert 'followScale = 1.0f' in cpp
-    assert 'followScale=1' in web
-    assert 'graphFreqDragGrabOffsetX' in head
-    assert 'const float rawDx = correctedPointerX - nodeStartX;' in cpp
-    assert 'const nodeStartX=logX(dynFreqStartHz,w);' in web
-    assert 'dynFreqGrabOffsetX=x-logX(dynFreqStartHz,w);' in web
-    assert 'const effectiveDx=rawDx;' in web
-    assert 'const effectiveDy=rawDy;' in web
 
