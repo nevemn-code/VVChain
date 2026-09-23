@@ -18,6 +18,23 @@ float crossoverQFromOverlap(float overlap)
     return 0.90f - 0.35f * t;
 }
 
+float dynamicThresholdFromDynamics(float dynamics) noexcept
+{
+    const float signedDynamics =
+        juce::jlimit(-100.f, 100.f, dynamics) * 0.01f;
+    const float thresholdShape =
+        std::pow(std::abs(signedDynamics), 0.65f);
+
+    // DYNAMICS is the sole macro:
+    // negative/compression -> lower threshold;
+    // positive/expansion   -> higher threshold.
+    return juce::jlimit(
+        -60.f, 0.f,
+        -12.f
+            + (signedDynamics < 0.f ? -12.f : 12.f)
+                * thresholdShape);
+}
+
     // Dynamic EQ threshold is intentionally not a stored parameter.
     // DYNAMICS is the single macro that defines both depth and threshold.
 
@@ -712,14 +729,9 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             const float dynamicsSigned =
                 juce::jlimit(-100.f, 100.f, p.dynDynamics[band]) * 0.01f;
             const float dynamicsAmount = std::abs(dynamicsSigned);
-            const float thresholdShape =
-                std::pow(dynamicsAmount, 0.65f);
             const float thresholdDb =
-                juce::jlimit(
-                    -60.f, 0.f,
-                    -12.f
-                        + (dynamicsSigned < 0.f ? -12.f : 12.f)
-                            * thresholdShape);
+                dynamicThresholdFromDynamics(
+                    p.dynDynamics[band]);
             const float attackCoeff = timeCoeff(
                 osSr, juce::jlimit(0.1f, 200.f, p.dynAttack[band]));
             const float releaseCoeff = timeCoeff(
