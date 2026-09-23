@@ -321,14 +321,12 @@ function dynamicEffectiveTargetGain(b){
   return clamp(offset+direction*dynamicRangeDb*amount,-36,36);
 }
 function dynamicBandAtPointer(x,y,w,h){
-  let best=22,band=-1;
+  let best=14,band=-1;
   const staticRadius=8;
   for(let b=0;b<4;b++){
     const n=dynamicTargetPoint(b,w,h);
     const d=Math.hypot(x-n.x,y-n.y);
-    const zeroRange=Math.abs(Number(state.dyn.dynamics[b]??0))<0.01;
-    const hit=zeroRange ? (d>=staticRadius&&d<22) : d<22;
-    if(hit&&d<best){best=d;band=b;}
+    if(d>=staticRadius&&d<14&&d<best){best=d;band=b;}
   }
   return band;
 }
@@ -344,10 +342,11 @@ function staticEqAtPointer(x,y,w,h){
 }
 function dynamicTargetAtPointer(x,y,w,h){
   let best=11,band=-1;
+  const staticRadius=8;
   for(let b=0;b<4;b++){
     const n=dynamicTargetPoint(b,w,h);
     const d=Math.hypot(x-n.x,y-n.y);
-    if(d<best){best=d;band=b;}
+    if(d>=staticRadius&&d<best){best=d;band=b;}
   }
   return band;
 }
