@@ -96,3 +96,5 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 
 ## CI/CD
 - CI 的 Git checkout 必須保留完整 history（`fetch-depth: 0`），因為 Plugin/Web Preview 同步檢查需要比較 push 前後 commit。
+
+- CI verification branch: workflow changes must be validated by an actual PR run before merge.
