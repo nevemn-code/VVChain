@@ -26,7 +26,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span><span class="tiny" id="cursorTime">0:00.000</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER · 2026-09-23 19:13</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER · 2026-09-23 19:28</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -153,10 +153,32 @@ async function ensureAudioGraph(){
     workletNode=new AudioWorkletNode(audioCtx,"vvchain-worklet",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});
     workletFaulted=false;
     workletNode.onprocessorerror=()=>{
+      const failedNode=workletNode;
       workletFaulted=true;
-      try{source?.stop()}catch{}
-      source=null;playing=false;
-      $("#status").textContent="DSP ERROR · AudioWorklet processor failed";
+      workletNode=null;
+      try{failedNode?.disconnect()}catch{}
+      // Never stop the BufferSource here: keep playback alive and fail over
+      // the already-running source to direct output.
+      if(source&&audioCtx){
+        directFallback=true;
+        try{source.disconnect()}catch{}
+        try{source.connect(audioCtx.destination)}catch{}
+        $("#status").textContent="PLAYING · DIRECT AUDIO FALLBACK · processor error";
+      }else{
+        $("#status").textContent="DSP ERROR · AudioWorklet processor failed";
+      }
+    };
+    workletNode.port.onmessageerror=()=>{
+      const failedNode=workletNode;
+      workletFaulted=true;
+      workletNode=null;
+      try{failedNode?.disconnect()}catch{}
+      if(source&&audioCtx){
+        directFallback=true;
+        try{source.disconnect()}catch{}
+        try{source.connect(audioCtx.destination)}catch{}
+        $("#status").textContent="PLAYING · DIRECT AUDIO FALLBACK · message error";
+      }
     };
     workletNode.port.onmessage=e=>{
       if(e.data?.type==="ready"){
@@ -176,21 +198,32 @@ async function ensureAudioGraph(){
   }
 }
 let workletFaulted=false;
-function reconnectProcessingPath(){
-  if(!directFallback||workletFaulted||!workletNode||!source)return false;
-  try{
-    source.disconnect();
-    source.connect(workletNode);
-    directFallback=false;
-    if(playing)$("#status").textContent="PLAYING · LOOP";
-    workletNode.port.postMessage({type:"params",state});
-    return true;
-  }catch{return false}
-}
+let paramSyncScheduled=false;
+let paramSyncRevision=0;
+function reconnectProcessingPath(){return false;}
 function sendParams(){
-  if(!workletNode)return;
-  if(directFallback&&!workletFaulted&&!reconnectProcessingPath())return;
-  if(!directFallback)workletNode.port.postMessage({type:"params",state});
+  // Coalesce high-rate knob/graph events into one full-state transfer per UI frame.
+  // This prevents a MessagePort backlog from starving the realtime render thread.
+  if(!workletNode||directFallback||workletFaulted)return;
+  if(paramSyncScheduled)return;
+  paramSyncScheduled=true;
+  const flush=()=>{
+    paramSyncScheduled=false;
+    if(!workletNode||directFallback||workletFaulted)return;
+    try{
+      paramSyncRevision++;
+      workletNode.port.postMessage({
+        type:"params",
+        revision:paramSyncRevision,
+        state:structuredClone(state)
+      });
+    }catch(err){
+      workletFaulted=true;
+      $("#status").textContent="DSP PARAM ERROR · "+(err?.message||"clone/post failed");
+    }
+  };
+  if(typeof requestAnimationFrame==="function")requestAnimationFrame(flush);
+  else setTimeout(flush,16);
 }
 const masterBypass=$("#masterBypass"),syncMaster=()=>{
   masterBypass.classList.toggle("on",state.masterBypass);
@@ -843,6 +876,7 @@ async function startPlayback(){
   directFallback=false;
   workletFaulted=false;
   workletHeartbeatSeen=false;
+  paramSyncScheduled=false;
   try{await ensureAudioGraph()}catch(err){
     directFallback=false;
     workletFaulted=true;
@@ -857,12 +891,6 @@ async function startPlayback(){
   source.start();playing=true;$("#status").textContent="PLAYING · LOOP";
   // Give the worklet enough time to publish its ready heartbeat before any
   // compatibility fallback. A transient startup delay must never disable DSP.
-  setTimeout(()=>{
-    if(playing&&!workletHeartbeatSeen&&!directFallback&&!workletFaulted){
-      $("#status").textContent="PLAYING · DSP STARTING";
-      try{workletNode?.port.postMessage({type:"params",state})}catch{}
-    }
-  },1200);
   setTimeout(()=>{
     if(playing&&!workletHeartbeatSeen&&!directFallback&&!workletFaulted){
       switchToDirectAudioFallback();
