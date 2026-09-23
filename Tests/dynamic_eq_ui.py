@@ -192,9 +192,9 @@ def test_eq_xy_drag_math():
     assert 'syncMsReadout();' not in web
     assert 'for(let b=0;b<4;b++){' in web
     assert 'DE-ESSER' in web
-    assert 'DELTA_MONITOR' in proc
-    assert 'p.deltaMonitor' in proc
-    assert 'if (p.deltaMonitor)' in dsp
+    assert 'DELTA_MONITOR' in PROC.read_text(encoding='utf-8')
+    assert 'p.deltaMonitor' in PROC.read_text(encoding='utf-8')
+    assert 'if (p.deltaMonitor)' in DSP.read_text(encoding='utf-8')
     assert 'class=\'deessPower\'' in web
     assert 'class=\'deltaBtn\'' in web
     assert '.knob.graphActive .dial' in web
