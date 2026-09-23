@@ -489,7 +489,7 @@ def test_v107_ui_controls():
     assert "event.position.x - graphFreqDragGrabOffsetX" not in cpp
     assert "followScale = 0.74f" not in cpp
     assert "const followScale=0.74" not in web
-    assert "const hzv=invLog(correctedX/w);" in web
+    assert "const hzv=invLog(clamp(x,0,w)/w);" in web
 
     # EQ / DE-ESS frequency knobs are intentionally slower than the base gain drag.
     assert "setDragSensitivity(900, 9000)" in cpp
