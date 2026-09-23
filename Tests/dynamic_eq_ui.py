@@ -36,12 +36,12 @@ def y_from_db(db, height=315.0):
     return height - height * clamp((db + 27.0) / 54.0, 0.0, 1.0)
 
 def db_from_y(y, height=315.0):
-    return clamp((height - y) / height * 54.0 - 27.0, -36.0, 36.0)
+    return clamp((height - y) / height * 72.0 - 36.0, -36.0, 36.0)
 
 def dynamic_target(offset, dyn_range, dynamics):
     amount = abs(clamp(dynamics, -100.0, 100.0)) / 100.0
     direction = -1.0 if dynamics < 0.0 else 1.0
-    return clamp(offset + direction * abs(dyn_range) * amount, -27.0, 27.0)
+    return clamp(offset + direction * abs(dyn_range) * amount, -36.0, 36.0)
 
 def source_assertions():
     cpp = CPP.read_text(encoding="utf-8")
@@ -71,7 +71,7 @@ def source_assertions():
         'getTargetGainDB',
         'peakMagnitudeDBAtFrequency',
         'getTargetGainDB',
-        'graphDb = 27.f',
+        'graphDb = 36.f',
         'juce::jlimit(-18.f, 18.f',
     ]
     for token in required:
@@ -169,7 +169,7 @@ def test_eq_xy_drag_math():
     assert 'dynamicRangeDb' in cpp
     assert 'dynamicOffsetDb' in cpp
     assert 'gainDeltaDb' in dsp
-    assert 'std::abs(juce::jlimit(-9.f, 9.f' in dsp
+    assert 'std::abs(juce::jlimit(-18.f, 18.f' in dsp
     assert 'dynamicRangeDb' in web
     assert 'const bool dynamicsEnabled = true;' in cpp
     assert 'const float markerY = graph.getBottom() - 18.f;' in cpp
@@ -191,42 +191,40 @@ def test_eq_xy_drag_math():
     assert 'for(let b=0;b<4;b++){' in web
     assert 'DE-ESSER' in web
 
-def test_dynamic_range_independence_500():
-    """500 deterministic boundary/random cases for Static + Dynamic dB math."""
+def test_dynamic_range_centered_500():
+    """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
     rng = random.Random(20260923_500)
     for _ in range(500):
         static_db = rng.uniform(-18.0, 18.0)
-        dynamic_range_db = rng.uniform(-9.0, 9.0)
+        dynamic_range_db = rng.uniform(-18.0, 18.0)
         dynamics_pct = rng.uniform(-100.0, 100.0)
         amount = abs(dynamics_pct) / 100.0
         direction = -1.0 if dynamics_pct < 0.0 else 1.0
         contribution = direction * abs(dynamic_range_db) * amount
 
-        expected = clamp(static_db + contribution, -27.0, 27.0)
+        expected = clamp(static_db + contribution, -36.0, 36.0)
         assert math.isfinite(expected)
-        assert -27.0 <= expected <= 27.0
+        assert -36.0 <= expected <= 36.0
+        assert abs(dynamic_target(static_db, dynamic_range_db, 0.0) - static_db) < 1e-9
 
-        zero_static = clamp(contribution, -27.0, 27.0)
-        plus_18 = clamp(18.0 + contribution, -27.0, 27.0)
-        minus_18 = clamp(-18.0 + contribution, -27.0, 27.0)
-        if abs(plus_18) < 27.0:
-            assert abs((plus_18 - 18.0) - contribution) < 1e-9
-        if abs(minus_18) < 27.0:
-            assert abs((minus_18 + 18.0) - contribution) < 1e-9
-        assert abs(zero_static - contribution) < 1e-9
+        if abs(static_db + contribution) <= 36.0:
+            assert abs(expected - (static_db + contribution)) < 1e-9
 
-    # Reference case: Static 0 dB + Dynamic Range -9 dB = -9 dB.
-    assert abs(clamp(-9.0, -27.0, 27.0) - (-9.0)) < 1e-9
+    # Exact semantic example:
+    # EQ +3 dB is the center; full dynamic span reaches +21 dB or -15 dB.
+    assert dynamic_target(3.0, 18.0, 100.0) == 21.0
+    assert dynamic_target(3.0, 18.0, -100.0) == -15.0
+    assert dynamic_target(3.0, 18.0, 0.0) == 3.0
 
-def test_dynamic_target_preserves_full_range_when_static_gain_moves():
-    # EQ Gain is the centre/offset. Dynamic EQ keeps a full ±9 dB range
-    # and translates with the static EQ gain instead of shrinking toward 0.
-    for static_gain in [-18.0, -12.0, -6.0, 0.0, 6.0, 12.0, 18.0]:
+def test_dynamic_target_preserves_eq_as_center():
+    # Changing EQ shifts the whole dynamic target around it.
+    for static_gain in [-18.0, -12.0, -6.0, 0.0, 3.0, 6.0, 12.0, 18.0]:
         for direction in [-1.0, 1.0]:
-            target = dynamic_target(static_gain, 9.0, direction * 100.0)
-            expected = clamp(static_gain + direction * 9.0, -27.0, 27.0)
+            target = dynamic_target(static_gain, 18.0, direction * 100.0)
+            expected = clamp(static_gain + direction * 18.0, -36.0, 36.0)
             assert abs(target - expected) < 1e-9
-            assert abs(abs(target - static_gain) - 9.0) < 1e-9
+            if -36.0 < expected < 36.0:
+                assert abs(abs(target - static_gain) - 18.0) < 1e-9
 
 
 def test_dynamic_target_is_linear():
@@ -286,17 +284,17 @@ def test_all_features_rounds():
     rng = random.Random(20260923)
     for _ in range(10):
         freq = rng.uniform(20, 20000)
-        gain = rng.uniform(-24, 24)
+        gain = rng.uniform(-18, 18)
         dyn = rng.uniform(-100, 100)
-        target = rng.uniform(-24, 24)
+        target = rng.uniform(-18, 18)
         q = rng.uniform(0.1, 18)
         attack = rng.uniform(0.1, 200)
         release = rng.uniform(5, 2000)
         ms = rng.uniform(0, 100)
         assert 20 <= freq <= 20000
-        assert -24 <= gain <= 24
+        assert -18 <= gain <= 18
         assert -100 <= dyn <= 100
-        assert -24 <= target <= 24
+        assert -18 <= target <= 18
         assert 0.1 <= q <= 18
         assert 0.1 <= attack <= 200
         assert 5 <= release <= 2000
@@ -330,8 +328,8 @@ def main():
     test_dynamic_drag_anchor_is_exact()
     test_dynamic_cross_zero_is_linear()
     test_eq_xy_drag_math()
-    test_dynamic_range_independence_500()
-    test_dynamic_target_preserves_full_range_when_static_gain_moves()
+    test_dynamic_range_centered_500()
+    test_dynamic_target_preserves_eq_as_center()
     test_dynamic_target_is_linear()
     test_threshold_is_linear()
     test_target_visual_direction()
