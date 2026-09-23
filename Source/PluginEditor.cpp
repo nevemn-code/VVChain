@@ -107,6 +107,26 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
         return;
     }
 
+    if (button.getComponentID() == "DYN_MODE")
+    {
+        const auto r = button.getLocalBounds().toFloat().reduced(1.0f);
+        const auto accent = monochrome
+            ? button.findColour(juce::ToggleButton::tickColourId).withSaturation(0.0f)
+            : button.findColour(juce::ToggleButton::tickColourId);
+        const bool on = button.getToggleState();
+
+        g.setColour(on ? juce::Colour(0xff353a42) : juce::Colour(0xff20242a));
+        g.fillRoundedRectangle(r, 5.0f);
+        g.setColour(accent.withAlpha(on ? .82f : .38f));
+        g.drawRoundedRectangle(r, 5.0f, on ? 1.1f : 1.0f);
+        g.setColour(juce::Colour(0xffe8edf2));
+        g.setFont(juce::FontOptions(7.2f).withStyle("Bold"));
+        g.drawText(button.getButtonText(),
+                   r.toNearestInt().reduced(3, 1),
+                   juce::Justification::centred);
+        return;
+    }
+
     if (button.getComponentID() == "ANALOG_MODE")
     {
         auto r = button.getLocalBounds().toFloat().reduced(1.0f);
@@ -263,6 +283,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
         dynDetectButtons[(size_t) b] =
             std::make_unique<juce::ToggleButton>("PEAK");
+        dynDetectButtons[(size_t) b]->setComponentID("DYN_MODE");
         dynDetectButtons[(size_t) b]->setLookAndFeel(&metalLook);
         dynDetectButtons[(size_t) b]->setColour(
             juce::ToggleButton::tickColourId, c);
@@ -287,6 +308,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
         dynTriggerButtons[(size_t) b] =
             std::make_unique<juce::ToggleButton>("ABOVE");
+        dynTriggerButtons[(size_t) b]->setComponentID("DYN_MODE");
         dynTriggerButtons[(size_t) b]->setLookAndFeel(&metalLook);
         dynTriggerButtons[(size_t) b]->setColour(
             juce::ToggleButton::tickColourId, c);
@@ -1848,8 +1870,8 @@ void VVChainAudioProcessorEditor::resized()
         const int innerW = cardW - 16;
         const int cellGap = 6;
         const int cellW = (innerW - cellGap * 2) / 3;
-        const int rowH = 78;
-        const int knobH = 64;
+        const int rowH = 80;
+        const int knobH = 62;
 
         const auto cell = [&](int row, int col)
         {
@@ -1878,7 +1900,7 @@ void VVChainAudioProcessorEditor::resized()
         if (dynDetectButtons[(size_t) b])
         {
             dynDetectButtons[(size_t) b]->setBounds(
-                innerX, modeY, halfW, 22);
+                innerX, modeY, halfW, 26);
             dynDetectButtons[(size_t) b]->setButtonText(
                 parameterValue("DYN_DETECT_ONSETS" + n) > 0.5f
                     ? "ONSETS" : "PEAK");
@@ -1887,7 +1909,7 @@ void VVChainAudioProcessorEditor::resized()
         if (dynTriggerButtons[(size_t) b])
         {
             dynTriggerButtons[(size_t) b]->setBounds(
-                innerX + halfW + 8, modeY, halfW, 22);
+                innerX + halfW + 8, modeY, halfW, 26);
             dynTriggerButtons[(size_t) b]->setButtonText(
                 parameterValue("DYN_TRIGGER_BELOW" + n) > 0.5f
                     ? "BELOW" : "ABOVE");
