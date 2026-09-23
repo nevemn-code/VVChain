@@ -220,6 +220,8 @@ private:
     float dynamicGainDragStartOffset = 0.0f;
     float dynamicTargetDragStartY = 0.0f;
     float dynamicTargetDragStartValue = 0.0f;
+    float graphFreqDragStartHz = 0.0f;
+    float graphFreqDragStartX = 0.0f;
     bool showGraphDragHint = false;
     juce::String graphDragHint;
     juce::Point<float> graphDragHintPosition {};
