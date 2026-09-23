@@ -135,17 +135,21 @@ class VVChainWorklet extends AudioWorkletProcessor {
       sd.activation=stc*(sd.activation??0)+(1-stc)*sa;
 
       const delta=dynamicsDirection*dynamicRangeDb;
-      const mChange=delta*md.activation*mw;
-      const sChange=delta*sd.activation*sw;
+      const maxUp=this.clamp(18-offset,-18,18);
+      const maxDown=this.clamp(-18-offset,-18,18);
+      const mChange=this.clamp(delta*md.activation*mw,maxDown,maxUp);
+      const sChange=this.clamp(delta*sd.activation*sw,maxDown,maxUp);
       s.dyn.gainMid[b]=.90*Number(s.dyn.gainMid[b]||0)+.10*mChange;
       s.dyn.gainSide[b]=.90*Number(s.dyn.gainSide[b]||0)+.10*sChange;
 
-      const mGain=this.clamp(offset+s.dyn.gainMid[b],-36,36);
-      const sGain=this.clamp(offset+s.dyn.gainSide[b],-36,36);
+      const mGain=this.clamp(offset+s.dyn.gainMid[b],-18,18);
+      const sGain=this.clamp(offset+s.dyn.gainSide[b],-18,18);
+      const mDynamicGain=mGain-offset;
+      const sDynamicGain=sGain-offset;
       const mq=this.clamp(baseQ/(1+.045*Math.abs(mGain)),.1,18);
       const sq=this.clamp(baseQ/(1+.045*Math.abs(sGain)),.1,18);
-      const mCoef=this.peak(sampleRate,f,mq,mGain);
-      const sCoef=this.peak(sampleRate,f,sq,sGain);
+      const mCoef=this.peak(sampleRate,f,mq,mDynamicGain);
+      const sCoef=this.peak(sampleRate,f,sq,sDynamicGain);
 
       md.eq.z1=md.eq.z1||0;sd.eq.z1=sd.eq.z1||0;
       mid=this.biquad(mid,mCoef,md.eq);
