@@ -215,13 +215,9 @@ private:
     int dragOffsetBand = -1;
     int dragXover = -1;
     int dragDynamicMsBand = -1;
-    int dragDynamicTargetBand = -1;
     int hoverDynamicBand = -1;
-    float dynamicFreqDragStartHz = 0.0f;
-    float dynamicFreqDragStartX = 0.0f;
     float dynamicGainDragStartY = 0.0f;
     float dynamicGainDragStartOffset = 0.0f;
-    float dynamicGainDragStartTarget = 0.0f;
     float dynamicTargetDragStartY = 0.0f;
     float dynamicTargetDragStartValue = 0.0f;
     bool showGraphDragHint = false;
