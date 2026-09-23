@@ -330,9 +330,9 @@ def test_v103_ui_rules_50():
     assert "deessLocalBypassButton" in head
     assert 'DEESS_BYPASS", *deessLocalBypassButton' in cpp
 
-    assert "const correctedX=clamp(x-dynFreqGrabOffsetX,0,w);" in web
-    assert "const rawDx=correctedX-logX(dynTargetStartFreq,w),rawDy=y-dynDynamicsStartY;" in web
-    assert "const hzv=invLog(correctedX/w);" in web
+    assert "const hzv=invLog(clamp(x,0,w)/w);" in web
+    assert "const targetGain=clamp(18-(y/Math.max(1,h))*36,-18,18);" in web
+    assert "state.eq.freq[dragBand]=hzv" in web
     assert "state.eq.freq[dragBand]=hzv" in web
     assert 'setParameter("EQ" + n + "_FREQ", hz);' in cpp
     assert 'setParameter("DYN_DYNAMICS" + n, dynamics);' in cpp
