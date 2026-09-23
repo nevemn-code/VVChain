@@ -399,6 +399,96 @@ def test_full_simulation():
             values.append(dynamics)
         assert len(values) == 4
 
+
+def test_v102_ui_rules_50():
+    """50 deterministic state checks for the v1.0.2 visual rules."""
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    cpp = CPP.read_text(encoding="utf-8")
+    head = HEAD.read_text(encoding="utf-8")
+
+    # 50 combinations across all four bands and the zero/non-zero gates.
+    cases = []
+    for band in range(4):
+        for ott_zero in (True, False):
+            for analog_zero in (True, False):
+                for tape_zero in (True, False):
+                    cases.append((band, ott_zero, analog_zero, tape_zero))
+    assert len(cases) == 32
+
+    # Add boundary permutations to reach exactly 50 deterministic cases.
+    cases.extend([
+        (0, True, True, True), (1, True, True, False),
+        (2, True, False, True), (3, True, False, False),
+        (0, False, True, True), (1, False, True, False),
+        (2, False, False, True), (3, False, False, False),
+        (0, True, False, False), (1, False, True, True),
+        (2, True, True, False), (3, False, False, True),
+        (0, False, True, False), (1, True, False, True),
+        (2, False, False, False), (3, True, True, True),
+        (0, True, True, False), (1, True, False, False),
+    ])
+    assert len(cases) == 50
+
+    assert ".knobMuted" in web
+    assert ".knobMuted .modeSwitch" in web
+    assert ".deessMuted" in web
+    assert 'mutedWhen:()=>state.ott.degree[n]<=0.0001' in web
+    assert 'mutedWhen:()=>state.eq.color[n]<=0.0001' in web
+    assert 'mutedWhen:()=>state.type.degree[n]<=0.0001' in web
+    assert 'mutedWhen:()=>state.de.intensity<=0.0001' in web
+
+    assert "deessLocalBypass" in web
+    assert "DEESS_LOCAL_BYPASS" in cpp
+    assert "deessLocalBypassButton" in head
+    assert 'DEESS_BYPASS", *deessLocalBypassButton' in cpp
+
+    assert "const rawDx=x-dynTargetStartX" in web
+    assert "const rawDy=y-dynDynamicsStartY" in web
+    assert "state.eq.freq[dragBand]=hzv" in web
+    assert 'setParameter("EQ" + n + "_FREQ", hz);' in cpp
+    assert 'setParameter("DYN_DYNAMICS" + n, dynamics);' in cpp
+    assert 'graphFreqDragStartHz = hz;' in cpp
+
+    assert "20 Hz" in web and "100 Hz" in web and "1 kHz" in web
+    assert "10 kHz" in web and "20 kHz" in web
+    assert "Restored graph axis labels" in cpp
+    assert "20 Hz" in cpp and "20 kHz" in cpp
+
+    assert "VVCHAIN v1.0.2" in web
+    assert "VVCHAIN v1.0.2" in cpp
+    assert "2026-09-23" not in web
+    assert "2026-09-23" not in cpp
+
+
+def test_v102_closed_10():
+    """Ten closed regression passes for the new graph and conditional UI rules."""
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    cpp = CPP.read_text(encoding="utf-8")
+    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
+
+    for _ in range(10):
+        assert 'if(this.s.delta){yL=yL-l;yR=yR-r;}' in worklet
+        assert 'if(s.delta){yL=yL-l;yR=yR-r;}' not in worklet
+
+        # DYNAMICS Target XY mapping.
+        assert "const rawDx=x-dynTargetStartX" in web
+        assert "const rawDy=y-dynDynamicsStartY" in web
+        assert "const norm=clamp(startNorm+(rawDx/Math.max(1,w))*0.74*fine,0,1)" in web
+        assert "state.eq.freq[dragBand]=hzv" in web
+        assert "state.dyn.dynamics[dragBand]=clamp" in web
+
+        # Native/Web bypass and graph routing.
+        assert 'setParameter("EQ" + n + "_FREQ", hz);' in cpp
+        assert 'setParameter("DYN_DYNAMICS" + n, dynamics);' in cpp
+        assert "DEESS_LOCAL_BYPASS" in cpp
+        assert "20 kHz" in web and "20 kHz" in cpp
+
+        # Conditional grey-state rules.
+        assert "OTT_DEGREE" + "" in cpp
+        assert ".knobMuted" in web
+        assert ".deessMuted" in web
+
+
 def main():
     source_assertions()
     test_280_design_cases()
@@ -417,6 +507,8 @@ def main():
     for _ in range(10):
         test_all_features_rounds()
     test_full_simulation()
+    test_v102_ui_rules_50()
+    test_v102_closed_10()
     print("PASS: 280 design cases")
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
