@@ -127,7 +127,7 @@ void VVChainDSP::updateDynamicPeak(Biquad& filter, double fs, double f0,
     const double safeF = juce::jlimit(10.0, fs * 0.45, f0);
     const double safeQ = juce::jlimit(0.05, 30.0, q);
     const double A = std::pow(
-        10.0, juce::jlimit(-27.0, 27.0, gainDb) / 40.0);
+        10.0, juce::jlimit(-36.0, 36.0, gainDb) / 40.0);
     const double w0 = juce::MathConstants<double>::twoPi * safeF / fs;
     const double c = std::cos(w0);
     const double s = std::sin(w0);
@@ -677,7 +677,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
     constexpr float dynKneeDb = 10.0f;
 
     // Sonnox-style Dynamic EQ:
-    // Offset = p.gain. DYN_TARGET defines the maximum dynamic span.
+    // Offset = p.gain. DYN_TARGET defines the maximum dynamic span around that EQ offset.
     // DYNAMICS is signed: negative = downward compression, positive = upward
     // expansion; 0% = no dynamic movement. A 10 dB soft knee controls drive.
     // Detection remains feed-forward from pristine pre-EQ audio.
@@ -698,7 +698,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             const float offsetGain =
                 juce::jlimit(-18.f, 18.f, p.gain[band]);
             const float dynamicRangeDb =
-                std::abs(juce::jlimit(-9.f, 9.f, p.dynTarget[band]));
+                std::abs(juce::jlimit(-18.f, 18.f, p.dynTarget[band]));
             const float dynamicsDirection =
                 p.dynDynamics[band] < 0.f ? -1.f : 1.f;
             const float dynamicDeltaDb =
