@@ -26,7 +26,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span><span class="tiny" id="cursorTime">0:00.000</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER · 2026-09-23 19:32</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER · 2026-09-23 19:33</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -73,8 +73,8 @@ async function ensureAudioGraph(){
       try{failedNode?.disconnect()}catch{}
       // Never stop the BufferSource here: keep playback alive and fail over
       // the already-running source to direct output.
+      directFallback=true;
       if(source&&audioCtx){
-        directFallback=true;
         try{source.disconnect()}catch{}
         try{source.connect(audioCtx.destination)}catch{}
         $("#status").textContent="PLAYING · DIRECT AUDIO FALLBACK · processor error";
@@ -87,8 +87,8 @@ async function ensureAudioGraph(){
       workletFaulted=true;
       workletNode=null;
       try{failedNode?.disconnect()}catch{}
+      directFallback=true;
       if(source&&audioCtx){
-        directFallback=true;
         try{source.disconnect()}catch{}
         try{source.connect(audioCtx.destination)}catch{}
         $("#status").textContent="PLAYING · DIRECT AUDIO FALLBACK · message error";
@@ -100,6 +100,21 @@ async function ensureAudioGraph(){
         if(playing)$("#status").textContent="PLAYING · LOOP";
         return;
       }
+      if(e.data?.type==="error"){
+        const failedNode=workletNode;
+        workletFaulted=true;
+        workletNode=null;
+        directFallback=true;
+        try{failedNode?.disconnect()}catch{}
+        if(source&&audioCtx){
+          try{source.disconnect()}catch{}
+          try{source.connect(audioCtx.destination)}catch{}
+          $("#status").textContent="PLAYING · DIRECT AUDIO FALLBACK · "+(e.data.message||"worklet error");
+        }else{
+          $("#status").textContent="DSP ERROR · "+(e.data.message||"worklet error");
+        }
+        return;
+      }
       if(e.data?.type==="dynMeters"){
         workletHeartbeatSeen=true;
         state.dyn.gainMid=Array.from(e.data.mid||[0,0,0,0]);
@@ -108,7 +123,7 @@ async function ensureAudioGraph(){
       }
     };
     workletNode.connect(audioCtx.destination);
-    workletNode.port.postMessage({type:"params",state});
+    sendParams();
   }
 }
 let workletFaulted=false;
@@ -133,7 +148,14 @@ function sendParams(){
       });
     }catch(err){
       workletFaulted=true;
-      $("#status").textContent="DSP PARAM ERROR · "+(err?.message||"clone/post failed");
+      directFallback=true;
+      if(source&&audioCtx){
+        try{source.disconnect()}catch{}
+        try{source.connect(audioCtx.destination)}catch{}
+        $("#status").textContent="PLAYING · DIRECT AUDIO FALLBACK · parameter error";
+      }else{
+        $("#status").textContent="DSP PARAM ERROR · "+(err?.message||"clone/post failed");
+      }
     }
   };
   if(typeof requestAnimationFrame==="function")requestAnimationFrame(flush);
