@@ -363,6 +363,7 @@ makeKnob(ottGrid,{label:"ATTACK",get:()=>state.ott.compA[n],set:v=>state.ott.com
 makeKnob(ottGrid,{label:"RELEASE",get:()=>state.ott.compR[n],set:v=>state.ott.compR[n]=v,min:10,max:2500,suffix:" ms",accent:"#facc15",formatDigits:0,formatValue:()=>fmt(effectiveCompReleaseMs(n),0)+" ms",mutedWhen:()=>state.ott.degree[n]<=0.0001});
 
 // ANALOG COLOR baseline locked to Deploy VVChain Web Preview #443.
+// ANALOG #443
 const analogKnob=makeKnob(bottomGrid,{label:"ANALOG COLOR",get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:100,suffix:" %",accent:"#60a5fa",mutedWhen:()=>state.eq.color[n]<=0.0001});
 analogKnob.classList.add("analogKnob");
 let syncTapeLed=()=>{};
