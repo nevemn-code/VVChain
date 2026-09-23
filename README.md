@@ -74,7 +74,7 @@ https://nevemn-code.github.io/VVChain/
 ## GitHub 開發規則
 - 強制規則文件：`.github/VVCHAIN_RULES.md`
 - 任何 `docs/*.html` 修改，都必須同步更新頁面版本號；不使用日期／時間碼作為版本識別。
-- ANALOG 正式架構固定為 4-band V3 CHEBYSHEV；TT/SS 各段獨立，不得合併成單一全頻處理。
+- ANALOG 正式基準固定為 Deploy VVChain Web Preview #443；TT/SS/X2 各段獨立，不得重新引入 V1/V2/V3 選擇頁。
 
 ## Validation
 - Tests/reference_stress.py：DSP / 參數空間 deterministic regression，包含 500 組 TT/SS 與 1,200 組頻率／振幅染色掃描，共 3,685 組案例。
@@ -100,7 +100,15 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
-## v1.0.7
+## v1.0.8
+
+- 上方 EQ / DYNAMICS 改為絕對游標座標映射；X/Y 都直接跟隨滑鼠，不再用累積位移或抓取偏移造成越跑越遠。
+- Graph 可用 GAIN 視覺範圍調整為 ±18 dB，與實際參數範圍一致。
+- DE-ESS MODE 改為 I / II / III / IV 四段撥桿。
+- DE-ESSER 右側 BYPASS 位置／尺寸重新對齊；MIX / OUT 下移。
+- LOAD AUDIO 後的 0:00.000 固定緊接在右側，不再因版面擠壓跑到其他列。
+- ANALOG COLOR 正式基準改為 Deploy VVChain Web Preview #443；移除 V1 / V2 / V3 舊頁面。
+- ANALOG COLOR X2 僅將該段染色 delta 放大 1.6 倍。
 
 - 上方 EQ／DYNAMICS 頻率拖曳改為直接依滑鼠座標反算，保留抓取偏移，不再使用會造成超前的跟隨倍率。
 - DE-ESS MODE 改為四段離散旋鈕，10–14 點鐘方向顯示 I／II／III／IV。
