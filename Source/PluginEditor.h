@@ -231,6 +231,7 @@ private:
     int dragBand = -1;
     int dragOffsetBand = -1;
     int dragXover = -1;
+    int dragOverlapXover = -1;
     int dragDynamicMsBand = -1;
     int dragDynamicHandleBand = -1;
     int hoverDynamicBand = -1;
@@ -244,6 +245,8 @@ private:
     float graphFreqDragStartHz = 0.0f;
     float graphFreqDragStartX = 0.0f;
     float graphFreqDragGrabOffsetX = 0.0f;
+    float overlapDragStartY = 0.0f;
+    float overlapDragStartValue = 50.0f;
     bool showGraphDragHint = false;
     juce::String graphDragHint;
     juce::Point<float> graphDragHintPosition {};
