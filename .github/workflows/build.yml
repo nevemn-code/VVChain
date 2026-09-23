@@ -132,3 +132,54 @@ jobs:
 
     - name: Run V3 ANALOG Chebyshev Matrix
       run: python Tests/analog_matrix.py
+
+  windows_vst3:
+    name: Windows VST3 Release
+    runs-on: windows-2025-vs2026
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+
+    - name: Configure CMake (VS 2026 x64)
+      shell: pwsh
+      run: |
+        cmake -S . -B build-vst3 `
+          -G "Visual Studio 18 2026" `
+          -A x64 `
+          -DVVCHAIN_BUILD_STANDALONE=OFF `
+          -DVVCHAIN_ENABLE_AAX=OFF
+
+    - name: Build Windows VST3
+      shell: pwsh
+      run: |
+        cmake --build build-vst3 --config Release --parallel
+
+    - name: Verify VST3 output
+      shell: pwsh
+      run: |
+        $plugin = Get-ChildItem -Path build-vst3 -Recurse -Directory -Filter "VVChain.vst3" |
+          Select-Object -First 1
+        if ($null -eq $plugin) {
+          Write-Error "VVChain.vst3 was not produced."
+        }
+        Write-Host "VST3: $($plugin.FullName)"
+        "VST3_PATH=$($plugin.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+    - name: Package Windows VST3
+      shell: pwsh
+      run: |
+        $zip = Join-Path $env:GITHUB_WORKSPACE "VVChain-v1.0.7-Windows-VST3.zip"
+        Compress-Archive -Path $env:VST3_PATH -DestinationPath $zip -Force
+        if (-not (Test-Path $zip)) {
+          Write-Error "VST3 ZIP was not created."
+        }
+        Write-Host "Artifact: $zip"
+
+    - name: Upload Windows VST3 artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: VVChain-v1.0.7-Windows-VST3
+        path: VVChain-v1.0.7-Windows-VST3.zip
+        if-no-files-found: error
