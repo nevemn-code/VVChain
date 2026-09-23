@@ -483,10 +483,10 @@ def test_v107_ui_controls():
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
     worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
 
-    # Graph frequency follows the actual pointer coordinate with grab-offset preservation.
-    assert "graphFreqDragGrabOffsetX =" in cpp
+    # Graph frequency follows the actual pointer coordinate with no grab-offset accumulation.
     assert "graphXToFrequency(graph, correctedX)" in cpp
-    assert "event.position.x - graphFreqDragGrabOffsetX" in cpp
+    assert "event.position.x);" in cpp
+    assert "event.position.x - graphFreqDragGrabOffsetX" not in cpp
     assert "followScale = 0.74f" not in cpp
     assert "const followScale=0.74" not in web
     assert "const hzv=invLog(correctedX/w);" in web
