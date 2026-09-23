@@ -95,9 +95,9 @@ private:
             // Fixed width avoids repeated font-metric work on every mouse move.
             // The box is deliberately compact but wide enough for frequency + signed dB.
             if (textChanged || m_boxWidth <= 0)
-                m_boxWidth = 150;
+                m_boxWidth = 132;
 
-            constexpr int boxHeight = 36;
+            constexpr int boxHeight = 40;
             int targetX = mousePos.x + 14;
             int targetY = mousePos.y - boxHeight - 14;
 
@@ -138,11 +138,11 @@ private:
             g.setColour(juce::Colours::white);
             g.setFont(m_font);
             g.drawText(
-                m_freqText, 7, 4, getWidth() - 14, 13,
-                juce::Justification::centred);
+                m_freqText, 6, 4, getWidth() - 12, 15,
+                juce::Justification::centredLeft);
             g.drawText(
-                m_gainText, 7, 19, getWidth() - 14, 13,
-                juce::Justification::centred);
+                m_gainText, 6, 21, getWidth() - 12, 15,
+                juce::Justification::centredLeft);
         }
 
     private:
