@@ -697,8 +697,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 20.0, osSr * 0.45, static_cast<double>(p.freq[band]));
             const float offsetGain =
                 juce::jlimit(-18.f, 18.f, p.gain[band]);
-            const float dynamicRangeDb =
-                std::abs(juce::jlimit(-18.f, 18.f, p.dynTarget[band]));
+            const float dynamicRangeDb = 18.0f;
             const float dynamicsDirection =
                 p.dynDynamics[band] < 0.f ? -1.f : 1.f;
             const float dynamicDeltaDb =
