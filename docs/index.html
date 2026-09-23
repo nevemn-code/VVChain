@@ -529,7 +529,7 @@ function drawEQ(){
   eqCtx.font="bold 8px Consolas";
   eqCtx.fillText("OXFORD-STYLE DYNAMIC EQ · OFFSET / TARGET / LIVE GAIN · RIGHT CLICK = M/S",12,h-8);
 }
-let expandedDynamicBand=-1,hoverDynamicBand=-1,dragMode=0,dragBand=-1,dragXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dragDynamicHandleBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0,dynHandleStartY=0,dynHandleStartValue=0;
+let expandedDynamicBand=-1,hoverDynamicBand=-1,dragMode=0,dragBand=-1,dragXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dragDynamicHandleBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynFreqGrabOffsetX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0,dynHandleStartY=0,dynHandleStartValue=0;
 function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRatio||1;eqCanvas.width=Math.max(1,Math.round(r.width*d));eqCanvas.height=Math.max(1,Math.round(r.height*d));eqCtx.setTransform(d,0,0,d,0,0);drawEQ();}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function showGraphHint(e,text){const r=eqCanvas.getBoundingClientRect();graphHint.textContent=text;graphHint.hidden=false;const pad=6,ox=12,oy=12,x=clamp(e.clientX-r.left+ox,pad,r.width-graphHint.offsetWidth-pad),y=clamp(e.clientY-r.top+oy,pad,r.height-graphHint.offsetHeight-pad);graphHint.style.left=x+"px";graphHint.style.top=y+"px";}
