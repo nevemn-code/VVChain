@@ -159,7 +159,13 @@ def test_eq_xy_drag_math():
     assert 'handleX=clamp(target.x+11,18,w-12)' in web
     assert 'Dedicated DYNAMICS arrow handle' in cpp
     assert 'const bool dynamicsEnabled = true;' in cpp
-    assert 'const float markerY = graph.getY() + 20.f;' in cpp
+    assert 'const float markerY = graph.getBottom() - 18.f;' in cpp
+    assert 'small cross marker at the bottom' in cpp
+    assert 'const markerY=h-18' in web
+    assert 'DYNAMIC EQ</span>' not in web
+    assert 'msReadout' not in web
+    assert 'ottGrid.appendChild(ottLed);bottomGrid.appendChild(typeLed);' in web
+    assert 'r.getRight() - 3, r.getY() + 13, 16, 16' in cpp
     assert 'hoverXover' in head
     assert 'markerY=20' in web
     assert 'hoverXover' in web
