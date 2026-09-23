@@ -300,7 +300,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const target=this.s.masterBypass?1:0,step=1/64;
       if(this.masterBlend<target)this.masterBlend=Math.min(target,this.masterBlend+step);else if(this.masterBlend>target)this.masterBlend=Math.max(target,this.masterBlend-step);
       yL=yL*(1-this.masterBlend)+l*this.masterBlend;yR=yR*(1-this.masterBlend)+r*this.masterBlend;
-      if(s.delta){yL=yL-l;yR=yR-r;}
+      if(this.s.delta){yL=yL-l;yR=yR-r;}
       out[0][n]=this.finite(yL);if(out[1])out[1][n]=this.finite(yR);
     }
     // UI meters are diagnostic only; ~10 Hz is enough and keeps MessagePort
