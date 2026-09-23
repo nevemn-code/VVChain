@@ -124,6 +124,9 @@ jobs:
     - name: Install Python test dependencies
       run: python -m pip install --upgrade numpy scipy
 
+    - name: TPT Bell 50-case static + 50-case modulation regression
+      run: python Tests/tpt_bell_regression.py
+
     - name: Dynamic EQ UI/control regression matrix
       run: python Tests/dynamic_eq_ui.py
 
