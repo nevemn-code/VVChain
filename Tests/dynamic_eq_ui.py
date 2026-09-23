@@ -482,7 +482,7 @@ def test_v103_closed_10():
 
         # DYNAMICS Target XY mapping.
         assert "const rawDx=x-dynTargetStartX" in web
-        assert "const rawDy=y-dynDynamicsStartY" in web
+        assert "const rawDx=x-dynTargetStartX,rawDy=y-dynDynamicsStartY;" in web
         assert "const norm=clamp(startNorm+(rawDx/Math.max(1,w))*0.74*fine,0,1)" in web
         assert "state.eq.freq[dragBand]=hzv" in web
         assert "state.dyn.dynamics[dragBand]=clamp" in web
