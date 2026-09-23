@@ -447,7 +447,7 @@ def test_v103_ui_rules_50():
     assert 'DEESS_BYPASS", *deessLocalBypassButton' in cpp
 
     assert "const rawDx=x-dynTargetStartX" in web
-    assert "const rawDy=y-dynDynamicsStartY" in web
+    assert "const rawDx=x-dynTargetStartX,rawDy=y-dynDynamicsStartY;" in web
     assert "state.eq.freq[dragBand]=hzv" in web
     assert 'setParameter("EQ" + n + "_FREQ", hz);' in cpp
     assert 'setParameter("DYN_DYNAMICS" + n, dynamics);' in cpp
