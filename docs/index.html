@@ -481,6 +481,14 @@ function drawEQ(){
     // Live gain.
     eqCtx.fillStyle="#fff";
     eqCtx.beginPath();eqCtx.arc(n.x,n.y,6,0,Math.PI*2);eqCtx.fill();
+    // Dedicated DYNAMICS drag handle beside the node.
+    // Up = +DYNAMICS / expansion, down = -DYNAMICS / compression.
+    const handleX=clamp(n.x+20,18,w-12),handleY=n.y;
+    eqCtx.strokeStyle=c+"ee";eqCtx.lineWidth=1.4;
+    eqCtx.beginPath();eqCtx.moveTo(handleX,handleY-8);eqCtx.lineTo(handleX,handleY+8);eqCtx.stroke();
+    eqCtx.lineWidth=1.6;
+    eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY-4);eqCtx.lineTo(handleX,handleY-8);eqCtx.lineTo(handleX+4,handleY-4);eqCtx.stroke();
+    eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY+4);eqCtx.lineTo(handleX,handleY+8);eqCtx.lineTo(handleX+4,handleY+4);eqCtx.stroke();
 
     const mid=clamp(Math.abs(+state.dyn.gainMid[b]||0),0,12)/12;
     const side=clamp(Math.abs(+state.dyn.gainSide[b]||0),0,12)/12;
@@ -521,7 +529,7 @@ function drawEQ(){
   eqCtx.font="bold 8px Consolas";
   eqCtx.fillText("OXFORD-STYLE DYNAMIC EQ · OFFSET / TARGET / LIVE GAIN · RIGHT CLICK = M/S",12,h-8);
 }
-let expandedDynamicBand=-1,hoverDynamicBand=-1,dragMode=0,dragBand=-1,dragXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0;
+let expandedDynamicBand=-1,hoverDynamicBand=-1,dragMode=0,dragBand=-1,dragXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dragDynamicHandleBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0,dynHandleStartY=0,dynHandleStartValue=0;
 function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRatio||1;eqCanvas.width=Math.max(1,Math.round(r.width*d));eqCanvas.height=Math.max(1,Math.round(r.height*d));eqCtx.setTransform(d,0,0,d,0,0);drawEQ();}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function showGraphHint(e,text){const r=eqCanvas.getBoundingClientRect();graphHint.textContent=text;graphHint.hidden=false;const pad=6,ox=12,oy=12,x=clamp(e.clientX-r.left+ox,pad,r.width-graphHint.offsetWidth-pad),y=clamp(e.clientY-r.top+oy,pad,r.height-graphHint.offsetHeight-pad);graphHint.style.left=x+"px";graphHint.style.top=y+"px";}
@@ -568,6 +576,20 @@ eqCanvas.addEventListener("pointerdown",e=>{
   }
   if(e.button!==0)return;
 
+  // Dedicated DYNAMICS arrow handle; priority above the EQ XY node.
+  for(let b=0;b<4;b++){
+    const n=dynamicNodePoint(b,w,h);
+    const handleX=clamp(n.x+20,18,w-12),handleY=n.y;
+    if(Math.abs(x-handleX)<=11&&Math.abs(y-handleY)<=14){
+      dragMode=5;dragDynamicHandleBand=b;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;
+      dynHandleStartY=y;dynHandleStartValue=state.dyn.dynamics[b];
+      eqCanvas.setPointerCapture(e.pointerId);
+      showGraphHint(e,"DYN "+(b+1)+"  "+fmt(dynHandleStartValue,0)+"%");
+      drawEQ();
+      return;
+    }
+  }
+
   // Static EQ node: latch one axis after the first few pixels.
   const staticBand=staticEqAtPointer(x,y,w,h);
   if(staticBand>=0){
@@ -603,6 +625,12 @@ eqCanvas.addEventListener("pointermove",e=>{
   if(dragDynamicMsBand>=0){
     const p=dynamicPopupBounds(dragDynamicMsBand,w,h),bar={x:p.x+12,y:p.y+50,w:p.w-24,h:11};
     state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);sendParams();drawEQ();return;
+  }
+  if(dragMode===5&&dragDynamicHandleBand>=0){
+    const fine=e.shiftKey?0.1:1;
+    const deltaDynamics=-(y-dynHandleStartY)/Math.max(1,h)*200*fine;
+    state.dyn.dynamics[dragDynamicHandleBand]=clamp(dynHandleStartValue+deltaDynamics,-100,100);
+    sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
   }
   if(dragMode===1&&dragBand>=0){
     const fine=e.shiftKey?0.1:1;
@@ -643,8 +671,8 @@ eqCanvas.addEventListener("pointermove",e=>{
   }
   drawEQ();
 });
-eqCanvas.addEventListener("pointerup",()=>{dragMode=0;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;eqDragAxis=0;hideGraphHint();drawEQ();});
-eqCanvas.addEventListener("pointercancel",()=>{dragMode=0;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;eqDragAxis=0;hideGraphHint();drawEQ();});
+eqCanvas.addEventListener("pointerup",()=>{dragMode=0;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;dragDynamicHandleBand=-1;eqDragAxis=0;hideGraphHint();drawEQ();});
+eqCanvas.addEventListener("pointercancel",()=>{dragMode=0;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;dragDynamicHandleBand=-1;eqDragAxis=0;hideGraphHint();drawEQ();});
 function stopPlayback(){if(source){try{source.stop()}catch{}try{source.disconnect()}catch{}source=null}playing=false;$("#status").textContent="READY"}
 async function loadAudioFile(file){if(!file)return;try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();$("#status").textContent="DECODING…";audioBuffer=await audioCtx.decodeAudioData(await file.arrayBuffer());$("#fileName").textContent=file.name;$("#status").textContent="READY"}catch(e){$("#status").textContent="LOAD ERROR"}}
 async function startPlayback(){if(!audioBuffer){$("#status").textContent="先 LOAD AUDIO";return}await ensureAudioGraph();await audioCtx.resume();stopPlayback();source=audioCtx.createBufferSource();source.buffer=audioBuffer;source.loop=true;source.connect(workletNode);source.onended=()=>{if(playing){source=null;return}playing=false;$("#status").textContent="READY"};source.start();playing=true;$("#status").textContent="PLAYING · LOOP"}

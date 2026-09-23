@@ -57,6 +57,8 @@ def source_assertions():
         'dynamicTargetDragStartY = pos.y',
         'const float effectiveDx = rawDx;',
         'const float effectiveDy = rawDy;',
+        'dragDynamicHandleBand',
+        'dynamicHandleDragStartValue',
         'sendNotificationSync',
         'followScale = 0.74f',
         'Dynamic Range is deliberately Y-only',
@@ -147,6 +149,10 @@ def test_eq_xy_drag_math():
     assert 'const float effectiveDy = rawDy;' in cpp
     assert 'const effectiveDx=rawDx;' in web
     assert 'const effectiveDy=rawDy;' in web
+    assert 'dragDynamicHandleBand' in web
+    assert 'dynHandleStartValue' in web
+    assert 'handleX=clamp(n.x+20,18,w-12)' in web
+    assert 'Dedicated DYNAMICS arrow handle' in cpp
     assert 'graphEqDragAxis == GraphEqDragAxis::Frequency' not in cpp
     assert 'eqDragAxis===1?rawDx:0' not in web
 

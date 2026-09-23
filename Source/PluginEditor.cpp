@@ -1210,6 +1210,27 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.fillEllipse(
             x - 6.f, liveY - 6.f, 12.f, 12.f);
 
+        // Dedicated DYNAMICS drag handle, immediately to the right of the
+        // frequency node. Up = +DYNAMICS / expansion; down = -DYNAMICS.
+        const float handleX =
+            juce::jlimit(graph.getX() + 18.f,
+                         graph.getRight() - 12.f,
+                         x + 20.f);
+        const float handleY = liveY;
+        g.setColour(c.withAlpha(.92f));
+        g.drawLine(handleX, handleY - 8.f,
+                   handleX, handleY + 8.f, 1.4f);
+        juce::Path upArrow;
+        upArrow.startNewSubPath(handleX - 4.f, handleY - 4.f);
+        upArrow.lineTo(handleX, handleY - 8.f);
+        upArrow.lineTo(handleX + 4.f, handleY - 4.f);
+        g.strokePath(upArrow, juce::PathStrokeType(1.6f));
+        juce::Path downArrow;
+        downArrow.startNewSubPath(handleX - 4.f, handleY + 4.f);
+        downArrow.lineTo(handleX, handleY + 8.f);
+        downArrow.lineTo(handleX + 4.f, handleY + 4.f);
+        g.strokePath(downArrow, juce::PathStrokeType(1.6f));
+
         const float midChange =
             dynamicMidGainChangeDb(band);
         const float sideChange =
@@ -2166,6 +2187,48 @@ void VVChainAudioProcessorEditor::mouseDown(
         return;
     }
 
+    // Dedicated DYNAMICS arrow handle. Priority is above the EQ XY node.
+    for (int b = 0; b < 4; ++b)
+    {
+        const auto n = juce::String(b + 1);
+        const float x = graphFrequencyToX(
+            graph, parameterValue("EQ" + n + "_FREQ"));
+        const float liveY = eqDbToY(
+            graph,
+            parameterValue("EQ" + n + "_GAIN")
+                + dynamicAverageGainChangeDb(b));
+        const float handleX =
+            juce::jlimit(graph.getX() + 18.f,
+                         graph.getRight() - 12.f,
+                         x + 20.f);
+        const auto handleRect =
+            juce::Rectangle<float>(handleX - 11.f, liveY - 14.f,
+                                   22.f, 28.f);
+
+        if (event.mods.isLeftButtonDown() && handleRect.contains(pos))
+        {
+            dragDynamicHandleBand = b;
+            dragBand = -1;
+            dragOffsetBand = -1;
+            dragXover = -1;
+            dragDynamicMsBand = -1;
+            dynamicHandleDragStartY = pos.y;
+            dynamicHandleDragStartValue =
+                parameterValue("DYN_DYNAMICS" + n);
+            if (auto* parameter =
+                    audioProcessor.apvts.getParameter("DYN_DYNAMICS" + n))
+                parameter->beginChangeGesture();
+            showGraphDragHint = true;
+            graphDragHintPosition = pos;
+            graphDragHint =
+                "DYN " + n + "   "
+                + juce::String(dynamicHandleDragStartValue, 0)
+                + "%";
+            repaint();
+            return;
+        }
+    }
+
     // Offset handle: edit the normal/static EQ gain only.
     // It must not move Target or change Dynamic EQ settings.
     for (int b = 0; b < 4; ++b)
@@ -2312,6 +2375,39 @@ void VVChainAudioProcessorEditor::mouseDrag(
     const juce::MouseEvent& event)
 {
     const auto graph = eqGraphBounds();
+
+    // Dedicated DYNAMICS arrow handle = Y-only.
+    // Up = +DYNAMICS, down = -DYNAMICS. Same sensitivity as the existing
+    // Dynamic graph drag; Shift provides the same fine 0.1x adjustment.
+    if (dragDynamicHandleBand >= 0)
+    {
+        const auto n = juce::String(dragDynamicHandleBand + 1);
+        const float dragScale =
+            event.mods.isShiftDown() ? 0.1f : 1.0f;
+        const float deltaDynamics =
+            -(event.position.y - dynamicHandleDragStartY)
+            / juce::jmax(1.f, graph.getHeight())
+            * 200.f * dragScale;
+        const float dynamics =
+            juce::jlimit(-100.f, 100.f,
+                         dynamicHandleDragStartValue + deltaDynamics);
+
+        setParameter("DYN_DYNAMICS" + n, dynamics);
+        if (auto* dynamicsKnob = findKnob("DYN_DYNAMICS" + n))
+            dynamicsKnob->slider->setValue(
+                parameterValue("DYN_DYNAMICS" + n),
+                juce::sendNotificationSync);
+
+        graphDragHintPosition = event.position;
+        graphDragHint =
+            "DYN " + n + "   "
+            + juce::String(dynamics, 0) + "%   "
+            + (dynamics < 0.f ? "COMPRESS" :
+               dynamics > 0.f ? "EXPAND" : "STATIC");
+        showGraphDragHint = true;
+        repaint();
+        return;
+    }
 
     // Static EQ graph node drag = XY:
     // horizontal = Frequency, vertical = Gain.
@@ -2510,6 +2606,14 @@ void VVChainAudioProcessorEditor::mouseDrag(
 void VVChainAudioProcessorEditor::mouseUp(
     const juce::MouseEvent&)
 {
+    if (dragDynamicHandleBand >= 0)
+    {
+        const auto n = juce::String(dragDynamicHandleBand + 1);
+        if (auto* parameter =
+                audioProcessor.apvts.getParameter("DYN_DYNAMICS" + n))
+            parameter->endChangeGesture();
+    }
+
     if (dragBand >= 0)
     {
         const auto n = juce::String(dragBand + 1);
@@ -2551,6 +2655,7 @@ void VVChainAudioProcessorEditor::mouseUp(
     graphEqDragAxis = GraphEqDragAxis::Undetermined;
     dragXover = -1;
     dragDynamicMsBand = -1;
+    dragDynamicHandleBand = -1;
     showGraphDragHint = false;
     graphDragHint.clear();
     repaint();
