@@ -54,9 +54,9 @@ def source_assertions():
         'parameter->beginChangeGesture();',
         'parameter->endChangeGesture();',
         'DYN_DYNAMICS',
-        'graphEqDragAxis = GraphEqDragAxis::Undetermined',
         'dynamicTargetDragStartY = pos.y',
-        'std::hypot(rawDx, rawDy)',
+        'const float effectiveDx = rawDx;',
+        'const float effectiveDy = rawDy;',
         'sendNotificationSync',
         'followScale = 0.74f',
         'Dynamic Range is deliberately Y-only',
@@ -126,19 +126,29 @@ def test_dynamic_cross_zero_is_linear():
     increments = [vals[i + 1] - vals[i] for i in range(len(vals) - 1)]
     assert all(abs(v - increments[0]) < 1.0e-9 for v in increments)
 
-def test_eq_gain_drag_axis_lock_math():
-    # A vertical Gain gesture must have zero effective frequency movement;
-    # a horizontal Frequency gesture must have zero effective Gain movement.
-    for dx, dy in [(0, 30), (3, 50), (-4, 80), (50, 3), (-80, -5)]:
-        axis = "frequency" if abs(dx) > abs(dy) else "gain"
-        effective_dx = dx if axis == "frequency" else 0.0
-        effective_dy = dy if axis == "gain" else 0.0
-        if axis == "gain":
-            assert effective_dx == 0.0
-            assert effective_dy == dy
-        else:
-            assert effective_dx == dx
-            assert effective_dy == 0.0
+def test_eq_xy_drag_math():
+    # Frequency and Gain must both respond to the same gesture.
+    cases = [(40, 20), (-40, 20), (40, -20), (-40, -20), (0, 30), (30, 0)]
+    for dx, dy in cases:
+        effective_dx = dx
+        effective_dy = dy
+        assert effective_dx == dx
+        assert effective_dy == dy
+        # Upward movement increases Gain; downward movement decreases it.
+        gain_delta = -effective_dy / 315.0 * 36.0
+        if dy < 0:
+            assert gain_delta > 0
+        elif dy > 0:
+            assert gain_delta < 0
+
+    cpp = CPP.read_text(encoding="utf-8")
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    assert 'const float effectiveDx = rawDx;' in cpp
+    assert 'const float effectiveDy = rawDy;' in cpp
+    assert 'const effectiveDx=rawDx;' in web
+    assert 'const effectiveDy=rawDy;' in web
+    assert 'graphEqDragAxis == GraphEqDragAxis::Frequency' not in cpp
+    assert 'eqDragAxis===1?rawDx:0' not in web
 
 def test_dynamic_target_is_linear():
     offset = 0.0
@@ -240,7 +250,7 @@ def main():
     test_dynamic_range_direction()
     test_dynamic_drag_anchor_is_exact()
     test_dynamic_cross_zero_is_linear()
-    test_eq_gain_drag_axis_lock_math()
+    test_eq_xy_drag_math()
     test_dynamic_target_is_linear()
     test_threshold_is_linear()
     test_target_visual_direction()
@@ -270,4 +280,6 @@ def test_frequency_drag_is_slow_and_grab_anchored():
     assert 'const float rawDx = correctedPointerX - nodeStartX;' in cpp
     assert 'const float nodeStartX=logX(dynFreqStartHz,w);' in web
     assert 'dynFreqGrabOffsetX=x-logX(dynFreqStartHz,w);' in web
+    assert 'const effectiveDx=rawDx;' in web
+    assert 'const effectiveDy=rawDy;' in web
 
