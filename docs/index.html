@@ -365,7 +365,7 @@ function peakMagnitudeDb(fs,f,q,g,hz){
 }
 function gainShapeDb(b,hz,gain){
   const f=Math.max(20,state.eq.freq[b]),q=Math.max(.1,state.eq.q[b]),qEff=clamp(q/(1+.045*Math.abs(gain)),.1,18);
-  return peakMagnitudeDb(sampleRate,f,qEff,gain,hz);
+  return peakMagnitudeDb(audioCtx?.sampleRate||44100,f,qEff,gain,hz);
 }
 function dynamicPopupBounds(b,w,h){
   const n=dynamicNodePoint(b,w,h);
