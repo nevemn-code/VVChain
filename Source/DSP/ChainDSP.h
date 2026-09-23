@@ -283,6 +283,8 @@ private:
 
     std::array<float, 4> dynMidSlowDb { -120.f, -120.f, -120.f, -120.f };
     std::array<float, 4> dynSideSlowDb { -120.f, -120.f, -120.f, -120.f };
+    std::array<float, 4> dynMidActivation { 0.f, 0.f, 0.f, 0.f };
+    std::array<float, 4> dynSideActivation { 0.f, 0.f, 0.f, 0.f };
 
     // Feed-forward detector source shared by all four Dynamic EQ bands.
     juce::AudioBuffer<float> dynamicDetectorInput;
