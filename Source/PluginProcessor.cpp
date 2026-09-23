@@ -40,7 +40,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
 
         const float dynThresholdDefaults[4] = { -24.f, -24.f, -24.f, -24.f };
         const float dynTargetDefaults[4] = { -3.f, -3.f, -2.f, -2.f };
-        const float dynDynamicsDefaults[4] = { 35.f, 35.f, 30.f, 25.f };
+        const float dynDynamicsDefaults[4] = { 0.f, 0.f, 0.f, 0.f };
         const float dynAttackDefaults[4] = { 8.f, 8.f, 5.f, 3.f };
         const float dynReleaseDefaults[4] = { 120.f, 120.f, 100.f, 80.f };
 
@@ -49,7 +49,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         f("DYN_TARGET" + n, "Dynamic EQ " + n + " Target Gain",
           -24.f, 24.f, dynTargetDefaults[i]);
         f("DYN_DYNAMICS" + n, "Dynamic EQ " + n + " Dynamics",
-          0.f, 100.f, dynDynamicsDefaults[i]);
+          -100.f, 100.f, dynDynamicsDefaults[i]);
         f("DYN_ATTACK" + n, "Dynamic EQ " + n + " Attack",
           0.1f, 200.f, dynAttackDefaults[i], 0.35f);
         f("DYN_RELEASE" + n, "Dynamic EQ " + n + " Release",
