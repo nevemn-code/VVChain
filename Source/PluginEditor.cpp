@@ -199,12 +199,17 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
 
         g.setColour(active ? juce::Colours::white
                            : juce::Colour(0xff8b929a));
-        g.drawLine(cx, cy - d * .27f, cx, cy - d * .02f, 3.f);
-        g.drawArc(cx - d * .22f, cy - d * .18f,
-                  d * .44f, d * .44f,
-                  juce::MathConstants<float>::degreesToRadians(42.f),
-                  juce::MathConstants<float>::degreesToRadians(318.f),
-                  true, 3.f);
+
+        g.drawLine(cx, cy - d * .27f,
+                   cx, cy - d * .02f, 3.f);
+
+        juce::Path powerArc;
+        const float pi = juce::MathConstants<float>::pi;
+        powerArc.addCentredArc(
+            cx, cy + d * .01f,
+            d * .22f, d * .22f, 0.f,
+            pi * 0.23f, pi * 1.77f, true);
+        g.strokePath(powerArc, juce::PathStrokeType(3.f));
         return;
     }
 
@@ -515,10 +520,10 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     deessBypassButton->setComponentID("DEESS_ROUND_BYPASS");
     deessBypassButton->setButtonText("");
     deessBypassButton->setColour(
-        juce::ToggleButton::tickColourId, juce::Colour(0xff67d3aa));
-    deessBypassButton->setTooltip("DE-ESSER：亮 = 啟用；按下 = BYPASS");
+        juce::ToggleButton::tickColourId, juce::Colour(0xffdfe7ef));
+    deessBypassButton->setTooltip("整體 BYPASS：亮 = 作動中；暗 = BYPASS");
     deessBypassAttachment = std::make_unique<BoolAttachment>(
-        audioProcessor.apvts, "DEESS_BYPASS", *deessBypassButton);
+        audioProcessor.apvts, "MASTER_BYPASS", *deessBypassButton);
     addAndMakeVisible(*deessBypassButton);
 
     deltaMonitorButton = std::make_unique<juce::ToggleButton>("DELTA");
@@ -1776,13 +1781,14 @@ void VVChainAudioProcessorEditor::timerCallback()
                     ? "BELOW" : "ABOVE");
     }
 
-    // Both DE-ESSER bypass controls read the exact same APVTS parameter.
-    // Keep an explicit UI sync in addition to their attachments so automation
-    // or host state recall cannot leave the upper/lower indicators different.
-    const bool deessBypassed = parameterValue("DEESS_BYPASS") > 0.5f;
+    // The round POWER control is the same global MASTER_BYPASS as the
+    // upper-right BYPASS control.
+    const bool masterBypassed = parameterValue("MASTER_BYPASS") > 0.5f;
     if (deessBypassButton)
-        deessBypassButton->setToggleState(deessBypassed,
+        deessBypassButton->setToggleState(masterBypassed,
                                           juce::dontSendNotification);
+
+    const bool deessBypassed = parameterValue("DEESS_BYPASS") > 0.5f;
     if (bypassButtons[4])
         bypassButtons[4]->setToggleState(deessBypassed,
                                          juce::dontSendNotification);
@@ -1866,7 +1872,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("DYN EQ + CONTINUOUS XOVER + GRAPH CONTROL LED + DELTA · 2026-09-23 18:05",
+    g.drawText("XOVER CONTINUOUS + GLOBAL BYPASS + DEESSER VERTICAL + DELTA · 2026-09-23 19:10",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2126,36 +2132,48 @@ void VVChainAudioProcessorEditor::resized()
             }
     }
 
-    // Fifth unit is split into a half-width DE-ESSER and a monitor block.
+    // Fifth unit is split into:
+    //   left  = DE-ESSER, four knobs in one vertical column
+    //   right = global BYPASS / DELTA / MIX / OUT
     {
         const int x = left + 4 * (cardW + gap);
         const int halfW = (cardW - gap) / 2;
         const int deX = x;
         const int monitorX = x + halfW + gap;
 
-        const int deInnerX = deX + 6;
-        const int deInnerW = halfW - 12;
-        const int cellGap = 5;
-        const int cellW = (deInnerW - cellGap) / 2;
-        const int cellH = 122;
-        const int startY = cardY + 76;
+        const int deInnerX = deX + 8;
+        const int deInnerW = halfW - 16;
+        const int knobH = 96;
+        const int knobGap = 4;
+        const int startY = cardY + 60;
 
-        placeKnob("DEESS_FREQ",      { deInnerX, startY, cellW, cellH });
+        placeKnob("DEESS_FREQ",
+                  { deInnerX, startY,
+                    deInnerW, knobH });
         placeKnob("DEESS_INTENSITY",
-                  { deInnerX + cellW + cellGap, startY, cellW, cellH });
-        placeKnob("DRY_WET",
-                  { deInnerX, startY + cellH + 8, cellW, cellH });
-        placeKnob("OUTPUT_LEVEL",
-                  { deInnerX + cellW + cellGap,
-                    startY + cellH + 8, cellW, cellH });
+                  { deInnerX, startY + knobH + knobGap,
+                    deInnerW, knobH });
+        placeKnob("DEESS_AVERAGE_OFFSET",
+                  { deInnerX, startY + (knobH + knobGap) * 2,
+                    deInnerW, knobH });
 
+        // Fourth DE-ESSER control is kept vertical; MIX / OUT live on right.
+        // The Average Offset remains a real DE-ESSER parameter for the UI.
         if (deessBypassButton)
             deessBypassButton->setBounds(
-                monitorX + halfW / 2 - 34, cardY + 72, 68, 68);
+                monitorX + halfW / 2 - 31,
+                cardY + 58, 62, 62);
 
         if (deltaMonitorButton)
             deltaMonitorButton->setBounds(
-                monitorX + 10, cardY + 154, halfW - 20, 30);
+                monitorX + 9, cardY + 131, halfW - 18, 28);
+
+        placeKnob("DRY_WET",
+                  { monitorX + 8, cardY + 205,
+                    halfW - 16, 102 });
+        placeKnob("OUTPUT_LEVEL",
+                  { monitorX + 8, cardY + 318,
+                    halfW - 16, 102 });
     }
 
     if (expandedBand >= 0)
@@ -2435,11 +2453,10 @@ void VVChainAudioProcessorEditor::mouseDown(
             if (auto* parameter = audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
                 parameter->beginChangeGesture();
 
-            setGraphControlState(
-                juce::StringArray({
-                    "EQ" + n + "_FREQ",
-                    "EQ" + n + "_GAIN"
-                }), false);
+            juce::StringArray graphIds;
+            graphIds.add("EQ" + n + "_FREQ");
+            graphIds.add("EQ" + n + "_GAIN");
+            setGraphControlState(graphIds, false);
 
             showGraphDragHint = true;
             graphDragHintPosition = pos;
