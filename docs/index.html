@@ -612,7 +612,7 @@ eqCanvas.addEventListener("pointermove",e=>{
     const effectiveDx=eqDragAxis===1?rawDx:0;
     const effectiveDy=eqDragAxis===2?rawDy:0;
     const startNorm=Math.pow(clamp((dynFreqStartHz-20)/(20000-20),0,1),1/5.02888112);
-    const norm=clamp(startNorm+effectiveDx/180*fine,0,1);
+    const norm=clamp(startNorm+effectiveDx/900*fine,0,1);
     const hzv=eqDragAxis===1?20+(20000-20)*Math.pow(norm,5.02888112):dynFreqStartHz;
     const deltaDb=-effectiveDy/Math.max(1,h)*36*fine;
     state.eq.freq[dragBand]=hzv;

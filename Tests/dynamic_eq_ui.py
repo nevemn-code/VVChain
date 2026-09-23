@@ -58,6 +58,7 @@ def source_assertions():
         'dynamicTargetDragStartY = pos.y',
         'std::hypot(rawDx, rawDy)',
         'sendNotificationSync',
+        'effectiveDx / 900.f',
         'Dynamic Range is deliberately Y-only',
         'DYNAMICS uses a truly linear bipolar map',
         '(db + 24.f) / 48.f',

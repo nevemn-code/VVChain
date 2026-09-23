@@ -2354,7 +2354,7 @@ void VVChainAudioProcessorEditor::mouseDrag(
             juce::jlimit(
                 0.f, 1.f,
                 startNorm
-                    + effectiveDx / 180.f * dragScale);
+                    + effectiveDx / 900.f * dragScale);
 
         const float hz =
             graphEqDragAxis == GraphEqDragAxis::Frequency
