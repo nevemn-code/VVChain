@@ -835,7 +835,7 @@ juce::Point<float> VVChainAudioProcessorEditor::dynamicTargetPoint(int band) con
 bool VVChainAudioProcessorEditor::pointNearDynamicNode(
     juce::Point<float> p, int& band) const
 {
-    constexpr float hitRadius = 24.0f;
+    constexpr float hitRadius = 14.0f;
     constexpr float staticNodeRadius = 8.0f;
 
     band = -1;
@@ -1205,7 +1205,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
-                         x + 11.f);
+                         x + 20.f);
         const float handleY = targetY;
 
         if (dynamicsEnabled)
@@ -1914,7 +1914,7 @@ void VVChainAudioProcessorEditor::resized()
         const int innerW = cardW - 16;
         const int cellGap = 6;
         const int cellW = (innerW - cellGap * 2) / 3;
-        const int rowH = 80;
+        const int rowH = 70;
         const int knobH = 62;
 
         const auto cell = [&](int row, int col)
@@ -1979,7 +1979,7 @@ void VVChainAudioProcessorEditor::resized()
             {
                 const auto r = knob->slider->getBounds();
                 ottBandBypassButtons[(size_t) b]->setBounds(
-                    r.getRight() - 3, r.getY() + 13, 16, 16);
+                    r.getCentreX() - 7, r.getY() - 10, 14, 14);
             }
 
         if (analogBypassButtons[(size_t) b])
@@ -1995,7 +1995,7 @@ void VVChainAudioProcessorEditor::resized()
             {
                 const auto r = knob->slider->getBounds();
                 atypeBandBypassButtons[(size_t) b]->setBounds(
-                    r.getRight() - 3, r.getY() + 13, 16, 16);
+                    r.getRight() - 14, r.getY() - 10, 14, 14);
             }
     }
 
@@ -2231,8 +2231,8 @@ void VVChainAudioProcessorEditor::mouseDown(
         const float targetY =
             eqDbToY(graph, dynamicEffectiveTargetGain(b));
         const auto handleRect =
-            juce::Rectangle<float>(handleX - 11.f, targetY - 14.f,
-                                   22.f, 28.f);
+            juce::Rectangle<float>(handleX - 6.f, targetY - 9.f,
+                                   12.f, 18.f);
 
         if (event.mods.isLeftButtonDown() && handleRect.contains(pos))
         {
