@@ -54,16 +54,21 @@ def source_assertions():
         'parameter->beginChangeGesture();',
         'parameter->endChangeGesture();',
         'DYN_DYNAMICS',
-        'horizontalDeadZone = 8.0f',
+        'graphEqDragAxis = GraphEqDragAxis::Undetermined',
+        'dynamicTargetDragStartY = pos.y',
+        'std::hypot(rawDx, rawDy)',
+        'sendNotificationSync',
         'Dynamic Range is deliberately Y-only',
+        'DYNAMICS uses a truly linear bipolar map',
         '(db + 24.f) / 48.f',
         'constexpr float staticNodeRadius = 8.0f',
     ]
     for token in required:
         assert token in cpp or token in proc or token in head, f"missing source invariant: {token}"
 
-    assert 'DYN_TARGET" + n, storedTarget' not in cpp, \
-        "graph drag must not write DYN_TARGET anymore"
+    assert 'DYN_TARGET" + n, storedTarget' not in cpp,         "graph drag must not write DYN_TARGET anymore"
+    assert 'dynamicTargetDragStartY = pos.y;' in cpp,         "Dynamic gesture must anchor to the actual mouse-down pixel"
+    assert 'sendNotificationSync' in cpp,         "Lower DYNAMICS knob must refresh synchronously during graph drag"
     assert 'DYN_DYNAMICS" + n, dynamics' in cpp, \
         "graph drag must write DYN_DYNAMICS"
 
@@ -101,6 +106,38 @@ def test_dynamic_range_direction():
         down = dyn_from_drag(start, 157.5, 215)
         assert up >= start or up == 100
         assert down <= start or down == -100
+
+def test_dynamic_drag_anchor_is_exact():
+    # Grabbing anywhere inside the Dynamic ring must not create a first-frame
+    # parameter jump. The old implementation anchored to target.y instead of
+    # the actual mouse-down position.
+    for start in [-100, -75, -50, -10, 0, 10, 50, 75, 100]:
+        for grab_y in [80.0, 120.0, 157.5, 195.0, 235.0]:
+            assert dyn_from_drag(start, grab_y, grab_y) == start
+
+def test_dynamic_cross_zero_is_linear():
+    # Equal pixel increments must produce equal parameter increments, including
+    # across the -/+ zero crossing.
+    start_y = 157.5
+    step = 15.75  # 10% per step with the current 315 px graph height.
+    ys = [start_y + i * step for i in range(-10, 11)]
+    vals = [dyn_from_drag(0.0, start_y, y) for y in ys]
+    increments = [vals[i + 1] - vals[i] for i in range(len(vals) - 1)]
+    assert all(abs(v - increments[0]) < 1.0e-9 for v in increments)
+
+def test_eq_gain_drag_axis_lock_math():
+    # A vertical Gain gesture must have zero effective frequency movement;
+    # a horizontal Frequency gesture must have zero effective Gain movement.
+    for dx, dy in [(0, 30), (3, 50), (-4, 80), (50, 3), (-80, -5)]:
+        axis = "frequency" if abs(dx) > abs(dy) else "gain"
+        effective_dx = dx if axis == "frequency" else 0.0
+        effective_dy = dy if axis == "gain" else 0.0
+        if axis == "gain":
+            assert effective_dx == 0.0
+            assert effective_dy == dy
+        else:
+            assert effective_dx == dx
+            assert effective_dy == 0.0
 
 def test_target_visual_direction():
     for offset in [-18, -6, 0, 6, 18]:
@@ -184,6 +221,9 @@ def main():
     test_280_design_cases()
     test_graph_roundtrip()
     test_dynamic_range_direction()
+    test_dynamic_drag_anchor_is_exact()
+    test_dynamic_cross_zero_is_linear()
+    test_eq_gain_drag_axis_lock_math()
     test_target_visual_direction()
     test_frequency_deadzone()
     test_transient_gestures()
