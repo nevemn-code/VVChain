@@ -2070,7 +2070,6 @@ void VVChainAudioProcessorEditor::mouseDown(
     {
         expandedDynamicBand = -1;
         dragDynamicMsBand = -1;
-        dragDynamicTargetBand = -1;
         dragBand = -1;
         dragXover = -1;
         showGraphDragHint = false;
@@ -2091,8 +2090,7 @@ void VVChainAudioProcessorEditor::mouseDown(
         dragBand = -1;
         dragXover = -1;
         dragDynamicMsBand = -1;
-        dragDynamicTargetBand = -1;
-        showGraphDragHint = false;
+            showGraphDragHint = false;
         repaint();
         return;
     }
