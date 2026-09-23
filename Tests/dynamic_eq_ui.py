@@ -158,13 +158,15 @@ def test_eq_xy_drag_math():
     assert 'const float effectiveDy = rawDy;' in cpp
     assert 'const effectiveDx=rawDx;' in web
     assert 'const effectiveDy=rawDy;' in web
-    assert 'bestDistance = 13.0f' in cpp
+    assert 'constexpr float hitRadius = 14.0f;' in cpp
     assert 'dragDynamicHandleBand' in web
     assert 'dynHandleStartValue' in web
     assert 'state.bandBypass[b]' in web
     assert '.ottGrid .knob .dial,.bottomGrid .knob .dial' in web
     assert 'const target=dynamicTargetPoint(b,w,h)' in web
-    assert 'handleX=clamp(target.x+11,18,w-12)' in web
+    assert 'const staticRadius=8;' in web
+    assert 'd>=staticRadius' in web
+    assert 'handleX=clamp(target.x+20,18,w-12)' in web
     assert 'Dedicated DYNAMICS arrow handle' in cpp
     assert 'dynamicRangeDb' in cpp
     assert 'dynamicOffsetDb' in cpp
