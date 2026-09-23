@@ -526,6 +526,18 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         audioProcessor.apvts, "MASTER_BYPASS", *deessBypassButton);
     addAndMakeVisible(*deessBypassButton);
 
+    deessLocalBypassButton = std::make_unique<juce::ToggleButton>();
+    deessLocalBypassButton->setLookAndFeel(&metalLook);
+    deessLocalBypassButton->setComponentID("DEESS_LOCAL_BYPASS");
+    deessLocalBypassButton->setButtonText("");
+    deessLocalBypassButton->setColour(
+        juce::ToggleButton::tickColourId, juce::Colour(0xff67d3aa));
+    deessLocalBypassButton->setTooltip(
+        "DE-ESSER：亮 = 啟用；按下 = BYPASS");
+    deessLocalBypassAttachment = std::make_unique<BoolAttachment>(
+        audioProcessor.apvts, "DEESS_BYPASS", *deessLocalBypassButton);
+    addAndMakeVisible(*deessLocalBypassButton);
+
     deltaMonitorButton = std::make_unique<juce::ToggleButton>("DELTA");
     deltaMonitorButton->setLookAndFeel(&metalLook);
     deltaMonitorButton->setComponentID("DEESS_DELTA");
@@ -599,6 +611,8 @@ VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
     masterBypassAttachment.reset();
     if (deessBypassButton) deessBypassButton->setLookAndFeel(nullptr);
     deessBypassAttachment.reset();
+    if (deessLocalBypassButton) deessLocalBypassButton->setLookAndFeel(nullptr);
+    deessLocalBypassAttachment.reset();
     if (deltaMonitorButton) deltaMonitorButton->setLookAndFeel(nullptr);
     deltaMonitorAttachment.reset();
 
@@ -1075,6 +1089,36 @@ void VVChainAudioProcessorEditor::drawEqGraph(
 
         g.strokePath(eight, juce::PathStrokeType(
             xoverHovered ? 2.0f : 1.45f));
+    }
+
+    // Restored graph axis labels: dB scale + frequency scale.
+    g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
+    g.setColour(juce::Colour(0xffaab0ba));
+    for (float db : { 36.f, 18.f, 0.f, -18.f, -36.f })
+    {
+        const float y = eqDbToY(graph, db);
+        const auto label = (db > 0.f ? "+" : "")
+            + juce::String(db, 0) + " dB";
+        g.drawText(label,
+                   (int)graph.getX() + 5,
+                   (int)y - 7,
+                   44, 12,
+                   juce::Justification::left);
+    }
+    for (const auto& tick : std::initializer_list<std::pair<float, juce::String>>{
+        { 20.f, "20 Hz" }, { 100.f, "100 Hz" }, { 1000.f, "1 kHz" },
+        { 10000.f, "10 kHz" }, { 20000.f, "20 kHz" } })
+    {
+        const float x = graphFrequencyToX(graph, tick.first);
+        const int width = 40;
+        const int left = tick.first == 20.f
+            ? (int)x
+            : tick.first == 20000.f
+                ? (int)x - width
+                : (int)x - width / 2;
+        g.drawText(tick.second, left, (int)graph.getBottom() - 12,
+                   width, 10,
+                   juce::Justification::centred);
     }
 
     // Static Offset EQ response.
@@ -1557,6 +1601,9 @@ void VVChainAudioProcessorEditor::drawCard(
     g.drawRoundedRectangle(r, 8.f, 1.f);
 
     accent = uiColour(accent);
+    if (title == "DE-ESSER"
+        && parameterValue("DEESS_INTENSITY") <= 0.0001f)
+        accent = juce::Colour(0xff747b84);
     g.setColour(accent.withAlpha(.8f));
     g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
 
@@ -1776,6 +1823,51 @@ void VVChainAudioProcessorEditor::timerCallback()
     if (bypassButtons[4])
         bypassButtons[4]->setToggleState(deessBypassed,
                                          juce::dontSendNotification);
+    if (deessLocalBypassButton)
+    {
+        deessLocalBypassButton->setToggleState(
+            deessBypassed, juce::dontSendNotification);
+        deessLocalBypassButton->setAlpha(
+            parameterValue("DEESS_INTENSITY") <= 0.0001f ? 0.42f : 1.0f);
+    }
+
+    for (int b = 0; b < 4; ++b)
+    {
+        const auto n = juce::String(b + 1);
+        const bool ottMuted =
+            parameterValue("OTT_DEGREE" + n) <= 0.0001f;
+        const bool analogMuted =
+            parameterValue("EQ_COLOR" + n) <= 0.0001f;
+        const bool tapeMuted =
+            parameterValue("ATYPE_DEGREE" + n) <= 0.0001f;
+        const auto setKnobAlpha = [this](const juce::String& id, bool muted)
+        {
+            if (auto* knob = findKnob(id))
+            {
+                const float alpha = muted ? 0.42f : 1.0f;
+                knob->slider->setAlpha(alpha);
+                knob->label->setAlpha(alpha);
+            }
+        };
+        setKnobAlpha("OTT_DEGREE" + n, ottMuted);
+        setKnobAlpha("OTT_COMP_A" + n, ottMuted);
+        setKnobAlpha("OTT_COMP_R" + n, ottMuted);
+        setKnobAlpha("EQ_COLOR_B" + n, analogMuted);
+        setKnobAlpha("ATYPE_DEGREE" + n, tapeMuted);
+        if (analogModeButtons[(size_t)b])
+            analogModeButtons[(size_t)b]->setAlpha(
+                analogMuted ? 0.42f : 1.0f);
+    }
+
+    const bool deessMuted =
+        parameterValue("DEESS_INTENSITY") <= 0.0001f;
+    for (const auto& id : { juce::String("DEESS_FREQ"),
+                            juce::String("DEESS_INTENSITY") })
+        if (auto* knob = findKnob(id))
+        {
+            knob->slider->setAlpha(deessMuted ? 0.42f : 1.0f);
+            knob->label->setAlpha(deessMuted ? 0.42f : 1.0f);
+        }
     if (deltaMonitorButton)
         deltaMonitorButton->setToggleState(
             parameterValue("DELTA_MONITOR") > 0.5f,
@@ -1856,7 +1948,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER · 2026-09-23 19:13",
+    g.drawText("VVCHAIN v1.0.2 · SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2144,6 +2236,14 @@ void VVChainAudioProcessorEditor::resized()
             deessBypassButton->setBounds(
                 monitorX + halfW / 2 - 31,
                 cardY + 58, 62, 62);
+        
+        if (deessLocalBypassButton)
+            if (auto* knob = findKnob("DEESS_INTENSITY"))
+            {
+                const auto r = knob->slider->getBounds();
+                deessLocalBypassButton->setBounds(
+                    r.getRight() - 14, r.getY() - 10, 14, 14);
+            }
 
         if (deltaMonitorButton)
             deltaMonitorButton->setBounds(
@@ -2480,6 +2580,13 @@ void VVChainAudioProcessorEditor::mouseDown(
         setGraphControlState(
             juce::StringArray({ "DYN_DYNAMICS" + n }), false);
         graphFreqDragStartX = pos.x;
+        graphFreqDragStartHz = hz;
+        if (auto* parameter =
+                audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
+            parameter->beginChangeGesture();
+        setGraphControlState(
+            juce::StringArray({ "DYN_DYNAMICS" + n,
+                                "EQ" + n + "_FREQ" }), false);
 
         showGraphDragHint = true;
         graphDragHintPosition = pos;
@@ -2803,9 +2910,25 @@ void VVChainAudioProcessorEditor::mouseDrag(
         const float hz =
             parameterValue("EQ" + n + "_FREQ");
 
-        // Dynamic Range is deliberately Y-only. Frequency is locked at the
-        // exact X coordinate where the gesture started.
+        const float rawDx = event.position.x - graphFreqDragStartX;
+        const float rawDy = event.position.y - dynamicTargetDragStartY;
+        const float dragScale =
+            event.mods.isShiftDown() ? 0.1f : 1.0f;
+
+        // Horizontal = Frequency; vertical = DYNAMICS.
+        // Use the same 0.74 slow follow scale as the normal EQ XY drag.
+        const float startNorm = logMap(graphFreqDragStartHz, 20.f, 20000.f);
+        const float hzNorm = juce::jlimit(
+            0.f, 1.f,
+            startNorm
+                + rawDx / juce::jmax(1.f, graph.getWidth())
+                    * 0.74f * dragScale);
+        const float hz = invLogMap(hzNorm, 20.f, 20000.f);
+
         const float deltaDynamics =
+            -rawDy
+            / juce::jmax(1.f, graph.getHeight())
+            * 200.f * dragScale;
             -(event.position.y - dynamicTargetDragStartY)
             / juce::jmax(1.f, graph.getHeight())
             * 200.f * dragScale;
@@ -2816,7 +2939,13 @@ void VVChainAudioProcessorEditor::mouseDrag(
                 dynamicDragStartDynamics + deltaDynamics);
 
         setGraphControlMoving(true);
+        setParameter("EQ" + n + "_FREQ", hz);
         setParameter("DYN_DYNAMICS" + n, dynamics);
+
+        if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
+            freqKnob->slider->setValue(
+                parameterValue("EQ" + n + "_FREQ"),
+                juce::sendNotificationSync);
 
         // APVTS is the source of truth; also refresh the visible knob
         // synchronously so graph drag and lower DYNAMICS never visually diverge.
