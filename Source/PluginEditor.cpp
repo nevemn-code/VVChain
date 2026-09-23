@@ -2672,17 +2672,23 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
         juce::String(displayedGain >= 0.0f ? "+" : "")
         + juce::String(displayedGain, 1) + " dB";
 
-    juce::String gainText = "GAIN " + signedDb;
-    if (std::abs(dynamics) > 0.01f
-        && bestTarget != HoverTarget::Static)
-    {
-        gainText += " · DYN "
-            + juce::String(dynamics, 0) + "%";
-    }
+    const float q =
+        juce::jmax(0.1f, parameterValue("EQ" + n + "_Q"));
+    const bool dynamicReadout =
+        bestTarget == HoverTarget::Live
+        || bestTarget == HoverTarget::Dynamic
+        || bestTarget == HoverTarget::Handle;
+
+    const juce::String line1 =
+        (dynamicReadout ? "DYN EQ" : "EQ")
+        + "  GAIN " + signedDb;
+    const juce::String line2 =
+        "FREQ " + formatGraphFrequency(frequency)
+        + "  Q " + juce::String(q, 2);
 
     floatingValueBox.updateInfo(
-        "FREQ " + formatGraphFrequency(frequency),
-        gainText,
+        line1,
+        line2,
         position.toInt(),
         getLocalBounds());
 }
