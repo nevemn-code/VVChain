@@ -1,8 +1,8 @@
 import numpy as np
 
 # ANALOG #443 reference:
-# tanh drive -> T2/T3 shaping -> RMS Auto-Gain -> serial blend.
-# This matrix is intentionally aligned with Source/DSP/ChainDSP.cpp.
+# Deploy Web Preview #443: dry 1:1 + controlled 3rd/5th Chebyshev delta.
+# Native and Web use the same transfer function; X2 scales only that delta.
 
 def process_reference(x, drive, amount, colour_multiplier=1.0):
     x = np.asarray(x, dtype=np.float64)
