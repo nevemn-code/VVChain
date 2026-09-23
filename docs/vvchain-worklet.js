@@ -9,6 +9,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     this._lastSoloBand=-9;
     this._lastSoloPost=false;
     this._meterBlocks=0;
+    this._sentReady=false;
     this.ch=[this.makeCh(),this.makeCh()];
     this.port.onmessage=e=>{
       if(e.data&&e.data.type==="params"){
@@ -258,6 +259,10 @@ class VVChainWorklet extends AudioWorkletProcessor {
   process(inputs,outputs){
     const out=outputs[0],inp=inputs[0];
     if(!this.ready||!this.s||!inp||!inp.length){for(const c of out)c.fill(0);return true;}
+    if(!this._sentReady){
+      this._sentReady=true;
+      this.port.postMessage({type:"ready"});
+    }
     const L=inp[0],R=inp[1]||inp[0],stereo=inp.length>1;
     const deCoef=this.hp(this.clamp(Number(this.s.de.freq||8000),6000,18000));
     const mix=this.clamp((this.s.mix.bypass?100:this.s.mix.drywet)/100,0,1),og=this.db2g(this.clamp(this.s.mix.output,-24,12));
