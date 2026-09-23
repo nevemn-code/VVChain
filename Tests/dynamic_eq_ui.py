@@ -182,7 +182,8 @@ def test_eq_xy_drag_math():
     assert 'ottGrid.children[0]?.appendChild(ottLed);typeKnob.appendChild(typeLed);' in web
     assert 'r.getRight() - 3, r.getY() + 13, 16, 16' in cpp
     assert 'hoverXover' in head
-    assert 'markerY=20' in web
+    assert 'markerY=20' not in web
+    assert 'quadraticCurveTo(x,h*.5-16' in web
     assert 'hoverXover' in web
     assert 'GAIN / FREQ / Q' in cpp
     assert 'label:"GAIN"' in web and 'label:"FREQ"' in web
