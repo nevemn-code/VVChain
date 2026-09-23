@@ -175,11 +175,11 @@ def test_eq_xy_drag_math():
     assert 'const dynamicRangeDb=18;' in web
     assert 'const bool dynamicsEnabled = true;' in cpp
     assert 'const float markerY = graph.getBottom() - 18.f;' in cpp
-    assert 'small cross marker at the bottom' in cpp
+    assert 'Bottom infinity / bow-tie marker replaces the old X marker.' in cpp
     assert 'const markerY=h-18' in web
     assert 'DYNAMIC EQ</span>' not in web
     assert 'msReadout' not in web
-    assert 'ottGrid.appendChild(ottLed);bottomGrid.appendChild(typeLed);' in web
+    assert 'ottGrid.children[0]?.appendChild(ottLed);typeKnob.appendChild(typeLed);' in web
     assert 'r.getRight() - 3, r.getY() + 13, 16, 16' in cpp
     assert 'hoverXover' in head
     assert 'markerY=20' in web
@@ -192,6 +192,14 @@ def test_eq_xy_drag_math():
     assert 'syncMsReadout();' not in web
     assert 'for(let b=0;b<4;b++){' in web
     assert 'DE-ESSER' in web
+    assert 'DELTA_MONITOR' in proc
+    assert 'p.deltaMonitor' in proc
+    assert 'if (p.deltaMonitor)' in dsp
+    assert 'class=\'deessPower\'' in web
+    assert 'class=\'deltaBtn\'' in web
+    assert '.knob.graphActive .dial' in web
+    assert 'setGraphControlState' in cpp
+    assert 'DYN EQ + CONTINUOUS XOVER + GRAPH CONTROL LED + DELTA' in web
 
 def test_dynamic_range_centered_500():
     """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
