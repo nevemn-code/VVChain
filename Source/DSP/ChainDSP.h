@@ -220,7 +220,8 @@ private:
     static float gainToDb(float gain) noexcept;
     static float timeCoeff(double sampleRate, float ms) noexcept;
     void processChebyshevAnalog(juce::dsp::AudioBlock<float>& block,
-                                float drive, float amount);
+                                float drive, float amount,
+                                float colourMultiplier = 1.0f);
 
     static float rmsDetectPDR(float input,
                                float& fastPower,

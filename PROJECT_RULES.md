@@ -24,9 +24,16 @@
 - 若是 DSP / 模擬 DSP 功能，兩邊的核心公式與映射一致
 
 ## 3. GitHub Pages 部署
-Web Preview 由 `main` 分支的 `docs/` 部署。涉及 Web Preview 的修改必須提交到 `main`，並確認 Pages workflow 已被觸發。
+Web Preview 由 `main` 分支的 `docs/` 部署。涉及 Web Preview 的修改必須進入 `main`，並確認 Pages workflow 已被觸發。
+ANALOG COLOR 的唯一正式基準為 Deploy VVChain Web Preview #443；V1/V2/V3 舊版頁面不再保留。
 
-## 4. 完成條件
+## 5. 完成條件
 除非明確指定功能只存在於 JUCE 或 Web Preview，否則：
 
 **「Plugin 已修改」不等於完成；必須「Plugin + Web Preview 同步修改並完成測試」才算完成。**
+
+
+## 4. ANALOG #443 基準
+- Native 與 Web 均以 Deploy VVChain Web Preview #443（847729bb72900b8f4a573d69efe7e763ea393eee）為 ANALOG COLOR 基準。
+- X2 僅放大該段 ANALOG COLOR 產生的染色 delta ×1.6，不得影響其他 DSP 模組或其他頻段。
+- ANALOG 修改需通過 500-case regression + 50-case X2 isolation / cursor mapping 驗證。

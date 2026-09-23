@@ -31,11 +31,13 @@ jobs:
         run: |
           set -euo pipefail
           test -s docs/index.html
-          test -s docs/analog-v3.html
-          grep -q 'index.html?v=1.0.7' docs/analog-v3.html
+          test ! -e docs/analog-v1.html
+          test ! -e docs/analog-v2.html
+          test ! -e docs/analog-v3.html
           grep -q 'id="bandGrid"' docs/index.html
           grep -q 'for(let b=0;b<4;b++){' docs/index.html
           grep -q 'DE-ESSER' docs/index.html
+          grep -q 'ANALOG #443' docs/index.html
           if grep -q 'syncMsReadout();' docs/index.html; then
             echo "ERROR: stale syncMsReadout() call would stop BAND creation."
             exit 1

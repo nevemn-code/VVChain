@@ -36,14 +36,15 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 
 ## ANALOG 規則
 
-目前正式主版本使用 V3 CHEBYSHEV。
+ANALOG COLOR 正式基準固定為 **Deploy VVChain Web Preview #443**
+（基準 commit：`847729bb72900b8f4a573d69efe7e763ea393eee`）。
 
-- ANALOG 必須維持 4 個獨立頻段。
-- 每個頻段有自己的 ANALOG COLOR。
-- TT 與 SS 必須是各自獨立的演算法設定，不得平均、合併或共用。
-- 每個頻段的 TT/SS 選擇必須只影響該頻段。
-- 不得把四段 ANALOG 改成單一全頻 ANALOG。
-- 修改 ANALOG 後，至少執行既有 500-case regression matrix。
+- Native VST3 與 Web AudioWorklet 的 ANALOG COLOR processing order / transfer function 必須以 #443 為基準。
+- 每個頻段仍保留獨立的 COLOR、TT/SS、BYPASS、X2 參數；這些參數不可交叉影響其他頻段。
+- **X2 只能把該頻段由 ANALOG COLOR 產生的染色 delta 乘以 1.6；不得把 EQ、OTT、TAPE-A、DE-ESSER、MIX、OUT 或其他頻段一起乘 1.6。**
+- 未特別指定的新 Analog 演算法不得自行替換 #443 基準。
+- 不再建立或保留 V1 / V2 / V3 Analog 選擇頁、切換頁或版本導覽。
+- 修改 ANALOG 後必須完成既有 500-case regression matrix，另加至少 50 組 X2 isolation / cursor mapping 檢查。
 
 ## OTT 規則
 
@@ -64,7 +65,7 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 - Web Worklet JavaScript 可以正常解析。
 + 所有本次 GitHub 修改都使用對應版本號。
 - Web Preview 不要求加入或更新日期／時間碼。
-- 變更未重新引入 V1/V2/V3 舊版切換頁。
+- 變更未重新引入 V1/V2/V3 舊版切換頁、舊版 HTML 或舊版選擇器。
 
 ## Native VST3 / Web 雙版本同步（最高優先、強制）
 

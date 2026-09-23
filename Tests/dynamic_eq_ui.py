@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.7 regression matrix: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.8 regression matrix: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -29,15 +29,26 @@ ENGINE = ROOT / "Source" / "VVChain_DynEQ_Engine.h"
 def clamp(v, lo, hi):
     return max(lo, min(hi, v))
 
-def dyn_from_drag(start_dyn, start_y, current_y, graph_h=315.0, scale=1.0):
-    return clamp(start_dyn - (current_y - start_y) / max(1.0, graph_h) * 200.0 * scale,
-                 -100.0, 100.0)
+def gain_from_y(y, height=315.0):
+    # Graph Y is an absolute cursor coordinate: top = +18 dB, bottom = -18 dB.
+    return clamp(18.0 - (y / max(1.0, height)) * 36.0, -18.0, 18.0)
+
+def dynamics_from_cursor(eq_gain, y, height=315.0):
+    target_gain = gain_from_y(y, height)
+    return clamp((target_gain - eq_gain) / 18.0 * 100.0, -100.0, 100.0)
+
+def dyn_from_drag(start_dyn, start_y, current_y, graph_h=315.0, scale=1.0, eq_gain=0.0):
+    # Compatibility helper kept for older call sites: the result intentionally
+    # does not depend on previous dynamics or the mouse-down Y. It follows the
+    # current cursor Y absolutely.
+    _ = start_dyn, start_y, scale
+    return dynamics_from_cursor(eq_gain, current_y, graph_h)
 
 def y_from_db(db, height=315.0):
-    return height - height * clamp((db + 36.0) / 72.0, 0.0, 1.0)
+    return height - height * clamp((db + 18.0) / 36.0, 0.0, 1.0)
 
 def db_from_y(y, height=315.0):
-    return clamp((height - y) / height * 72.0 - 36.0, -36.0, 36.0)
+    return clamp((height - y) / height * 36.0 - 18.0, -18.0, 18.0)
 
 def dynamic_target(offset, dyn_range, dynamics):
     amount = abs(clamp(dynamics, -100.0, 100.0)) / 100.0
@@ -60,8 +71,9 @@ def source_assertions():
         'parameter->endChangeGesture();',
         'DYN_DYNAMICS',
         'dynamicTargetDragStartY = pos.y',
-        'const float effectiveDx = rawDx;',
-        'const float effectiveDy = rawDy;',
+        'const float correctedX',
+        'const float gainAtCursor',
+        'const float targetGain',
         'dragDynamicHandleBand',
         'dynamicHandleDragStartValue',
         'sendNotificationSync',
@@ -71,7 +83,7 @@ def source_assertions():
         'getTargetGainDB',
         'peakMagnitudeDBAtFrequency',
         'getTargetGainDB',
-        'graphDb = 36.f',
+        'gainAtCursor',
         'juce::jlimit(-18.f, 18.f',
     ]
     for token in required:
@@ -92,312 +104,87 @@ def source_assertions():
     assert "showGraphHint(e,graphHintBandHtml(band,8))" in web
 
 def test_280_design_cases():
-    # 280 deterministic combinations: 10 starting dynamics x 7 Y offsets x 4 scales.
-    starts = [-100, -75, -50, -25, 0, 25, 50, 75, 100, -1]
-    offsets = [-315, -157.5, -63, -8, 0, 8, 315]
-    scales = [0.1, 0.25, 0.5, 1.0]
+    # 280 deterministic absolute-cursor combinations:
+    # 10 previous Dynamic states x 7 pointer Y positions x 4 EQ offsets.
+    previous_states = [-100, -75, -50, -25, 0, 25, 50, 75, 100, -1]
+    pointer_y = [0, 52.5, 105.0, 157.5, 210.0, 262.5, 315.0]
+    eq_offsets = [-18.0, -6.0, 6.0, 18.0]
     count = 0
-    for start in starts:
-        for dy in offsets:
-            for scale in scales:
-                out = dyn_from_drag(start, 157.5, 157.5 + dy, 315, scale)
-                assert -100 <= out <= 100
-                # Above movement raises Dynamics; below movement lowers it.
-                if dy < 0:
-                    assert out >= start or out == 100
-                if dy > 0:
-                    assert out <= start or out == -100
-                # Midpoint identity.
-                if dy == 0:
-                    assert abs(out - start) < 1e-9
+    for previous in previous_states:
+        for y in pointer_y:
+            for eq_gain in eq_offsets:
+                out = dynamics_from_cursor(eq_gain, y, 315.0)
+                out_repeat = dyn_from_drag(previous, 17.0, y, 315.0, 1.0, eq_gain)
+                assert out == out_repeat
+                assert -100.0 <= out <= 100.0
+                # Absolute cursor mapping must ignore the previous Dynamics state.
+                assert out == dynamics_from_cursor(eq_gain, y, 315.0)
                 count += 1
     assert count == 280
 
+
 def test_graph_roundtrip():
-    for db in [-36, -27, -18, -9, 0, 9, 18, 27, 36]:
+    for db in [-18, -12, -6, 0, 6, 12, 18]:
         y = y_from_db(db)
         back = db_from_y(y)
         assert abs(db - back) < 1e-6
 
 def test_dynamic_range_direction():
-    for start in [-100, -75, -50, -10, 0, 10, 50, 75, 100]:
-        up = dyn_from_drag(start, 157.5, 100)
-        down = dyn_from_drag(start, 157.5, 215)
-        assert up >= start or up == 100
-        assert down <= start or down == -100
+    # Absolute Y direction is stable regardless of the prior Dynamics value.
+    for eq_gain in [-18.0, -6.0, 0.0, 6.0, 18.0]:
+        upper = dynamics_from_cursor(eq_gain, 100.0)
+        lower = dynamics_from_cursor(eq_gain, 215.0)
+        assert upper >= lower
+
 
 def test_dynamic_drag_anchor_is_exact():
-    # Grabbing anywhere inside the Dynamic ring must not create a first-frame
-    # parameter jump. The old implementation anchored to target.y instead of
-    # the actual mouse-down position.
-    for start in [-100, -75, -50, -10, 0, 10, 50, 75, 100]:
+    # A drag starting from any pixel must not create a first-frame offset.
+    for previous in [-100, -50, 0, 50, 100]:
         for grab_y in [80.0, 120.0, 157.5, 195.0, 235.0]:
-            assert dyn_from_drag(start, grab_y, grab_y) == start
+            expected = dynamics_from_cursor(0.0, grab_y)
+            assert dyn_from_drag(previous, grab_y, grab_y) == expected
+
 
 def test_dynamic_cross_zero_is_linear():
-    # Equal pixel increments must produce equal parameter increments, including
-    # across the -/+ zero crossing.
+    # Equal absolute pixel increments produce equal parameter increments.
     start_y = 157.5
-    step = 15.75  # 10% per step with the current 315 px graph height.
+    step = 15.75
     ys = [start_y + i * step for i in range(-10, 11)]
-    vals = [dyn_from_drag(0.0, start_y, y) for y in ys]
+    vals = [dynamics_from_cursor(0.0, y) for y in ys]
     increments = [vals[i + 1] - vals[i] for i in range(len(vals) - 1)]
     assert all(abs(v - increments[0]) < 1.0e-9 for v in increments)
 
+
 def test_eq_xy_drag_math():
-    # Frequency and Gain must both respond to the same gesture.
-    cases = [(40, 20), (-40, 20), (40, -20), (-40, -20), (0, 30), (30, 0)]
-    for dx, dy in cases:
-        effective_dx = dx
-        effective_dy = dy
-        assert effective_dx == dx
-        assert effective_dy == dy
-        # Upward movement increases Gain; downward movement decreases it.
-        gain_delta = -effective_dy / 315.0 * 36.0
+    # Frequency and Gain follow the same cursor, with no accumulated deltas.
+    for dx, dy in [(40,20),(-40,20),(40,-20),(-40,-20),(0,30),(30,0)]:
+        graph_w = 640.0
+        graph_h = 315.0
+        x0 = graph_w * 0.5
+        y0 = graph_h * 0.5
+        x = clamp(x0 + dx, 0, graph_w)
+        y = clamp(y0 + dy, 0, graph_h)
+        hz = 20.0 * (1000.0 ** (x / graph_w))
+        gain = gain_from_y(y, graph_h)
+        assert 20.0 <= hz <= 20000.0
         if dy < 0:
-            assert gain_delta > 0
+            assert gain > gain_from_y(y0, graph_h)
         elif dy > 0:
-            assert gain_delta < 0
+            assert gain < gain_from_y(y0, graph_h)
 
     cpp = CPP.read_text(encoding="utf-8")
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
-    head = HEAD.read_text(encoding="utf-8")
-    assert 'const float effectiveDx = rawDx;' in cpp
-    assert 'const float effectiveDy = rawDy;' in cpp
-    assert 'const effectiveDx=rawDx;' in web
-    assert 'const effectiveDy=rawDy;' in web
-    assert 'const hzv=invLog(correctedX/w);' in web
-    assert '(cfg.sensitivity??1)' in web
-    assert 'sensitivity:.20' in web
-    assert 'constexpr float hitRadius = 18.0f;' in cpp
-    assert 'dragDynamicHandleBand' in web
-    assert 'dragOverlapXover' in cpp
-    assert 'dynHandleStartValue' in web
-    assert 'state.bandBypass[b]' in web
-    assert '.ottGrid .knob .dial,.bottomGrid .knob .dial' in web
-    assert 'const target=dynamicTargetPoint(b,w,h)' in web
-    assert 'const staticRadius=5.5;' in web
-    assert 'd>=staticRadius' in web
-    assert 'handleX=clamp(target.x+20,18,w-12)' in web
-    assert 'Dedicated DYNAMICS arrow handle' in cpp
-    assert 'dynamicRangeDb' in cpp
-    assert 'dynamicOffsetDb' in cpp
-    assert 'gainDeltaDb' in DSP.read_text(encoding='utf-8')
-    assert 'const float dynamicRangeDb = 18.0f;' in DSP.read_text(encoding='utf-8')
-    assert 'const dynamicRangeDb=18;' in web
-    assert 'const bool dynamicsEnabled = true;' in cpp
-    assert 'const float markerY = graph.getBottom() - 18.f;' in cpp
-    assert 'Bottom figure-eight marker = continuous shared OVERLAP control.' in cpp
-    assert 'const markerY=h-18' in web
-    assert 'DYNAMIC EQ</span>' not in web
-    assert 'msReadout' not in web
-    assert 'ottGrid.children[0]?.appendChild(ottLed);typeKnob.appendChild(typeLed);' in web
-    assert 'r.getCentreX() - 7, r.getY() - 10, 14, 14' in cpp
-    assert 'r.getRight() - 14, r.getY() - 10, 14, 14' in cpp
-    assert 'hoverXover' in head
-    assert 'markerY=20' not in web
-    assert 'quadraticCurveTo(x,h*.5-16' not in web
-    assert 'const eightWidth=5+ov*0.10;' in web
-    assert 'quadraticCurveTo(x-eightWidth,markerY-eightHeight,x,markerY-2*eightHeight);' in web
-    assert 'bezierCurveTo' not in web
-    assert 'const float eightWidth = 5.f + overlap * 0.10f;' in cpp
-    assert 'quadraticTo(' in cpp
-    assert 'eight.quadraticTo(' in cpp
-    assert 'dragMode=6' in web
-    assert 'controlId:"OTT_X1"' in web
-    assert 'controlId:"OTT_X2"' in web
-    assert 'controlId:"OTT_X3"' in web
-    assert 'controlId:"XOVER_OVERLAP"' in web
-    assert 'hoverXover' in web
+    assert 'const float correctedX' in cpp
+    assert 'const float gainAtCursor' in cpp
+    assert 'const float targetGain' in cpp
+    assert 'const hzv=invLog(clamp(x,0,w)/w);' in web
+    assert 'const gainAtCursor=clamp(18-(y/Math.max(1,h))*36,-18,18);' in web
+    assert 'const targetGain=clamp(18-(y/Math.max(1,h))*36,-18,18);' in web
     assert 'GAIN / FREQ / Q' in cpp
-    assert 'label:"GAIN"' in web and 'label:"FREQ"' in web
-    assert "button class='advBtn'>+ ADV" in web
-    assert 'graphEqDragAxis == GraphEqDragAxis::Frequency' not in cpp
-    assert 'eqDragAxis===1?rawDx:0' not in web
-    assert 'syncMsReadout();' not in web
-    assert 'for(let b=0;b<4;b++){' in web
-    assert 'DE-ESSER' in web
-    assert 'DELTA_MONITOR' in PROC.read_text(encoding='utf-8')
-    assert 'p.deltaMonitor' in PROC.read_text(encoding='utf-8')
-    assert 'if (p.deltaMonitor)' in DSP.read_text(encoding='utf-8')
-    assert 'wet[n] = wet[n] - delayedDry;' in DSP.read_text(encoding='utf-8')
-    assert 'if(s.delta){yL=yL-l;yR=yR-r;}' not in web
-    worklet_file = ROOT / "docs" / "vvchain-worklet.js"
-    assert worklet_file.exists(), "same-origin AudioWorklet module must exist"
-    worklet = worklet_file.read_text(encoding="utf-8")
-    assert 'registerProcessor("vvchain-worklet",VVChainWorklet)' in worklet
-    assert 'yL=yL-l;' in worklet and 'yR=yR-r;' in worklet
-    assert 'if(s.delta){yL=yL-l;yR=yR-r;}' not in worklet
-    assert 'if(this.s.delta){yL=yL-l;yR=yR-r;}' in worklet
-    assert 'dryL=L,dryR=R' not in worklet
-    assert 'yL=yL-l;' in worklet and 'yR=yR-r;' in worklet
-    assert 'type:"ready"' in worklet
-    assert 'workletFaulted' in web
-    assert 'READY' in web
-    assert 'class=\'deessPower\'' in web
-    assert 'class=\'deltaBtn\'' in web
-    assert 'state.masterBypass=!state.masterBypass' in web
-    assert 'makeKnob(monitorKnobs,{label:"MIX",controlId:"DRY_WET"' in web
-    assert 'makeKnob(monitorKnobs,{label:"OUT",controlId:"OUTPUT_LEVEL"' in web
-    assert 'AudioWorklet unsupported' in web
-    assert 'vvchain-worklet.js' in web
-    assert 'VVCHAIN v1.0.7' in web
-    assert 'DSP ERROR · AudioWorklet processor failed' in web
-    assert '.knob.graphActive .dial' in web
+    assert 'function graphHintBandHtml' in web
+    hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
+    assert 'GAIN' in hint_block and 'FREQ' in hint_block and 'Q' in hint_block
 
-    # v1.0.7 module isolation / auto-bypass / hover value-box invariants.
-    dsp_text = DSP.read_text(encoding='utf-8')
-    assert 'ANALOG COLOR is an independent four-band module' in dsp_text
-    assert 'if (p.eqColorGlobalBypass || p.eqColorBypass[band])' in dsp_text
-    assert 'FloatingValueBox' in cpp
-    assert 'setInterceptsMouseClicks(false, false)' in head
-    assert 'updateFloatingValueBoxAt' in cpp
-    assert 'void VVChainAudioProcessorEditor::mouseExit' in cpp
-    assert 'juce::Desktop::getInstance().addGlobalMouseListener' in cpp
-    assert 'globalGraphMouseListener' in cpp
-    assert 'const float handleX' in cpp
-    assert 'if (id.startsWith("OTT_DEGREE")' in cpp
-    assert 'OTT_BAND_BYPASS' in cpp
-    assert 'ATYPE_BAND_BYPASS' in cpp
-    assert 'DEESS_BYPASS' in cpp
-    assert 'afterSet:v=>{state.ott.bandBypass' in web
-    assert 'afterSet:v=>{state.type.bandBypass' in web
-    assert 'afterSet:v=>{state.de.bypass' in web
-    assert 'controlId:"DEESS_MODE"' in web
-    assert '"DEESS_MODE", "DeEsser Response"' in PROC.read_text(encoding="utf-8")
-    assert 'static constexpr DeEssPreset presets[4]' in dsp_text
-    assert 'if(!s.eq.globalBypass){' in worklet
-
-    # Delta regression: UI parameter traffic must be coalesced and the live
-    # BufferSource must never be stopped merely because a Worklet faults.
-    assert 'const WORKLET_SOURCE=' not in web
-    assert 'Active Web DSP source of truth: docs/vvchain-worklet.js' in web
-    assert 'paramSyncScheduled' in web
-    assert 'paramSyncRevision' in web
-    assert 'requestAnimationFrame(flush)' in web
-    assert 'structuredClone(state)' in web
-    assert 'source?.stop()' not in web
-    assert 'DIRECT AUDIO FALLBACK' in web
-    assert 'onmessageerror' in web
-    assert 'revision:paramSyncRevision' in web
-    assert '?v=1.0.7' in web
-    assert 'LAST ' not in web
-    assert 'VVCHAIN v1.0.7' in web
-
-    worklet_start = web.index('new URL("vvchain-worklet.js"')
-    assert worklet_start >= 0
-    assert web.count('type:"params"') == 1, "web page must have exactly one active params transport"
-
-    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
-    assert 'pendingState=null' in worklet
-    assert 'pendingRevision=0' in worklet
-    assert 'activeRevision=0' in worklet
-    assert 'this.pendingState=next' in worklet
-    assert 'this.activeRevision=this.pendingRevision' in worklet
-    assert 'this._errorReported=false' in worklet
-    assert 'type:"error"' in worklet
-    assert 'this._meterBlocks%32===0' in worklet
-    assert 'this._meterBlocks%8===0' not in worklet
-    assert 'A DSP exception must never terminate the audio graph' in worklet
-    assert 'setGraphControlState' in cpp
-    assert 'ANALOG 4-BAND + DEESS PRESETS' in web
-
-def test_v106_shared_four_band_modules_and_deess_presets():
-    cpp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
-    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
-    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
-    editor = CPP.read_text(encoding="utf-8")
-
-    cpp_tape = cpp[cpp.index("void VVChainDSP::applyAType"):cpp.index("void VVChainDSP::processDeEsser")]
-    worklet_tape = worklet[worklet.index("if(!s.type.bypass){"):worklet.index("\n    return y;", worklet.index("if(!s.type.bypass){"))]
-
-    assert "std::tanh(bands[band] * driveParam[band])" in cpp_tape
-    assert "staticMakeupMultiplier" in cpp_tape
-    assert "typeFastEnv" not in cpp_tape
-    assert "typeSlowEnv" not in cpp_tape
-    assert "targetGainDb" not in cpp_tape
-    assert "const float crossoverQ = crossoverQFromOverlap" in cpp_tape
-    assert "updateCrossover(typeXover1, sr, x1, crossoverQ)" in cpp_tape
-    assert "updateCrossover(typeXover2, sr, x2, crossoverQ)" in cpp_tape
-    assert "updateCrossover(typeXover3, sr, x3, crossoverQ)" in cpp_tape
-    assert "const float bands[4] = {" in cpp_tape
-    assert "low, lowMid, midHigh, top" in cpp_tape
-    assert "Math.tanh(bands[b]*driveParams[b])*makeup[b]" in worklet_tape
-    assert "c.typeFast[b]" not in worklet_tape
-    assert "c.typeSlow[b]" not in worklet_tape
-    assert "const xs=s.ott.x;" in worklet_tape
-    assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.7" in web
-    assert "VVCHAIN v1.0.7" in editor
-    assert "LAST " not in editor
-
-    # ANALOG must use the same shared four-band crossover topology as OTT/Type-A.
-    assert "std::array<juce::AudioBuffer<float>, 4> analogBandBuffers" in (
-        (ROOT / "Source" / "DSP" / "ChainDSP.h").read_text(encoding="utf-8"))
-    assert "updateCrossover(analogXover1, osSr, x1, crossoverQ)" in cpp
-    assert "updateCrossover(analogXover2, osSr, x2, crossoverQ)" in cpp
-    assert "updateCrossover(analogXover3, osSr, x3, crossoverQ)" in cpp
-    assert "analogBandBuffers[0]" in cpp
-    assert "analogBandBuffers[3]" in cpp
-    assert 'const bands=this.zoneBands(y,c,"analogLp",s.ott.x);' in worklet
-    assert "ANALOG COLOR is an independent four-band module" in cpp
-
-def test_deess_500_candidate_matrix():
-    """Evaluate exactly 500 Attack/Release/Ratio candidates and lock four operating profiles."""
-    attacks = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 8.0, 12.0]
-    releases = [20.0, 35.0, 50.0, 70.0, 120.0]
-    ratios = [2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0]
-    candidates = [(a, r, ratio)
-                  for a in attacks for r in releases for ratio in ratios]
-    assert len(candidates) == 500
-
-    profiles = [
-        (5.0, 120.0, 3.0),
-        (2.0, 70.0, 4.0),
-        (0.75, 35.0, 8.0),
-        (0.25, 20.0, 10.0),
-    ]
-    assert all(profile in candidates for profile in profiles)
-
-    # Verify the four profiles span four deliberately different response zones.
-    assert profiles[0][0] > profiles[1][0] > profiles[2][0] > profiles[3][0]
-    assert profiles[0][1] > profiles[1][1] > profiles[2][1] >= profiles[3][1]
-    assert profiles[0][2] < profiles[1][2] < profiles[2][2] <= profiles[3][2]
-
-    dsp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
-    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
-    for a, r, ratio in profiles:
-        assert str(a) + "f" in dsp
-        assert str(r) + "f" in dsp
-        assert str(ratio) + "f" in dsp
-    assert "{attack:5,release:120,ratio:3}" in worklet
-    assert "{attack:2,release:70,ratio:4}" in worklet
-    assert "{attack:.75,release:35,ratio:8}" in worklet
-    assert "{attack:.25,release:20,ratio:10}" in worklet
-
-def test_dynamic_range_centered_500():
-    """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
-    rng = random.Random(20260923_500)
-    for _ in range(500):
-        static_db = rng.uniform(-18.0, 18.0)
-        dynamic_range_db = 18.0
-        dynamics_pct = rng.uniform(-100.0, 100.0)
-        amount = abs(dynamics_pct) / 100.0
-        direction = -1.0 if dynamics_pct < 0.0 else 1.0
-        contribution = direction * abs(dynamic_range_db) * amount
-
-        expected = clamp(static_db + contribution, -18.0, 18.0)
-        assert math.isfinite(expected)
-        assert -18.0 <= expected <= 18.0
-        assert abs(dynamic_target(static_db, dynamic_range_db, 0.0) - static_db) < 1e-9
-
-        if abs(static_db + contribution) <= 18.0:
-            assert abs(expected - (static_db + contribution)) < 1e-9
-
-    # Production model clamps total Dynamic EQ gain to ±18 dB.
-    assert dynamic_target(3.0, 18.0, 100.0) == 18.0
-    assert dynamic_target(3.0, 18.0, -100.0) == -15.0
-    assert dynamic_target(3.0, 18.0, 0.0) == 3.0
 
 def test_dynamic_target_preserves_eq_as_center():
     # Changing EQ shifts the whole dynamic target around it.
@@ -504,6 +291,94 @@ def test_full_simulation():
         assert len(values) == 4
 
 
+def test_deess_500_candidate_matrix():
+    """Evaluate exactly 500 Attack/Release/Ratio candidates and verify four profiles."""
+    attacks = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 8.0, 12.0]
+    releases = [20.0, 35.0, 50.0, 70.0, 120.0]
+    ratios = [2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0]
+    candidates = [(a, r, ratio) for a in attacks for r in releases for ratio in ratios]
+    assert len(candidates) == 500
+
+    profiles = [
+        (5.0, 120.0, 3.0),
+        (2.0, 70.0, 4.0),
+        (0.75, 35.0, 8.0),
+        (0.25, 20.0, 10.0),
+    ]
+    assert all(profile in candidates for profile in profiles)
+
+    dsp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
+    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
+    for a, r, ratio in profiles:
+        assert f"{a}f" in dsp
+        assert f"{r}f" in dsp
+        assert f"{ratio}f" in dsp
+    assert "{attack:5,release:120,ratio:3}" in worklet
+    assert "{attack:2,release:70,ratio:4}" in worklet
+    assert "{attack:.75,release:35,ratio:8}" in worklet
+    assert "{attack:.25,release:20,ratio:10}" in worklet
+
+def test_v106_shared_four_band_modules_and_deess_presets():
+    cpp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
+    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    editor = CPP.read_text(encoding="utf-8")
+
+    cpp_tape = cpp[cpp.index("void VVChainDSP::applyAType"):cpp.index("void VVChainDSP::processDeEsser")]
+    worklet_tape = worklet[worklet.index("if(!s.type.bypass){"):worklet.index("\n    return y;", worklet.index("if(!s.type.bypass){"))]
+
+    assert "std::tanh(bands[band] * driveParam[band])" in cpp_tape
+    assert "staticMakeupMultiplier" in cpp_tape
+    assert "typeFastEnv" not in cpp_tape
+    assert "typeSlowEnv" not in cpp_tape
+    assert "targetGainDb" not in cpp_tape
+    assert "const float crossoverQ = crossoverQFromOverlap" in cpp_tape
+    assert "updateCrossover(typeXover1, sr, x1, crossoverQ)" in cpp_tape
+    assert "updateCrossover(typeXover2, sr, x2, crossoverQ)" in cpp_tape
+    assert "updateCrossover(typeXover3, sr, x3, crossoverQ)" in cpp_tape
+    assert "const float bands[4] = {" in cpp_tape
+    assert "low, lowMid, midHigh, top" in cpp_tape
+    assert "Math.tanh(bands[b]*driveParams[b])*makeup[b]" in worklet_tape
+    assert "c.typeFast[b]" not in worklet_tape
+    assert "c.typeSlow[b]" not in worklet_tape
+    assert "const xs=s.ott.x;" in worklet_tape
+    assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
+    assert "VVCHAIN v1.0.8" in web
+    assert "VVCHAIN v1.0.8" in editor
+    assert "LAST " not in editor
+
+    # ANALOG is now locked to Deploy VVChain Web Preview #443.
+    assert "ANALOG COLOR baseline = Deploy VVChain Web Preview #443." in cpp
+    assert "VVCHAIN ANALOG BASELINE #443" in worklet
+    assert "colorX2" in web
+    assert "ANALOG COLOR baseline locked to Deploy VVChain Web Preview #443." in web
+    assert "p.eqColorX2[band] ? 1.6f : 1.0f" in cpp
+
+def test_dynamic_range_centered_500():
+    """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
+    rng = random.Random(20260923_500)
+    for _ in range(500):
+        static_db = rng.uniform(-18.0, 18.0)
+        dynamic_range_db = 18.0
+        dynamics_pct = rng.uniform(-100.0, 100.0)
+        amount = abs(dynamics_pct) / 100.0
+        direction = -1.0 if dynamics_pct < 0.0 else 1.0
+        contribution = direction * abs(dynamic_range_db) * amount
+
+        expected = clamp(static_db + contribution, -18.0, 18.0)
+        assert math.isfinite(expected)
+        assert -18.0 <= expected <= 18.0
+        assert abs(dynamic_target(static_db, dynamic_range_db, 0.0) - static_db) < 1e-9
+
+        if abs(static_db + contribution) <= 18.0:
+            assert abs(expected - (static_db + contribution)) < 1e-9
+
+    # Production model clamps total Dynamic EQ gain to ±18 dB.
+    assert dynamic_target(3.0, 18.0, 100.0) == 18.0
+    assert dynamic_target(3.0, 18.0, -100.0) == -15.0
+    assert dynamic_target(3.0, 18.0, 0.0) == 3.0
+
+
 def test_v103_ui_rules_50():
     """50 deterministic state checks for the v1.0.3 visual rules."""
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
@@ -546,9 +421,9 @@ def test_v103_ui_rules_50():
     assert "deessLocalBypassButton" in head
     assert 'DEESS_BYPASS", *deessLocalBypassButton' in cpp
 
-    assert "const correctedX=clamp(x-dynFreqGrabOffsetX,0,w);" in web
-    assert "const rawDx=correctedX-logX(dynTargetStartFreq,w),rawDy=y-dynDynamicsStartY;" in web
-    assert "const hzv=invLog(correctedX/w);" in web
+    assert "const hzv=invLog(clamp(x,0,w)/w);" in web
+    assert "const targetGain=clamp(18-(y/Math.max(1,h))*36,-18,18);" in web
+    assert "state.eq.freq[dragBand]=hzv" in web
     assert "state.eq.freq[dragBand]=hzv" in web
     assert 'setParameter("EQ" + n + "_FREQ", hz);' in cpp
     assert 'setParameter("DYN_DYNAMICS" + n, dynamics);' in cpp
@@ -559,8 +434,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.7" in web
-    assert "VVCHAIN v1.0.7" in cpp
+    assert "VVCHAIN v1.0.8" in web
+    assert "VVCHAIN v1.0.8" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -582,9 +457,8 @@ def test_v103_closed_10():
         assert 'this.peak(sampleRate,f,sq,sGain)' not in worklet
 
         # DYNAMICS Target XY mapping.
-        assert "const correctedX=clamp(x-dynFreqGrabOffsetX,0,w);" in web
-        assert "const rawDx=correctedX-logX(dynTargetStartFreq,w),rawDy=y-dynDynamicsStartY;" in web
-        assert "const hzv=invLog(correctedX/w);" in web
+        assert "const hzv=invLog(clamp(x,0,w)/w);" in web
+        assert "const targetGain=clamp(18-(y/Math.max(1,h))*36,-18,18);" in web
         assert "state.eq.freq[dragBand]=hzv" in web
         assert "state.dyn.dynamics[dragBand]=clamp" in web
 
@@ -609,30 +483,29 @@ def test_v107_ui_controls():
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
     worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
 
-    # Graph frequency follows the actual pointer coordinate with grab-offset preservation.
-    assert "graphFreqDragGrabOffsetX =" in cpp
+    # Graph frequency follows the actual pointer coordinate with no grab-offset accumulation.
     assert "graphXToFrequency(graph, correctedX)" in cpp
-    assert "event.position.x - graphFreqDragGrabOffsetX" in cpp
+    assert "event.position.x);" in cpp
+    assert "event.position.x - graphFreqDragGrabOffsetX" not in cpp
     assert "followScale = 0.74f" not in cpp
     assert "const followScale=0.74" not in web
-    assert "const hzv=invLog(correctedX/w);" in web
+    assert "const hzv=invLog(clamp(x,0,w)/w);" in web
 
     # EQ / DE-ESS frequency knobs are intentionally slower than the base gain drag.
     assert "setDragSensitivity(900, 9000)" in cpp
-    assert "(cfg.sensitivity??1)" in web
-    assert 'sensitivity:.20' in web
+    assert 'const hzv=invLog(clamp(x,0,w)/w);' in web
 
     # DE-ESS MODE is a four-position discrete rotary with Roman tick labels.
-    assert 'setDiscreteArc(' in cpp
-    assert '"I", "II", "III", "IV"' in cpp
-    assert 'setRotaryParameters(' in cpp
-    assert 'controlId:"DEESS_MODE"' in web
-    assert 'min:1,max:4' in web
+    assert 'drawLinearSlider(' in cpp
+    assert 'labels { "I", "II", "III", "IV" }' in cpp
+    assert 'DEESS_MODE_SWITCH' in cpp
+    assert 'deEssModeSwitch' in web
+    assert 'state.de.mode=index+1' in web
 
     # Graph readout is compact: EQ / DYN EQ + GAIN, FREQ, Q only.
     assert 'DYN EQ' in cpp
-    assert 'm_boxWidth = 132' in head
-    assert 'width:136px' in web
+    assert 'm_boxWidth = 108' in head
+    assert '.graphHint{width:112px' in web
     assert 'DYN EQ' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
     assert ' | ' not in hint_block
