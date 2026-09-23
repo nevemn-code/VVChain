@@ -160,6 +160,7 @@ def test_eq_xy_drag_math():
     assert 'const effectiveDy=rawDy;' in web
     assert 'constexpr float hitRadius = 14.0f;' in cpp
     assert 'dragDynamicHandleBand' in web
+    assert 'dragOverlapXover' in cpp
     assert 'dynHandleStartValue' in web
     assert 'state.bandBypass[b]' in web
     assert '.ottGrid .knob .dial,.bottomGrid .knob .dial' in web
@@ -175,7 +176,7 @@ def test_eq_xy_drag_math():
     assert 'const dynamicRangeDb=18;' in web
     assert 'const bool dynamicsEnabled = true;' in cpp
     assert 'const float markerY = graph.getBottom() - 18.f;' in cpp
-    assert 'Bottom infinity / bow-tie marker replaces the old X marker.' in cpp
+    assert 'Bottom infinity / bow-tie marker is the continuous OVERLAP control.' in cpp
     assert 'const markerY=h-18' in web
     assert 'DYNAMIC EQ</span>' not in web
     assert 'msReadout' not in web
