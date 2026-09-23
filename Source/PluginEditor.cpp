@@ -882,7 +882,7 @@ float VVChainAudioProcessorEditor::dynamicEffectiveTargetGain(int band) const
         direction * dynamicRangeDb * amount;
 
     return juce::jlimit(
-        -36.f, 36.f,
+        -18.f, 18.f,
         offset + dynamicOffsetDb);
 }
 
@@ -923,8 +923,8 @@ juce::Point<float> VVChainAudioProcessorEditor::dynamicTargetPoint(int band) con
 bool VVChainAudioProcessorEditor::pointNearDynamicNode(
     juce::Point<float> p, int& band) const
 {
-    constexpr float hitRadius = 14.0f;
-    constexpr float staticNodeRadius = 8.0f;
+    constexpr float hitRadius = 18.0f;
+    constexpr float staticNodeRadius = 5.5f;
 
     band = -1;
     float best = hitRadius;
@@ -1873,23 +1873,88 @@ juce::String VVChainAudioProcessorEditor::formatGraphFrequency(float hz) const
 void VVChainAudioProcessorEditor::drawGraphDragHint(
     juce::Graphics& g, juce::Rectangle<float> graph)
 {
-    if (!showGraphDragHint || graphDragHint.isEmpty())
+    if (!showGraphDragHint)
         return;
 
-    const auto font = juce::FontOptions(9.0f).withStyle("Bold");
-    g.setFont(font);
+    const float paddingX = 7.0f;
+    const float boxH = 30.0f;
+    const float gap = 4.0f;
 
-    const float paddingX = 9.0f;
-    const float paddingY = 6.0f;
-    const float boxW =
-        juce::jlimit(175.0f, graph.getWidth() - 12.0f,
-                     (static_cast<float>(graphDragHint.length()) * g.getCurrentFont().getHeight() * 0.55f)
-                         + paddingX * 2.0f);
-    const float boxH = 28.0f;
+    if (graphHintBand >= 0 && graphHintBand < 4)
+    {
+        const auto n = juce::String(graphHintBand + 1);
+        const std::array<juce::String, 4> labels
+        {
+            "FREQ " + formatGraphFrequency(parameterValue("EQ" + n + "_FREQ")),
+            "GAIN " + juce::String(parameterValue("EQ" + n + "_GAIN"), 1) + " dB",
+            "DYN "  + juce::String(parameterValue("DYN_DYNAMICS" + n), 0) + "%",
+            "Q "    + juce::String(parameterValue("EQ" + n + "_Q"), 2)
+        };
+        const std::array<bool, 4> active
+        {
+            (graphHintActiveMask & 1) != 0,
+            (graphHintActiveMask & 2) != 0,
+            (graphHintActiveMask & 4) != 0,
+            (graphHintActiveMask & 8) != 0
+        };
+
+        g.setFont(juce::FontOptions(8.0f).withStyle("Bold"));
+
+        float boxW = 22.0f;
+        for (const auto& text : labels)
+            boxW += static_cast<float>(text.length()) * 4.35f + gap;
+        boxW = juce::jlimit(210.0f, graph.getWidth() - 12.0f, boxW);
+
+        float bx = graphHintBand >= 0
+            ? graphDragHintPosition.x + 14.0f
+            : graph.getX() + 6.0f;
+        float by = graphDragHintPosition.y - boxH - 10.0f;
+
+        if (bx + boxW > graph.getRight() - 6.0f)
+            bx = graphDragHintPosition.x - boxW - 14.0f;
+        if (by < graph.getY() + 6.0f)
+            by = graphDragHintPosition.y + 14.0f;
+
+        bx = juce::jlimit(graph.getX() + 6.0f,
+                          graph.getRight() - boxW - 6.0f, bx);
+        by = juce::jlimit(graph.getY() + 6.0f,
+                          graph.getBottom() - boxH - 6.0f, by);
+
+        g.setColour(juce::Colour(0xff07090c).withAlpha(.95f));
+        g.fillRoundedRectangle(bx, by, boxW, boxH, 5.0f);
+        g.setColour(juce::Colours::white.withAlpha(.92f));
+        g.drawRoundedRectangle(bx, by, boxW, boxH, 5.0f, 1.0f);
+
+        float x = bx + paddingX;
+        for (int i = 0; i < 4; ++i)
+        {
+            g.setFont(juce::FontOptions(7.8f).withStyle(
+                active[(size_t) i] ? "Bold" : "Plain"));
+            g.setColour(active[(size_t) i]
+                ? juce::Colours::white
+                : juce::Colour(0xff8f98a3));
+
+            const float segmentW =
+                juce::jmax(38.0f, static_cast<float>(labels[(size_t) i].length()) * 4.35f);
+            g.drawText(labels[(size_t) i],
+                       juce::Rectangle<int>((int) x, (int) by + 8,
+                                            (int) segmentW, 13),
+                       juce::Justification::centredLeft);
+            x += segmentW + gap;
+        }
+        return;
+    }
+
+    if (graphDragHint.isEmpty())
+        return;
+
+    g.setFont(juce::FontOptions(8.5f).withStyle("Bold"));
+    const float boxW = juce::jlimit(
+        175.0f, graph.getWidth() - 12.0f,
+        static_cast<float>(graphDragHint.length()) * 4.7f + 16.0f);
 
     float bx = graphDragHintPosition.x + 14.0f;
     float by = graphDragHintPosition.y - boxH - 10.0f;
-
     if (bx + boxW > graph.getRight() - 6.0f)
         bx = graphDragHintPosition.x - boxW - 14.0f;
     if (by < graph.getY() + 6.0f)
@@ -1900,15 +1965,14 @@ void VVChainAudioProcessorEditor::drawGraphDragHint(
     by = juce::jlimit(graph.getY() + 6.0f,
                       graph.getBottom() - boxH - 6.0f, by);
 
-    g.setColour(juce::Colour(0xff07090c).withAlpha(.94f));
+    g.setColour(juce::Colour(0xff07090c).withAlpha(.95f));
     g.fillRoundedRectangle(bx, by, boxW, boxH, 5.0f);
     g.setColour(juce::Colours::white.withAlpha(.92f));
     g.drawRoundedRectangle(bx, by, boxW, boxH, 5.0f, 1.0f);
     g.setColour(juce::Colours::white);
     g.drawText(graphDragHint,
-               juce::Rectangle<float>(bx + paddingX, by + 1.0f,
-                                      boxW - paddingX * 2.0f,
-                                      boxH - 2.0f).toNearestInt(),
+               juce::Rectangle<int>((int) bx + 7, (int) by + 1,
+                                    (int) boxW - 14, (int) boxH - 2),
                juce::Justification::centred);
 }
 
@@ -1934,7 +1998,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.2 · SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER",
+    g.drawText("VVCHAIN v1.0.3 · SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2473,14 +2537,15 @@ void VVChainAudioProcessorEditor::mouseDown(
             if (auto* parameter =
                     audioProcessor.apvts.getParameter("DYN_DYNAMICS" + n))
                 parameter->beginChangeGesture();
-            setGraphControlState(
-                juce::StringArray({ "DYN_DYNAMICS" + n }), false);
+            juce::StringArray graphIds;
+            graphIds.add("DYN_DYNAMICS" + n);
+            setGraphControlState(graphIds, false);
+            graphHintBand = b;
+            graphHintActiveMask = 4;
+            graphHintAutoHideAt = 0;
             showGraphDragHint = true;
             graphDragHintPosition = pos;
-            graphDragHint =
-                "DYN " + n + "   "
-                + juce::String(dynamicHandleDragStartValue, 0)
-                + "%";
+            graphDragHint.clear();
             repaint();
             return;
         }
@@ -2525,12 +2590,12 @@ void VVChainAudioProcessorEditor::mouseDown(
             graphIds.add("EQ" + n + "_GAIN");
             setGraphControlState(graphIds, false);
 
+            graphHintBand = b;
+            graphHintActiveMask = 1 | 2;
+            graphHintAutoHideAt = 0;
             showGraphDragHint = true;
             graphDragHintPosition = pos;
-            graphDragHint =
-                "EQ " + n + "   OFFSET "
-                + juce::String(dynamicGainDragStartOffset, 1)
-                + " dB";
+            graphDragHint.clear();
             repaint();
             return;
         }
@@ -2574,13 +2639,12 @@ void VVChainAudioProcessorEditor::mouseDown(
         graphIds.add("EQ" + n + "_FREQ");
         setGraphControlState(graphIds, false);
 
+        graphHintBand = band;
+        graphHintActiveMask = 1 | 4;
+        graphHintAutoHideAt = 0;
         showGraphDragHint = true;
         graphDragHintPosition = pos;
-        graphDragHint =
-            "DYN " + n + "   "
-            + juce::String(dynamicDragStartDynamics, 0)
-            + "%   "
-            + formatGraphFrequency(hz);
+        graphDragHint.clear();
         repaint();
         return;
     }
@@ -2652,8 +2716,9 @@ void VVChainAudioProcessorEditor::mouseDown(
         if (auto* parameter = audioProcessor.apvts.getParameter(xoverId))
             parameter->beginChangeGesture();
 
-        setGraphControlState(
-            juce::StringArray({ xoverId }), false);
+        juce::StringArray xoverGraphIds;
+        xoverGraphIds.add(xoverId);
+        setGraphControlState(xoverGraphIds, false);
         showGraphDragHint = true;
         graphDragHintPosition = pos;
 
@@ -2910,9 +2975,6 @@ void VVChainAudioProcessorEditor::mouseDrag(
             -rawDy
             / juce::jmax(1.f, graph.getHeight())
             * 200.f * dragScale;
-            -(event.position.y - dynamicTargetDragStartY)
-            / juce::jmax(1.f, graph.getHeight())
-            * 200.f * dragScale;
 
         const float dynamics =
             juce::jlimit(
@@ -3020,6 +3082,9 @@ void VVChainAudioProcessorEditor::mouseUp(
     dragDynamicHandleBand = -1;
     showGraphDragHint = false;
     graphDragHint.clear();
+    graphHintBand = -1;
+    graphHintActiveMask = 0;
+    graphHintAutoHideAt = 0;
     repaint();
 }
 
@@ -3089,8 +3154,9 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
             const float next = juce::jlimit(
                 0.f, 100.f,
                 parameterValue("XOVER_OVERLAP") - wheel.deltaY * .5f);
-            setGraphControlState(
-                juce::StringArray({ "XOVER_OVERLAP" }), false);
+            juce::StringArray overlapGraphIds;
+            overlapGraphIds.add("XOVER_OVERLAP");
+            setGraphControlState(overlapGraphIds, false);
             setParameter("XOVER_OVERLAP", next);
             repaint();
             return;
@@ -3156,8 +3222,16 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
                 q * std::exp(
                     -wheel.deltaY * .25f));
 
-    setGraphControlState(
-        juce::StringArray({ "EQ" + n + "_Q" }), false);
+    juce::StringArray qGraphIds;
+    qGraphIds.add("EQ" + n + "_Q");
+    setGraphControlState(qGraphIds, false);
+    graphHintBand = band;
+    graphHintActiveMask = 8;
+    graphHintAutoHideAt =
+        juce::Time::getMillisecondCounter() + 350u;
+    showGraphDragHint = true;
+    graphDragHintPosition = event.position;
+    graphDragHint.clear();
     setParameter(
         "EQ" + n + "_Q", nextQ);
 
