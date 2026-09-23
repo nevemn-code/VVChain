@@ -149,9 +149,8 @@ private:
     void updateBypassVisuals();
     bool isMasterBypassed() const noexcept;
     juce::Rectangle<float> dynamicMsPopupBounds(int band) const;
-    juce::Point<float> dynamicThresholdHandlePoint(int band) const;
+    juce::Point<float> dynamicTargetPoint(int band) const;
     bool pointNearDynamicNode(juce::Point<float>, int& band) const;
-    bool pointNearDynamicThresholdHandle(juce::Point<float>, int& band) const;
     float dynamicAverageGainChangeDb(int band) const;
     float dynamicMidGainChangeDb(int band) const;
     float dynamicSideGainChangeDb(int band) const;
@@ -174,6 +173,8 @@ private:
     std::array<std::unique_ptr<juce::ToggleButton>, 4> soloButtons;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> dynDetectButtons;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> dynTriggerButtons;
+    std::array<std::unique_ptr<BoolAttachment>, 4> dynDetectAttachments;
+    std::array<std::unique_ptr<BoolAttachment>, 4> dynTriggerAttachments;
     std::unique_ptr<juce::ToggleButton> soloModeButton;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> atypeBandBypassButtons;
     std::array<std::unique_ptr<BoolAttachment>, 4> ottBandBypassAttachments;
@@ -189,7 +190,6 @@ private:
     int dragBand = -1;
     int dragXover = -1;
     int dragDynamicMsBand = -1;
-    int dragDynamicThresholdBand = -1;
     int hoverDynamicBand = -1;
     float dynamicFreqDragStartHz = 0.0f;
     float dynamicFreqDragStartX = 0.0f;
