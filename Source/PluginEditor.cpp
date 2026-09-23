@@ -1827,15 +1827,20 @@ void VVChainAudioProcessorEditor::drawCard(
     g.setColour(accent.withAlpha(.8f));
     g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
 
+    const bool monitorCard = title == "BYPASS";
+    const int titleY = monitorCard ? 36 : 8;
     g.setColour(juce::Colours::white);
     g.setFont(juce::FontOptions(12.f).withStyle("Bold"));
-    g.drawText(title, (int) r.getX() + 13, (int) r.getY() + 8, 100, 17,
-               juce::Justification::left);
+    g.drawText(title, (int) r.getX() + 13, (int) r.getY() + titleY,
+               100, 17, juce::Justification::left);
 
-    g.setColour(juce::Colour(0xff8b929c));
-    g.setFont(juce::FontOptions(7.5f));
-    g.drawText(subtitle, (int) r.getX() + 13, (int) r.getY() + 25,
-               (int) r.getWidth() - 80, 12, juce::Justification::left);
+    if (!monitorCard)
+    {
+        g.setColour(juce::Colour(0xff8b929c));
+        g.setFont(juce::FontOptions(7.5f));
+        g.drawText(subtitle, (int) r.getX() + 13, (int) r.getY() + 25,
+                   (int) r.getWidth() - 80, 12, juce::Justification::left);
+    }
 
     g.setColour(accent.withAlpha(.28f));
     g.drawRoundedRectangle(r.reduced(2.f), 6.f, 1.f);
