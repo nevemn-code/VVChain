@@ -16,6 +16,7 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+    void mouseMove(const juce::MouseEvent&) override;
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
@@ -148,7 +149,9 @@ private:
     void updateBypassVisuals();
     bool isMasterBypassed() const noexcept;
     juce::Rectangle<float> dynamicMsPopupBounds(int band) const;
+    juce::Point<float> dynamicThresholdHandlePoint(int band) const;
     bool pointNearDynamicNode(juce::Point<float>, int& band) const;
+    bool pointNearDynamicThresholdHandle(juce::Point<float>, int& band) const;
     float dynamicAverageReductionDb(int band) const;
     float dynamicMidReductionDb(int band) const;
     float dynamicSideReductionDb(int band) const;
@@ -184,6 +187,10 @@ private:
     int dragBand = -1;
     int dragXover = -1;
     int dragDynamicMsBand = -1;
+    int dragDynamicThresholdBand = -1;
+    int hoverDynamicBand = -1;
+    float dynamicFreqDragStartHz = 0.0f;
+    float dynamicFreqDragStartX = 0.0f;
     bool showGraphDragHint = false;
     juce::String graphDragHint;
     juce::Point<float> graphDragHintPosition {};
