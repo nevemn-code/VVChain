@@ -1766,6 +1766,17 @@ void VVChainAudioProcessorEditor::setGraphControlMoving(bool moving)
 
 void VVChainAudioProcessorEditor::timerCallback()
 {
+    if (graphHintAutoHideAt != 0
+        && juce::Time::getMillisecondCounter() >= graphHintAutoHideAt)
+    {
+        showGraphDragHint = false;
+        graphDragHint.clear();
+        graphHintBand = -1;
+        graphHintActiveMask = 0;
+        graphHintAutoHideAt = 0;
+        repaint();
+    }
+
     for (auto& k : knobs)
         if (auto* slider = dynamic_cast<WheelSlider*>(k.slider.get()))
             if (slider->isGraphControlActive())
