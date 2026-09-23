@@ -231,6 +231,36 @@ def test_eq_xy_drag_math():
     assert 'SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER' in web
     assert 'DSP ERROR · AudioWorklet processor failed' in web
     assert '.knob.graphActive .dial' in web
+
+    # Delta regression: UI parameter traffic must be coalesced and the live
+    # BufferSource must never be stopped merely because a Worklet faults.
+    assert 'const WORKLET_SOURCE=' not in web
+    assert 'Active Web DSP source of truth: docs/vvchain-worklet.js' in web
+    assert 'paramSyncScheduled' in web
+    assert 'paramSyncRevision' in web
+    assert 'requestAnimationFrame(flush)' in web
+    assert 'structuredClone(state)' in web
+    assert 'source?.stop()' not in web
+    assert 'DIRECT AUDIO FALLBACK' in web
+    assert 'onmessageerror' in web
+    assert 'revision:paramSyncRevision' in web
+    assert '?v=20260923-1930' in web
+
+    worklet_start = web.index('new URL("vvchain-worklet.js"')
+    assert worklet_start >= 0
+    assert web.count('type:"params"') == 1, "web page must have exactly one active params transport"
+
+    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
+    assert 'pendingState=null' in worklet
+    assert 'pendingRevision=0' in worklet
+    assert 'activeRevision=0' in worklet
+    assert 'this.pendingState=next' in worklet
+    assert 'this.activeRevision=this.pendingRevision' in worklet
+    assert 'this._errorReported=false' in worklet
+    assert 'type:"error"' in worklet
+    assert 'this._meterBlocks%32===0' in worklet
+    assert 'this._meterBlocks%8===0' not in worklet
+    assert 'A DSP exception must never terminate the audio graph' in worklet
     assert 'setGraphControlState' in cpp
     assert 'SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER' in web
 
