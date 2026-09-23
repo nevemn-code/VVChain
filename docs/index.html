@@ -17,16 +17,30 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 .footer{display:none}.masterBypass{height:27px;min-width:72px;padding:0 9px;border:1px solid #69717b;border-radius:4px;background:#20242a;color:#e9eef3;font:9px Consolas;font-weight:900}.masterBypass.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 12px #dfe7ef88}.app.globalBypass{filter:grayscale(1)}.leds{margin-left:8px}.deessMonitor{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:30px 8px 8px;gap:10px}.monitorKnobRow{width:100%;height:224px;display:grid;grid-template-columns:1fr;grid-template-rows:1fr 1fr;gap:4px}.deessPower{width:72px;height:72px;border-radius:50%;border:2px solid #50565f;background:radial-gradient(circle at 35% 28%,#454a52,#171a1f 68%,#0b0d10 100%);color:#8b929a;font-size:28px;font-weight:800;line-height:1;box-shadow:0 7px 12px #000b,inset 0 1px 2px #fff2;cursor:pointer}.deessPower.on{border-color:#e5e7eb;color:#fff;box-shadow:0 0 18px #e5e7eb77,0 7px 12px #000b,inset 0 1px 2px #fff3}.deltaBtn{width:100%;height:30px;border:1px solid #555b63;border-radius:5px;background:#12161b;color:#dfe5eb;font:800 9px Consolas}.deltaBtn.on{border-color:#fff;background:#e6edf2;color:#090b0e;box-shadow:0 0 9px #fff6}.monitorHint{font:7px Consolas;color:#7e8791;text-align:center;line-height:1.4}.note{display:none}select{height:27px;background:#0f1115;color:#dce2e8;border:1px solid #3b4047;border-radius:4px;font-size:8px}
 @media(max-width:1100px){.chain{display:none}.ledLabel{display:none}.dial{width:57px;height:57px}.footer{grid-template-columns:1fr 245px}}
 .versionNav{display:flex;align-items:center;gap:4px;margin-right:8px}.versionNav a{height:27px;padding:0 7px;display:inline-flex;align-items:center;border:1px solid #3a4048;border-radius:4px;background:#101318;color:#9aa4ae;text-decoration:none;font:8px Consolas}.versionNav a:hover,.versionNav a.active{background:#e6edf4;color:#0a0c0f;border-color:#e6edf4}.labTag{font:8px Consolas;color:#facc15;margin-right:6px}</style>
+<style id="vvchain-v108-overrides">
+.transport{grid-template-columns:110px 75px minmax(0,1fr) 55px 55px 65px 75px}
+.graphHint{width:112px;min-width:112px;padding:5px 7px;font-size:8px;line-height:12px}
+.deEssModeBox{text-align:center;font:7.7px Consolas;color:#bcc3cb;min-width:0;display:flex;flex-direction:column;gap:5px;justify-content:center}
+.deEssModeTitle{height:13px;color:#67d3aa;font-weight:900}
+.deEssModeSwitch{height:34px;padding:0 2px;display:grid;grid-template-columns:repeat(4,1fr);gap:2px;border:1px solid #4b525b;border-radius:5px;background:#0b0d10}
+.deEssModeSwitch span{border:1px solid transparent;border-radius:4px;color:#aeb5bd;font:9px Consolas;font-weight:900;display:flex;align-items:center;justify-content:center}
+.deEssModeSwitch span.on{color:#fff;border-color:#67d3aa;background:#173126;box-shadow:0 0 7px #67d3aa55}
+.monitorBand .bandHead{transform:translateY(29px)}
+.monitorBand .deessMonitor{padding-top:10px}
+.monitorBand .deessPower{width:58px;height:58px}
+.monitorBand .monitorKnobRow{transform:translateY(18px)}
+</style>
 </head>
 <body>
 <div class="app"><span hidden>NO PAGE SCROLL</span><span hidden>DE-ESSER = ZERO-LATENCY SAMPLE-DOMAIN · DELTA = OUTPUT − DRY · SOLO = SHARED X-OVER PRE/POST</span>
   <div class="transport">
     <label class="tiny"><input id="audioFileInput" type="file" accept="audio/*" hidden>LOAD AUDIO</label>
+    <span class="tiny" id="cursorTime">0:00.000</span>
     <div class="file" id="fileName">未載入音檔</div>
-    <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span><span class="tiny" id="cursorTime">0:00.000</span>
+    <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.7 · ANALOG 4-BAND + DEESS PRESETS</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.8 · ANALOG 4-BAND + DEESS PRESETS</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -48,9 +62,9 @@ const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=n
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
 const state={masterBypass:false,delta:false,solo:{band:-1,post:false},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:[35,35,35,35],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[false,false,false,false],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},ott:{bypass:false,bandBypass:[false,false,false,false],degree:[25,25,22,18],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[6,12,28,22],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:8000,intensity:3,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
 const defaults=structuredClone(state),knobRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.7
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.8
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.7";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.8";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -348,6 +362,7 @@ makeKnob(ottGrid,{label:"OTT %",get:()=>state.ott.degree[n],set:v=>state.ott.deg
 makeKnob(ottGrid,{label:"ATTACK",get:()=>state.ott.compA[n],set:v=>state.ott.compA[n]=v,min:.1,max:120,suffix:" ms",accent:"#facc15",formatDigits:1,formatValue:()=>fmt(effectiveCompAttackMs(n),1)+" ms",mutedWhen:()=>state.ott.degree[n]<=0.0001});
 makeKnob(ottGrid,{label:"RELEASE",get:()=>state.ott.compR[n],set:v=>state.ott.compR[n]=v,min:10,max:2500,suffix:" ms",accent:"#facc15",formatDigits:0,formatValue:()=>fmt(effectiveCompReleaseMs(n),0)+" ms",mutedWhen:()=>state.ott.degree[n]<=0.0001});
 
+// ANALOG COLOR baseline locked to Deploy VVChain Web Preview #443.
 const analogKnob=makeKnob(bottomGrid,{label:"ANALOG COLOR",get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:100,suffix:" %",accent:"#60a5fa",mutedWhen:()=>state.eq.color[n]<=0.0001});
 analogKnob.classList.add("analogKnob");
 let syncTapeLed=()=>{};
@@ -383,9 +398,19 @@ const syncDeessLocal=()=>{deessLocalBypass.classList.toggle("on",!state.de.bypas
 syncDeessLeds();
 const deFreqKnob=makeKnob(body,{label:"DE-ESS FREQ",controlId:"DEESS_FREQ",get:()=>state.de.freq,set:v=>state.de.freq=v,min:6000,max:18000,suffix:" Hz",accent:"#67d3aa",formatValue:hz,sensitivity:.20,mutedWhen:()=>state.de.intensity<=0.0001});
 const deIntensityKnob=makeKnob(body,{label:"MAXIMUM REDUCTION",controlId:"DEESS_INTENSITY",get:()=>state.de.intensity,set:v=>state.de.intensity=v,min:0,max:8,suffix:" dB",accent:"#67d3aa",formatDigits:1,mutedWhen:()=>state.de.intensity<=0.0001,afterSet:v=>{state.de.bypass=v<=0.0001;syncDeessLeds();syncDeessLocal()}});
-const deModeKnob=makeKnob(body,{label:"DE-ESS MODE",controlId:"DEESS_MODE",get:()=>state.de.mode,set:v=>state.de.mode=v,min:1,max:4,suffix:"",accent:"#67d3aa",formatDigits:0,mutedWhen:()=>state.de.intensity<=0.0001});
-deModeKnob.title="";
-deModeKnob.dataset.deessProfiles="1 SAFE 5/120 3:1 | 2 VOCAL 2/70 4:1 | 3 FAST 0.75/35 8:1 | 4 HARD 0.25/20 10:1";
+const deModeBox=document.createElement("div");deModeBox.className="deEssModeBox";
+deModeBox.innerHTML="<div class='deEssModeTitle'>DE-ESS MODE</div><button class='deEssModeSwitch' type='button'><span>I</span><span>II</span><span>III</span><span>IV</span></button>";
+body.appendChild(deModeBox);
+const deModeSwitch=deModeBox.querySelector(".deEssModeSwitch");
+const syncDeMode=()=>deModeSwitch.querySelectorAll("span").forEach((s,i)=>s.classList.toggle("on",i+1===Math.round(state.de.mode)));
+deModeSwitch.addEventListener("pointerdown",e=>{
+  e.preventDefault();
+  const r=e.currentTarget.getBoundingClientRect();
+  const index=clamp(Math.floor((e.clientX-r.left)/Math.max(1,r.width)*4),0,3);
+  state.de.mode=index+1;
+  syncDeMode();sendParams();drawEQ();
+});
+syncDeMode();
 syncDeessLocal();
 requestAnimationFrame(()=>{const rr=deIntensityKnob.getBoundingClientRect(),cr=card.getBoundingClientRect();deessLocalBypass.style.left=(rr.right-cr.left-20)+"px";deessLocalBypass.style.top=(rr.top-cr.top+1)+"px";});
 }
@@ -467,7 +492,7 @@ function dynamicTargetAtPointer(x,y,w,h){
   return band;
 }
 function dbToY(db,h){
-  return h-clamp((db+36)/72,0,1)*h;
+  return h-clamp((db+18)/36,0,1)*h;
 }
 function peakMagnitudeDb(fs,f,q,g,hz){
   const sr=fs>1000?fs:44100,cf=clamp(Number(f),10,sr*.45),fq=clamp(Number(q),.05,30),gd=clamp(Number(g),-36,36),x=clamp(Number(hz),10,sr*.45);
@@ -507,7 +532,7 @@ function drawEQ(){
     eqCtx.beginPath();eqCtx.moveTo(0,y);eqCtx.lineTo(w,y);eqCtx.stroke();
   }
   eqCtx.fillStyle="#aab0ba";eqCtx.font="bold 8px Consolas";eqCtx.textAlign="left";
-  [36,18,0,-18,-36].forEach(db=>{const y=h-clamp((db+36)/72,0,1)*h;eqCtx.fillText((db>0?"+":"")+db+" dB",6,clamp(y+3,10,h-6))});
+  [18,9,0,-9,-18].forEach(db=>{const y=h-clamp((db+36)/72,0,1)*h;eqCtx.fillText((db>0?"+":"")+db+" dB",6,clamp(y+3,10,h-6))});
   const freqTicks=[[20,"20 Hz"],[100,"100 Hz"],[1000,"1 kHz"],[10000,"10 kHz"],[20000,"20 kHz"]];
   eqCtx.textAlign="center";freqTicks.forEach(([hzv,label])=>{const x=logX(hzv,w);eqCtx.fillText(label,clamp(x,22,w-22),h-4)});eqCtx.textAlign="left";
 
@@ -889,33 +914,22 @@ eqCanvas.addEventListener("pointermove",e=>{
     sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
   }
   if(dragMode===1&&dragBand>=0){
-    const fine=e.shiftKey?0.1:1;
-    // Convert the pointer back to the node's grabbed anchor point first.
-    // Comparing that corrected coordinate with the mouse-start X caused
-    // an artificial first-frame jump and made the node run ahead.
-    const nodeStartX=logX(dynFreqStartHz,w);
-    const correctedX=clamp(x-dynFreqGrabOffsetX,0,w);
-    const rawDx=correctedX-nodeStartX,rawDy=y-dynGainStartY;
-    // Frequency is mapped directly from the corrected cursor position.
-    // No follow multiplier is used, so the node stays exactly under its grab offset.
-    const effectiveDx=rawDx;
-    const effectiveDy=rawDy;
-    const hzv=invLog(correctedX/w);
-    const deltaDb=-effectiveDy/Math.max(1,h)*36*fine;
+    // Absolute graph-pixel mapping: static EQ follows the cursor directly.
+    const hzv=invLog(clamp(x,0,w)/w);
+    const gainAtCursor=clamp(18-(y/Math.max(1,h))*36,-18,18);
     state.eq.freq[dragBand]=hzv;
-    state.eq.gain[dragBand]=clamp(dynGainStartOffset+deltaDb,-18,18);
+    state.eq.gain[dragBand]=gainAtCursor;
     setGraphControls(["EQ"+(dragBand+1)+"_FREQ","EQ"+(dragBand+1)+"_GAIN"],true);
     showGraphHint(e,graphHintBandHtml(dragBand,1|2));
     sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
   }
   if(dragMode===2&&dragBand>=0){
-    const fine=e.shiftKey?0.1:1;
-    const correctedX=clamp(x-dynFreqGrabOffsetX,0,w);
-    const rawDx=correctedX-logX(dynTargetStartFreq,w),rawDy=y-dynDynamicsStartY;
-    const hzv=invLog(correctedX/w);
-    const deltaDynamics=-rawDy/Math.max(1,h)*200*fine;
+    // Absolute graph-pixel mapping: Dynamic Target follows the cursor directly.
+    const hzv=invLog(clamp(x,0,w)/w);
+    const targetGain=clamp(18-(y/Math.max(1,h))*36,-18,18);
+    const offset=clamp(Number(state.eq.gain[dragBand]||0),-18,18);
     state.eq.freq[dragBand]=hzv;
-    state.dyn.dynamics[dragBand]=clamp(dynDynamicsStartValue+deltaDynamics,-100,100);
+    state.dyn.dynamics[dragBand]=clamp((targetGain-offset)/18*100,-100,100);
     setGraphControls(["EQ"+(dragBand+1)+"_FREQ","DYN_DYNAMICS"+(dragBand+1)],true);
     showGraphHint(e,graphHintBandHtml(dragBand,1|4));
     sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
