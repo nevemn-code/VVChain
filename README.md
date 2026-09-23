@@ -95,3 +95,7 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 - 每次改版完成後，必須做「Plugin ↔ Web Preview」雙版本功能對照，至少確認參數範圍、拖曳方向、滑鼠事件、數值計算、UI 顯示與預設值一致。
 - GitHub Pages 會從 `main` 的 `docs/` 部署；因此 Web Preview 的修正也必須直接提交到 `main`，並確認 Pages deployment 已觸發。
 - **除非明確說明某功能只存在於其中一個版本，否則一律以雙版本同步為完成條件。**
+
+## 版本規則
+
+VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
