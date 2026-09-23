@@ -253,9 +253,9 @@ def test_eq_xy_drag_math():
     assert 'DIRECT AUDIO FALLBACK' in web
     assert 'onmessageerror' in web
     assert 'revision:paramSyncRevision' in web
-    assert '?v=1.0.3' in web
+    assert '?v=1.0.4' in web
     assert '2026-09-23' not in web, "Web preview must not use timestamp identifiers"
-    assert 'VVCHAIN v1.0.3' in web
+    assert 'VVCHAIN v1.0.4' in web
 
     worklet_start = web.index('new URL("vvchain-worklet.js"')
     assert worklet_start >= 0
@@ -274,6 +274,28 @@ def test_eq_xy_drag_math():
     assert 'A DSP exception must never terminate the audio graph' in worklet
     assert 'setGraphControlState' in cpp
     assert 'SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER' in web
+
+def test_v104_tape_a_stateless_normalized():
+    cpp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
+    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    editor = CPP.read_text(encoding="utf-8")
+
+    cpp_tape = cpp[cpp.index("void VVChainDSP::applyAType"):cpp.index("void VVChainDSP::processDeEsser")]
+    worklet_tape = worklet[worklet.index("if(!s.type.bypass){"):worklet.index("\n    return y;", worklet.index("if(!s.type.bypass){"))]
+
+    assert "std::tanh(bands[band] * driveParam[band])" in cpp_tape
+    assert "staticMakeupMultiplier" in cpp_tape
+    assert "typeFastEnv" not in cpp_tape
+    assert "typeSlowEnv" not in cpp_tape
+    assert "targetGainDb" not in cpp_tape
+    assert "low2 - low1" in cpp_tape and "low3 - low2" in cpp_tape
+    assert "Math.tanh(bands[b]*driveParams[b])*makeup[b]" in worklet_tape
+    assert "c.typeFast[b]" not in worklet_tape
+    assert "c.typeSlow[b]" not in worklet_tape
+    assert "low2-low1" in worklet_tape and "low3-low2" in worklet_tape
+    assert "VVCHAIN v1.0.4" in web
+    assert "VVCHAIN v1.0.4" in editor
 
 def test_dynamic_range_centered_500():
     """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
@@ -458,8 +480,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.3" in web
-    assert "VVCHAIN v1.0.3" in cpp
+    assert "VVCHAIN v1.0.4" in web
+    assert "VVCHAIN v1.0.4" in cpp
     assert "2026-09-23" not in web
     assert "2026-09-23" not in cpp
 
