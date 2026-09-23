@@ -248,7 +248,8 @@ def test_eq_xy_drag_math():
     assert 'onmessageerror' in web
     assert 'revision:paramSyncRevision' in web
     assert '?v=1.0.1' in web
-    assert '2026-09-23' not in web, "Web preview must not use timestamp identifiers"\n    assert 'VVCHAIN v1.0.1' in web
+    assert '2026-09-23' not in web, "Web preview must not use timestamp identifiers"
+    assert 'VVCHAIN v1.0.1' in web
 
     worklet_start = web.index('new URL("vvchain-worklet.js"')
     assert worklet_start >= 0
