@@ -81,6 +81,8 @@ public:
         float deessReferenceHz = 12500.f;
         float deessIntensity = 0.f;
         float deessAverageOffset = 0.f;
+        // 1..4 selects the four tuned DeEsser attack/release/ratio profiles.
+        float deessMode = 2.f;
 
         int soloBand = -1;
         bool soloPost = false;
@@ -290,8 +292,13 @@ private:
     // Feed-forward detector source shared by all four Dynamic EQ bands.
     juce::AudioBuffer<float> dynamicDetectorInput;
 
-    // Reusable one-channel scratch for allocation-free high-density ANALOG.
+    // Reusable scratch for allocation-free four-band ANALOG.
     juce::AudioBuffer<float> analogTempBuffer;
+    std::array<juce::AudioBuffer<float>, 4> analogBandBuffers;
+    juce::AudioBuffer<float> analogSourceBuffer;
+    Crossover4th analogXover1 {};
+    Crossover4th analogXover2 {};
+    Crossover4th analogXover3 {};
     Crossover4th ottXover1 {};
     Crossover4th ottXover2 {};
     Crossover4th ottXover3 {};

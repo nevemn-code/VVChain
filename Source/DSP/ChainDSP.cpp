@@ -360,6 +360,9 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     dryBuffer.setSize(channels, maxBlock, false, true, true);
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
     analogTempBuffer.setSize(1, maxBlock * 4, false, true, true);
+    analogSourceBuffer.setSize(channels, maxBlock * 4, false, true, true);
+    for (auto& bandBuffer : analogBandBuffers)
+        bandBuffer.setSize(channels, maxBlock * 4, false, true, true);
     dynamicDetectorInput.setSize(channels, maxBlock * 4, false, true, true);
 
     eqOversampler.reset();
@@ -446,6 +449,10 @@ void VVChainDSP::reset()
         b.downRmsPower = { 0.f, 0.f };
         b.downSlowRmsPower = { 0.f, 0.f };
     }
+
+    analogXover1.reset();
+    analogXover2.reset();
+    analogXover3.reset();
 
     typeXover1.reset();
     typeXover2.reset();
@@ -958,22 +965,112 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     }
 
-    // ANALOG COLOR is an independent module. It must remain audible when
-    // EQ_BYPASS is active so DELTA can isolate ANALOG on its own.
+    // ANALOG COLOR is an independent four-band module.
+    // It shares the exact same X1 / X2 / X3 / OVERLAP positions as OTT/TAPE-A.
+    bool analogActive = false;
     for (size_t band = 0; band < 4; ++band)
     {
-        if (p.eqColorGlobalBypass || p.eqColorBypass[band])
-            continue;
-
         const float amount =
             juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
-        if (amount <= 0.000001f)
-            continue;
+        if (!p.eqColorGlobalBypass
+            && !p.eqColorBypass[band]
+            && amount > 0.000001f)
+        {
+            analogActive = true;
+            break;
+        }
+    }
 
-        const float drive =
-            p.eqColorSolidState[band] ? 1.15f : 0.95f;
+    if (analogActive)
+    {
+        const float x1 = juce::jlimit(
+            80.f, 900.f, p.ottX1);
+        const float x2 = juce::jlimit(
+            x1 + 80.f, 5000.f, p.ottX2);
+        const float x3 = juce::jlimit(
+            x2 + 200.f, static_cast<float>(osSr * 0.42), p.ottX3);
+        const float crossoverQ =
+            crossoverQFromOverlap(p.ottXoverOverlap);
 
-        processChebyshevAnalog(osBlock, drive, amount);
+        updateCrossover(analogXover1, osSr, x1, crossoverQ);
+        updateCrossover(analogXover2, osSr, x2, crossoverQ);
+        updateCrossover(analogXover3, osSr, x3, crossoverQ);
+
+        // Keep the post-EQ/Dynamics signal immutable while the four bands
+        // are processed independently.
+        for (int ch = 0; ch < osChannels; ++ch)
+        {
+            const auto* src =
+                osBlock.getChannelPointer(static_cast<size_t>(ch));
+            std::copy(src, src + osSamples,
+                      analogSourceBuffer.getWritePointer(ch));
+
+            for (auto& bandBuffer : analogBandBuffers)
+                bandBuffer.clear(ch, 0, osSamples);
+        }
+
+        // One crossover traversal per sample. This is important: recomputing
+        // the crossover separately for each band would advance its filter
+        // state four times and destroy the intended band alignment.
+        for (int sample = 0; sample < osSamples; ++sample)
+        {
+            for (int ch = 0; ch < osChannels; ++ch)
+            {
+                const bool right = ch == 1;
+                const float x =
+                    analogSourceBuffer.getSample(ch, sample);
+
+                const float low =
+                    analogXover1.low(x, right);
+                const float x1High =
+                    analogXover1.high(x, right);
+                const float lowMid =
+                    analogXover2.low(x1High, right);
+                const float x2High =
+                    analogXover2.high(x1High, right);
+                const float midHigh =
+                    analogXover3.low(x2High, right);
+                const float top =
+                    analogXover3.high(x2High, right);
+
+                analogBandBuffers[0].setSample(ch, sample, low);
+                analogBandBuffers[1].setSample(ch, sample, lowMid);
+                analogBandBuffers[2].setSample(ch, sample, midHigh);
+                analogBandBuffers[3].setSample(ch, sample, top);
+            }
+        }
+
+        for (size_t band = 0; band < 4; ++band)
+        {
+            if (p.eqColorGlobalBypass || p.eqColorBypass[band])
+                continue;
+
+            const float amount =
+                juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
+            if (amount <= 0.000001f)
+                continue;
+
+            const float drive =
+                p.eqColorSolidState[band] ? 1.15f : 0.95f;
+
+            juce::dsp::AudioBlock<float> bandBlock(analogBandBuffers[band]);
+            processChebyshevAnalog(bandBlock, drive, amount);
+        }
+
+        for (int ch = 0; ch < osChannels; ++ch)
+        {
+            auto* dst =
+                osBlock.getChannelPointer(static_cast<size_t>(ch));
+            for (int sample = 0; sample < osSamples; ++sample)
+            {
+                float reconstructed = 0.f;
+                for (size_t band = 0; band < 4; ++band)
+                    reconstructed +=
+                        analogBandBuffers[band].getSample(ch, sample);
+
+                dst[sample] = reconstructed;
+            }
+        }
     }
 
     eqOversampler.processSamplesDown(outputBlock);
@@ -1312,12 +1409,37 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
     // split-band approach used in professional de-essers.
     updateCrossover(deessSplit, sr, referenceHz, q);
 
-    const float fastAttack = timeCoeff(sr, 0.25f);
-    const float fastRelease = timeCoeff(sr, 45.f);
-    const float slowAttack = timeCoeff(sr, 75.f);
-    const float slowRelease = timeCoeff(sr, 260.f);
-    const float gainAttack = timeCoeff(sr, 0.35f);
-    const float gainRelease = timeCoeff(sr, 60.f);
+    struct DeEssPreset
+    {
+        float attackMs;
+        float releaseMs;
+        float ratio;
+    };
+
+    static constexpr DeEssPreset presets[4]
+    {
+        { 5.0f,   120.0f, 3.0f },  // 1 SAFE / SMOOTH
+        { 2.0f,    70.0f, 4.0f },  // 2 VOCAL / BALANCED
+        { 0.75f,   35.0f, 8.0f },  // 3 FAST / TRACKING
+        { 0.25f,   20.0f, 10.0f }  // 4 HARD / AGGRESSIVE
+    };
+
+    const int modeIndex =
+        juce::jlimit(1, 4, juce::roundToInt(p.deessMode)) - 1;
+    const auto& preset = presets[modeIndex];
+
+    const float fastAttack =
+        timeCoeff(sr, preset.attackMs);
+    const float fastRelease =
+        timeCoeff(sr, preset.releaseMs);
+    const float slowAttack =
+        timeCoeff(sr, std::max(20.0f, preset.attackMs * 10.0f));
+    const float slowRelease =
+        timeCoeff(sr, std::max(80.0f, preset.releaseMs * 4.0f));
+    const float gainAttack =
+        timeCoeff(sr, preset.attackMs);
+    const float gainRelease =
+        timeCoeff(sr, preset.releaseMs);
 
     for (int ch = 0; ch < channels; ++ch)
     {
@@ -1349,8 +1471,13 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
             const float excessDb =
                 fastDb - slowDb - 2.0f - p.deessAverageOffset;
 
+            // Ratio changes how strongly excess sibilance drives the detector:
+            // 2:1 is gentler; higher ratios approach limiter-like de-essing.
+            const float ratioShape =
+                1.f - 1.f / juce::jmax(1.1f, preset.ratio);
             const float trigger =
-                juce::jlimit(0.f, 1.f, excessDb / 6.f);
+                juce::jlimit(0.f, 1.f,
+                    (excessDb / 6.f) * ratioShape);
 
             const float targetReductionDb =
                 juce::jlimit(0.f, 8.f, p.deessIntensity) * trigger;

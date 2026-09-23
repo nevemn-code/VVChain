@@ -28,6 +28,44 @@ private:
     using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using BoolAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 
+    class GlobalGraphMouseListener final : public juce::MouseListener
+    {
+    public:
+        explicit GlobalGraphMouseListener(VVChainAudioProcessorEditor* ownerIn)
+            : owner(ownerIn) {}
+
+        void mouseMove(const juce::MouseEvent& e) override
+        {
+            if (owner != nullptr)
+                owner->updateFloatingValueBoxAt(
+                    owner->getLocalPoint(nullptr, e.getScreenPosition().toFloat()));
+        }
+
+        void mouseDown(const juce::MouseEvent& e) override
+        {
+            if (owner != nullptr)
+                owner->updateFloatingValueBoxAt(
+                    owner->getLocalPoint(nullptr, e.getScreenPosition().toFloat()));
+        }
+
+        void mouseDrag(const juce::MouseEvent& e) override
+        {
+            if (owner != nullptr)
+                owner->updateFloatingValueBoxAt(
+                    owner->getLocalPoint(nullptr, e.getScreenPosition().toFloat()));
+        }
+
+        void mouseUp(const juce::MouseEvent& e) override
+        {
+            if (owner != nullptr)
+                owner->updateFloatingValueBoxAt(
+                    owner->getLocalPoint(nullptr, e.getScreenPosition().toFloat()));
+        }
+
+    private:
+        VVChainAudioProcessorEditor* owner = nullptr;
+    };
+
     class FloatingValueBox final : public juce::Component
     {
     public:
@@ -286,6 +324,7 @@ private:
     FloatingValueBox floatingValueBox;
     VVChainAudioProcessor& audioProcessor;
     MetalLookAndFeel metalLook;
+    GlobalGraphMouseListener globalGraphMouseListener;
 
     std::vector<Knob> knobs;
     std::array<std::unique_ptr<juce::ToggleButton>, 5> bypassButtons;

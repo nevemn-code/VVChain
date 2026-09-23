@@ -256,7 +256,9 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
 }
 
 VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& p)
-    : AudioProcessorEditor(&p), audioProcessor(p)
+    : AudioProcessorEditor(&p),
+      audioProcessor(p),
+      globalGraphMouseListener(this)
 {
     setLookAndFeel(&metalLook);
     setResizable(false, false);
@@ -514,6 +516,17 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     addKnob("DEESS_INTENSITY", "MAXIMUM REDUCTION", 0, 8, .1,
             parameterValue("DEESS_INTENSITY"), " dB", 4, 1,
             juce::Colour(0xff67d3aa));
+    addKnob("DEESS_MODE", "DE-ESS MODE", 1, 4, 1,
+            parameterValue("DEESS_MODE"), "", 4, 2,
+            juce::Colour(0xff67d3aa));
+    if (auto* modeKnob = findKnob("DEESS_MODE"))
+    {
+        modeKnob->slider->setTooltip(
+            "1 SAFE  5/120 ms 3:1  ·  "
+            "2 VOCAL  2/70 ms 4:1  ·  "
+            "3 FAST  0.75/35 ms 8:1  ·  "
+            "4 HARD  0.25/20 ms 10:1");
+    }
 
     deessBypassButton = std::make_unique<juce::ToggleButton>();
     deessBypassButton->setLookAndFeel(&metalLook);
@@ -596,10 +609,18 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     floatingValueBox.setAlwaysOnTop(true);
     addAndMakeVisible(floatingValueBox);
     floatingValueBox.hideInstantly();
+
+    // Graph hover must see mouse moves even when the pointer is over child
+    // components or the non-intercepting overlay.
+    juce::Desktop::getInstance().addGlobalMouseListener(
+        &globalGraphMouseListener);
 }
 
 VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
 {
+    juce::Desktop::getInstance().removeGlobalMouseListener(
+        &globalGraphMouseListener);
+
     for (auto& k : knobs)
     {
         k.attachment.reset();
@@ -1916,7 +1937,8 @@ void VVChainAudioProcessorEditor::timerCallback()
     const bool deessMuted =
         parameterValue("DEESS_INTENSITY") <= 0.0001f;
     for (const auto& id : { juce::String("DEESS_FREQ"),
-                            juce::String("DEESS_INTENSITY") })
+                            juce::String("DEESS_INTENSITY"),
+                            juce::String("DEESS_MODE") })
         if (auto* knob = findKnob(id))
         {
             knob->slider->setAlpha(deessMuted ? 0.42f : 1.0f);
@@ -1942,6 +1964,12 @@ void VVChainAudioProcessorEditor::drawGraphDragHint(
     juce::Graphics& g, juce::Rectangle<float> graph)
 {
     if (!showGraphDragHint)
+        return;
+
+    // EQ/DYNAMICS values are now rendered by FloatingValueBox next to the
+    // pointer. Keep the older graph-anchored drag hint only for X-over/other
+    // graph controls so the two hint systems never overlap.
+    if (graphHintBand >= 0)
         return;
 
     const float paddingX = 7.0f;
@@ -2066,7 +2094,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.5 · LAST 2026-09-23 22:10 TST · TYPE-A SHARED XOVER + INDEPENDENT DELTA",
+    g.drawText("VVCHAIN v1.0.6 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2337,16 +2365,19 @@ void VVChainAudioProcessorEditor::resized()
 
         const int deInnerX = deX + 8;
         const int deInnerW = halfW - 16;
-        const int knobH = 96;
-        const int knobGap = 4;
         const int startY = cardY + 60;
+        const int deKnobH = 126;
+        const int deKnobGap = 6;
 
         placeKnob("DEESS_FREQ",
                   { deInnerX, startY,
-                    deInnerW, 170 });
+                    deInnerW, deKnobH });
         placeKnob("DEESS_INTENSITY",
-                  { deInnerX, startY + 176,
-                    deInnerW, 170 });
+                  { deInnerX, startY + deKnobH + deKnobGap,
+                    deInnerW, deKnobH });
+        placeKnob("DEESS_MODE",
+                  { deInnerX, startY + (deKnobH + deKnobGap) * 2,
+                    deInnerW, deKnobH });
 
         // MIX / OUT are intentionally removed from the DE-ESSER column and
         // live in the right-side global-BYPASS block below DELTA.
@@ -2437,17 +2468,25 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
     }
 
     int bestBand = -1;
-    bool bestIsDynamic = false;
-    float bestDistance = 13.0f;
+    enum class HoverTarget { None, Static, Live, Dynamic, Handle };
+    HoverTarget bestTarget = HoverTarget::None;
+    float bestDistance = 22.0f;
 
     for (int b = 0; b < 4; ++b)
     {
         const auto n = juce::String(b + 1);
-        const float x =
-            graphFrequencyToX(graph, parameterValue("EQ" + n + "_FREQ"));
+        const float frequency =
+            parameterValue("EQ" + n + "_FREQ");
+        const float offsetGain =
+            parameterValue("EQ" + n + "_GAIN");
+        const float dynamics =
+            parameterValue("DYN_DYNAMICS" + n);
 
+        const float x =
+            graphFrequencyToX(graph, frequency);
         const float staticY =
-            eqDbToY(graph, parameterValue("EQ" + n + "_GAIN"));
+            eqDbToY(graph, offsetGain);
+
         const float staticDistance =
             position.getDistanceFrom({ x, staticY });
 
@@ -2455,28 +2494,38 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
         {
             bestDistance = staticDistance;
             bestBand = b;
-            bestIsDynamic = false;
+            bestTarget = HoverTarget::Static;
         }
 
-        const float dynamics =
-            parameterValue("DYN_DYNAMICS" + n);
-        if (std::abs(dynamics) > 0.01f)
+        const float liveGain =
+            offsetGain + dynamicAverageGainChangeDb(b);
+        const float liveY =
+            eqDbToY(graph, liveGain);
+        const float liveDistance =
+            position.getDistanceFrom({ x, liveY });
+
+        if (liveDistance < bestDistance)
         {
-            const float dynamicY =
-                eqDbToY(graph, dynamicEffectiveTargetGain(b));
-            const float dynamicDistance =
-                position.getDistanceFrom({ x, dynamicY });
-
-            if (dynamicDistance < bestDistance)
-            {
-                bestDistance = dynamicDistance;
-                bestBand = b;
-                bestIsDynamic = true;
-            }
+            bestDistance = liveDistance;
+            bestBand = b;
+            bestTarget = HoverTarget::Live;
         }
 
+        const float dynamicTarget =
+            dynamicEffectiveTargetGain(b);
         const float targetY =
-            eqDbToY(graph, dynamicEffectiveTargetGain(b));
+            eqDbToY(graph, dynamicTarget);
+        const float targetDistance =
+            position.getDistanceFrom({ x, targetY });
+
+        if (std::abs(dynamics) > 0.01f
+            && targetDistance < bestDistance)
+        {
+            bestDistance = targetDistance;
+            bestBand = b;
+            bestTarget = HoverTarget::Dynamic;
+        }
+
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
@@ -2484,15 +2533,16 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
         const float handleDistance =
             position.getDistanceFrom({ handleX, targetY });
 
-        if (handleDistance < bestDistance)
+        if (std::abs(dynamics) > 0.01f
+            && handleDistance < bestDistance)
         {
             bestDistance = handleDistance;
             bestBand = b;
-            bestIsDynamic = true;
+            bestTarget = HoverTarget::Handle;
         }
     }
 
-    if (bestBand < 0)
+    if (bestBand < 0 || bestTarget == HoverTarget::None)
     {
         floatingValueBox.hideInstantly();
         return;
@@ -2501,29 +2551,37 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
     const auto n = juce::String(bestBand + 1);
     const float frequency =
         parameterValue("EQ" + n + "_FREQ");
-    const float gainDb =
-        bestIsDynamic
-            ? dynamicEffectiveTargetGain(bestBand)
-            : parameterValue("EQ" + n + "_GAIN");
+    const float offsetGain =
+        parameterValue("EQ" + n + "_GAIN");
     const float dynamics =
         parameterValue("DYN_DYNAMICS" + n);
 
-    const juce::String signedDb =
-        juce::String(gainDb >= 0.0f ? "+" : "")
-        + juce::String(gainDb, 1) + " dB";
+    float displayedGain = offsetGain;
+    if (bestTarget == HoverTarget::Live)
+        displayedGain += dynamicAverageGainChangeDb(bestBand);
+    else if (bestTarget == HoverTarget::Dynamic
+             || bestTarget == HoverTarget::Handle)
+        displayedGain = dynamicEffectiveTargetGain(bestBand);
 
-    const juce::String gainText =
-        bestIsDynamic && std::abs(dynamics) > 0.01f
-            ? signedDb + " · DYN "
-                + juce::String(dynamics, 0) + "%"
-            : signedDb;
+    const juce::String signedDb =
+        juce::String(displayedGain >= 0.0f ? "+" : "")
+        + juce::String(displayedGain, 1) + " dB";
+
+    juce::String gainText = "GAIN " + signedDb;
+    if (std::abs(dynamics) > 0.01f
+        && bestTarget != HoverTarget::Static)
+    {
+        gainText += " · DYN "
+            + juce::String(dynamics, 0) + "%";
+    }
 
     floatingValueBox.updateInfo(
         "FREQ " + formatGraphFrequency(frequency),
-        "GAIN " + gainText,
+        gainText,
         position.toInt(),
         getLocalBounds());
 }
+
 
 void VVChainAudioProcessorEditor::mouseMove(
     const juce::MouseEvent& event)

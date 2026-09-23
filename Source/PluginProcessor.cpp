@@ -21,7 +21,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     };
 
     // Every chain section has a real DSP bypass parameter.
-    p.push_back(std::make_unique<juce::AudioParameterBool>("EQ_BYPASS", "EQ / Analog Bypass", false));
+    p.push_back(std::make_unique<juce::AudioParameterBool>("EQ_BYPASS", "EQ Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("OTT_BYPASS", "OTT Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("ATYPE_BYPASS", "Type-A Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("DEESS_BYPASS", "DeEsser Bypass", false));
@@ -139,6 +139,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     p.push_back(std::make_unique<juce::AudioParameterFloat>(
         "DEESS_INTENSITY", "DeEsser Maximum Reduction",
         juce::NormalisableRange<float>(0.f, 8.f, 0.1f), 3.f));
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "DEESS_MODE", "DeEsser Response",
+        juce::NormalisableRange<float>(1.f, 4.f, 1.f), 2.f));
     f("DEESS_OFFSET", "DeEsser Average Offset", -0.1f, 0.1f, 0.f);
 
     f("DRY_WET", "Dry / Wet", 0.f, 100.f, 100.f);
@@ -242,6 +245,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     p.deessReferenceHz = value("DEESS_FREQ");
     p.deessIntensity = value("DEESS_INTENSITY");
+    p.deessMode = value("DEESS_MODE");
     p.deessAverageOffset = value("DEESS_OFFSET");
     p.deltaMonitor = value("DELTA_MONITOR") > 0.5f;
 

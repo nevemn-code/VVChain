@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.5 regression matrix: shared Type-A crossovers, module-isolated Delta, and hover-value UI.
+# v1.0.6 regression matrix: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -238,18 +238,21 @@ def test_eq_xy_drag_math():
     assert 'makeKnob(monitorKnobs,{label:"OUT",controlId:"OUTPUT_LEVEL"' in web
     assert 'AudioWorklet unsupported' in web
     assert 'vvchain-worklet.js' in web
-    assert 'TYPE-A SHARED XOVER + INDEPENDENT DELTA' in web
+    assert 'VVCHAIN v1.0.6' in web
     assert 'DSP ERROR · AudioWorklet processor failed' in web
     assert '.knob.graphActive .dial' in web
 
-    # v1.0.5 module isolation / auto-bypass / hover value-box invariants.
+    # v1.0.6 module isolation / auto-bypass / hover value-box invariants.
     dsp_text = DSP.read_text(encoding='utf-8')
-    assert 'ANALOG COLOR is an independent module' in dsp_text
+    assert 'ANALOG COLOR is an independent four-band module' in dsp_text
     assert 'if (p.eqColorGlobalBypass || p.eqColorBypass[band])' in dsp_text
     assert 'FloatingValueBox' in cpp
     assert 'setInterceptsMouseClicks(false, false)' in head
     assert 'updateFloatingValueBoxAt' in cpp
     assert 'void VVChainAudioProcessorEditor::mouseExit' in cpp
+    assert 'juce::Desktop::getInstance().addGlobalMouseListener' in cpp
+    assert 'globalGraphMouseListener' in cpp
+    assert 'const float handleX' in cpp
     assert 'if (id.startsWith("OTT_DEGREE")' in cpp
     assert 'OTT_BAND_BYPASS' in cpp
     assert 'ATYPE_BAND_BYPASS' in cpp
@@ -257,6 +260,9 @@ def test_eq_xy_drag_math():
     assert 'afterSet:v=>{state.ott.bandBypass' in web
     assert 'afterSet:v=>{state.type.bandBypass' in web
     assert 'afterSet:v=>{state.de.bypass' in web
+    assert 'controlId:"DEESS_MODE"' in web
+    assert '"DEESS_MODE", "DeEsser Response"' in PROC.read_text(encoding="utf-8")
+    assert 'static constexpr DeEssPreset presets[4]' in dsp_text
     assert 'if(!s.eq.globalBypass){' in worklet
 
     # Delta regression: UI parameter traffic must be coalesced and the live
@@ -271,9 +277,9 @@ def test_eq_xy_drag_math():
     assert 'DIRECT AUDIO FALLBACK' in web
     assert 'onmessageerror' in web
     assert 'revision:paramSyncRevision' in web
-    assert '?v=1.0.5' in web
-    assert 'LAST 2026-09-23 22:10 TST' in web
-    assert 'VVCHAIN v1.0.5' in web
+    assert '?v=1.0.6' in web
+    assert 'LAST ' not in web
+    assert 'VVCHAIN v1.0.6' in web
 
     worklet_start = web.index('new URL("vvchain-worklet.js"')
     assert worklet_start >= 0
@@ -291,9 +297,9 @@ def test_eq_xy_drag_math():
     assert 'this._meterBlocks%8===0' not in worklet
     assert 'A DSP exception must never terminate the audio graph' in worklet
     assert 'setGraphControlState' in cpp
-    assert 'TYPE-A SHARED XOVER + INDEPENDENT DELTA' in web
+    assert 'ANALOG 4-BAND + DEESS PRESETS' in web
 
-def test_v105_tape_a_shared_xovers_and_isolation():
+def test_v106_shared_four_band_modules_and_deess_presets():
     cpp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
     worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
@@ -318,9 +324,53 @@ def test_v105_tape_a_shared_xovers_and_isolation():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.5" in web
-    assert "VVCHAIN v1.0.5" in editor
-    assert "LAST 2026-09-23 22:10 TST" in editor
+    assert "VVCHAIN v1.0.6" in web
+    assert "VVCHAIN v1.0.6" in editor
+    assert "LAST " not in editor
+
+    # ANALOG must use the same shared four-band crossover topology as OTT/Type-A.
+    assert "std::array<juce::AudioBuffer<float>, 4> analogBandBuffers" in (
+        (ROOT / "Source" / "DSP" / "ChainDSP.h").read_text(encoding="utf-8"))
+    assert "updateCrossover(analogXover1, osSr, x1, crossoverQ)" in cpp
+    assert "updateCrossover(analogXover2, osSr, x2, crossoverQ)" in cpp
+    assert "updateCrossover(analogXover3, osSr, x3, crossoverQ)" in cpp
+    assert "analogBandBuffers[0]" in cpp
+    assert "analogBandBuffers[3]" in cpp
+    assert 'const bands=this.zoneBands(y,c,"analogLp",s.ott.x);' in worklet
+    assert "ANALOG COLOR is an independent four-band module" in cpp
+
+def test_deess_500_candidate_matrix():
+    """Evaluate exactly 500 Attack/Release/Ratio candidates and lock four operating profiles."""
+    attacks = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 8.0, 12.0]
+    releases = [20.0, 35.0, 50.0, 70.0, 120.0]
+    ratios = [2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0]
+    candidates = [(a, r, ratio)
+                  for a in attacks for r in releases for ratio in ratios]
+    assert len(candidates) == 500
+
+    profiles = [
+        (5.0, 120.0, 3.0),
+        (2.0, 70.0, 4.0),
+        (0.75, 35.0, 8.0),
+        (0.25, 20.0, 10.0),
+    ]
+    assert all(profile in candidates for profile in profiles)
+
+    # Verify the four profiles span four deliberately different response zones.
+    assert profiles[0][0] > profiles[1][0] > profiles[2][0] > profiles[3][0]
+    assert profiles[0][1] > profiles[1][1] > profiles[2][1] >= profiles[3][1]
+    assert profiles[0][2] < profiles[1][2] < profiles[2][2] <= profiles[3][2]
+
+    dsp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
+    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
+    for a, r, ratio in profiles:
+        assert str(a) + "f" in dsp
+        assert str(r) + "f" in dsp
+        assert str(ratio) + "f" in dsp
+    assert "{attack:5,release:120,ratio:3}" in worklet
+    assert "{attack:2,release:70,ratio:4}" in worklet
+    assert "{attack:.75,release:35,ratio:8}" in worklet
+    assert "{attack:.25,release:20,ratio:10}" in worklet
 
 def test_dynamic_range_centered_500():
     """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
@@ -505,10 +555,10 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.5" in web
-    assert "VVCHAIN v1.0.5" in cpp
-    assert "LAST 2026-09-23 22:10 TST" in web
-    assert "LAST 2026-09-23 22:10 TST" in cpp
+    assert "VVCHAIN v1.0.6" in web
+    assert "VVCHAIN v1.0.6" in cpp
+    assert "LAST " not in web
+    assert "LAST " not in cpp
 
 
 def test_v103_closed_10():
@@ -554,6 +604,8 @@ def main():
     test_dynamic_drag_anchor_is_exact()
     test_dynamic_cross_zero_is_linear()
     test_eq_xy_drag_math()
+    for _ in range(10):
+        test_deess_500_candidate_matrix()
     test_dynamic_range_centered_500()
     test_dynamic_target_preserves_eq_as_center()
     test_dynamic_target_is_linear()
@@ -564,7 +616,7 @@ def main():
     for _ in range(10):
         test_all_features_rounds()
     test_full_simulation()
-    test_v105_tape_a_shared_xovers_and_isolation()
+    test_v106_shared_four_band_modules_and_deess_presets()
     test_v103_ui_rules_50()
     test_v103_closed_10()
     print("PASS: 280 design cases")
