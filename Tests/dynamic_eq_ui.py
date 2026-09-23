@@ -639,7 +639,7 @@ def test_v107_ui_controls():
 
     # TYPE-A upper limits are 50/60/70/90 while tanh processing remains unchanged.
     assert 'const float maxDegrees[4] = { 50.f, 60.f, 70.f, 90.f };' in proc
-    assert 'const float kTypeAMaxDegree[4] = { 50.f, 60.f, 70.f, 90.f };' in dsp
+    assert 'constexpr float kTypeAMaxDegree[4] = { 50.f, 60.f, 70.f, 90.f };' in dsp
     assert '[50,60,70,90]' in web
     assert '[50,60,70,90]' in worklet
     assert 'std::tanh(bands[band] * driveParam[band])' in dsp
