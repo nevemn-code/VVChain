@@ -1,5 +1,5 @@
 #include "ChainDSP.h"
-#include "VVChain_DynEQ_Engine.h"
+#include "../VVChain_DynEQ_Engine.h"
 
 namespace
 {
