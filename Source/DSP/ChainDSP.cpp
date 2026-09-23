@@ -22,17 +22,13 @@ float dynamicThresholdFromDynamics(float dynamics) noexcept
 {
     const float signedDynamics =
         juce::jlimit(-100.f, 100.f, dynamics) * 0.01f;
-    const float thresholdShape =
-        std::pow(std::abs(signedDynamics), 0.65f);
-
-    // DYNAMICS is the sole macro:
-    // negative/compression -> lower threshold;
-    // positive/expansion   -> higher threshold.
+    // DYNAMICS uses a truly linear bipolar map:
+    // -100% = -24 dB threshold, 0% = -12 dB, +100% = 0 dB.
+    // Keeping the signed amount itself linear avoids a nonlinear jump
+    // when crossing 0%.
     return juce::jlimit(
         -60.f, 0.f,
-        -12.f
-            + (signedDynamics < 0.f ? -12.f : 12.f)
-                * thresholdShape);
+        -12.f + signedDynamics * 12.f);
 }
 
     // Dynamic EQ threshold is intentionally not a stored parameter.
