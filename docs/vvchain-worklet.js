@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.7
+// VVChain Web AudioWorklet DSP module · v1.0.9
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -34,7 +34,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
   makeCh(){
     const dynState=()=>({det:{z1:0,z2:0},eq:{z1:0,z2:0},env:-120});
     return {
-      eq:Array.from({length:4},()=>({z1:0,z2:0})),
+      eq:Array.from({length:4},()=>({g:0,k:1,a1:1,a2:0,a3:0,m1:0,ic1:0,ic2:0})),
       dynMid:Array.from({length:4},dynState),
       dynSide:Array.from({length:4},dynState),
       analogPrev:[0,0,0,0], analogDc:[0,0,0,0], analogPower:[0,0,0,0],
@@ -49,6 +49,22 @@ class VVChainWorklet extends AudioWorkletProcessor {
   g2db(g){return 20*Math.log10(Math.max(g,1e-9))}
   tc(ms){return Math.exp(-1/(.001*Math.max(.1,ms)*sampleRate))}
   biquad(x,c,z){const y=c[0]*x+z.z1;z.z1=c[1]*x-c[3]*y+z.z2;z.z2=c[2]*x-c[4]*y;return y}
+  tptBell(x,z,fs,f,q,gainDb){
+    const safeF=this.clamp(Number(f),20,fs*.45);
+    const safeQ=this.clamp(Number(q),.1,18);
+    const safeGain=this.clamp(Number(gainDb),-18,18);
+    const A=Math.pow(10,safeGain/40);
+    const g=Math.tan(Math.PI*safeF/fs);
+    const k=1/(safeQ*A);
+    z.g=g; z.k=k;
+    z.a1=1/(1+g*(g+k)); z.a2=g*z.a1; z.a3=g*z.a2;
+    z.m1=k*(A*A-1);
+    const v3=x-z.ic2;
+    const v1=z.a1*z.ic1+z.a2*v3;
+    const v2=z.ic2+z.a2*z.ic1+z.a3*v3;
+    z.ic1=2*v1-z.ic1; z.ic2=2*v2-z.ic2;
+    return x+z.m1*v1;
+  }
   peak(fs,f,q,g){
     const A=Math.pow(10,g/40),w=2*Math.PI*this.clamp(f,10,fs*.45)/fs;
     const a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w);
@@ -146,14 +162,10 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const sGain=this.clamp(offset+s.dyn.gainSide[b],-18,18);
       const mDynamicGain=mGain-offset;
       const sDynamicGain=sGain-offset;
-      const mq=this.clamp(baseQ/(1+.045*Math.abs(mGain)),.1,18);
-      const sq=this.clamp(baseQ/(1+.045*Math.abs(sGain)),.1,18);
-      const mCoef=this.peak(sampleRate,f,mq,mDynamicGain);
-      const sCoef=this.peak(sampleRate,f,sq,sDynamicGain);
-
-      md.eq.z1=md.eq.z1||0;sd.eq.z1=sd.eq.z1||0;
-      mid=this.biquad(mid,mCoef,md.eq);
-      if(stereo)side=this.biquad(side,sCoef,sd.eq);
+      // Cytomic / Simper TPT Bell. Q is passed directly because the Bell
+      // denominator already uses k = 1 / (Q * A).
+      mid=this.tptBell(mid,md.eq,sampleRate,f,baseQ,mDynamicGain);
+      if(stereo)side=this.tptBell(side,sd.eq,sampleRate,f,baseQ,sDynamicGain);
     }
     if(stereo)return[(mid+side)*invSqrt2,(mid-side)*invSqrt2];
     return[mid,r];
@@ -210,7 +222,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     if(!s.eq.bypass){
       for(let b=0;b<4;b++){
         if(s.bandBypass?.[b])continue;
-        y=this.biquad(y,this.peak(sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]),c.eq[b]);
+        y=this.tptBell(y,c.eq[b],sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]);
       }
     }
     // ANALOG COLOR baseline = Deploy VVChain Web Preview #443.
