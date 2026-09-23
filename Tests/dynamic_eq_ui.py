@@ -139,6 +139,22 @@ def test_eq_gain_drag_axis_lock_math():
             assert effective_dx == dx
             assert effective_dy == 0.0
 
+def test_dynamic_target_is_linear():
+    offset = 0.0
+    target = 4.0
+    values = [dynamic_target(offset, target, d)
+              for d in [-100, -75, -50, -25, 0, 25, 50, 75, 100]]
+    increments = [values[i + 1] - values[i] for i in range(len(values) - 1)]
+    assert all(abs(v - increments[0]) < 1.0e-9 for v in increments)
+
+def test_threshold_is_linear():
+    # DSP threshold must also be a linear bipolar mapping.
+    values = [-100, -75, -50, -25, 0, 25, 50, 75, 100]
+    thresholds = [-12.0 + d * 0.12 for d in values]
+    increments = [thresholds[i + 1] - thresholds[i]
+                  for i in range(len(thresholds) - 1)]
+    assert all(abs(v - increments[0]) < 1.0e-9 for v in increments)
+
 def test_target_visual_direction():
     for offset in [-18, -6, 0, 6, 18]:
         target = clamp(offset + 4, -24, 24)
@@ -224,6 +240,8 @@ def main():
     test_dynamic_drag_anchor_is_exact()
     test_dynamic_cross_zero_is_linear()
     test_eq_gain_drag_axis_lock_math()
+    test_dynamic_target_is_linear()
+    test_threshold_is_linear()
     test_target_visual_direction()
     test_frequency_deadzone()
     test_transient_gestures()
