@@ -297,7 +297,7 @@ def test_eq_xy_drag_math():
     assert 'this._meterBlocks%8===0' not in worklet
     assert 'A DSP exception must never terminate the audio graph' in worklet
     assert 'setGraphControlState' in cpp
-    assert 'TYPE-A SHARED XOVER + INDEPENDENT DELTA' in web
+    assert 'ANALOG 4-BAND + DEESS PRESETS' in web
 
 def test_v106_shared_four_band_modules_and_deess_presets():
     cpp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
