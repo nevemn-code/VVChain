@@ -1163,14 +1163,16 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.fillEllipse(
             x - 6.f, offsetY - 6.f, 12.f, 12.f);
 
-        // Target handle.
+        // Dynamic Target handle: the primary draggable GAIN point.
+        // Large enough to grab reliably; Threshold is deliberately absent
+        // from this interaction.
         g.setColour(
-            juce::Colours::black.withAlpha(.85f));
+            juce::Colours::black.withAlpha(.92f));
         g.fillEllipse(
-            x - 7.f, targetY - 7.f, 14.f, 14.f);
-        g.setColour(c.withAlpha(.95f));
+            x - 9.f, targetY - 9.f, 18.f, 18.f);
+        g.setColour(c.withAlpha(.98f));
         g.drawEllipse(
-            x - 6.f, targetY - 6.f, 12.f, 12.f, 1.5f);
+            x - 8.f, targetY - 8.f, 16.f, 16.f, 2.0f);
 
         // Live gain point = the actual dynamic state.
         g.setColour(juce::Colours::white);
@@ -2084,7 +2086,7 @@ void VVChainAudioProcessorEditor::mouseDown(
         const float y = dynamicTargetPoint(b).y;
 
         if (event.mods.isLeftButtonDown()
-            && pos.getDistanceFrom({ x, y }) < 13.f)
+            && pos.getDistanceFrom({ x, y }) < 17.f)
         {
             dragDynamicTargetBand = b;
             dragBand = -1;
@@ -2092,9 +2094,7 @@ void VVChainAudioProcessorEditor::mouseDown(
             dragDynamicMsBand = -1;
             dynamicTargetDragStartY = pos.y;
             dynamicTargetDragStartValue =
-                dynamicTargetPoint(b).y == dynamicTargetPoint(b).y
-                    ? dynamicEffectiveTargetGain(b)
-                    : 0.f;
+                dynamicEffectiveTargetGain(b);
             showGraphDragHint = true;
             graphDragHintPosition = pos;
             graphDragHint = "TARGET "
