@@ -16,6 +16,7 @@ public:
         bool ottBypass = false;
         bool atypeBypass = false;
         bool deessBypass = false;
+        bool deltaMonitor = false;
         bool mixBypass = false;
         bool eqColorGlobalBypass = false;
 
