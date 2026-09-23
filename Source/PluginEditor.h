@@ -217,6 +217,7 @@ private:
     int dragDynamicMsBand = -1;
     int dragDynamicHandleBand = -1;
     int hoverDynamicBand = -1;
+    int hoverXover = -1;
     float dynamicGainDragStartY = 0.0f;
     float dynamicHandleDragStartY = 0.0f;
     float dynamicHandleDragStartValue = 0.0f;
