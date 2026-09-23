@@ -39,7 +39,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         f("EQ" + n + "_Q", "EQ " + n + " Q", 0.10f, 18.f, 0.707f, 0.35f);
 
         const float dynThresholdDefaults[4] = { -24.f, -24.f, -24.f, -24.f };
-        const float dynTargetDefaults[4] = { -3.f, -3.f, -2.f, -2.f };
+        const float dynTargetDefaults[4] = { 3.f, 3.f, 2.f, 2.f };
         const float dynDynamicsDefaults[4] = { 0.f, 0.f, 0.f, 0.f };
         const float dynAttackDefaults[4] = { 8.f, 8.f, 5.f, 3.f };
         const float dynReleaseDefaults[4] = { 120.f, 120.f, 100.f, 80.f };
