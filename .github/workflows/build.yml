@@ -19,13 +19,13 @@ concurrency:
 
 jobs:
   build_and_test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Restore build/compiler caches
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           build
@@ -44,7 +44,7 @@ jobs:
           libxinerama-dev libxrandr-dev libxrender-dev
 
     - name: Setup Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: "3.11"
 
