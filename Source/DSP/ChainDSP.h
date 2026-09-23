@@ -27,11 +27,12 @@ public:
         // Four independent Dynamic EQ bands. Each detector is frequency-selective
         // and stereo-linked so L/R dynamics cannot wander independently.
         // Sonnox-style Dynamic EQ model:
-        // Offset = resting EQ gain; Target = dynamic destination.
-        // Dynamics 0..100% controls how far the band travels toward Target.
+        // Offset = resting EQ gain; Target defines the maximum dynamic span.
+        // DYNAMICS is signed: -100..0% = downward compression,
+        // 0..+100% = upward expansion. 0% is fully static.
         std::array<float, 4> dynThreshold { -24.f, -24.f, -24.f, -24.f };
         std::array<float, 4> dynTarget { -3.f, -3.f, -2.f, -2.f };
-        std::array<float, 4> dynDynamics { 35.f, 35.f, 30.f, 25.f };
+        std::array<float, 4> dynDynamics { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> dynAttack { 8.f, 8.f, 5.f, 3.f };
         std::array<float, 4> dynRelease { 120.f, 120.f, 100.f, 80.f };
         std::array<bool, 4> dynDetectOnsets { false, false, false, false };
