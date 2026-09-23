@@ -158,6 +158,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     if(stereo)return[(mid+side)*invSqrt2,(mid-side)*invSqrt2];
     return[mid,r];
   }
+  // VVCHAIN ANALOG BASELINE #443
   analog(x,a,ss,ch,b){
     a=this.clamp(a,0,1);
     ch.analogPrev[b]=x; ch.analogDc[b]=0; ch.analogPower[b]=0;
@@ -212,28 +213,17 @@ class VVChainWorklet extends AudioWorkletProcessor {
         y=this.biquad(y,this.peak(sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]),c.eq[b]);
       }
     }
-    // ANALOG COLOR is an independent module and must remain audible
-    // while EQ_BYPASS is active.
+    // ANALOG COLOR baseline = Deploy VVChain Web Preview #443.
+    // X2 scales only the generated ANALOG COLOR delta for the selected band.
     if(!s.eq.globalBypass){
-      let anyAnalog=false;
       for(let b=0;b<4;b++){
-        if(!s.eq.colorBypass[b] && Number(s.eq.color[b]||0)>1e-6){
-          anyAnalog=true;break;
-        }
-      }
-      if(anyAnalog){
-        // Same shared X1/X2/X3 split as OTT and TYPE-A.
-        const bands=this.zoneBands(y,c,"analogLp",s.ott.x);
-        let analogOut=0;
-        for(let b=0;b<4;b++){
-          if(s.eq.colorBypass[b]){ analogOut+=bands[b]; continue; }
-          const x2Multiplier=s.eq.colorX2?.[b]?1.6:1;
-          const amount=this.clamp(Number(s.eq.color[b]||0)*x2Multiplier/100,0,1);
-          analogOut+=amount>1e-6
-            ? this.analog(bands[b],amount,!!s.eq.mode[b],c,b)
-            : bands[b];
-        }
-        y=analogOut;
+        if(s.eq.colorBypass[b])continue;
+        const amount=this.clamp(Number(s.eq.color[b]||0)/100,0,1);
+        if(amount<=1e-6)continue;
+        const x2=s.eq.colorX2?.[b]?1.6:1;
+        const before=y;
+        const processed=this.analog(y,amount,!!s.eq.mode[b],c,b);
+        y=before+(processed-before)*x2;
       }
     }
     if(!s.ott.bypass){
