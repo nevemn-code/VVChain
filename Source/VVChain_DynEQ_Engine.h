@@ -19,8 +19,8 @@ public:
         // Dynamic EQ is centered on the current static EQ gain.
         // The dynamic span is applied from that exact point, not as a separate absolute range.
         return juce::jlimit(
-            -36.0f,
-            36.0f,
+            -18.0f,
+            18.0f,
             safeStatic + safeRange * safeRatio);
     }
 
