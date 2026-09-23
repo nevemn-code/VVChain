@@ -21,7 +21,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     };
 
     // Every chain section has a real DSP bypass parameter.
-    p.push_back(std::make_unique<juce::AudioParameterBool>("EQ_BYPASS", "EQ / Analog Bypass", false));
+    p.push_back(std::make_unique<juce::AudioParameterBool>("EQ_BYPASS", "EQ Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("OTT_BYPASS", "OTT Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("ATYPE_BYPASS", "Type-A Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("DEESS_BYPASS", "DeEsser Bypass", false));
