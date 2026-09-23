@@ -45,6 +45,16 @@ private:
             wheelRemainder = 0.0;
         }
 
+        void setGraphControlState(bool active, bool moving)
+        {
+            graphControlActive = active;
+            graphControlMoving = moving;
+            repaint();
+        }
+
+        bool isGraphControlActive() const noexcept { return graphControlActive; }
+        bool isGraphControlMoving() const noexcept { return graphControlMoving; }
+
         void mouseDown(const juce::MouseEvent& e) override
         {
             fineDragging = e.mods.isShiftDown();
@@ -109,6 +119,8 @@ private:
         double wheelRemainder = 0.0;
         bool wheelLogarithmic = false;
         bool fineDragging = false;
+        bool graphControlActive = false;
+        bool graphControlMoving = false;
     };
 
     class MetalLookAndFeel final : public juce::LookAndFeel_V4
