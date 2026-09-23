@@ -211,6 +211,7 @@ private:
     int expandedBand = -1;
     int expandedDynamicBand = -1;
     int dragBand = -1;
+    int dragOffsetBand = -1;
     int dragXover = -1;
     int dragDynamicMsBand = -1;
     int dragDynamicTargetBand = -1;
