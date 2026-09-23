@@ -2230,10 +2230,9 @@ void VVChainAudioProcessorEditor::mouseDown(
         graphDragHintPosition = pos;
         graphDragHint =
             "DYN " + n + "   "
-            + juce::String(dynamicTargetDragStartValue, 0)
+            + juce::String(dynamicDragStartDynamics, 0)
             + "%   "
-            + formatGraphFrequency(
-                parameterValue("EQ" + n + "_FREQ"));
+            + formatGraphFrequency(hz);
         repaint();
         return;
     }
@@ -2432,10 +2431,8 @@ void VVChainAudioProcessorEditor::mouseDrag(
         const float dragScale =
             event.mods.isShiftDown() ? 0.1f : 1.0f;
 
-        const float startNorm =
-            std::log(
-                juce::jlimit(20.f, 20000.f, graphFreqDragStartHz) / 20.f)
-            / std::log(1000.f);
+        const float hz =
+            parameterValue("EQ" + n + "_FREQ");
 
         // Dynamic Range is deliberately Y-only. Frequency is locked at the
         // exact X coordinate where the gesture started.
