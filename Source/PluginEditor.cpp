@@ -2551,56 +2551,7 @@ void VVChainAudioProcessorEditor::mouseDown(
         }
     }
 
-    // Offset handle: edit the normal/static EQ gain only.
-    // It must not move Target or change Dynamic EQ settings.
-    for (int b = 0; b < 4; ++b)
-    {
-        const auto n = juce::String(b + 1);
-        const float x = graphFrequencyToX(
-            graph, parameterValue("EQ" + n + "_FREQ"));
-        const float y = eqDbToY(
-            graph, parameterValue("EQ" + n + "_GAIN"));
-
-        if (event.mods.isLeftButtonDown()
-            && pos.getDistanceFrom({ x, y }) < 8.f)
-        {
-            dragOffsetBand = b;
-            dragBand = -1;
-            dragXover = -1;
-            dragDynamicMsBand = -1;
-            graphEqDragAxis = GraphEqDragAxis::Undetermined;
-
-            dynamicGainDragStartY = pos.y;
-            dynamicGainDragStartOffset =
-                parameterValue("EQ" + n + "_GAIN");
-            graphFreqDragStartHz =
-                parameterValue("EQ" + n + "_FREQ");
-            const float nodeStartX =
-                graphFrequencyToX(graph, graphFreqDragStartHz);
-            graphFreqDragStartX = pos.x;
-            graphFreqDragGrabOffsetX = pos.x - nodeStartX;
-
-            if (auto* parameter = audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
-                parameter->beginChangeGesture();
-            if (auto* parameter = audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
-                parameter->beginChangeGesture();
-
-            juce::StringArray graphIds;
-            graphIds.add("EQ" + n + "_FREQ");
-            graphIds.add("EQ" + n + "_GAIN");
-            setGraphControlState(graphIds, false);
-
-            graphHintBand = b;
-            graphHintActiveMask = 1 | 2;
-            graphHintAutoHideAt = 0;
-            showGraphDragHint = true;
-            graphDragHintPosition = pos;
-            graphDragHint.clear();
-            repaint();
-            return;
-        }
-    }
-
+    // Direct DYNAMICS target control takes priority over the static center node.
     // Dynamic Gain point:
     // - click/drag the coloured Target handle;
     // - vertical = Dynamic Gain only;
@@ -2647,6 +2598,57 @@ void VVChainAudioProcessorEditor::mouseDown(
         graphDragHint.clear();
         repaint();
         return;
+    }
+
+
+    // Offset handle: edit the normal/static EQ gain only.
+    // It must not move Target or change Dynamic EQ settings.
+    for (int b = 0; b < 4; ++b)
+    {
+        const auto n = juce::String(b + 1);
+        const float x = graphFrequencyToX(
+            graph, parameterValue("EQ" + n + "_FREQ"));
+        const float y = eqDbToY(
+            graph, parameterValue("EQ" + n + "_GAIN"));
+
+        if (event.mods.isLeftButtonDown()
+            && pos.getDistanceFrom({ x, y }) < 4.5f)
+        {
+            dragOffsetBand = b;
+            dragBand = -1;
+            dragXover = -1;
+            dragDynamicMsBand = -1;
+            graphEqDragAxis = GraphEqDragAxis::Undetermined;
+
+            dynamicGainDragStartY = pos.y;
+            dynamicGainDragStartOffset =
+                parameterValue("EQ" + n + "_GAIN");
+            graphFreqDragStartHz =
+                parameterValue("EQ" + n + "_FREQ");
+            const float nodeStartX =
+                graphFrequencyToX(graph, graphFreqDragStartHz);
+            graphFreqDragStartX = pos.x;
+            graphFreqDragGrabOffsetX = pos.x - nodeStartX;
+
+            if (auto* parameter = audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
+                parameter->beginChangeGesture();
+            if (auto* parameter = audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
+                parameter->beginChangeGesture();
+
+            juce::StringArray graphIds;
+            graphIds.add("EQ" + n + "_FREQ");
+            graphIds.add("EQ" + n + "_GAIN");
+            setGraphControlState(graphIds, false);
+
+            graphHintBand = b;
+            graphHintActiveMask = 1 | 2;
+            graphHintAutoHideAt = 0;
+            showGraphDragHint = true;
+            graphDragHintPosition = pos;
+            graphDragHint.clear();
+            repaint();
+            return;
+        }
     }
 
     // Bottom figure-eight marker = continuous shared OVERLAP control.
