@@ -13,12 +13,14 @@ public:
                                  float envRatio) noexcept
     {
         const float safeStatic = juce::jlimit(-18.0f, 18.0f, staticGainDB);
-        const float safeRange = juce::jlimit(-9.0f, 9.0f, dynRangeDB);
+        const float safeRange = juce::jlimit(-18.0f, 18.0f, dynRangeDB);
         const float safeRatio = juce::jlimit(0.0f, 1.0f, envRatio);
 
+        // Dynamic EQ is centered on the current static EQ gain.
+        // The dynamic span is applied from that exact point, not as a separate absolute range.
         return juce::jlimit(
-            -27.0f,
-            27.0f,
+            -36.0f,
+            36.0f,
             safeStatic + safeRange * safeRatio);
     }
 
@@ -41,8 +43,8 @@ public:
             30.0,
             static_cast<double>(q));
         const double g = juce::jlimit(
-            -27.0,
-            27.0,
+            -36.0,
+            36.0,
             static_cast<double>(gainDB));
         const double hz = juce::jlimit(
             10.0,
