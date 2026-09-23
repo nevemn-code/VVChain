@@ -2071,7 +2071,6 @@ void VVChainAudioProcessorEditor::mouseDown(
         expandedDynamicBand = -1;
         dragDynamicMsBand = -1;
         dragDynamicTargetBand = -1;
-        dragDynamicGainBand = -1;
         dragBand = -1;
         dragXover = -1;
         showGraphDragHint = false;
@@ -2422,7 +2421,6 @@ void VVChainAudioProcessorEditor::mouseUp(
     const juce::MouseEvent&)
 {
     dragBand = -1;
-    dragDynamicGainBand = -1;
     dragOffsetBand = -1;
     dragXover = -1;
     dragDynamicMsBand = -1;
