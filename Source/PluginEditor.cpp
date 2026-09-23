@@ -2211,6 +2211,8 @@ void VVChainAudioProcessorEditor::mouseDown(
         && pointNearDynamicNode(pos, band))
     {
         const auto n = juce::String(band + 1);
+        const float hz =
+            parameterValue("EQ" + n + "_FREQ");
 
         dragBand = band;
         dragXover = -1;
@@ -2443,9 +2445,8 @@ void VVChainAudioProcessorEditor::mouseDrag(
         return;
     }
 
-    // Dynamic range graph node drag = XY:
-    // horizontal = Frequency, vertical = the same DYNAMICS parameter shown below.
-    // Up = expansion (+%), down = downward compression (-%).
+    // Dynamic range graph node drag = vertical-only DYNAMICS control.
+    // Frequency is locked; Up = expansion (+%), down = compression (-%).
     if (dragBand >= 0)
     {
         const auto n = juce::String(dragBand + 1);
