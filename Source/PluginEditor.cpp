@@ -723,6 +723,25 @@ float VVChainAudioProcessorEditor::eqDbToY(
         * juce::jlimit(0.f, 1.f, (db + 18.f) / 36.f);
 }
 
+float VVChainAudioProcessorEditor::dynamicEffectiveTargetGain(int band) const
+{
+    if (band < 0 || band >= 4)
+        return 0.f;
+
+    const auto n = juce::String(band + 1);
+    const float offset =
+        juce::jlimit(-24.f, 24.f, parameterValue("EQ" + n + "_GAIN"));
+    const float target =
+        juce::jlimit(-24.f, 24.f, parameterValue("DYN_TARGET" + n));
+    const float dynamics =
+        juce::jlimit(-100.f, 100.f,
+            parameterValue("DYN_DYNAMICS" + n)) * 0.01f;
+
+    return juce::jlimit(-24.f, 24.f,
+        offset + (dynamics >= 0.f ? 1.f : -1.f)
+            * std::abs(target - offset) * std::abs(dynamics));
+}
+
 juce::Rectangle<float> VVChainAudioProcessorEditor::dynamicMsPopupBounds(int band) const
 {
     const auto graph = eqGraphBounds();
@@ -753,8 +772,7 @@ juce::Point<float> VVChainAudioProcessorEditor::dynamicTargetPoint(int band) con
     const auto n = juce::String(band + 1);
     const float x = graphFrequencyToX(
         graph, parameterValue("EQ" + n + "_FREQ"));
-    const float target = juce::jlimit(
-        -24.f, 24.f, parameterValue("DYN_TARGET" + n));
+    const float target = dynamicEffectiveTargetGain(band);
     return { x, eqDbToY(graph, target) };
 }
 
@@ -979,7 +997,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         const float offset =
             parameterValue("EQ" + n + "_GAIN");
         const float target =
-            parameterValue("DYN_TARGET" + n);
+            dynamicEffectiveTargetGain(band);
         const float baseQ =
             parameterValue("EQ" + n + "_Q");
         const auto c =
@@ -1183,7 +1201,9 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                 + " dB   OFFSET " + juce::String(offset, 1)
                 + " dB   LIVE " + juce::String(liveGain, 1)
                 + " dB   DYN " + juce::String(dynamics, 0)
-                + "%   THR " + juce::String(threshold, 1)
+                + "% "
+                + (dynamics > 0.f ? "EXPAND" : dynamics < 0.f ? "COMPRESS" : "STATIC")
+                + "   THR " + juce::String(threshold, 1)
                 + " dB   "
                 + (onsets ? "ONSETS" : "PEAK")
                 + " / " + (below ? "BELOW" : "ABOVE");
@@ -2039,12 +2059,15 @@ void VVChainAudioProcessorEditor::mouseDown(
             dragDynamicMsBand = -1;
             dynamicTargetDragStartY = pos.y;
             dynamicTargetDragStartValue =
-                parameterValue("DYN_TARGET" + n);
+                dynamicEffectiveTargetGain(b);
             showGraphDragHint = true;
             graphDragHintPosition = pos;
             graphDragHint = "TARGET "
                 + juce::String(dynamicTargetDragStartValue, 1)
-                + " dB";
+                + " dB   DYN "
+                + juce::String(
+                    parameterValue("DYN_DYNAMICS" + n), 0)
+                + "%";
             repaint();
             return;
         }
@@ -2180,25 +2203,49 @@ void VVChainAudioProcessorEditor::mouseDrag(
 
     if (dragDynamicTargetBand >= 0)
     {
-        const float deltaDb =
-            -(event.position.y - dynamicTargetDragStartY)
-            / juce::jmax(1.f, graph.getHeight())
-            * 36.f;
-
-        const float target =
+        const auto n =
+            juce::String(dragDynamicTargetBand + 1);
+        const float dynamics =
             juce::jlimit(
-                -24.f, 24.f,
-                dynamicTargetDragStartValue + deltaDb);
+                -100.f, 100.f,
+                parameterValue("DYN_DYNAMICS" + n)) * 0.01f;
 
-        setParameter(
-            "DYN_TARGET"
-            + juce::String(dragDynamicTargetBand + 1),
-            target);
+        if (std::abs(dynamics) > 0.001f)
+        {
+            const float deltaDb =
+                -(event.position.y - dynamicTargetDragStartY)
+                / juce::jmax(1.f, graph.getHeight())
+                * 36.f;
 
-        graphDragHintPosition = event.position;
-        graphDragHint =
-            "TARGET " + juce::String(target, 1)
-            + " dB";
+            const float offset =
+                juce::jlimit(
+                    -24.f, 24.f,
+                    parameterValue("EQ" + n + "_GAIN"));
+            const float desiredTarget =
+                juce::jlimit(
+                    -24.f, 24.f,
+                    dynamicTargetDragStartValue + deltaDb);
+            const float maxSpan =
+                std::min(
+                    48.f,
+                    std::abs(desiredTarget - offset)
+                        / std::max(std::abs(dynamics), 0.001f));
+            const float rawTarget =
+                offset
+                    + (dynamics >= 0.f ? 1.f : -1.f) * maxSpan;
+
+            setParameter(
+                "DYN_TARGET" + n,
+                juce::jlimit(-24.f, 24.f, rawTarget));
+
+            graphDragHintPosition = event.position;
+            graphDragHint =
+                "TARGET "
+                + juce::String(desiredTarget, 1)
+                + " dB   DYN "
+                + juce::String(dynamics * 100.f, 0);
+        }
+
         showGraphDragHint = true;
         repaint();
         return;
@@ -2304,8 +2351,6 @@ void VVChainAudioProcessorEditor::mouseDrag(
 
     // Sonnox-style vertical drag: Offset and Target move together,
     // preserving their relative separation.
-    const float dragScale =
-        event.mods.isShiftDown() ? 0.1f : 1.0f;
 
     const float deltaDb =
         -(event.position.y
