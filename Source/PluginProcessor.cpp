@@ -44,7 +44,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         const float dynAttackDefaults[4] = { 8.f, 8.f, 5.f, 3.f };
         const float dynReleaseDefaults[4] = { 120.f, 120.f, 100.f, 80.f };
 
-        f("DYN_THRESH" + n, "Dynamic EQ " + n + " Threshold",
+        // Legacy hidden state parameter kept only so older presets can load.
+        // Active threshold is derived from DYN_DYNAMICS in the DSP.
+        f("DYN_THRESH" + n, "Dynamic EQ " + n + " Threshold (Legacy)",
           -60.f, 0.f, dynThresholdDefaults[i], 0.6f);
         f("DYN_TARGET" + n, "Dynamic EQ " + n + " Target Gain",
           -24.f, 24.f, dynTargetDefaults[i]);
@@ -192,6 +194,8 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.freq[(size_t)i] = value("EQ" + n + "_FREQ");
         p.gain[(size_t)i] = value("EQ" + n + "_GAIN");
         p.q[(size_t)i] = value("EQ" + n + "_Q");
+        // Legacy threshold parameter is retained for preset compatibility.
+        // The active DSP threshold is linked automatically from DYNAMICS.
         p.dynThreshold[(size_t)i] = value("DYN_THRESH" + n);
         p.dynTarget[(size_t)i] = value("DYN_TARGET" + n);
         p.dynDynamics[(size_t)i] = value("DYN_DYNAMICS" + n);
