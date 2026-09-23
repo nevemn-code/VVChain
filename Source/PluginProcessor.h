@@ -36,9 +36,9 @@ public:
     juce::AudioProcessorValueTreeState apvts;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
-    float getDynamicMidReductionDb(int band) const noexcept { return dsp.dynamicMidReductionDb(band); }
-    float getDynamicSideReductionDb(int band) const noexcept { return dsp.dynamicSideReductionDb(band); }
-    float getDynamicAverageReductionDb(int band) const noexcept { return dsp.dynamicAverageReductionDb(band); }
+    float getDynamicMidGainChangeDb(int band) const noexcept { return dsp.dynamicMidGainChangeDb(band); }
+    float getDynamicSideGainChangeDb(int band) const noexcept { return dsp.dynamicSideGainChangeDb(band); }
+    float getDynamicAverageGainChangeDb(int band) const noexcept { return dsp.dynamicAverageGainChangeDb(band); }
 
 private:
     VVChainDSP dsp;
