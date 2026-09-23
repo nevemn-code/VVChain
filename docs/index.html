@@ -193,6 +193,20 @@ function dynamicNodePoint(b,w,h){
   const y=h-(clamp(db,-18,18)+18)/36*h;
   return{x,y,reduction};
 }
+function dynamicThresholdPoint(b,w,h){
+  const x=logX(state.eq.freq[b],w);
+  const thr=clamp(Number(state.dyn.threshold[b]??-24),-60,0);
+  const y=20+(0-thr)/60*Math.max(20,h-40);
+  return{x,y,threshold:thr};
+}
+function dynamicThresholdAtPointer(x,y,w,h){
+  let best=15,band=-1;
+  for(let b=0;b<4;b++){
+    const p=dynamicThresholdPoint(b,w,h),d=Math.hypot(x-p.x,y-p.y);
+    if(d<best){best=d;band=b}
+  }
+  return band;
+}
 function dynamicPopupBounds(b,w,h){
   const n=dynamicNodePoint(b,w,h),pw=190,ph=62;
   let x=n.x-pw*.5,y=n.y-ph-24;
@@ -226,9 +240,9 @@ function drawEQ(){
   for(let b=0;b<4;b++){const alpha=clamp(state.eq.color[b],0,100)/100*.70;if(alpha>0){eqCtx.fillStyle=cols[b]+Math.round(alpha*255).toString(16).padStart(2,"0");eqCtx.fillRect(bounds[b],0,bounds[b+1]-bounds[b],h)}}
   for(let b=0;b<3;b++){
     const x=xo[b],ov=clamp((state.ott.overlap??[50,50,50])[b]??50,0,100),spread=16+ov*.52;
-    eqCtx.strokeStyle="#facc15cc";eqCtx.beginPath();eqCtx.moveTo(x,16);eqCtx.lineTo(x,h-18);eqCtx.stroke();
+    eqCtx.strokeStyle="#facc15cc";eqCtx.beginPath();eqCtx.moveTo(x,20);eqCtx.lineTo(x,h-18);eqCtx.stroke();
     eqCtx.strokeStyle="#facc1588";eqCtx.beginPath();eqCtx.moveTo(Math.max(0,x-spread),h/2+20);eqCtx.bezierCurveTo(x-spread*.5,h/2+20,x-spread*.2,h/2-10,x,h/2-2);eqCtx.bezierCurveTo(x+spread*.2,h/2-10,x+spread*.5,h/2+20,Math.min(w,x+spread),h/2+20);eqCtx.stroke();
-    eqCtx.fillStyle="#ffe36a";eqCtx.font="bold 8px Consolas";eqCtx.fillText("X"+(b+1)+" "+hz(state.ott.x[b])+"  "+fmt(ov,0)+"%",x+4,24)
+    eqCtx.fillStyle="#000a";eqCtx.fillRect(x-46,2,92,15);eqCtx.fillStyle="#ffe36a";eqCtx.font="bold 8px Consolas";eqCtx.textAlign="center";eqCtx.fillText("X"+(b+1)+" "+hz(state.ott.x[b]),x,13);eqCtx.textAlign="left"
   }
 
   // Static EQ response.
@@ -259,50 +273,90 @@ function drawEQ(){
 
   for(let b=0;b<4;b++){
     const sx=logX(state.eq.freq[b],w),sy=h-(clamp(state.eq.gain[b],-18,18)+18)/36*h,n=dynamicNodePoint(b,w,h);
-    const isOpen=expandedDynamicBand===b;
-    eqCtx.strokeStyle=cols[b]+"99";eqCtx.lineWidth=1;
-    eqCtx.beginPath();eqCtx.moveTo(sx,sy);eqCtx.lineTo(n.x,n.y);eqCtx.stroke();
+    const th=dynamicThresholdPoint(b,w,h);
+    const hovered=hoverDynamicBand===b;
+    const ratio=Math.max(1,Number(state.dyn.ratio[b]||2.5));
+    const q=Math.max(.1,state.eq.q[b]);
+    const curveWidth=Math.max(24,Math.min(150,92/q));
+    const curveDepth=Math.max(7,Math.min(22,10+ratio*.45));
 
+    // DYN THRESH curve + draggable threshold handle.
+    eqCtx.strokeStyle=cols[b]+"b5";eqCtx.lineWidth=1.35;eqCtx.setLineDash([4,3]);eqCtx.beginPath();
+    for(let i=0;i<=40;i++){
+      const u=i/40*2-1,cx=sx+u*curveWidth,cy=th.y+curveDepth*Math.exp(-u*u*2.7)*(th.threshold<=-30?1:-1);
+      i?eqCtx.lineTo(cx,cy):eqCtx.moveTo(cx,cy);
+    }
+    eqCtx.stroke();eqCtx.setLineDash([]);
+    eqCtx.fillStyle="#050709cc";eqCtx.beginPath();eqCtx.arc(th.x,th.y,8,0,Math.PI*2);eqCtx.fill();
+    eqCtx.strokeStyle=cols[b];eqCtx.lineWidth=1.8;eqCtx.stroke();
+    eqCtx.fillStyle=cols[b];eqCtx.beginPath();eqCtx.arc(th.x,th.y,3,0,Math.PI*2);eqCtx.fill();
+
+    // Static -> live Dynamic EQ movement.
+    eqCtx.strokeStyle=cols[b]+"66";eqCtx.lineWidth=1;eqCtx.beginPath();eqCtx.moveTo(sx,sy);eqCtx.lineTo(n.x,n.y);eqCtx.stroke();
     eqCtx.fillStyle=cols[b];eqCtx.beginPath();eqCtx.arc(sx,sy,5.5,0,Math.PI*2);eqCtx.fill();
-    eqCtx.fillStyle="#fff";eqCtx.beginPath();eqCtx.arc(n.x,n.y,5.5,0,Math.PI*2);eqCtx.fill();
-    eqCtx.strokeStyle=cols[b];eqCtx.lineWidth=2;eqCtx.beginPath();eqCtx.arc(n.x,n.y,8,isOpen?0:0,Math.PI*2);eqCtx.stroke();
+    eqCtx.fillStyle="#fff";eqCtx.beginPath();eqCtx.arc(n.x,n.y,6,0,Math.PI*2);eqCtx.fill();
 
-    // Mid/Side meter ring around the live node.
+    // M/S live-reduction ring.
     const midRed=clamp(Number(state.dyn.reductionMid[b]||0),0,12),sideRed=clamp(Number(state.dyn.reductionSide[b]||0),0,12);
     const ratioM=midRed/12,ratioS=sideRed/12;
     eqCtx.strokeStyle="#f8fafc";eqCtx.lineWidth=2.5;eqCtx.beginPath();eqCtx.arc(n.x,n.y,11,-Math.PI/2,-Math.PI/2+ratioM*Math.PI);eqCtx.stroke();
     eqCtx.strokeStyle="#737b86";eqCtx.beginPath();eqCtx.arc(n.x,n.y,11,-Math.PI/2+ratioM*Math.PI,-Math.PI/2+(ratioM+ratioS)*Math.PI);eqCtx.stroke();
+
+    // Compact compression action / transfer curve.
+    const cw=hovered?82:50,ch=hovered?48:30;
+    let cx=n.x+15,cy=n.y-ch-18;
+    if(cx+cw>w-4)cx=n.x-cw-15;
+    cy=clamp(cy,21,h-ch-5);
+    eqCtx.fillStyle="#050709aa";eqCtx.fillRect(cx,cy,cw,ch);
+    eqCtx.strokeStyle=cols[b]+(hovered?"cc":"55");eqCtx.lineWidth=1;eqCtx.strokeRect(cx,cy,cw,ch);
+    const t=clamp((th.threshold+60)/60,.06,.94),px0=cx+4,py0=cy+ch-4,px1=cx+cw-4,py1=cy+4,kx=px0+(px1-px0)*t,ky=py0-(py0-py1)*t,remain=px1-kx,outRemain=remain/ratio;
+    eqCtx.strokeStyle="#fff";eqCtx.lineWidth=hovered?1.7:1.0;eqCtx.beginPath();eqCtx.moveTo(px0,py0);eqCtx.lineTo(kx,ky);eqCtx.bezierCurveTo(kx+remain*.25,ky-outRemain*.18,kx+remain*.7,ky-outRemain*.78,px1,Math.max(py1,ky-outRemain));eqCtx.stroke();
+    if(hovered){eqCtx.fillStyle="#fff";eqCtx.font="bold 8px Consolas";eqCtx.textAlign="center";eqCtx.fillText("COMP "+fmt(ratio,2)+":1",cx+cw/2,cy+10);eqCtx.textAlign="left"}
+
+    // Direct hover readout above the point.
+    if(hovered){
+      const gr=n.reduction;
+      const label="B"+(b+1)+"  "+hz(state.eq.freq[b])+"  "+(state.eq.gain[b]>=0?"+":"")+fmt(state.eq.gain[b],1)+" dB  DYN THR "+fmt(th.threshold,1)+" dB  R "+fmt(ratio,2)+":1  GR "+fmt(-gr,1)+" dB";
+      const lw=Math.min(292,w-12);
+      let lx=clamp(n.x-lw/2,6,w-lw-6),ly=n.y-ch-54;
+      if(ly<6)ly=n.y+20;
+      eqCtx.fillStyle="#05070bf0";eqCtx.fillRect(lx,ly,lw,27);eqCtx.strokeStyle=cols[b]+"ee";eqCtx.lineWidth=1;eqCtx.strokeRect(lx,ly,lw,27);
+      eqCtx.fillStyle="#fff";eqCtx.font="bold 8.5px Consolas";eqCtx.textAlign="center";eqCtx.fillText(label,lx+lw/2,ly+17);eqCtx.textAlign="left";
+    }
   }
 
-  eqCtx.fillStyle="#fff";eqCtx.font="bold 8px Consolas";eqCtx.fillText("DYNAMIC EQ · LIVE GAIN · CLICK NODE = M/S · 20 Hz — 20 kHz",12,h-8);
+  eqCtx.fillStyle="#fff";eqCtx.font="bold 8px Consolas";eqCtx.fillText("DYNAMIC EQ · LIVE GAIN · HOVER = VALUES · RIGHT CLICK = M/S · 20 Hz — 20 kHz",12,h-8);
 
   if(expandedDynamicBand>=0){
     const p=dynamicPopupBounds(expandedDynamicBand,w,h),ms=clamp(Number(state.dyn.ms[expandedDynamicBand]||50),0,100);
-    eqCtx.fillStyle="#07090cf5";eqCtx.strokeStyle="#ffffff99";eqCtx.lineWidth=1;eqCtx.fillRect(p.x,p.y,p.w,p.h);eqCtx.strokeRect(p.x,p.y,p.w,p.h);
-    eqCtx.fillStyle="#fff";eqCtx.font="bold 8px Consolas";eqCtx.textAlign="left";eqCtx.fillText("BAND "+(expandedDynamicBand+1)+" · DYNAMIC M/S",p.x+10,p.y+12);
-    eqCtx.fillStyle="#aeb6c0";eqCtx.font="7px Consolas";eqCtx.fillText("MID "+fmt(ms,0)+"%    SIDE "+fmt(100-ms,0)+"%",p.x+10,p.y+26);
-    const bx=p.x+10,by=p.y+40,bw=p.w-20;
-    eqCtx.fillStyle="#242830";eqCtx.fillRect(bx,by,bw,9);
-    eqCtx.fillStyle="#f8fafc";eqCtx.fillRect(bx,by,bw*ms/100,9);
-    eqCtx.strokeStyle="#707985";eqCtx.strokeRect(bx,by,bw,9);
-    eqCtx.fillStyle="#7f8893";eqCtx.font="6.5px Consolas";eqCtx.fillText("CLICK / DRAG / WHEEL",bx,by+18);
-    eqCtx.textAlign="left";
+    eqCtx.fillStyle="#07090cf7";eqCtx.strokeStyle="#ffffffbb";eqCtx.lineWidth=1;eqCtx.fillRect(p.x,p.y,p.w,p.h);eqCtx.strokeRect(p.x,p.y,p.w,p.h);
+    eqCtx.fillStyle="#fff";eqCtx.font="bold 11px Consolas";eqCtx.textAlign="left";eqCtx.fillText("BAND "+(expandedDynamicBand+1)+" · DYNAMIC MID / SIDE",p.x+10,p.y+16);
+    eqCtx.fillStyle="#e8edf2";eqCtx.font="bold 10px Consolas";eqCtx.fillText("MID "+fmt(ms,0)+"%",p.x+10,p.y+36);eqCtx.textAlign="right";eqCtx.fillText("SIDE "+fmt(100-ms,0)+"%",p.x+p.w-10,p.y+36);eqCtx.textAlign="left";
+    const bx=p.x+10,by=p.y+48,bw=p.w-20;eqCtx.fillStyle="#242830";eqCtx.fillRect(bx,by,bw,11);eqCtx.fillStyle="#f8fafc";eqCtx.fillRect(bx,by,bw*ms/100,11);eqCtx.strokeStyle="#707985";eqCtx.strokeRect(bx,by,bw,11);
+    eqCtx.fillStyle="#c4cad2";eqCtx.font="bold 8px Consolas";eqCtx.fillText("RIGHT CLICK + WHEEL = MID / SIDE",bx,by+23);
   }
 }
-let expandedDynamicBand=-1,drag=-1,dragXover=-1,dragDynamicMsBand=-1;
+let expandedDynamicBand=-1,hoverDynamicBand=-1,drag=-1,dragXover=-1,dragDynamicMsBand=-1,dragDynamicThresholdBand=-1,dynFreqStartHz=0,dynFreqStartX=0;
 function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRatio||1;eqCanvas.width=Math.max(1,Math.round(r.width*d));eqCanvas.height=Math.max(1,Math.round(r.height*d));eqCtx.setTransform(d,0,0,d,0,0);drawEQ()}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function showGraphHint(e,text){const r=eqCanvas.getBoundingClientRect();graphHint.textContent=text;graphHint.hidden=false;const pad=6,ox=12,oy=12,x=clamp(e.clientX-r.left+ox,pad,r.width-graphHint.offsetWidth-pad),y=clamp(e.clientY-r.top+oy,pad,r.height-graphHint.offsetHeight-pad);graphHint.style.left=x+"px";graphHint.style.top=y+"px"}
 function hideGraphHint(){graphHint.hidden=true}
 
+eqCanvas.addEventListener("contextmenu",e=>e.preventDefault());
+
+eqCanvas.addEventListener("mousemove",e=>{
+  const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
+  const band=dynamicBandAtPointer(x,y,w,h);
+  hoverDynamicBand=band;
+  drawEQ();
+});
+
 eqCanvas.addEventListener("wheel",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
-  if(expandedDynamicBand>=0){
-    const p=dynamicPopupBounds(expandedDynamicBand,w,h),bar={x:p.x+10,y:p.y+40,w:p.w-20,h:9};
-    if(x>=bar.x&&x<=bar.x+bar.w&&y>=bar.y-8&&y<=bar.y+17){e.preventDefault();state.dyn.ms[expandedDynamicBand]=clamp(state.dyn.ms[expandedDynamicBand]-e.deltaY*.04,0,100);sendParams();drawEQ();return}
+  if(e.buttons===2 || e.button===2){
+    const band=hoverDynamicBand>=0?hoverDynamicBand:dynamicBandAtPointer(x,y,w,h);
+    if(band>=0){e.preventDefault();state.dyn.ms[band]=clamp(state.dyn.ms[band]-e.deltaY*.04,0,100);expandedDynamicBand=band;sendParams();drawEQ();return}
   }
-  const dynBand=dynamicBandAtPointer(x,y,w,h);
-  if(dynBand>=0){e.preventDefault();state.dyn.ms[dynBand]=clamp(state.dyn.ms[dynBand]-e.deltaY*.04,0,100);expandedDynamicBand=dynBand;sendParams();drawEQ();return}
   const xo=state.ott.x.map(v=>logX(v,w));let xb=12,xi=-1;
   for(let i=0;i<3;i++){const d=Math.abs(xo[i]-x);if(d<xb){xb=d;xi=i}}
   if(xi>=0){e.preventDefault();const ov=state.ott.overlap??[50,50,50];ov[xi]=clamp((ov[xi]??50)+e.deltaY*.02,0,100);sendParams();drawEQ();return}
@@ -314,46 +368,40 @@ eqCanvas.addEventListener("wheel",e=>{
 eqCanvas.addEventListener("pointerdown",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
   if(expandedDynamicBand>=0){
-    const p=dynamicPopupBounds(expandedDynamicBand,w,h),bar={x:p.x+10,y:p.y+40,w:p.w-20,h:9};
+    const p=dynamicPopupBounds(expandedDynamicBand,w,h),bar={x:p.x+10,y:p.y+48,w:p.w-20,h:11};
     if(x>=p.x&&x<=p.x+p.w&&y>=p.y&&y<=p.y+p.h){
-      if(x>=bar.x&&x<=bar.x+bar.w&&y>=bar.y-8&&y<=bar.y+17){
-        dragDynamicMsBand=expandedDynamicBand;eqCanvas.setPointerCapture(e.pointerId);
-        state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);sendParams();drawEQ();
-      }
-      return;
+      if(e.button===0&&x>=bar.x&&x<=bar.x+bar.w&&y>=bar.y-8&&y<=bar.y+20){
+        dragDynamicMsBand=expandedDynamicBand;eqCanvas.setPointerCapture(e.pointerId);state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);sendParams();drawEQ();
+      } return;
     }
   }
-  const dynBand=dynamicBandAtPointer(x,y,w,h);
-  if(dynBand>=0){
-    expandedDynamicBand=expandedDynamicBand===dynBand?-1:dynBand;
-    drag=-1;dragXover=-1;dragDynamicMsBand=-1;eqCanvas.setPointerCapture(e.pointerId);
-    showGraphHint(e,"DYN EQ "+(dynBand+1)+" · MID "+fmt(state.dyn.ms[dynBand],0)+"% / SIDE "+fmt(100-state.dyn.ms[dynBand],0)+"%");
-    drawEQ();return;
+  if(e.button===2){
+    const band=dynamicBandAtPointer(x,y,w,h);
+    if(band>=0){e.preventDefault();expandedDynamicBand=band;drawEQ();return}
   }
-  const xo=state.ott.x.map(v=>logX(v,w));for(let i=0;i<3;i++)if(Math.abs(xo[i]-x)<14){dragXover=i;eqCanvas.setPointerCapture(e.pointerId);showGraphHint(e,"X"+(i+1)+"   "+graphFrequencyText(state.ott.x[i])+"   CURVE "+fmt((state.ott.overlap??[50,50,50])[i]??50,0)+"%");return}
-  let nearest=-1,best=24,hzAtPointer=invLog(x/w),curveDb=0;
-  for(let b=0;b<4;b++){const f=state.eq.freq[b],q=Math.max(.1,state.eq.q[b]),xx=Math.log(Math.max(hzAtPointer,20)/Math.max(f,20)),wd=Math.max(.02,1/(q*1.8));curveDb+=state.eq.gain[b]*Math.exp(-(xx*xx)/(2*wd*wd))}
-  const curveY=h-(clamp(curveDb,-18,18)+18)/36*h;
-  if(Math.abs(curveY-y)<=best){let nf=Infinity;for(let b=0;b<4;b++){const d=Math.abs(Math.log(Math.max(hzAtPointer,20)/Math.max(state.eq.freq[b],20)));if(d<nf){nf=d;nearest=b}}}
-  if(nearest>=0){drag=nearest;eqCanvas.setPointerCapture(e.pointerId);showGraphHint(e,"BAND "+(drag+1)+" · "+graphFrequencyText(state.eq.freq[drag])+" · "+(state.eq.gain[drag]>=0?"+":"")+fmt(state.eq.gain[drag],1)+" dB · Q "+fmt(state.eq.q[drag],2))}
+  const dynThresholdBand=dynamicThresholdAtPointer(x,y,w,h);
+  if(e.button===0&&dynThresholdBand>=0){
+    dragDynamicThresholdBand=dynThresholdBand;eqCanvas.setPointerCapture(e.pointerId);state.dyn.threshold[dynThresholdBand]=clamp(-(y-20)/Math.max(20,h-40)*60,-60,0);sendParams();drawEQ();return
+  }
+  const dynBand=dynamicBandAtPointer(x,y,w,h);
+  if(e.button===0&&dynBand>=0){
+    drag=dynBand;dragXover=-1;dragDynamicMsBand=-1;dragDynamicThresholdBand=-1;dynFreqStartHz=state.eq.freq[dynBand];dynFreqStartX=x;eqCanvas.setPointerCapture(e.pointerId);return
+  }
+  const xo=state.ott.x.map(v=>logX(v,w));for(let i=0;i<3;i++)if(Math.abs(xo[i]-x)<14){dragXover=i;eqCanvas.setPointerCapture(e.pointerId);return}
 });
+
 eqCanvas.addEventListener("pointermove",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,0,r.width),y=clamp(e.clientY-r.top,0,r.height),w=r.width,h=r.height;
-  if(dragDynamicMsBand>=0){
-    const p=dynamicPopupBounds(dragDynamicMsBand,w,h),bar={x:p.x+10,y:p.y+40,w:p.w-20,h:9};
-    state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);sendParams();drawEQ();return
-  }
-  if(dragXover>=0){
-    let f=invLog(x/w);if(dragXover===0)f=clamp(f,40,Math.min(1000,state.ott.x[1]-80));else if(dragXover===1)f=clamp(f,state.ott.x[0]+80,Math.min(5000,state.ott.x[2]-200));else f=clamp(f,state.ott.x[1]+200,18000);
-    state.ott.x[dragXover]=f;showGraphHint(e,"X"+(dragXover+1)+"   "+graphFrequencyText(f)+"   CURVE "+fmt((state.ott.overlap??[50,50,50])[dragXover]??50,0)+"%");sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return
-  }
-  if(drag<0){if(expandedDynamicBand<0)showGraphHint(e,"CURSOR   "+graphFrequencyText(invLog(x/w))+"   "+(18-(y/h)*36>=0?"+":"")+fmt(18-(y/h)*36,1)+" dB");return}
-  const hzv=clamp(invLog(x/w),20,20000),db=clamp(18-(y/h)*36,-24,24),n=String(drag+1);
-  state.eq.freq[drag]=hzv;state.eq.gain[drag]=db;showGraphHint(e,"DYN EQ "+n+" · "+graphFrequencyText(hzv)+" · "+(db>=0?"+":"")+fmt(db,1)+" dB · Q "+fmt(state.eq.q[drag],2));sendParams();drawEQ();knobRefreshers.forEach(fn=>fn())
+  hoverDynamicBand=dynamicBandAtPointer(x,y,w,h);
+  if(dragDynamicMsBand>=0){const p=dynamicPopupBounds(dragDynamicMsBand,w,h),bar={x:p.x+10,y:p.y+48,w:p.w-20,h:11};state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);sendParams();drawEQ();return}
+  if(dragDynamicThresholdBand>=0){state.dyn.threshold[dragDynamicThresholdBand]=clamp(-(y-20)/Math.max(20,h-40)*60,-60,0);sendParams();drawEQ();return}
+  if(dragXover>=0){let f=invLog(x/w);if(dragXover===0)f=clamp(f,40,Math.min(1000,state.ott.x[1]-80));else if(dragXover===1)f=clamp(f,state.ott.x[0]+80,Math.min(5000,state.ott.x[2]-200));else f=clamp(f,state.ott.x[1]+200,18000);state.ott.x[dragXover]=f;sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return}
+  if(drag<0){drawEQ();return}
+  const hz=clamp(dynFreqStartHz+(x-dynFreqStartX)*(19980/Math.max(1,w)),20,20000),db=clamp(18-(y/h)*36,-24,24),n=String(drag+1);state.eq.freq[drag]=hz;state.eq.gain[drag]=db;sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());
 });
-eqCanvas.addEventListener("pointerup",()=>{drag=-1;dragXover=-1;dragDynamicMsBand=-1;hideGraphHint();drawEQ()});
-eqCanvas.addEventListener("pointercancel",()=>{drag=-1;dragXover=-1;dragDynamicMsBand=-1;hideGraphHint();drawEQ()});
-eqCanvas.addEventListener("pointerleave",()=>{if(drag<0&&dragXover<0&&dragDynamicMsBand<0)hideGraphHint()});
+eqCanvas.addEventListener("pointerup",()=>{drag=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicThresholdBand=-1;drawEQ()});
+eqCanvas.addEventListener("pointercancel",()=>{drag=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicThresholdBand=-1;drawEQ()});
+
 function stopPlayback(){if(source){try{source.stop()}catch{}try{source.disconnect()}catch{}source=null}playing=false;$("#status").textContent="READY"}
 async function loadAudioFile(file){if(!file)return;try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();$("#status").textContent="DECODING…";audioBuffer=await audioCtx.decodeAudioData(await file.arrayBuffer());$("#fileName").textContent=file.name;$("#status").textContent="READY"}catch(e){$("#status").textContent="LOAD ERROR"}}
 async function startPlayback(){if(!audioBuffer){$("#status").textContent="先 LOAD AUDIO";return}await ensureAudioGraph();await audioCtx.resume();stopPlayback();source=audioCtx.createBufferSource();source.buffer=audioBuffer;source.loop=true;source.connect(workletNode);source.onended=()=>{if(playing){source=null;return}playing=false;$("#status").textContent="READY"};source.start();playing=true;$("#status").textContent="PLAYING · LOOP"}
