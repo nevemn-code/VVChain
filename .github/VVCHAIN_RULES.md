@@ -93,3 +93,6 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 - 兩端的頻段 crossover / phase / detector / smoothing / gain 結構一致。
 - 四頻段與左右聲道 state 定義一致。
 - 不得再出現「Native 已更新，但 Web 還在跑舊演算法」的情況。
+
+## CI/CD
+- CI 的 Git checkout 必須保留完整 history（`fetch-depth: 0`），因為 Plugin/Web Preview 同步檢查需要比較 push 前後 commit。
