@@ -205,27 +205,27 @@ void VVChainDSP::updateCrossover2nd(Crossover2nd& xover, double fs, double f0, d
     updateHighPass(xover.hp, fs, f0, q);
 }
 
-float VVChainDSP::dynamicMidReductionDb(int band) const noexcept
+float VVChainDSP::dynamicMidGainChangeDb(int band) const noexcept
 {
     if (band < 0 || band >= 4)
         return 0.f;
-    return dynMidReductionDb[(size_t) band].load(std::memory_order_relaxed);
+    return dynMidGainChangeDb[(size_t) band].load(std::memory_order_relaxed);
 }
 
-float VVChainDSP::dynamicSideReductionDb(int band) const noexcept
+float VVChainDSP::dynamicSideGainChangeDb(int band) const noexcept
 {
     if (band < 0 || band >= 4)
         return 0.f;
-    return dynSideReductionDb[(size_t) band].load(std::memory_order_relaxed);
+    return dynSideGainChangeDb[(size_t) band].load(std::memory_order_relaxed);
 }
 
-float VVChainDSP::dynamicAverageReductionDb(int band) const noexcept
+float VVChainDSP::dynamicAverageGainChangeDb(int band) const noexcept
 {
     if (band < 0 || band >= 4)
         return 0.f;
     return 0.5f * (
-        dynamicMidReductionDb(band)
-        + dynamicSideReductionDb(band));
+        dynamicMidGainChangeDb(band)
+        + dynamicSideGainChangeDb(band));
 }
 
 float VVChainDSP::dbToGain(float db) noexcept
@@ -398,9 +398,13 @@ void VVChainDSP::reset()
     for (auto& b : dynSideDetectors) b.reset();
     dynMidEnvelopeDb = { -120.f, -120.f, -120.f, -120.f };
     dynSideEnvelopeDb = { -120.f, -120.f, -120.f, -120.f };
-    for (auto& v : dynMidReductionDb)
+    dynMidSlowDb = { -120.f, -120.f, -120.f, -120.f };
+    dynSideSlowDb = { -120.f, -120.f, -120.f, -120.f };
+    dynMidActivation = { 0.f, 0.f, 0.f, 0.f };
+    dynSideActivation = { 0.f, 0.f, 0.f, 0.f };
+    for (auto& v : dynMidGainChangeDb)
         v.store(0.f, std::memory_order_relaxed);
-    for (auto& v : dynSideReductionDb)
+    for (auto& v : dynSideGainChangeDb)
         v.store(0.f, std::memory_order_relaxed);
     soloPreXover1.reset(); soloPreXover2.reset(); soloPreXover3.reset();
     soloPostXover1.reset(); soloPostXover2.reset(); soloPostXover3.reset();
@@ -653,13 +657,18 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
     const int osSamples = static_cast<int>(osBlock.getNumSamples());
     const int osChannels = static_cast<int>(osBlock.getNumChannels());
     constexpr float invSqrt2 = 0.7071067811865475f;
+    constexpr float dynKneeDb = 10.0f;
 
-    // Pristine feed-forward source: all four Dynamic EQ detectors read the
-    // same pre-EQ signal, so the EQ cannot modulate its own trigger.
+    // Sonnox-style Dynamic EQ:
+    // Offset = p.gain, Target = p.dynTarget.
+    // The dynamic gain is constrained between them. Dynamics is a 0..100%
+    // depth control, with a 10 dB soft knee around Threshold.
+    // Detection remains feed-forward from pristine pre-EQ audio.
     for (int ch = 0; ch < osChannels; ++ch)
     {
         auto* dst = dynamicDetectorInput.getWritePointer(ch);
-        const auto* src = osBlock.getChannelPointer(static_cast<size_t>(ch));
+        const auto* src =
+            osBlock.getChannelPointer(static_cast<size_t>(ch));
         std::copy(src, src + osSamples, dst);
     }
 
@@ -669,29 +678,32 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         {
             const double frequency = juce::jlimit(
                 20.0, osSr * 0.45, static_cast<double>(p.freq[band]));
-            const double q = juce::jlimit(
+            const float offsetGain =
+                juce::jlimit(-24.f, 24.f, p.gain[band]);
+            const float targetGain =
+                juce::jlimit(-24.f, 24.f, p.dynTarget[band]);
+            const float dynamics =
+                juce::jlimit(0.f, 100.f, p.dynDynamics[band]) * 0.01f;
+            const double baseQ = juce::jlimit(
                 0.1, 18.0, static_cast<double>(p.q[band]));
 
             updateDynamicDetector(
-                dynMidDetectors[band], osSr, frequency, q);
+                dynMidDetectors[band], osSr, frequency, baseQ);
             updateDynamicDetector(
-                dynSideDetectors[band], osSr, frequency, q);
+                dynSideDetectors[band], osSr, frequency, baseQ);
 
             const float thresholdDb =
                 juce::jlimit(-60.f, 0.f, p.dynThreshold[band]);
-            const float ratio =
-                juce::jlimit(1.f, 20.f, p.dynRatio[band]);
-            const float attackCoeff =
-                timeCoeff(osSr, juce::jlimit(0.1f, 200.f, p.dynAttack[band]));
-            const float releaseCoeff =
-                timeCoeff(osSr, juce::jlimit(5.f, 2000.f, p.dynRelease[band]));
+            const float attackCoeff = timeCoeff(
+                osSr, juce::jlimit(0.1f, 200.f, p.dynAttack[band]));
+            const float releaseCoeff = timeCoeff(
+                osSr, juce::jlimit(5.f, 2000.f, p.dynRelease[band]));
+            const float onsetSlowCoeff =
+                timeCoeff(osSr, 120.0f);
 
             const float midPercent =
                 juce::jlimit(0.f, 100.f, p.dynMSBalance[band]);
             const float sidePercent = 100.f - midPercent;
-
-            // 50/50 is neutral. Increasing Mid above 50 gives Mid more
-            // dynamic depth; decreasing below 50 gives Side more depth.
             const float midWeight =
                 juce::jlimit(0.f, 1.f, midPercent / 50.f);
             const float sideWeight =
@@ -699,10 +711,17 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
             float& midEnv = dynMidEnvelopeDb[band];
             float& sideEnv = dynSideEnvelopeDb[band];
+            float& midSlow = dynMidSlowDb[band];
+            float& sideSlow = dynSideSlowDb[band];
+            float& midActivation = dynMidActivation[band];
+            float& sideActivation = dynSideActivation[band];
+
+            const float gainDelta = targetGain - offsetGain;
 
             for (int sample = 0; sample < osSamples; ++sample)
             {
-                const float srcL = dynamicDetectorInput.getSample(0, sample);
+                const float srcL =
+                    dynamicDetectorInput.getSample(0, sample);
                 const float srcR = osChannels > 1
                     ? dynamicDetectorInput.getSample(1, sample)
                     : 0.f;
@@ -716,18 +735,19 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
                 const float detectorMid =
                     dynMidDetectors[band].process(sourceMid, false);
-                const float detectorSide =
-                    osChannels > 1
-                        ? dynSideDetectors[band].process(sourceSide, false)
-                        : 0.f;
+                const float detectorSide = osChannels > 1
+                    ? dynSideDetectors[band].process(sourceSide, false)
+                    : 0.f;
 
                 const float midDb =
                     gainToDb(std::abs(detectorMid) + 1.0e-6f);
-                const float sideDb =
-                    osChannels > 1
-                        ? gainToDb(std::abs(detectorSide) + 1.0e-6f)
-                        : -120.f;
+                const float sideDb = osChannels > 1
+                    ? gainToDb(std::abs(detectorSide) + 1.0e-6f)
+                    : -120.f;
 
+                // Fast envelope drives the response time. A slower envelope is
+                // retained so Onsets detection reacts to sudden increases but
+                // is comparatively insensitive to sustained level.
                 const float midAlpha =
                     midDb > midEnv ? attackCoeff : releaseCoeff;
                 const float sideAlpha =
@@ -735,45 +755,129 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
                 midEnv = midAlpha * midEnv
                     + (1.f - midAlpha) * midDb;
+
                 if (osChannels > 1)
+                {
                     sideEnv = sideAlpha * sideEnv
                         + (1.f - sideAlpha) * sideDb;
+                }
 
-                const float slope =
-                    1.f - (1.f / juce::jmax(1.f, ratio));
+                midSlow = onsetSlowCoeff * midSlow
+                    + (1.f - onsetSlowCoeff) * midDb;
+                if (osChannels > 1)
+                {
+                    sideSlow = onsetSlowCoeff * sideSlow
+                        + (1.f - onsetSlowCoeff) * sideDb;
+                }
 
-                const float rawMidReduction =
-                    -juce::jlimit(
-                        0.f, 12.f,
-                        juce::jmax(0.f, midEnv - thresholdDb) * slope);
-                const float rawSideReduction =
-                    -juce::jlimit(
-                        0.f, 12.f,
-                        juce::jmax(0.f, sideEnv - thresholdDb) * slope);
+                auto activationFor = [thresholdDb, dynamics](
+                    float detectorDb,
+                    bool triggerBelow) noexcept
+                {
+                    constexpr float knee = dynKneeDb;
+                    float a = 0.f;
 
-                const float effectiveMidReduction =
-                    rawMidReduction * midWeight;
-                const float effectiveSideReduction =
-                    rawSideReduction * sideWeight;
+                    if (!triggerBelow)
+                    {
+                        const float lo = thresholdDb - knee;
+                        if (detectorDb <= lo)
+                            a = 0.f;
+                        else if (detectorDb >= thresholdDb)
+                            a = 1.f;
+                        else
+                        {
+                            const float t =
+                                (detectorDb - lo) / knee;
+                            a = t * t * (3.f - 2.f * t);
+                        }
+                    }
+                    else
+                    {
+                        const float hi = thresholdDb + knee;
+                        if (detectorDb >= hi)
+                            a = 0.f;
+                        else if (detectorDb <= thresholdDb)
+                            a = 1.f;
+                        else
+                        {
+                            const float t =
+                                (hi - detectorDb) / knee;
+                            a = t * t * (3.f - 2.f * t);
+                        }
+                    }
 
-                dynMidReductionDb[band].store(
-                    effectiveMidReduction, std::memory_order_relaxed);
-                dynSideReductionDb[band].store(
-                    effectiveSideReduction, std::memory_order_relaxed);
+                    return juce::jlimit(0.f, 1.f, a * dynamics);
+                };
+
+                float midTriggerDb = midEnv;
+                float sideTriggerDb = sideEnv;
+
+                if (p.dynDetectOnsets[band])
+                {
+                    const float midRise =
+                        juce::jmax(0.f, midDb - midSlow);
+                    const float sideRise =
+                        juce::jmax(0.f, sideDb - sideSlow);
+
+                    midTriggerDb += juce::jlimit(0.f, 12.f, midRise * 1.5f);
+                    sideTriggerDb += juce::jlimit(0.f, 12.f, sideRise * 1.5f);
+                }
+
+                const float midTargetActivation = activationFor(
+                    midTriggerDb, p.dynTriggerBelow[band]);
+                const float sideTargetActivation = activationFor(
+                    sideTriggerDb, p.dynTriggerBelow[band]);
+
+                // Attack / release are applied to the dynamic gain movement
+                // itself, so the band approaches Target and returns to Offset.
+                const float midActCoeff =
+                    midTargetActivation > midActivation
+                        ? attackCoeff : releaseCoeff;
+                const float sideActCoeff =
+                    sideTargetActivation > sideActivation
+                        ? attackCoeff : releaseCoeff;
+
+                midActivation = midActCoeff * midActivation
+                    + (1.f - midActCoeff) * midTargetActivation;
+                if (osChannels > 1)
+                {
+                    sideActivation = sideActCoeff * sideActivation
+                        + (1.f - sideActCoeff) * sideTargetActivation;
+                }
+
+                const float midGainChange =
+                    gainDelta * midActivation * midWeight;
+                const float sideGainChange =
+                    gainDelta * sideActivation * sideWeight;
+
+                dynMidGainChangeDb[band].store(
+                    midGainChange, std::memory_order_relaxed);
+                dynSideGainChangeDb[band].store(
+                    sideGainChange, std::memory_order_relaxed);
 
                 const float midTotalGain = juce::jlimit(
-                    -24.f, 24.f,
-                    p.gain[band] + effectiveMidReduction);
+                    -24.f, 24.f, offsetGain + midGainChange);
                 const float sideTotalGain = juce::jlimit(
-                    -24.f, 24.f,
-                    p.gain[band] + effectiveSideReduction);
+                    -24.f, 24.f, offsetGain + sideGainChange);
+
+                // Oxford Type-3-style gain/Q interaction:
+                // as gain moves farther from 0 dB, Q reduces and the
+                // effective bandwidth becomes wider / softer.
+                const double midQ = juce::jlimit(
+                    0.1, 18.0,
+                    baseQ / (1.0 + 0.045
+                        * std::abs(static_cast<double>(midTotalGain))));
+                const double sideQ = juce::jlimit(
+                    0.1, 18.0,
+                    baseQ / (1.0 + 0.045
+                        * std::abs(static_cast<double>(sideTotalGain))));
 
                 if ((sample & 3) == 0)
                 {
                     updateDynamicPeak(
-                        dynMidEq[band], osSr, frequency, midTotalGain, q);
+                        dynMidEq[band], osSr, frequency, midTotalGain, midQ);
                     updateDynamicPeak(
-                        dynSideEq[band], osSr, frequency, sideTotalGain, q);
+                        dynSideEq[band], osSr, frequency, sideTotalGain, sideQ);
                 }
 
                 auto* left = osBlock.getChannelPointer(0);
@@ -823,7 +927,6 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
     eqOversampler.processSamplesDown(outputBlock);
 }
-
 void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
     // Four independent OTT bands. Each band has its own detector state and
