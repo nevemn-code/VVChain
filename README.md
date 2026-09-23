@@ -27,7 +27,7 @@ INPUT
 ## DSP
 - Native De-Esser 使用固定 8192-sample PDC。
 - HP / CORNER 不參與聲音計算。
-- ANALOG COLOR 採「乾聲基波 1:1 + 加法諧波」結構：15 ms RMS 只用來正規化染色諧波的量級，不形成壓縮增益；TT 主要為偶次諧波、SS 主要為奇次諧波，避免整段訊號進入 tanh 而產生壓縮感。
+- ANALOG COLOR 以 Deploy VVChain Web Preview #443 為正式基準：乾聲基波保持 1:1，使用 3rd / 5th Chebyshev 諧波差值做染色；TT / SS 使用各自固定的諧波權重，不使用 RMS Auto-Gain，也不把整段訊號送進 tanh 壓縮。X2 只將該段產生的染色 delta ×1.6。
 - Master BYPASS 保持固定 PDC，完全旁通時輸出延遲乾聲。
 - AAX 目標受 VVCHAIN_ENABLE_AAX 控制，需合法 AAX SDK / 開發環境。
 
@@ -83,7 +83,7 @@ https://nevemn-code.github.io/VVChain/
 > Regression tests are not a substitute for final DAW pluginval or AAX certification.
   
 ### Analog Color / TT / SS
-Analog Color is an additive harmonic-colour stage rather than a full-signal tanh compressor. TT (Tube Saturation) primarily injects controlled 2nd/4th-order harmonics with a very small 3rd-order component; SS (Solid-State Saturation) primarily injects controlled 3rd/5th/7th-order harmonics. The original waveform path remains at unity. A 15 ms RMS tracker normalizes only the added harmonic generator, so the stage is designed for colour rather than compression.
+Analog Color follows the Deploy VVChain Web Preview #443 transfer: the original waveform remains 1:1, while controlled 3rd/5th Chebyshev harmonic deltas are added. TT and SS use separate fixed harmonic weights. X2 multiplies only the generated Analog Color delta by 1.6.
 
 PSP's published ClassicQ documentation describes SIM as Class-A plus transformer simulation, with the Class-A stage before output level and the transformer followed by SAT; PSP does not publish the proprietary transfer curve. VVChain therefore uses that documented topology as a design reference rather than claiming a code-level clone. PSP describes its analog EQ/preamp coloration as gentle/subtle, and McQ describes SAT as a smooth overdrive stage.
 
