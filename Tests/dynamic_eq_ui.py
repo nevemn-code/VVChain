@@ -183,7 +183,9 @@ def test_eq_xy_drag_math():
     assert 'r.getRight() - 3, r.getY() + 13, 16, 16' in cpp
     assert 'hoverXover' in head
     assert 'markerY=20' not in web
-    assert 'quadraticCurveTo(x,h*.5-16' in web
+    assert 'quadraticCurveTo(x,h*.5-16' not in web
+    assert 'const bowWidth=5+ov*0.10;' in web
+    assert 'dragMode=6' in web
     assert 'controlId:"OTT_X1"' in web
     assert 'controlId:"OTT_X2"' in web
     assert 'controlId:"OTT_X3"' in web
@@ -202,9 +204,14 @@ def test_eq_xy_drag_math():
     assert 'if (p.deltaMonitor)' in DSP.read_text(encoding='utf-8')
     assert 'class=\'deessPower\'' in web
     assert 'class=\'deltaBtn\'' in web
+    assert 'state.masterBypass=!state.masterBypass' in web
+    assert 'makeKnob(monitorKnobs,{label:"MIX",controlId:"DRY_WET"' in web
+    assert 'makeKnob(monitorKnobs,{label:"OUT",controlId:"OUTPUT_LEVEL"' in web
+    assert 'AudioWorklet unsupported' in web
+    assert 'DIRECT AUDIO FALLBACK' in web
     assert '.knob.graphActive .dial' in web
     assert 'setGraphControlState' in cpp
-    assert 'DYN EQ + CONTINUOUS XOVER + GRAPH CONTROL LED + DELTA' in web
+    assert 'PLAYBACK + GLOBAL BYPASS + CONTINUOUS XOVER + DEESSER VERTICAL + MIX/OUT' in web
 
 def test_dynamic_range_centered_500():
     """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
