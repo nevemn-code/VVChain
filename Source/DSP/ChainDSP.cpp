@@ -1,4 +1,5 @@
 #include "ChainDSP.h"
+#include "VVChain_DynEQ_Engine.h"
 
 namespace
 {
@@ -877,20 +878,27 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                         + (1.f - sideActCoeff) * sideTargetActivation;
                 }
 
+                const float midEnvRatio =
+                    juce::jlimit(0.f, 1.f, midActivation * midWeight);
+                const float sideEnvRatio =
+                    juce::jlimit(0.f, 1.f, sideActivation * sideWeight);
+
+                const float midTotalGain =
+                    VVChain_DynEQ_Engine::getTargetGainDB(
+                        offsetGain, gainDeltaDb, midEnvRatio);
+                const float sideTotalGain =
+                    VVChain_DynEQ_Engine::getTargetGainDB(
+                        offsetGain, gainDeltaDb, sideEnvRatio);
+
                 const float midGainChange =
-                    gainDeltaDb * midActivation * midWeight;
+                    midTotalGain - offsetGain;
                 const float sideGainChange =
-                    gainDeltaDb * sideActivation * sideWeight;
+                    sideTotalGain - offsetGain;
 
                 dynMidGainChangeDb[band].store(
                     midGainChange, std::memory_order_relaxed);
                 dynSideGainChangeDb[band].store(
                     sideGainChange, std::memory_order_relaxed);
-
-                const float midTotalGain = juce::jlimit(
-                    -36.f, 36.f, offsetGain + midGainChange);
-                const float sideTotalGain = juce::jlimit(
-                    -36.f, 36.f, offsetGain + sideGainChange);
 
                 // Oxford Type-3-style gain/Q interaction:
                 // as gain moves farther from 0 dB, Q reduces and the

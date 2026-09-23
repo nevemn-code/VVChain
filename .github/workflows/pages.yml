@@ -26,6 +26,34 @@ jobs:
         uses: actions/checkout@v6
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Validate Web Preview structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s docs/index.html
+          grep -q 'id="bandGrid"' docs/index.html
+          grep -q 'for(let b=0;b<4;b++){' docs/index.html
+          grep -q 'DE-ESSER' docs/index.html
+          if grep -q 'syncMsReadout();' docs/index.html; then
+            echo "ERROR: stale syncMsReadout() call would stop BAND creation."
+            exit 1
+          fi
+          echo "Web Preview structure: PASS"
+
+      - name: Validate Web Preview JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('docs/index.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S | re.I)
+          if not scripts:
+              raise SystemExit('ERROR: no inline JavaScript found')
+          Path('/tmp/vvchain-pages.js').write_text('\n\n'.join(scripts), encoding='utf-8')
+          PY
+          node --check /tmp/vvchain-pages.js
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:

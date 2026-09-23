@@ -22,6 +22,8 @@ ROOT = Path(__file__).resolve().parents[1]
 CPP = ROOT / "Source" / "PluginEditor.cpp"
 PROC = ROOT / "Source" / "PluginProcessor.cpp"
 HEAD = ROOT / "Source" / "PluginEditor.h"
+DSP = ROOT / "Source" / "DSP" / "ChainDSP.cpp"
+ENGINE = ROOT / "Source" / "VVChain_DynEQ_Engine.h"
 
 def clamp(v, lo, hi):
     return max(lo, min(hi, v))
@@ -36,16 +38,18 @@ def y_from_db(db, height=315.0):
 def db_from_y(y, height=315.0):
     return clamp((height - y) / height * 48.0 - 24.0, -24.0, 24.0)
 
-def dynamic_target(offset, target, dynamics):
-    span = abs(target - offset)
+def dynamic_target(offset, dyn_range, dynamics):
     amount = abs(clamp(dynamics, -100.0, 100.0)) / 100.0
     direction = -1.0 if dynamics < 0.0 else 1.0
-    return clamp(offset + direction * span * amount, -24.0, 24.0)
+    return clamp(offset + direction * abs(dyn_range) * amount, -36.0, 36.0)
 
 def source_assertions():
     cpp = CPP.read_text(encoding="utf-8")
     proc = PROC.read_text(encoding="utf-8")
     head = HEAD.read_text(encoding="utf-8")
+    dsp = DSP.read_text(encoding="utf-8")
+    engine = ENGINE.read_text(encoding="utf-8")
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
 
     required = [
         'f("DYN_DYNAMICS" + n, "Dynamic EQ " + n + " Dynamics",',
@@ -65,9 +69,11 @@ def source_assertions():
         'DYNAMICS uses a truly linear bipolar map',
         'graphDb = 36.f',
         'constexpr float staticNodeRadius = 8.0f',
+        'getTargetGainDB',
+        'peakMagnitudeDBAtFrequency',
     ]
     for token in required:
-        assert token in cpp or token in proc or token in head, f"missing source invariant: {token}"
+        assert token in cpp or token in proc or token in head or token in dsp or token in engine, f"missing source invariant: {token}"
 
     assert 'DYN_TARGET" + n, storedTarget' not in cpp,         "graph drag must not write DYN_TARGET anymore"
     assert 'dynamicTargetDragStartY = pos.y;' in cpp,         "Dynamic gesture must anchor to the actual mouse-down pixel"
@@ -98,7 +104,7 @@ def test_280_design_cases():
     assert count == 280
 
 def test_graph_roundtrip():
-    for db in [-24, -18, -12, -6, 0, 6, 12, 18, 24]:
+    for db in [-36, -24, -12, 0, 12, 24, 36]:
         y = y_from_db(db)
         back = db_from_y(y)
         assert abs(db - back) < 1e-6
@@ -160,7 +166,7 @@ def test_eq_xy_drag_math():
     assert 'Dedicated DYNAMICS arrow handle' in cpp
     assert 'dynamicRangeDb' in cpp
     assert 'dynamicOffsetDb' in cpp
-    assert 'gainDeltaDb' in cpp
+    assert 'gainDeltaDb' in dsp
     assert 'dynamicRangeDb' in web
     assert 'const bool dynamicsEnabled = true;' in cpp
     assert 'const float markerY = graph.getBottom() - 18.f;' in cpp
@@ -178,6 +184,9 @@ def test_eq_xy_drag_math():
     assert "button class='advBtn'>+ ADV" in web
     assert 'graphEqDragAxis == GraphEqDragAxis::Frequency' not in cpp
     assert 'eqDragAxis===1?rawDx:0' not in web
+    assert 'syncMsReadout();' not in web
+    assert 'for(let b=0;b<4;b++){' in web
+    assert 'DE-ESSER' in web
 
 def test_dynamic_range_independence_500():
     """500 deterministic boundary/random cases for Static + Dynamic dB math."""
@@ -224,9 +233,9 @@ def test_threshold_is_linear():
 
 def test_target_visual_direction():
     for offset in [-18, -6, 0, 6, 18]:
-        target = clamp(offset + 4, -24, 24)
+        dyn_range = 4.0
         for d in [-100, -50, 0, 50, 100]:
-            v = dynamic_target(offset, target, d)
+            v = dynamic_target(offset, dyn_range, d)
             if d < 0:
                 assert v <= offset + 1e-6
             elif d > 0:

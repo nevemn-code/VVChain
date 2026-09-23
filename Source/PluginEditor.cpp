@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "VVChain_DynEQ_Engine.h"
 
 namespace
 {
@@ -1087,38 +1088,25 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         juce::Path top;
         juce::Path bottom;
 
+        const double graphSampleRate =
+            audioProcessor.getSampleRate() > 1000.0
+                ? audioProcessor.getSampleRate()
+                : 44100.0;
+
         for (int i = 0; i <= 220; ++i)
         {
             const float hz =
                 invLogMap(i / 220.f, 20.f, 20000.f);
-            const float xx =
-                std::log(
-                    std::max(hz, 20.f) /
-                    std::max(f0, 20.f));
-
             const float offsetQ =
                 qForGain(baseQ, offset);
             const float targetQ =
                 qForGain(baseQ, target);
-
-            const float offsetWidth =
-                juce::jmax(.02f, 1.f / (offsetQ * 1.8f));
-            const float targetWidth =
-                juce::jmax(.02f, 1.f / (targetQ * 1.8f));
-
-            const float offsetShape =
-                std::exp(
-                    -(xx * xx) /
-                    (2.f * offsetWidth * offsetWidth));
-            const float targetShape =
-                std::exp(
-                    -(xx * xx) /
-                    (2.f * targetWidth * targetWidth));
-
             const float offsetDb =
-                offset * offsetShape;
+                VVChain_DynEQ_Engine::peakMagnitudeDBAtFrequency(
+                    graphSampleRate, f0, offsetQ, offset, hz);
             const float targetDb =
-                target * targetShape;
+                VVChain_DynEQ_Engine::peakMagnitudeDBAtFrequency(
+                    graphSampleRate, f0, targetQ, target, hz);
             const float gx =
                 graphFrequencyToX(graph, hz);
 
@@ -1155,22 +1143,13 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         {
             const float hz =
                 invLogMap(i / 220.f, 20.f, 20000.f);
-            const float xx =
-                std::log(
-                    std::max(hz, 20.f) /
-                    std::max(f0, 20.f));
             const float targetQ =
                 qForGain(baseQ, target);
-            const float width =
-                juce::jmax(.02f, 1.f / (targetQ * 1.8f));
-            const float shape =
-                std::exp(
-                    -(xx * xx) /
-                    (2.f * width * width));
             const float y =
                 eqDbToY(
                     graph,
-                    target * shape);
+                    VVChain_DynEQ_Engine::peakMagnitudeDBAtFrequency(
+                        graphSampleRate, f0, targetQ, target, hz));
             const float gx =
                 graphFrequencyToX(graph, hz);
 

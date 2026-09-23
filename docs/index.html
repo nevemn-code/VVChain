@@ -26,7 +26,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span><span class="tiny" id="cursorTime">0:00.000</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">GRAPH CONTROL PATCH · 2026-09-23 15:07</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">DYN EQ ENGINE + WEB FIX · 2026-09-23 15:05</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -277,7 +277,7 @@ const typeLed=document.createElement("button");typeLed.className="bandLed type";
 const advBtn=card.querySelector(".advBtn");advBtn.title="OTT ADVANCED · BAND "+(n+1);advBtn.onclick=()=>openAdvanced(n);
  ottGrid.appendChild(ottLed);bottomGrid.appendChild(typeLed);
 
-syncMsReadout();
+
 }
 
 {
@@ -354,13 +354,18 @@ function dynamicTargetAtPointer(x,y,w,h){
 function dbToY(db,h){
   return h-clamp((db+36)/72,0,1)*h;
 }
+function peakMagnitudeDb(fs,f,q,g,hz){
+  const sr=fs>1000?fs:44100,cf=clamp(Number(f),10,sr*.45),fq=clamp(Number(q),.05,30),gd=clamp(Number(g),-36,36),x=clamp(Number(hz),10,sr*.45);
+  const A=Math.pow(10,gd/40),w0=2*Math.PI*cf/sr,w=2*Math.PI*x/sr,alpha=Math.sin(w0)/(2*fq);
+  const c0=Math.cos(w),c2=Math.cos(2*w),s0=Math.sin(w),s2=Math.sin(2*w);
+  const b0=1+alpha*A,b1=-2*Math.cos(w0),b2=1-alpha*A,a0=1+alpha/A,a1=-2*Math.cos(w0),a2=1-alpha/A;
+  const nr=b0+b1*c0+b2*c2,ni=b1*(-s0)+b2*(-s2),dr=a0+a1*c0+a2*c2,di=a1*(-s0)+a2*(-s2);
+  const den=Math.max(1e-24,dr*dr+di*di),mag=Math.sqrt(Math.max(1e-24,(nr*nr+ni*ni)/den));
+  return 20*Math.log10(Math.max(mag,1e-12));
+}
 function gainShapeDb(b,hz,gain){
-  const f=Math.max(20,state.eq.freq[b]);
-  const q=Math.max(.1,state.eq.q[b]);
-  const qEff=clamp(q/(1+.045*Math.abs(gain)),.1,18);
-  const width=Math.max(.02,1/(qEff*1.8));
-  const xx=Math.log(Math.max(hz,20)/f);
-  return gain*Math.exp(-(xx*xx)/(2*width*width));
+  const f=Math.max(20,state.eq.freq[b]),q=Math.max(.1,state.eq.q[b]),qEff=clamp(q/(1+.045*Math.abs(gain)),.1,18);
+  return peakMagnitudeDb(sampleRate,f,qEff,gain,hz);
 }
 function dynamicPopupBounds(b,w,h){
   const n=dynamicNodePoint(b,w,h);
