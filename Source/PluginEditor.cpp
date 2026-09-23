@@ -2066,7 +2066,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.4 · SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER",
+    g.drawText("VVCHAIN v1.0.5 · LAST 2026-09-23 22:10 TST · TYPE-A SHARED XOVER + INDEPENDENT DELTA",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
