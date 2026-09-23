@@ -16,6 +16,12 @@
 | OTT four-band | 500 | Ratio, detector and gate behavior |
 | **Total** | **2,485** | |
 
+## v1.0.9 TPT Bell EQ checks
+
+- 50 deterministic transfer-function cases against an independent double-precision RBJ reference.
+- Each static case checks magnitude error, phase error, centre-frequency gain and exact 0 dB identity.
+- 50 deterministic per-sample modulation stress cases across 44.1 / 48 / 96 kHz at 4x EQ processing rate.
+- Reject NaN / Inf and excessive internal state growth.
 ## Architecture-specific checks
 
 - Four OTT bands with independent degree and bypass.
