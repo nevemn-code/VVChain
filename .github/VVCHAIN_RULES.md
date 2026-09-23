@@ -1,7 +1,5 @@
 # VVChain GitHub 開發規則
 
-LAST MODIFIED 2026-09-22 21:42（Asia/Taipei / UTC+8）
-
 ## 版本規則（最高優先）
 
 VVChain 所有 GitHub 版本追蹤統一使用「版本號」，不再使用任何時間碼。
@@ -65,7 +63,7 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 - Native C++ 與 Web Preview 的核心演算法一致。
 - Web Worklet JavaScript 可以正常解析。
 + 所有本次 GitHub 修改都使用對應版本號。
-+ Web Preview 不要求加入或更新日期／時間碼。
+- Web Preview 不要求加入或更新日期／時間碼。
 - 變更未重新引入 V1/V2/V3 舊版切換頁。
 
 ## Native VST3 / Web 雙版本同步（最高優先、強制）
@@ -86,7 +84,7 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 3. 每次 DSP 改版至少要同時檢查兩邊的公式、參數範圍、state、processing order 與 bypass 行為。
 4. 只有 UI 文字或排版可以單獨改；只要可能改變聲音結果，就視為 DSP 改版，必須 Native + Web 一起改。
 5. 未完成其中一端時，不得宣稱該版本已完成、已同步或可發版。
-6. GitHub Commit 必須使用本次實際台灣時間碼；若同一改版涉及多個檔案，可分 Commit，但不得讓其中一端長期停留在另一端的舊演算法。
+6. GitHub Commit 使用對應版本號；若同一改版涉及多個檔案，可分 Commit，但不得讓其中一端長期停留在另一端的舊演算法。
 7. CI / regression 必須至少確認 Native VST3 DSP 可建置，且 Web Worklet 可正常解析；兩端核心規則應以同一組測試基準比對。
 
 ### 同步驗收
