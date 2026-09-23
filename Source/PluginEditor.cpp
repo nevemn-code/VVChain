@@ -2153,6 +2153,9 @@ void VVChainAudioProcessorEditor::mouseDown(
             dynamicGainDragStartY = pos.y;
             dynamicGainDragStartOffset =
                 parameterValue("EQ" + n + "_GAIN");
+            graphFreqDragStartHz =
+                parameterValue("EQ" + n + "_FREQ");
+            graphFreqDragStartX = pos.x;
 
             showGraphDragHint = true;
             graphDragHintPosition = pos;
@@ -2184,6 +2187,9 @@ void VVChainAudioProcessorEditor::mouseDown(
         dynamicTargetDragStartY = target.y;
         dynamicTargetDragStartValue =
             dynamicEffectiveTargetGain(band);
+        graphFreqDragStartHz =
+            parameterValue("EQ" + n + "_FREQ");
+        graphFreqDragStartX = pos.x;
 
         showGraphDragHint = true;
         graphDragHintPosition = pos;
@@ -2252,12 +2258,28 @@ void VVChainAudioProcessorEditor::mouseDrag(
 {
     const auto graph = eqGraphBounds();
 
-    // Static EQ Offset Gain drag.
+    // Static EQ graph node drag = XY:
+    // horizontal = Frequency, vertical = Gain.
     if (dragOffsetBand >= 0)
     {
         const auto n = juce::String(dragOffsetBand + 1);
         const float dragScale =
             event.mods.isShiftDown() ? 0.1f : 1.0f;
+
+        const float startNorm =
+            std::log(
+                juce::jlimit(20.f, 20000.f, graphFreqDragStartHz) / 20.f)
+            / std::log(1000.f);
+
+        const float norm =
+            juce::jlimit(
+                0.f, 1.f,
+                startNorm
+                    + (event.position.x - graphFreqDragStartX)
+                        / 180.f * dragScale);
+
+        const float hz =
+            20.f * std::pow(1000.f, norm);
 
         const float deltaDb =
             -(event.position.y - dynamicGainDragStartY)
@@ -2269,15 +2291,21 @@ void VVChainAudioProcessorEditor::mouseDrag(
                 -24.f, 24.f,
                 dynamicGainDragStartOffset + deltaDb);
 
+        setParameter("EQ" + n + "_FREQ", hz);
         setParameter("EQ" + n + "_GAIN", offset);
 
+        if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
+            freqKnob->slider->setValue(
+                hz, juce::dontSendNotification);
         if (auto* gainKnob = findKnob("EQ" + n + "_GAIN"))
             gainKnob->slider->setValue(
                 offset, juce::dontSendNotification);
 
         graphDragHintPosition = event.position;
         graphDragHint =
-            "EQ " + n + "   OFFSET "
+            "EQ " + n + "   "
+            + formatGraphFrequency(hz)
+            + "   GAIN "
             + juce::String(offset, 1) + " dB";
         showGraphDragHint = true;
         repaint();
@@ -2351,15 +2379,28 @@ void VVChainAudioProcessorEditor::mouseDrag(
         return;
     }
 
-    // Dynamic Gain graph drag is intentionally vertical-only.
-    // Frequency belongs to the FREQ control; incidental horizontal mouse
-    // movement must never alter frequency while changing Gain.
+    // Dynamic Gain graph Target drag = XY:
+    // horizontal = Frequency, vertical = Dynamic Gain.
     if (dragBand >= 0)
     {
         const auto n = juce::String(dragBand + 1);
-
         const float dragScale =
             event.mods.isShiftDown() ? 0.1f : 1.0f;
+
+        const float startNorm =
+            std::log(
+                juce::jlimit(20.f, 20000.f, graphFreqDragStartHz) / 20.f)
+            / std::log(1000.f);
+
+        const float norm =
+            juce::jlimit(
+                0.f, 1.f,
+                startNorm
+                    + (event.position.x - graphFreqDragStartX)
+                        / 180.f * dragScale);
+
+        const float hz =
+            20.f * std::pow(1000.f, norm);
 
         const float deltaDb =
             -(event.position.y - dynamicTargetDragStartY)
@@ -2376,25 +2417,28 @@ void VVChainAudioProcessorEditor::mouseDrag(
                 -24.f, 24.f,
                 parameterValue("EQ" + n + "_GAIN"));
 
-        // Signed DYNAMICS selects compression / expansion direction.
-        // The Target point sets only the magnitude (distance from Offset).
         const float direction =
             parameterValue("DYN_DYNAMICS" + n) < 0.f
                 ? -1.f : 1.f;
 
-        const float span =
-            std::abs(desiredGain - offset);
-
         const float storedTarget =
             juce::jlimit(
                 -24.f, 24.f,
-                offset + direction * span);
+                offset + direction
+                    * std::abs(desiredGain - offset));
 
+        setParameter("EQ" + n + "_FREQ", hz);
         setParameter("DYN_TARGET" + n, storedTarget);
+
+        if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
+            freqKnob->slider->setValue(
+                hz, juce::dontSendNotification);
 
         graphDragHintPosition = event.position;
         graphDragHint =
-            "DYN GAIN " + n + "   GAIN "
+            "DYN GAIN " + n + "  "
+            + formatGraphFrequency(hz)
+            + "   GAIN "
             + juce::String(
                 dynamicEffectiveTargetGain(dragBand), 1)
             + " dB   DYN "
