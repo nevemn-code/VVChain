@@ -126,7 +126,7 @@ void VVChainDSP::updateDynamicPeak(Biquad& filter, double fs, double f0,
     const double safeF = juce::jlimit(10.0, fs * 0.45, f0);
     const double safeQ = juce::jlimit(0.05, 30.0, q);
     const double A = std::pow(
-        10.0, juce::jlimit(-24.0, 24.0, gainDb) / 40.0);
+        10.0, juce::jlimit(-36.0, 36.0, gainDb) / 40.0);
     const double w0 = juce::MathConstants<double>::twoPi * safeF / fs;
     const double c = std::cos(w0);
     const double s = std::sin(w0);
@@ -696,14 +696,12 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 20.0, osSr * 0.45, static_cast<double>(p.freq[band]));
             const float offsetGain =
                 juce::jlimit(-24.f, 24.f, p.gain[band]);
-            const float targetGain =
-                juce::jlimit(-24.f, 24.f, p.dynTarget[band]);
+            const float dynamicRangeDb =
+                std::abs(juce::jlimit(-24.f, 24.f, p.dynTarget[band]));
             const float dynamicsDirection =
-                p.dynDynamics[band] >= 0.f ? 1.f : -1.f;
-            const float dynamicSpan =
-                std::abs(targetGain - offsetGain);
-            const float dynamicDelta =
-                dynamicsDirection * dynamicSpan;
+                p.dynDynamics[band] < 0.f ? -1.f : 1.f;
+            const float dynamicDeltaDb =
+                dynamicsDirection * dynamicRangeDb;
             const double baseQ = juce::jlimit(
                 0.1, 18.0, static_cast<double>(p.q[band]));
 
@@ -750,7 +748,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             float& midActivation = dynMidActivation[band];
             float& sideActivation = dynSideActivation[band];
 
-            const float gainDelta = dynamicDelta;
+            const float gainDeltaDb = dynamicDeltaDb;
 
             for (int sample = 0; sample < osSamples; ++sample)
             {
@@ -880,9 +878,9 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 }
 
                 const float midGainChange =
-                    gainDelta * midActivation * midWeight;
+                    gainDeltaDb * midActivation * midWeight;
                 const float sideGainChange =
-                    gainDelta * sideActivation * sideWeight;
+                    gainDeltaDb * sideActivation * sideWeight;
 
                 dynMidGainChangeDb[band].store(
                     midGainChange, std::memory_order_relaxed);
@@ -890,9 +888,9 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     sideGainChange, std::memory_order_relaxed);
 
                 const float midTotalGain = juce::jlimit(
-                    -24.f, 24.f, offsetGain + midGainChange);
+                    -36.f, 36.f, offsetGain + midGainChange);
                 const float sideTotalGain = juce::jlimit(
-                    -24.f, 24.f, offsetGain + sideGainChange);
+                    -36.f, 36.f, offsetGain + sideGainChange);
 
                 // Oxford Type-3-style gain/Q interaction:
                 // as gain moves farther from 0 dB, Q reduces and the

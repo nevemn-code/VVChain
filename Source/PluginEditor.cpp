@@ -754,9 +754,9 @@ float VVChainAudioProcessorEditor::constrainXoverFrequency(int index, float hz) 
 float VVChainAudioProcessorEditor::eqDbToY(
     const juce::Rectangle<float>& graph, float db) const
 {
-    // Expose the full -24 .. +24 dB parameter range in the graph.
+    constexpr float graphDb = 36.f;
     return graph.getBottom() - graph.getHeight()
-        * juce::jlimit(0.f, 1.f, (db + 24.f) / 48.f);
+        * juce::jlimit(0.f, 1.f, (db + graphDb) / (graphDb * 2.f));
 }
 
 float VVChainAudioProcessorEditor::dynamicThresholdFromDynamics(float dynamics) const
@@ -782,26 +782,21 @@ float VVChainAudioProcessorEditor::dynamicEffectiveTargetGain(int band) const
     const float offset =
         juce::jlimit(-24.f, 24.f,
                      parameterValue("EQ" + n + "_GAIN"));
-    const float storedTarget =
-        juce::jlimit(-24.f, 24.f,
-                     parameterValue("DYN_TARGET" + n));
-    const float span =
-        std::abs(storedTarget - offset);
+    const float dynamicRangeDb =
+        std::abs(juce::jlimit(-24.f, 24.f,
+                              parameterValue("DYN_TARGET" + n)));
     const float dynamics =
         juce::jlimit(-100.f, 100.f,
                      parameterValue("DYN_DYNAMICS" + n));
 
-    // DYNAMICS is the actual user-facing dynamic range:
-    //   -100..0% = downward compression
-    //    0..+100% = upward expansion
-    // DYN_TARGET remains the maximum available gain span; the graph endpoint
-    // moves continuously from Offset at 0% to the full Target at +/-100%.
     const float amount = std::abs(dynamics) * 0.01f;
     const float direction = dynamics < 0.f ? -1.f : 1.f;
+    const float dynamicOffsetDb =
+        direction * dynamicRangeDb * amount;
 
     return juce::jlimit(
-        -24.f, 24.f,
-        offset + direction * span * amount);
+        -36.f, 36.f,
+        offset + dynamicOffsetDb);
 }
 
 juce::Rectangle<float> VVChainAudioProcessorEditor::dynamicMsPopupBounds(int band) const
@@ -902,7 +897,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
 
     for (int i = 0; i <= 8; ++i)
     {
-        const float db = 24.f - i * 6.0f;
+        const float db = 36.f - i * 9.0f;
         const float y = eqDbToY(graph, db);
         g.setColour(juce::Colour(0xff69717c).withAlpha(.42f));
         g.drawHorizontalLine(

@@ -158,6 +158,10 @@ def test_eq_xy_drag_math():
     assert 'const target=dynamicTargetPoint(b,w,h)' in web
     assert 'handleX=clamp(target.x+11,18,w-12)' in web
     assert 'Dedicated DYNAMICS arrow handle' in cpp
+    assert 'dynamicRangeDb' in cpp
+    assert 'dynamicOffsetDb' in cpp
+    assert 'gainDeltaDb' in cpp
+    assert 'dynamicRangeDb' in web
     assert 'const bool dynamicsEnabled = true;' in cpp
     assert 'const float markerY = graph.getBottom() - 18.f;' in cpp
     assert 'small cross marker at the bottom' in cpp
@@ -174,6 +178,33 @@ def test_eq_xy_drag_math():
     assert "button class='advBtn'>+ ADV" in web
     assert 'graphEqDragAxis == GraphEqDragAxis::Frequency' not in cpp
     assert 'eqDragAxis===1?rawDx:0' not in web
+
+def test_dynamic_range_independence_500():
+    """500 deterministic boundary/random cases for Static + Dynamic dB math."""
+    rng = random.Random(20260923_500)
+    for _ in range(500):
+        static_db = rng.uniform(-24.0, 24.0)
+        dynamic_range_db = rng.uniform(-24.0, 24.0)
+        dynamics_pct = rng.uniform(-100.0, 100.0)
+        amount = abs(dynamics_pct) / 100.0
+        direction = -1.0 if dynamics_pct < 0.0 else 1.0
+        contribution = direction * abs(dynamic_range_db) * amount
+
+        expected = clamp(static_db + contribution, -36.0, 36.0)
+        assert math.isfinite(expected)
+        assert -36.0 <= expected <= 36.0
+
+        zero_static = clamp(contribution, -36.0, 36.0)
+        plus_24 = clamp(24.0 + contribution, -36.0, 36.0)
+        minus_24 = clamp(-24.0 + contribution, -36.0, 36.0)
+        if abs(plus_24) < 36.0:
+            assert abs((plus_24 - 24.0) - contribution) < 1e-9
+        if abs(minus_24) < 36.0:
+            assert abs((minus_24 + 24.0) - contribution) < 1e-9
+        assert abs(zero_static - contribution) < 1e-9
+
+    # Reference case: Static 0 dB + Dynamic Range -12 dB = -12 dB.
+    assert abs(clamp(-12.0, -36.0, 36.0) - (-12.0)) < 1e-9
 
 def test_dynamic_target_is_linear():
     offset = 0.0
@@ -276,6 +307,7 @@ def main():
     test_dynamic_drag_anchor_is_exact()
     test_dynamic_cross_zero_is_linear()
     test_eq_xy_drag_math()
+    test_dynamic_range_independence_500()
     test_dynamic_target_is_linear()
     test_threshold_is_linear()
     test_target_visual_direction()

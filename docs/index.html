@@ -26,7 +26,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span><span class="tiny" id="cursorTime">0:00.000</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">GRAPH CONTROL PATCH · 2026-09-23 14:55</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">GRAPH CONTROL PATCH · 2026-09-23 15:07</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -60,7 +60,7 @@ const WORKLET_SOURCE=`class VVChainWorklet extends AudioWorkletProcessor {\n  co
       const f=this.clamp(Number(s.eq.freq[b]||1000),20,20000);
       const baseQ=this.clamp(Number(s.eq.q[b]||.707),.1,18);
       const offset=this.clamp(Number(s.eq.gain[b]||0),-24,24);
-      const target=this.clamp(Number(s.dyn.target[b]??offset),-24,24);
+      const dynamicRangeDb=Math.abs(this.clamp(Number(s.dyn.target[b]??0),-24,24));
       const dynamicsSigned=this.clamp(Number(s.dyn.dynamics[b]??0),-100,100)/100;
       const dynamicsAmount=Math.abs(dynamicsSigned);
       const dynamicsDirection=dynamicsSigned>=0?1:-1;
@@ -114,14 +114,14 @@ const WORKLET_SOURCE=`class VVChainWorklet extends AudioWorkletProcessor {\n  co
       md.activation=mtc*(md.activation??0)+(1-mtc)*ma;
       sd.activation=stc*(sd.activation??0)+(1-stc)*sa;
 
-      const delta=dynamicsDirection*Math.abs(target-offset);
+      const delta=dynamicsDirection*dynamicRangeDb;
       const mChange=delta*md.activation*mw;
       const sChange=delta*sd.activation*sw;
       s.dyn.gainMid[b]=.90*Number(s.dyn.gainMid[b]||0)+.10*mChange;
       s.dyn.gainSide[b]=.90*Number(s.dyn.gainSide[b]||0)+.10*sChange;
 
-      const mGain=this.clamp(offset+s.dyn.gainMid[b],-24,24);
-      const sGain=this.clamp(offset+s.dyn.gainSide[b],-24,24);
+      const mGain=this.clamp(offset+s.dyn.gainMid[b],-36,36);
+      const sGain=this.clamp(offset+s.dyn.gainSide[b],-36,36);
       const mq=this.clamp(baseQ/(1+.045*Math.abs(mGain)),.1,18);
       const sq=this.clamp(baseQ/(1+.045*Math.abs(sGain)),.1,18);
       const mCoef=this.peak(sampleRate,f,mq,mGain);
@@ -314,12 +314,11 @@ function dynamicThresholdFromDynamics(dynamics){
 }
 function dynamicEffectiveTargetGain(b){
   const offset=clamp(state.eq.gain[b],-24,24);
-  const target=clamp(state.dyn.target[b],-24,24);
+  const dynamicRangeDb=Math.abs(clamp(Number(state.dyn.target[b]??0),-24,24));
   const dynamics=clamp(Number(state.dyn.dynamics[b]??0),-100,100);
   const amount=Math.abs(dynamics)/100;
   const direction=dynamics<0?-1:1;
-  const span=Math.abs(target-offset);
-  return clamp(offset+direction*span*amount,-24,24);
+  return clamp(offset+direction*dynamicRangeDb*amount,-36,36);
 }
 function dynamicBandAtPointer(x,y,w,h){
   let best=22,band=-1;
@@ -353,7 +352,7 @@ function dynamicTargetAtPointer(x,y,w,h){
   return band;
 }
 function dbToY(db,h){
-  return h-clamp((db+24)/48,0,1)*h;
+  return h-clamp((db+36)/72,0,1)*h;
 }
 function gainShapeDb(b,hz,gain){
   const f=Math.max(20,state.eq.freq[b]);
