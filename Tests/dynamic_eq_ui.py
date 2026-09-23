@@ -262,7 +262,7 @@ def test_eq_xy_drag_math():
     assert 'afterSet:v=>{state.de.bypass' in web
     assert 'controlId:"DEESS_MODE"' in web
     assert '"DEESS_MODE", "DeEsser Response"' in proc
-    assert 'presets[4]' in dsp_text if 'presets[4]' in dsp_text else True
+    assert 'static constexpr DeEssPreset presets[4]' in dsp_text
     assert 'if(!s.eq.globalBypass){' in worklet
 
     # Delta regression: UI parameter traffic must be coalesced and the live
