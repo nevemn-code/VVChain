@@ -41,7 +41,7 @@ def db_from_y(y, height=315.0):
 def dynamic_target(offset, dyn_range, dynamics):
     amount = abs(clamp(dynamics, -100.0, 100.0)) / 100.0
     direction = -1.0 if dynamics < 0.0 else 1.0
-    return clamp(offset + direction * abs(dyn_range) * amount, -36.0, 36.0)
+    return clamp(offset + direction * abs(dyn_range) * amount, -18.0, 18.0)
 
 def source_assertions():
     cpp = CPP.read_text(encoding="utf-8")
@@ -65,9 +65,8 @@ def source_assertions():
         'dynamicHandleDragStartValue',
         'sendNotificationSync',
         'followScale = 0.74f',
-        'Dynamic Range is deliberately Y-only',
         'DYNAMICS uses a truly linear bipolar map',
-        'constexpr float staticNodeRadius = 8.0f',
+        'constexpr float staticNodeRadius = 5.5f',
         'getTargetGainDB',
         'peakMagnitudeDBAtFrequency',
         'getTargetGainDB',
@@ -255,9 +254,9 @@ def test_eq_xy_drag_math():
     assert 'DIRECT AUDIO FALLBACK' in web
     assert 'onmessageerror' in web
     assert 'revision:paramSyncRevision' in web
-    assert '?v=1.0.1' in web
+    assert '?v=1.0.3' in web
     assert '2026-09-23' not in web, "Web preview must not use timestamp identifiers"
-    assert 'VVCHAIN v1.0.1' in web
+    assert 'VVCHAIN v1.0.3' in web
 
     worklet_start = web.index('new URL("vvchain-worklet.js"')
     assert worklet_start >= 0
@@ -288,18 +287,16 @@ def test_dynamic_range_centered_500():
         direction = -1.0 if dynamics_pct < 0.0 else 1.0
         contribution = direction * abs(dynamic_range_db) * amount
 
-        expected = clamp(static_db + contribution, -36.0, 36.0)
+        expected = clamp(static_db + contribution, -18.0, 18.0)
         assert math.isfinite(expected)
-        assert -36.0 <= expected <= 36.0
+        assert -18.0 <= expected <= 18.0
         assert abs(dynamic_target(static_db, dynamic_range_db, 0.0) - static_db) < 1e-9
 
-        if abs(static_db + contribution) <= 36.0:
+        if abs(static_db + contribution) <= 18.0:
             assert abs(expected - (static_db + contribution)) < 1e-9
 
-    # The production model uses a fixed full span of ±18 dB from the EQ center.
-    # Exact semantic example:
-    # EQ +3 dB is the center; full dynamic span reaches +21 dB or -15 dB.
-    assert dynamic_target(3.0, 18.0, 100.0) == 21.0
+    # Production model clamps total Dynamic EQ gain to ±18 dB.
+    assert dynamic_target(3.0, 18.0, 100.0) == 18.0
     assert dynamic_target(3.0, 18.0, -100.0) == -15.0
     assert dynamic_target(3.0, 18.0, 0.0) == 3.0
 
@@ -308,9 +305,9 @@ def test_dynamic_target_preserves_eq_as_center():
     for static_gain in [-18.0, -12.0, -6.0, 0.0, 3.0, 6.0, 12.0, 18.0]:
         for direction in [-1.0, 1.0]:
             target = dynamic_target(static_gain, 18.0, direction * 100.0)
-            expected = clamp(static_gain + direction * 18.0, -36.0, 36.0)
+            expected = clamp(static_gain + direction * 18.0, -18.0, 18.0)
             assert abs(target - expected) < 1e-9
-            if -36.0 < expected < 36.0:
+            if -18.0 < expected < 18.0:
                 assert abs(abs(target - static_gain) - 18.0) < 1e-9
 
 
@@ -402,13 +399,13 @@ def test_full_simulation():
                 dynamics = dyn_from_drag(dynamics, start_y, current_y)
                 assert -100 <= dynamics <= 100
                 assert math.isfinite(dynamics)
-                # Dynamic drag never changes the band's frequency.
+                # Dynamic XY drag keeps frequency inside the valid graph range.
                 assert 20 <= freq <= 20000
             values.append(dynamics)
         assert len(values) == 4
 
 
-def test_v102_ui_rules_50():
+def test_v103_ui_rules_50():
     """50 deterministic state checks for the v1.0.3 visual rules."""
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
     cpp = CPP.read_text(encoding="utf-8")
@@ -521,7 +518,7 @@ def main():
     for _ in range(10):
         test_all_features_rounds()
     test_full_simulation()
-    test_v102_ui_rules_50()
+    test_v103_ui_rules_50()
     test_v103_closed_10()
     print("PASS: 280 design cases")
     print("PASS: 10 core/all-feature rounds")
