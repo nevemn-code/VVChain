@@ -261,7 +261,7 @@ def test_eq_xy_drag_math():
     assert 'afterSet:v=>{state.type.bandBypass' in web
     assert 'afterSet:v=>{state.de.bypass' in web
     assert 'controlId:"DEESS_MODE"' in web
-    assert '"DEESS_MODE", "DeEsser Response"' in proc
+    assert '"DEESS_MODE", "DeEsser Response"' in PROC.read_text(encoding="utf-8")
     assert 'static constexpr DeEssPreset presets[4]' in dsp_text
     assert 'if(!s.eq.globalBypass){' in worklet
 
