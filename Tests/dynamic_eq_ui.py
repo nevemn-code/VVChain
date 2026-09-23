@@ -504,8 +504,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.4" in web
-    assert "VVCHAIN v1.0.4" in cpp
+    assert "VVCHAIN v1.0.5" in web
+    assert "VVCHAIN v1.0.5" in cpp
     assert "2026-09-23" not in web
     assert "2026-09-23" not in cpp
 
