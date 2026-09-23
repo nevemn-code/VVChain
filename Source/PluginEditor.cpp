@@ -251,12 +251,60 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
         addKnob("DYN_THRESH" + n, "THRESH", -60, 0, .1,
                 parameterValue("DYN_THRESH" + n), " dB", b, 8, c);
-        addKnob("DYN_RATIO" + n, "RATIO", 1, 20, .01,
-                parameterValue("DYN_RATIO" + n), " :1", b, 9, c);
+        addKnob("DYN_DYNAMICS" + n, "DYNAMICS", 0, 100, .1,
+                parameterValue("DYN_DYNAMICS" + n), " %", b, 9, c);
         addKnob("DYN_ATTACK" + n, "ATTACK", .1, 200, .1,
                 parameterValue("DYN_ATTACK" + n), " ms", b, 10, c);
         addKnob("DYN_RELEASE" + n, "RELEASE", 5, 2000, 1,
                 parameterValue("DYN_RELEASE" + n), " ms", b, 11, c);
+
+        dynDetectButtons[(size_t) b] =
+            std::make_unique<juce::ToggleButton>("PEAK");
+        dynDetectButtons[(size_t) b]->setLookAndFeel(&metalLook);
+        dynDetectButtons[(size_t) b]->setColour(
+            juce::ToggleButton::tickColourId, c);
+        dynDetectButtons[(size_t) b]->setTooltip(
+            "DETECT：PEAK / ONSETS");
+        dynDetectButtons[(size_t) b]->onClick = [this, b]
+        {
+            if (auto* parameter = audioProcessor.apvts.getParameter(
+                    "DYN_DETECT_ONSETS" + juce::String(b + 1)))
+                parameter->setValueNotifyingHost(
+                    parameter->convertTo0to1(
+                        dynDetectButtons[(size_t)b]->getToggleState()
+                            ? 1.f : 0.f));
+            repaint();
+        };
+        dynDetectAttachments[(size_t) b] =
+            std::make_unique<BoolAttachment>(
+                audioProcessor.apvts,
+                "DYN_DETECT_ONSETS" + n,
+                *dynDetectButtons[(size_t) b]);
+        addAndMakeVisible(*dynDetectButtons[(size_t) b]);
+
+        dynTriggerButtons[(size_t) b] =
+            std::make_unique<juce::ToggleButton>("ABOVE");
+        dynTriggerButtons[(size_t) b]->setLookAndFeel(&metalLook);
+        dynTriggerButtons[(size_t) b]->setColour(
+            juce::ToggleButton::tickColourId, c);
+        dynTriggerButtons[(size_t) b]->setTooltip(
+            "TRIGGER：ABOVE / BELOW");
+        dynTriggerButtons[(size_t) b]->onClick = [this, b]
+        {
+            if (auto* parameter = audioProcessor.apvts.getParameter(
+                    "DYN_TRIGGER_BELOW" + juce::String(b + 1)))
+                parameter->setValueNotifyingHost(
+                    parameter->convertTo0to1(
+                        dynTriggerButtons[(size_t)b]->getToggleState()
+                            ? 1.f : 0.f));
+            repaint();
+        };
+        dynTriggerAttachments[(size_t) b] =
+            std::make_unique<BoolAttachment>(
+                audioProcessor.apvts,
+                "DYN_TRIGGER_BELOW" + n,
+                *dynTriggerButtons[(size_t) b]);
+        addAndMakeVisible(*dynTriggerButtons[(size_t) b]);
 
         // The two EQ / ANALOG controls live inside every BAND card.
         // They intentionally remain attached to the shared DSP parameters.
