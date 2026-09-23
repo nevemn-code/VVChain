@@ -2234,27 +2234,24 @@ void VVChainAudioProcessorEditor::mouseDrag(
 
     if (dragXover >= 0)
     {
-        const float xDelta =
-            (event.position.x - graphFrequencyToX(
+        const auto xoverId =
+            dragXover == 0 ? "OTT_X1"
+            : dragXover == 1 ? "OTT_X2"
+                              : "OTT_X3";
+        const float startX =
+            graphFrequencyToX(
                 graph,
-                parameterValue(
-                    dragXover == 0 ? "OTT_X1"
-                    : dragXover == 1 ? "OTT_X2"
-                                     : "OTT_X3")));
+                parameterValue(xoverId));
         const float dragScale =
             event.mods.isShiftDown() ? 0.1f : 1.0f;
+        const float effectiveX =
+            startX
+            + (event.position.x - graphDragHintPosition.x)
+                * dragScale;
         const float hz =
             constrainXoverFrequency(
                 dragXover,
-                graphXToFrequency(
-                    graph,
-                    graphFrequencyToX(
-                        graph,
-                        parameterValue(
-                            dragXover == 0 ? "OTT_X1"
-                            : dragXover == 1 ? "OTT_X2"
-                                             : "OTT_X3"))
-                        + xDelta * dragScale)));
+                graphXToFrequency(graph, effectiveX));
 
         setParameter(
             dragXover == 0 ? "OTT_X1"
