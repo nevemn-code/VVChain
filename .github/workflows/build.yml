@@ -25,7 +25,7 @@ jobs:
       uses: actions/checkout@v7
 
     - name: Restore build/compiler caches
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: |
           build
@@ -52,7 +52,13 @@ jobs:
       shell: bash
       run: |
         set -euo pipefail
-        if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+        if [ "${{ github.event_name }}" = "push" ] \
+          && [ -n "${{ github.event.before }}" ] \
+          && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+          changed="$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")"
+        elif [ "${{ github.event_name }}" = "pull_request" ]; then
+          changed="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}")"
+        elif git rev-parse --verify HEAD^ >/dev/null 2>&1; then
           changed="$(git diff --name-only HEAD^ HEAD)"
         else
           changed="$(git diff-tree --no-commit-id --name-only -r HEAD)"
@@ -86,6 +92,15 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_FLAGS="-O3 -ffast-math -mavx2 -D JUCE_WEB_BROWSER=0 -D JUCE_USE_CURL=0 -D JUCE_HEADLESS_PLUGIN_CLIENT=1"
 
+    - name: Reject ambiguous JUCE StringArray initializer syntax
+      shell: bash
+      run: |
+        set -euo pipefail
+        if grep -RInE 'juce::StringArray[[:space:]]*\(\s*\{' Source; then
+          echo "ERROR: use explicit juce::StringArray construction instead of brace initializer syntax."
+          exit 1
+        fi
+        echo "JUCE StringArray syntax check: PASS"
     - name: Build VST3/DSP
       run: cmake --build build --config Release --parallel
 
@@ -96,12 +111,7 @@ jobs:
       run: python Tests/dynamic_eq_ui.py
 
     - name: Run fast DSP stress test
-      run: |
-        if [ "${{ inputs.full_stress }}" = "true" ]; then
-          python Tests/reference_stress.py --iterations 50
-        else
-          python Tests/reference_stress.py --iterations 50
-        fi
+      run: python Tests/reference_stress.py --iterations 50
 
     - name: Run V3 ANALOG Chebyshev Matrix
       run: python Tests/analog_matrix.py
