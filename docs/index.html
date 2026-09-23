@@ -608,11 +608,13 @@ eqCanvas.addEventListener("pointerdown",e=>{
 
   // Dedicated DYNAMICS arrow handle; priority above the EQ XY node.
   for(let b=0;b<4;b++){
-    const n=dynamicNodePoint(b,w,h);
-    const handleX=clamp(n.x+20,18,w-12),handleY=n.y;
+    const dyn=Number(state.dyn.dynamics[b]||0);
+    if(Math.abs(dyn)<=0.01)continue;
+    const target=dynamicTargetPoint(b,w,h);
+    const handleX=clamp(target.x+11,18,w-12),handleY=target.y;
     if(Math.abs(x-handleX)<=11&&Math.abs(y-handleY)<=14){
       dragMode=5;dragDynamicHandleBand=b;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;
-      dynHandleStartY=y;dynHandleStartValue=state.dyn.dynamics[b];
+      dynHandleStartY=y;dynHandleStartValue=dyn;
       eqCanvas.setPointerCapture(e.pointerId);
       showGraphHint(e,"DYN "+(b+1)+"  "+fmt(dynHandleStartValue,0)+"%");
       drawEQ();
