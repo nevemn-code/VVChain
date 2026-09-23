@@ -191,7 +191,7 @@ def test_eq_xy_drag_math():
     assert 'bezierCurveTo' not in web
     assert 'const float eightWidth = 5.f + overlap * 0.10f;' in cpp
     assert 'quadraticTo(' in cpp
-    assert 'cubicTo(' not in cpp
+    assert 'eight.quadraticTo(' in cpp
     assert 'dragMode=6' in web
     assert 'controlId:"OTT_X1"' in web
     assert 'controlId:"OTT_X2"' in web
