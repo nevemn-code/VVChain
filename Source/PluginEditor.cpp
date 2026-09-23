@@ -1858,7 +1858,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("PLAYBACK + GLOBAL BYPASS + CONTINUOUS XOVER + DEESSER VERTICAL + MIX/OUT · 2026-09-23 19:20",
+    g.drawText("PLAYBACK WATCHDOG + GLOBAL BYPASS + CONTINUOUS XOVER + DEESSER VERTICAL + MIX/OUT · 2026-09-23 18:41",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
