@@ -843,18 +843,29 @@ juce::Point<float> VVChainAudioProcessorEditor::dynamicTargetPoint(int band) con
 bool VVChainAudioProcessorEditor::pointNearDynamicNode(
     juce::Point<float> p, int& band) const
 {
-    constexpr float hitRadius = 22.f;
+    constexpr float hitRadius = 24.0f;
+    constexpr float staticNodeRadius = 8.0f;
+
     band = -1;
     float best = hitRadius;
 
-    // Only the coloured Target handle is editable as Dynamic Gain.
-    // The white Live point is a meter; the Offset point is the static EQ Gain.
+    // The Dynamic handle is the OUTER ring around the EQ node when
+    // DYNAMICS is at 0%. This keeps the static Gain point and Dynamic
+    // control from stealing the same click.
     for (int b = 0; b < 4; ++b)
     {
-        const float d =
-            p.getDistanceFrom(dynamicTargetPoint(b));
+        const auto target = dynamicTargetPoint(b);
+        const float d = p.getDistanceFrom(target);
+        const float dynamics =
+            juce::jlimit(-100.0f, 100.0f,
+                         parameterValue("DYN_DYNAMICS" + juce::String(b + 1)));
 
-        if (d < best)
+        const bool zeroRange = std::abs(dynamics) < 0.01f;
+        const bool hit = zeroRange
+            ? (d >= staticNodeRadius && d < hitRadius)
+            : (d < hitRadius);
+
+        if (hit && d < best)
         {
             best = d;
             band = b;
@@ -1186,14 +1197,15 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             x - 6.f, offsetY - 6.f, 12.f, 12.f);
 
         // Dynamic range handle: controls the same DYNAMICS parameter as the knob.
-        // Static EQ Gain is the Offset handle; Live is meter-only.
+        // At 0%, the handle is an outer grab ring around the static EQ node.
+        // At non-zero values it follows the dynamic target vertically.
         g.setColour(
             juce::Colours::black.withAlpha(.92f));
         g.fillEllipse(
-            x - 9.f, targetY - 9.f, 18.f, 18.f);
+            x - 10.f, targetY - 10.f, 20.f, 20.f);
         g.setColour(c.withAlpha(.98f));
         g.drawEllipse(
-            x - 8.f, targetY - 8.f, 16.f, 16.f, 2.0f);
+            x - 9.f, targetY - 9.f, 18.f, 18.f, 2.0f);
 
         // Live gain point = the actual dynamic state.
         g.setColour(juce::Colours::white);
@@ -2086,8 +2098,26 @@ void VVChainAudioProcessorEditor::mouseDown(
     int band = -1;
 
     // Right-click is reserved for the M/S popup.
+    if (event.mods.isRightButtonDown())
+    {
+        // Context hit-test is intentionally wider than the left-drag Dynamic
+        // ring, so M/S still opens from the central node at 0% Dynamics.
+        float bestDistance = 24.0f;
+        band = -1;
+
+        for (int b = 0; b < 4; ++b)
+        {
+            const float d = pos.getDistanceFrom(dynamicTargetPoint(b));
+            if (d < bestDistance)
+            {
+                bestDistance = d;
+                band = b;
+            }
+        }
+    }
+
     if (event.mods.isRightButtonDown()
-        && pointNearDynamicNode(pos, band))
+        && band >= 0)
     {
         expandedDynamicBand = band;
         dragBand = -1;
@@ -2188,10 +2218,12 @@ void VVChainAudioProcessorEditor::mouseDown(
         dragOffsetBand = -1;
 
         dynamicTargetDragStartY = target.y;
-        dynamicTargetDragStartValue =
+        dynamicDragStartDynamics =
             parameterValue("DYN_DYNAMICS" + n);
-        graphFreqDragStartHz =
-            parameterValue("EQ" + n + "_FREQ");
+
+        if (auto* parameter =
+                audioProcessor.apvts.getParameter("DYN_DYNAMICS" + n))
+            parameter->beginChangeGesture();
         graphFreqDragStartX = pos.x;
 
         showGraphDragHint = true;
@@ -2273,12 +2305,22 @@ void VVChainAudioProcessorEditor::mouseDrag(
                 juce::jlimit(20.f, 20000.f, graphFreqDragStartHz) / 20.f)
             / std::log(1000.f);
 
+        // Ignore tiny horizontal hand jitter while performing a vertical
+        // Gain drag. Deliberate horizontal motion beyond the dead-zone still
+        // changes Frequency, preserving true XY node operation.
+        const float rawDx =
+            event.position.x - graphFreqDragStartX;
+        const float horizontalDeadZone = 8.0f;
+        const float effectiveDx =
+            std::abs(rawDx) <= horizontalDeadZone
+                ? 0.0f
+                : rawDx - std::copysign(horizontalDeadZone, rawDx);
+
         const float norm =
             juce::jlimit(
                 0.f, 1.f,
                 startNorm
-                    + (event.position.x - graphFreqDragStartX)
-                        / 180.f * dragScale);
+                    + effectiveDx / 180.f * dragScale);
 
         const float hz =
             20.f * std::pow(1000.f, norm);
@@ -2395,16 +2437,8 @@ void VVChainAudioProcessorEditor::mouseDrag(
                 juce::jlimit(20.f, 20000.f, graphFreqDragStartHz) / 20.f)
             / std::log(1000.f);
 
-        const float norm =
-            juce::jlimit(
-                0.f, 1.f,
-                startNorm
-                    + (event.position.x - graphFreqDragStartX)
-                        / 180.f * dragScale);
-
-        const float hz =
-            20.f * std::pow(1000.f, norm);
-
+        // Dynamic Range is deliberately Y-only. Frequency is locked at the
+        // exact X coordinate where the gesture started.
         const float deltaDynamics =
             -(event.position.y - dynamicTargetDragStartY)
             / juce::jmax(1.f, graph.getHeight())
@@ -2413,18 +2447,17 @@ void VVChainAudioProcessorEditor::mouseDrag(
         const float dynamics =
             juce::jlimit(
                 -100.f, 100.f,
-                dynamicTargetDragStartValue + deltaDynamics);
+                dynamicDragStartDynamics + deltaDynamics);
 
-        setParameter("EQ" + n + "_FREQ", hz);
         setParameter("DYN_DYNAMICS" + n, dynamics);
 
-        if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
-            freqKnob->slider->setValue(
-                hz, juce::dontSendNotification);
-
+        // SliderAttachment is the source of truth for the lower knob.
+        // Force the native control to the exact denormalized APVTS value as
+        // well, so the graph gesture and the visible knob are synchronous.
         if (auto* dynamicsKnob = findKnob("DYN_DYNAMICS" + n))
             dynamicsKnob->slider->setValue(
-                dynamics, juce::dontSendNotification);
+                parameterValue("DYN_DYNAMICS" + n),
+                juce::dontSendNotification);
 
         graphDragHintPosition = event.position;
         graphDragHint =
@@ -2449,6 +2482,14 @@ void VVChainAudioProcessorEditor::mouseDrag(
 void VVChainAudioProcessorEditor::mouseUp(
     const juce::MouseEvent&)
 {
+    if (dragBand >= 0)
+    {
+        const auto n = juce::String(dragBand + 1);
+        if (auto* parameter =
+                audioProcessor.apvts.getParameter("DYN_DYNAMICS" + n))
+            parameter->endChangeGesture();
+    }
+
     dragBand = -1;
     dragOffsetBand = -1;
     dragXover = -1;
