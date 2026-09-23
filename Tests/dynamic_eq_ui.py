@@ -213,7 +213,7 @@ def test_eq_xy_drag_math():
     assert 'DIRECT AUDIO FALLBACK' in web
     assert '.knob.graphActive .dial' in web
     assert 'setGraphControlState' in cpp
-    assert 'PLAYBACK + GLOBAL BYPASS + CONTINUOUS XOVER + DEESSER VERTICAL + MIX/OUT' in web
+    assert 'PLAYBACK WATCHDOG + GLOBAL BYPASS + CONTINUOUS XOVER + DEESSER VERTICAL + MIX/OUT' in web
 
 def test_dynamic_range_centered_500():
     """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
