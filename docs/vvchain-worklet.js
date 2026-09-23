@@ -251,6 +251,13 @@ class VVChainWorklet extends AudioWorkletProcessor {
 
       // TAPE-A is intentionally stateless. Attack / Release and envelope
       // state are retained only for preset compatibility, not gain movement.
+      // These three crossover LP states are signal-splitting state, not dynamic gain state.
+      const a80=1-Math.exp(-2*Math.PI*80/sampleRate);
+      const a3k=1-Math.exp(-2*Math.PI*3000/sampleRate);
+      const a9k=1-Math.exp(-2*Math.PI*9000/sampleRate);
+      c.typeLp[0]+=a80*(ti-c.typeLp[0]);
+      c.typeLp[1]+=a3k*(ti-c.typeLp[1]);
+      c.typeLp[2]+=a9k*(ti-c.typeLp[2]);
       const low1=c.typeLp[0],low2=c.typeLp[1],low3=c.typeLp[2];
       const bands=[low1,low2-low1,low3-low2,ti-low3];
 
