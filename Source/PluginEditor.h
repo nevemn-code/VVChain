@@ -159,6 +159,7 @@ private:
     float constrainXoverFrequency(int index, float hz) const;
     float graphXToFrequency(const juce::Rectangle<float>&, float x) const;
     float eqDbToY(const juce::Rectangle<float>&, float db) const;
+    float dynamicEffectiveTargetGain(int band) const;
     void drawEqGraph(juce::Graphics&, juce::Rectangle<float>);
     void drawCard(juce::Graphics&, juce::Rectangle<float>, juce::Colour,
                   const juce::String&, const juce::String&);
