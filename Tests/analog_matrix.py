@@ -130,13 +130,10 @@ def run():
         max_output = max(max_output, float(np.max(np.abs(y))))
         max_dc = max(max_dc, abs(float(np.mean(y))))
 
-        input_rms = float(np.sqrt(np.mean(x * x)))
-        driven = np.tanh(x * drive)
-        shaped = driven + 0.25 * (2.0 * driven * driven - 1.0) + 0.15 * (4.0 * driven * driven * driven)
-        output_rms = float(np.sqrt(np.mean(shaped * shaped)))
-        gain_comp = input_rms / output_rms if output_rms > 0.0001 else 1.0
-        y2 = x + ((shaped * gain_comp) - x) * amount
-        max_rms_error = max(max_rms_error, float(np.max(np.abs(y - y2))))
+        max_rms_error = max(
+            max_rms_error,
+            float(np.max(np.abs(y - expected))),
+        )
 
         silent = np.zeros(256, dtype=np.float64)
         silent_out = process_reference(silent, drive, amount)
