@@ -46,9 +46,22 @@ https://nevemn-code.github.io/VVChain/
 - VST3 + Standalone
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
+## 版本日誌
+
+### v1.0.1｜穩定基準版
+- 已確認 Web 播放音訊處理鏈、參數控制、DELTA 與 Bypass 正常。
+- 此版本作為後續 UI 修改的基準，不回改其已驗證的音訊處理鏈。
+
+### v1.0.2｜本次 UI / 操作更新
+- 上方 EQ Graph 補回 dB 正負刻度與頻率刻度。
+- 上方 DYNAMICS Target 點支援上下調整 DYNAMICS、左右同步移動 EQ 頻率；下方 DYNAMICS 與之同步。
+- DE-ESSER 在 MAXIMUM REDUCTION 右上方增加獨立 BYPASS 控制，與原 DE-ESSER BYPASS 同一參數。
+- OTT = 0、ANALOG COLOR = 0、TAPE-A + = 0、DE-ESSER MAXIMUM REDUCTION = 0 的灰階規則已加入。
+- 第 4～7 項為可獨立撤回的視覺規則，保留後續回改空間。
+
 ## GitHub 開發規則
 - 強制規則文件：`.github/VVCHAIN_RULES.md`
-- 任何 `docs/*.html` 修改，都必須同步更新頁面內 `LAST MODIFIED YYYY-MM-DD HH:MM`，時間使用台灣時間（Asia/Taipei）。
+- 任何 `docs/*.html` 修改，都必須同步更新頁面版本號；不使用日期／時間碼作為版本識別。
 - ANALOG 正式架構固定為 4-band V3 CHEBYSHEV；TT/SS 各段獨立，不得合併成單一全頻處理。
 
 ## Validation
