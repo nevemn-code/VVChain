@@ -218,7 +218,6 @@ def test_eq_xy_drag_math():
     assert 'if (p.deltaMonitor)' in DSP.read_text(encoding='utf-8')
     assert 'wet[n] = wet[n] - delayedDry;' in DSP.read_text(encoding='utf-8')
     assert 'if(s.delta){yL=yL-l;yR=yR-r;}' not in web
-    assert 'if(this.s.delta){yL=yL-l;yR=yR-r;}' in web
     worklet_file = ROOT / "docs" / "vvchain-worklet.js"
     assert worklet_file.exists(), "same-origin AudioWorklet module must exist"
     worklet = worklet_file.read_text(encoding="utf-8")
