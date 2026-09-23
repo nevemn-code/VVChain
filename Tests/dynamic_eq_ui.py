@@ -229,7 +229,7 @@ def test_eq_xy_drag_math():
     assert 'yL=yL-l;' in worklet and 'yR=yR-r;' in worklet
     assert 'type:"ready"' in worklet
     assert 'workletFaulted' in web
-    assert 'DSP STARTING' in web
+    assert 'READY' in web
     assert 'class=\'deessPower\'' in web
     assert 'class=\'deltaBtn\'' in web
     assert 'state.masterBypass=!state.masterBypass' in web
@@ -538,7 +538,7 @@ def test_frequency_drag_is_slow_and_grab_anchored():
     assert 'followScale=0.74' in web
     assert 'graphFreqDragGrabOffsetX' in head
     assert 'const float rawDx = correctedPointerX - nodeStartX;' in cpp
-    assert 'const float nodeStartX=logX(dynFreqStartHz,w);' in web
+    assert 'const nodeStartX=logX(dynFreqStartHz,w);' in web
     assert 'dynFreqGrabOffsetX=x-logX(dynFreqStartHz,w);' in web
     assert 'const effectiveDx=rawDx;' in web
     assert 'const effectiveDy=rawDy;' in web
