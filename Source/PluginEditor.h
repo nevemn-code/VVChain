@@ -227,9 +227,17 @@ private:
     juce::Point<float> graphDragHintPosition {};
 
     // Graph gestures are deliberately separated:
-    // Static EQ node = XY (frequency + static gain)
+    // Static EQ node = latched single-axis control (frequency OR gain)
     // Dynamic range handle = vertical only (DYNAMICS parameter)
     // X-overs = horizontal only
+    enum class GraphEqDragAxis
+    {
+        Undetermined,
+        Frequency,
+        Gain
+    };
+
+    GraphEqDragAxis graphEqDragAxis = GraphEqDragAxis::Undetermined;
     float dynamicDragStartDynamics = 0.0f;
     bool lastMasterBypassUi = false;
 
