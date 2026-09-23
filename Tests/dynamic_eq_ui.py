@@ -210,7 +210,8 @@ def test_eq_xy_drag_math():
     assert 'p.deltaMonitor' in PROC.read_text(encoding='utf-8')
     assert 'if (p.deltaMonitor)' in DSP.read_text(encoding='utf-8')
     assert 'wet[n] = wet[n] - delayedDry;' in DSP.read_text(encoding='utf-8')
-    assert 'if(s.delta){yL=yL-l;yR=yR-r;}' not in web\n    assert 'if(this.s.delta){yL=yL-l;yR=yR-r;}' in web
+    assert 'if(s.delta){yL=yL-l;yR=yR-r;}' not in web
+    assert 'if(this.s.delta){yL=yL-l;yR=yR-r;}' in web
     worklet_file = ROOT / "docs" / "vvchain-worklet.js"
     assert worklet_file.exists(), "same-origin AudioWorklet module must exist"
     worklet = worklet_file.read_text(encoding="utf-8")
@@ -244,7 +245,8 @@ def test_eq_xy_drag_math():
     assert 'DIRECT AUDIO FALLBACK' in web
     assert 'onmessageerror' in web
     assert 'revision:paramSyncRevision' in web
-    assert '?v=1.0.1' in web\n    assert '2026-09-23' not in web, "Web preview must not use timestamp identifiers"\n    assert 'VVCHAIN v1.0.1' in web
+    assert '?v=1.0.1' in web
+    assert '2026-09-23' not in web, "Web preview must not use timestamp identifiers"\n    assert 'VVCHAIN v1.0.1' in web
 
     worklet_start = web.index('new URL("vvchain-worklet.js"')
     assert worklet_start >= 0
