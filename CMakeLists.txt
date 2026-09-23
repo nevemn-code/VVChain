@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(VVChain VERSION 0.1.0 LANGUAGES C CXX)
+project(VVChain VERSION 1.0.9 LANGUAGES C CXX)
 
 include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
