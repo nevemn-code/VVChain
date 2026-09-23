@@ -26,10 +26,16 @@ public:
 
         // Four independent Dynamic EQ bands. Each detector is frequency-selective
         // and stereo-linked so L/R dynamics cannot wander independently.
+        // Sonnox-style Dynamic EQ model:
+        // Offset = resting EQ gain; Target = dynamic destination.
+        // Dynamics 0..100% controls how far the band travels toward Target.
         std::array<float, 4> dynThreshold { -24.f, -24.f, -24.f, -24.f };
-        std::array<float, 4> dynRatio { 2.5f, 2.5f, 2.0f, 2.0f };
+        std::array<float, 4> dynTarget { -3.f, -3.f, -2.f, -2.f };
+        std::array<float, 4> dynDynamics { 35.f, 35.f, 30.f, 25.f };
         std::array<float, 4> dynAttack { 8.f, 8.f, 5.f, 3.f };
         std::array<float, 4> dynRelease { 120.f, 120.f, 100.f, 80.f };
+        std::array<bool, 4> dynDetectOnsets { false, false, false, false };
+        std::array<bool, 4> dynTriggerBelow { false, false, false, false };
         // 0 = Side only, 50 = equal Mid/Side, 100 = Mid only.
         std::array<float, 4> dynMSBalance { 50.f, 50.f, 50.f, 50.f };
 
@@ -87,9 +93,9 @@ public:
     void process(juce::AudioBuffer<float>& buffer, const Parameters& p);
 
     // Live Dynamic EQ metering for the editor graph.
-    float dynamicMidReductionDb(int band) const noexcept;
-    float dynamicSideReductionDb(int band) const noexcept;
-    float dynamicAverageReductionDb(int band) const noexcept;
+    float dynamicMidGainChangeDb(int band) const noexcept;
+    float dynamicSideGainChangeDb(int band) const noexcept;
+    float dynamicAverageGainChangeDb(int band) const noexcept;
 
     int getLatencySamples() const noexcept { return totalLatencySamples; }
 
@@ -266,14 +272,17 @@ private:
         -120.f, -120.f, -120.f, -120.f
     };
 
-    std::array<std::atomic<float>, 4> dynMidReductionDb
+    std::array<std::atomic<float>, 4> dynMidGainChangeDb
     {
         0.f, 0.f, 0.f, 0.f
     };
-    std::array<std::atomic<float>, 4> dynSideReductionDb
+    std::array<std::atomic<float>, 4> dynSideGainChangeDb
     {
         0.f, 0.f, 0.f, 0.f
     };
+
+    std::array<float, 4> dynMidSlowDb { -120.f, -120.f, -120.f, -120.f };
+    std::array<float, 4> dynSideSlowDb { -120.f, -120.f, -120.f, -120.f };
 
     // Feed-forward detector source shared by all four Dynamic EQ bands.
     juce::AudioBuffer<float> dynamicDetectorInput;
