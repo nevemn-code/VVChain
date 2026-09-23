@@ -616,7 +616,7 @@ def main():
     for _ in range(10):
         test_all_features_rounds()
     test_full_simulation()
-    test_v105_tape_a_shared_xovers_and_isolation()
+    test_v106_shared_four_band_modules_and_deess_presets()
     test_v103_ui_rules_50()
     test_v103_closed_10()
     print("PASS: 280 design cases")
