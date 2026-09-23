@@ -1652,6 +1652,12 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
             wet[n] =
                 wet[n] * (1.f - blend)
                 + delayedDry * blend;
+
+            // Delta is the processed output minus the dry signal that is
+            // already aligned to the same final-limiter latency. No extra
+            // lookahead/delay is introduced by Delta monitoring.
+            if (p.deltaMonitor)
+                wet[n] = wet[n] - delayedDry;
         }
     }
 
