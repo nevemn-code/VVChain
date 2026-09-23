@@ -2182,6 +2182,7 @@ void VVChainAudioProcessorEditor::mouseDown(
             dragBand = -1;
             dragXover = -1;
             dragDynamicMsBand = -1;
+            graphEqDragAxis = GraphEqDragAxis::Undetermined;
 
             dynamicGainDragStartY = pos.y;
             dynamicGainDragStartOffset =
@@ -2217,7 +2218,10 @@ void VVChainAudioProcessorEditor::mouseDown(
         dragDynamicMsBand = -1;
         dragOffsetBand = -1;
 
-        dynamicTargetDragStartY = target.y;
+        // Anchor the gesture to the exact pixel where the mouse was
+        // pressed. Using target.y here causes an immediate fake jump when
+        // the user grabs anywhere on the 24 px Dynamic ring.
+        dynamicTargetDragStartY = pos.y;
         dynamicDragStartDynamics =
             parameterValue("DYN_DYNAMICS" + n);
 
@@ -2304,16 +2308,32 @@ void VVChainAudioProcessorEditor::mouseDrag(
                 juce::jlimit(20.f, 20000.f, graphFreqDragStartHz) / 20.f)
             / std::log(1000.f);
 
-        // Ignore tiny horizontal hand jitter while performing a vertical
-        // Gain drag. Deliberate horizontal motion beyond the dead-zone still
-        // changes Frequency, preserving true XY node operation.
+        // Latch the intended axis after the first few pixels. This
+        // completely prevents hand jitter during Gain drags from changing
+        // Frequency, while still allowing deliberate Frequency-only movement.
         const float rawDx =
             event.position.x - graphFreqDragStartX;
-        const float horizontalDeadZone = 8.0f;
+        const float rawDy =
+            event.position.y - dynamicGainDragStartY;
+        constexpr float axisLockPixels = 6.0f;
+
+        if (graphEqDragAxis == GraphEqDragAxis::Undetermined)
+        {
+            if (std::hypot(rawDx, rawDy) < axisLockPixels)
+                return;
+
+            graphEqDragAxis =
+                std::abs(rawDx) > std::abs(rawDy)
+                    ? GraphEqDragAxis::Frequency
+                    : GraphEqDragAxis::Gain;
+        }
+
         const float effectiveDx =
-            std::abs(rawDx) <= horizontalDeadZone
-                ? 0.0f
-                : rawDx - std::copysign(horizontalDeadZone, rawDx);
+            graphEqDragAxis == GraphEqDragAxis::Frequency
+                ? rawDx : 0.0f;
+        const float effectiveDy =
+            graphEqDragAxis == GraphEqDragAxis::Gain
+                ? rawDy : 0.0f;
 
         const float norm =
             juce::jlimit(
@@ -2322,10 +2342,12 @@ void VVChainAudioProcessorEditor::mouseDrag(
                     + effectiveDx / 180.f * dragScale);
 
         const float hz =
-            20.f * std::pow(1000.f, norm);
+            graphEqDragAxis == GraphEqDragAxis::Frequency
+                ? 20.f * std::pow(1000.f, norm)
+                : graphFreqDragStartHz;
 
         const float deltaDb =
-            -(event.position.y - dynamicGainDragStartY)
+            -effectiveDy
             / juce::jmax(1.f, graph.getHeight())
             * 36.f * dragScale;
 
@@ -2448,13 +2470,12 @@ void VVChainAudioProcessorEditor::mouseDrag(
 
         setParameter("DYN_DYNAMICS" + n, dynamics);
 
-        // SliderAttachment is the source of truth for the lower knob.
-        // Force the native control to the exact denormalized APVTS value as
-        // well, so the graph gesture and the visible knob are synchronous.
+        // APVTS is the source of truth; also refresh the visible knob
+        // synchronously so graph drag and lower DYNAMICS never visually diverge.
         if (auto* dynamicsKnob = findKnob("DYN_DYNAMICS" + n))
             dynamicsKnob->slider->setValue(
                 parameterValue("DYN_DYNAMICS" + n),
-                juce::dontSendNotification);
+                juce::sendNotificationSync);
 
         graphDragHintPosition = event.position;
         graphDragHint =
@@ -2489,6 +2510,7 @@ void VVChainAudioProcessorEditor::mouseUp(
 
     dragBand = -1;
     dragOffsetBand = -1;
+    graphEqDragAxis = GraphEqDragAxis::Undetermined;
     dragXover = -1;
     dragDynamicMsBand = -1;
     showGraphDragHint = false;
