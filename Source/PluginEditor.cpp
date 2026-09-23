@@ -1022,10 +1022,8 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     }
 
     // X1/X2/X3 crossover controls live at the BOTTOM of the graph.
-    // Frequency remains draggable on the vertical line; curvature/OVERLAP is
-    // controlled only by the bottom cross marker with the mouse wheel.
-    const float spread = 16.f + overlap * .52f;
-
+    // Frequency remains draggable on the vertical line; OVERLAP is represented
+    // by one continuous quadratic figure-eight at the bottom.
     for (int i = 0; i < 3; ++i)
     {
         const float x = xovers[i];
@@ -1054,29 +1052,29 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             (int)x - 45, (int)labelY + 3, 90, 11,
             juce::Justification::centred);
 
-        // Bottom infinity / bow-tie marker is the continuous OVERLAP control.
-        const float bowWidth = 5.f + overlap * 0.10f;
-        const float bowHeight = 3.f + overlap * 0.055f;
+        const float eightWidth = 5.f + overlap * 0.10f;
+        const float eightHeight = 2.8f + overlap * 0.055f;
         g.setColour(uiColour(xoverHovered
             ? juce::Colour(0xfffff3a8)
             : juce::Colour(0xffffdf67)));
-        juce::Path infinity;
-        infinity.startNewSubPath(x, markerY);
-        infinity.cubicTo(x - bowWidth * .38f, markerY - bowHeight,
-                         x - bowWidth, markerY - bowHeight,
-                         x - bowWidth, markerY);
-        infinity.cubicTo(x - bowWidth, markerY + bowHeight,
-                         x - bowWidth * .38f, markerY + bowHeight,
-                         x, markerY);
-        infinity.cubicTo(x + bowWidth * .38f, markerY - bowHeight,
-                         x + bowWidth, markerY - bowHeight,
-                         x + bowWidth, markerY);
-        infinity.cubicTo(x + bowWidth, markerY + bowHeight,
-                         x + bowWidth * .38f, markerY + bowHeight,
-                         x, markerY);
-        g.strokePath(infinity, juce::PathStrokeType(
+
+        juce::Path eight;
+        eight.startNewSubPath(x, markerY);
+        eight.quadraticTo(
+            { x - eightWidth, markerY - eightHeight },
+            { x, markerY - 2.f * eightHeight });
+        eight.quadraticTo(
+            { x + eightWidth, markerY - eightHeight },
+            { x, markerY });
+        eight.quadraticTo(
+            { x - eightWidth, markerY + eightHeight },
+            { x, markerY + 2.f * eightHeight });
+        eight.quadraticTo(
+            { x + eightWidth, markerY + eightHeight },
+            { x, markerY });
+
+        g.strokePath(eight, juce::PathStrokeType(
             xoverHovered ? 2.0f : 1.45f));
-        g.fillEllipse(x - 2.5f, markerY - 2.5f, 5.f, 5.f);
     }
 
     // Static Offset EQ response.
@@ -1858,7 +1856,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("PLAYBACK WATCHDOG + GLOBAL BYPASS + CONTINUOUS XOVER + DEESSER VERTICAL + MIX/OUT · 2026-09-23 18:41",
+    g.drawText("DSP PARAM BRIDGE + TRUE DELTA + BOTTOM QUADRATIC XOVER · 2026-09-23 18:51",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2494,7 +2492,7 @@ void VVChainAudioProcessorEditor::mouseDown(
         return;
     }
 
-    // Bottom infinity marker = continuous shared OVERLAP control.
+    // Bottom figure-eight marker = continuous shared OVERLAP control.
     const float xovers[3]
     {
         graphFrequencyToX(
