@@ -106,7 +106,7 @@ def test_280_design_cases():
     assert count == 280
 
 def test_graph_roundtrip():
-    for db in [-27, -18, -9, 0, 9, 18, 27]:
+    for db in [-36, -27, -18, -9, 0, 9, 18, 27, 36]:
         y = y_from_db(db)
         back = db_from_y(y)
         assert abs(db - back) < 1e-6
