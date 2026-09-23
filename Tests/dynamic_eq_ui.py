@@ -82,6 +82,14 @@ def source_assertions():
     assert 'sendNotificationSync' in cpp,         "Lower DYNAMICS knob must refresh synchronously during graph drag"
     assert 'DYN_DYNAMICS" + n, dynamics' in cpp, \
         "graph drag must write DYN_DYNAMICS"
+    assert cpp.count("juce::StringArray({") == 0, "no ambiguous JUCE StringArray brace initializers"
+    assert "Direct DYNAMICS target control takes priority" in cpp, "DYNAMICS point must be hit before static EQ"
+    assert "graphHintActiveMask" in cpp and "graphHintAutoHideAt" in cpp, "Native graph hint state missing"
+    assert "function graphHintBandHtml" in web, "Web graph hint formatter missing"
+    assert "showGraphHint(e,graphHintBandHtml(dragBand,1|2))" in web
+    assert "showGraphHint(e,graphHintBandHtml(dragBand,1|4))" in web
+    assert "showGraphHint(e,graphHintBandHtml(dragDynamicHandleBand,4))" in web
+    assert "showGraphHint(e,graphHintBandHtml(band,8))" in web
 
 def test_280_design_cases():
     # 280 deterministic combinations: 10 starting dynamics x 7 Y offsets x 4 scales.
@@ -401,7 +409,7 @@ def test_full_simulation():
 
 
 def test_v102_ui_rules_50():
-    """50 deterministic state checks for the v1.0.2 visual rules."""
+    """50 deterministic state checks for the v1.0.3 visual rules."""
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
     cpp = CPP.read_text(encoding="utf-8")
     head = HEAD.read_text(encoding="utf-8")
@@ -454,14 +462,14 @@ def test_v102_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.2" in web
-    assert "VVCHAIN v1.0.2" in cpp
+    assert "VVCHAIN v1.0.3" in web
+    assert "VVCHAIN v1.0.3" in cpp
     assert "2026-09-23" not in web
     assert "2026-09-23" not in cpp
 
 
-def test_v102_closed_10():
-    """Ten closed regression passes for the new graph and conditional UI rules."""
+def test_v103_closed_10():
+    """Ten closed regression passes for the v1.0.3 graph and DSP safety rules."""
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
     cpp = CPP.read_text(encoding="utf-8")
     worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
@@ -469,6 +477,12 @@ def test_v102_closed_10():
     for _ in range(10):
         assert 'if(this.s.delta){yL=yL-l;yR=yR-r;}' in worklet
         assert 'if(s.delta){yL=yL-l;yR=yR-r;}' not in worklet
+        assert 'mDynamicGain=mGain-offset' in worklet
+        assert 'sDynamicGain=sGain-offset' in worklet
+        assert 'this.peak(sampleRate,f,mq,mDynamicGain)' in worklet
+        assert 'this.peak(sampleRate,f,sq,sDynamicGain)' in worklet
+        assert 'this.peak(sampleRate,f,mq,mGain)' not in worklet
+        assert 'this.peak(sampleRate,f,sq,sGain)' not in worklet
 
         # DYNAMICS Target XY mapping.
         assert "const rawDx=x-dynTargetStartX" in web
@@ -508,7 +522,7 @@ def main():
         test_all_features_rounds()
     test_full_simulation()
     test_v102_ui_rules_50()
-    test_v102_closed_10()
+    test_v103_closed_10()
     print("PASS: 280 design cases")
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
