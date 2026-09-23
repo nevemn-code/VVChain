@@ -1043,7 +1043,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         bottom = bottom.createPathWithRoundedCorners(0.f);
 
         juce::Path fill = top;
-        fill.addSubPath(bottom);
+        fill.addPath(bottom);
         fill.closeSubPath();
 
         g.setColour(c.withAlpha(.16f));
