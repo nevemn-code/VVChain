@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# v1.0.5 regression matrix: shared Type-A crossovers, module-isolated Delta, and hover-value UI.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
