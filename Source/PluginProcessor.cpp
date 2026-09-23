@@ -25,6 +25,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     p.push_back(std::make_unique<juce::AudioParameterBool>("OTT_BYPASS", "OTT Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("ATYPE_BYPASS", "Type-A Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("DEESS_BYPASS", "DeEsser Bypass", false));
+    p.push_back(std::make_unique<juce::AudioParameterBool>("DELTA_MONITOR", "Delta Monitor", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("EQ_COLOR_GLOBAL_BYPASS", "Analog Color Global Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("MIX_BYPASS", "Mix / Out Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("MASTER_BYPASS", "Master Bypass", false));
@@ -242,6 +243,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.deessReferenceHz = value("DEESS_FREQ");
     p.deessIntensity = value("DEESS_INTENSITY");
     p.deessAverageOffset = value("DEESS_OFFSET");
+    p.deltaMonitor = value("DELTA_MONITOR") > 0.5f;
 
     p.dryWet = value("DRY_WET");
     p.outputDb = value("OUTPUT_LEVEL");
