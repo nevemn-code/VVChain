@@ -186,7 +186,12 @@ def test_eq_xy_drag_math():
     assert 'hoverXover' in head
     assert 'markerY=20' not in web
     assert 'quadraticCurveTo(x,h*.5-16' not in web
-    assert 'const bowWidth=5+ov*0.10;' in web
+    assert 'const eightWidth=5+ov*0.10;' in web
+    assert 'quadraticCurveTo(x-eightWidth,markerY-eightHeight,x,markerY-2*eightHeight);' in web
+    assert 'bezierCurveTo' not in web
+    assert 'const float eightWidth = 5.f + overlap * 0.10f;' in cpp
+    assert 'quadraticTo(' in cpp
+    assert 'cubicTo(' not in cpp
     assert 'dragMode=6' in web
     assert 'controlId:"OTT_X1"' in web
     assert 'controlId:"OTT_X2"' in web
@@ -204,6 +209,12 @@ def test_eq_xy_drag_math():
     assert 'DELTA_MONITOR' in PROC.read_text(encoding='utf-8')
     assert 'p.deltaMonitor' in PROC.read_text(encoding='utf-8')
     assert 'if (p.deltaMonitor)' in DSP.read_text(encoding='utf-8')
+    assert 'wet[n] = wet[n] - delayedDry;' in DSP.read_text(encoding='utf-8')
+    assert 'final plugin output - the original input sample' in web
+    assert 'yL=yL-dryL;' in web and 'yR=yR-dryR;' in web
+    assert 'type:"ready"' in web
+    assert 'workletFaulted' in web
+    assert 'DSP STARTING' in web
     assert 'class=\'deessPower\'' in web
     assert 'class=\'deltaBtn\'' in web
     assert 'state.masterBypass=!state.masterBypass' in web
@@ -213,7 +224,7 @@ def test_eq_xy_drag_math():
     assert 'DIRECT AUDIO FALLBACK' in web
     assert '.knob.graphActive .dial' in web
     assert 'setGraphControlState' in cpp
-    assert 'PLAYBACK WATCHDOG + GLOBAL BYPASS + CONTINUOUS XOVER + DEESSER VERTICAL + MIX/OUT' in web
+    assert 'DSP PARAM BRIDGE + TRUE DELTA + BOTTOM QUADRATIC XOVER' in web
 
 def test_dynamic_range_centered_500():
     """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
