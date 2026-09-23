@@ -170,8 +170,8 @@ def test_eq_xy_drag_math():
     assert 'Dedicated DYNAMICS arrow handle' in cpp
     assert 'dynamicRangeDb' in cpp
     assert 'dynamicOffsetDb' in cpp
-    assert 'gainDeltaDb' in dsp
-    assert 'const float dynamicRangeDb = 18.0f;' in dsp
+    assert 'gainDeltaDb' in DSP.read_text(encoding='utf-8')
+    assert 'const float dynamicRangeDb = 18.0f;' in DSP.read_text(encoding='utf-8')
     assert 'const dynamicRangeDb=18;' in web
     assert 'const bool dynamicsEnabled = true;' in cpp
     assert 'const float markerY = graph.getBottom() - 18.f;' in cpp
