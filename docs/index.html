@@ -12,7 +12,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 .header{height:56px;border:1px solid #08090b;border-radius:7px;padding:8px 12px;background:linear-gradient(180deg,#343840,#181b20);display:flex;align-items:center;box-shadow:inset 0 1px #fff2}.logo{font-size:21px;font-weight:900;letter-spacing:.32em}.brandLine{display:flex;align-items:baseline;gap:12px}.lastModified{font:700 8px Consolas;color:#7f8893;letter-spacing:.04em;white-space:nowrap}.sub{font:8px Consolas;color:#828b96;margin-top:2px}.headerControls{margin-left:auto;display:flex;align-items:center;gap:8px}
 .leds{display:flex;gap:8px;margin-left:0}.ledBox{display:grid;grid-template-columns:21px auto;gap:3px;align-items:center;cursor:pointer}.led{width:19px;height:19px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 2px 4px #000}.led.on{background:radial-gradient(circle at 36% 30%,#fff 0%,var(--led) 22%,#25272b 78%,#101216 100%);box-shadow:0 0 10px var(--led),inset 0 1px #fff5}.ledLabel{font:7px Consolas;color:#a9b0b9}
 .rowTop{height:315px;margin-top:5px;display:block}.rowTop>.panel{display:none}.panel,.band{border:1px solid #08090b;border-radius:7px;background:linear-gradient(180deg,#292c32,#13161a);box-shadow:0 9px 18px #0009,inset 0 1px #fff1}.panelHead{height:29px;padding:6px 10px;border-bottom:1px solid #06070a;font-size:10px;font-weight:900;letter-spacing:.08em}.panelSub{font:7px Consolas;color:#7f8790;margin-top:1px}.eqShared{display:none}.graph{height:315px;border:1px solid #06070a;border-radius:7px;background:#111318;overflow:hidden;position:relative}.graph canvas{width:100%;height:100%;display:block}.graphHint{position:absolute;z-index:5;pointer-events:none;min-width:188px;padding:6px 9px;border:1px solid #fff9;border-radius:5px;background:#07090cf2;box-shadow:0 6px 18px #000b;color:#fff;font:700 9px Consolas;white-space:nowrap;text-align:center}
-.bandsFrame{height:500px;margin-top:6px;padding:7px;border:1px solid #07080a;border-radius:7px;background:linear-gradient(180deg,#20242a,#101216);box-shadow:0 10px 22px #0009}.bandGrid{height:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.band{position:relative;padding:7px;overflow:hidden}.band:after{content:"";position:absolute;inset:2px;border:1px solid var(--accent);opacity:.16;border-radius:5px;pointer-events:none}.bandHead{height:25px;display:flex;justify-content:space-between;align-items:center;color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.08em}.bandLed{position:absolute;right:7px;width:14px;height:14px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 1px 3px #000;z-index:3;padding:0}.bandLed.on{box-shadow:0 0 7px var(--led),inset 0 1px #fff5}.bandLed.ott{top:292px}.bandLed.type{top:372px}.bandLed.ott.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#facc15 25%,#25272b 78%,#101216 100%)}.bandLed.type.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#f472b6 25%,#25272b 78%,#101216 100%)}.bandHeadBtns{display:flex;align-items:center;gap:3px}.soloBtn{height:21px;padding:0 6px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.soloBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.advBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #555b63;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.band.bypassed{filter:grayscale(1)}.ottAdvBtn{position:absolute;left:7px;top:6px;height:21px;padding:0 7px;border-radius:4px;border:1px solid #5b4c1d;background:#17150f;color:#ffdf62;font:8px Consolas;z-index:4}.bandBody{height:calc(100% - 25px)}.deessZone{height:100%;display:grid;grid-template-columns:1fr;grid-template-rows:.8fr .8fr 1fr 1fr;gap:2px;padding:6px 5px}.bandLed.de{top:4px;right:7px;width:19px;height:19px}.bandLed.de.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#67d3aa 25%,#25272b 78%,#101216 100%);box-shadow:0 0 10px #67d3aa,inset 0 1px #fff5}.eqBody{height:calc(100% - 25px);padding:4px 2px;display:grid;grid-template-rows:80px 104px 80px 80px;gap:3px}.knobGrid{height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr;gap:3px}.dynSection{height:104px;border:1px solid #30343a;border-radius:5px;background:#0c0f13;padding:3px 4px}.dynHeader{height:16px;display:flex;align-items:center;justify-content:space-between;color:#fff;font:700 7.5px Consolas;letter-spacing:.08em}.dynHeader .msReadout{color:#9da7b1;font-weight:400}.dynModeRow{height:15px;display:grid;grid-template-columns:1fr 1fr;gap:3px;margin:1px 0}.dynModeBtn{height:14px;border:1px solid #444b55;border-radius:3px;background:#11151a;color:#cfd5dc;font:7px Consolas;font-weight:700}.dynModeBtn.on{background:#e8edf2;color:#090b0e}.dynControls{height:81px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.dynControls .knob .dial{width:50px;height:50px}.dynControls .knob .dial:before{height:14px;transform-origin:50% 21px}.ottGrid,.bottomGrid{height:80px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.ottGrid .knob .dial,.bottomGrid .knob .dial{width:47px;height:47px}.ottGrid .knob .dial:before,.bottomGrid .knob .dial:before{height:13px;transform-origin:50% 20px}.knobTitle{height:12px}.knobValue{height:14px;line-height:12px}.bottomGrid{grid-template-columns:repeat(2,1fr);padding:0 18%}.dynMuted{opacity:.45;filter:grayscale(1)}.knob{text-align:center;font:7.7px Consolas;color:#bcc3cb;min-width:0;position:relative}.modeSwitch{position:absolute;left:50%;top:-25px;transform:translateX(-50%);width:36px;height:12px;padding:0;display:flex;align-items:center;justify-content:space-around;border:1px solid #4b525b;border-radius:4px;background:#0b0d10;color:#aeb5bd;font:10px Consolas;font-weight:900;z-index:4}.modeSwitch i{position:absolute;top:2px;left:2px;width:14px;height:6px;border-radius:3px;background:#60a5fa;opacity:.85;transition:left .08s}.modeSwitch.ss i{left:18px}.modeSwitch span{position:relative;z-index:1}.modeSwitch.ss span:last-child,.modeSwitch:not(.ss) span:first-child{color:#fff}.dial{width:58px;height:58px;margin:0 auto 2px;border-radius:50%;border:2px solid #676c75;background:radial-gradient(circle at 34% 28%,#50545d,#2b2f35 58%,#15171b 100%);box-shadow:0 4px 9px #000c,inset 0 1px 2px #fff2;position:relative;touch-action:none;cursor:ns-resize}.dial:before{content:"";position:absolute;left:50%;top:4px;width:3px;height:18px;background:#fff;box-shadow:0 0 0 1px #0008;transform:translateX(-50%) rotate(var(--angle,-125deg));transform-origin:50% 25px;border-radius:2px}.dial{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 9px #000c,inset 0 1px 2px #fff2}.dial:after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;background:#eef2f7;transform:translate(-50%,-50%)}.knobTitle{height:13px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.knobValue{height:16px;line-height:14px;border:1px solid #050608;border-radius:3px;background:#07090b;color:#dce2e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8.8px}
+.bandsFrame{height:500px;margin-top:6px;padding:7px;border:1px solid #07080a;border-radius:7px;background:linear-gradient(180deg,#20242a,#101216);box-shadow:0 10px 22px #0009}.bandGrid{height:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.band{position:relative;padding:7px;overflow:hidden}.band:after{content:"";position:absolute;inset:2px;border:1px solid var(--accent);opacity:.16;border-radius:5px;pointer-events:none}.bandHead{height:25px;display:flex;justify-content:space-between;align-items:center;color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.08em}.bandLed{position:absolute;right:7px;width:14px;height:14px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 1px 3px #000;z-index:3;padding:0}.bandLed.on{box-shadow:0 0 7px var(--led),inset 0 1px #fff5}.bandLed.ott{top:292px}.bandLed.type{top:372px}.bandLed.ott.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#facc15 25%,#25272b 78%,#101216 100%)}.bandLed.type.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#f472b6 25%,#25272b 78%,#101216 100%)}.bandHeadBtns{display:flex;align-items:center;gap:3px}.soloBtn{height:21px;padding:0 6px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.soloBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.advBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #555b63;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.band.bypassed{filter:grayscale(1)}.ottAdvBtn{position:absolute;left:7px;top:6px;height:21px;padding:0 7px;border-radius:4px;border:1px solid #5b4c1d;background:#17150f;color:#ffdf62;font:8px Consolas;z-index:4}.bandBody{height:calc(100% - 25px)}.deessZone{height:100%;display:grid;grid-template-columns:1fr;grid-template-rows:.8fr .8fr 1fr 1fr;gap:2px;padding:6px 5px}.bandLed.de{top:4px;right:7px;width:19px;height:19px}.bandLed.de.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#67d3aa 25%,#25272b 78%,#101216 100%);box-shadow:0 0 10px #67d3aa,inset 0 1px #fff5}.eqBody{height:calc(100% - 25px);padding:11px 2px 0;display:grid;grid-template-rows:84px 132px 105px 128px;gap:5px}.knobGrid{height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr;gap:3px}.dynSection{height:132px;border:1px solid #30343a;border-radius:5px;background:#0c0f13;padding:6px 4px 2px}.dynHeader{height:24px;display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:3px;color:#fff;font:700 7.5px Consolas;letter-spacing:.08em}.dynHeader .msReadout{color:#9da7b1;font-weight:400}.dynModeRow{height:15px;display:grid;grid-template-columns:1fr 1fr;gap:3px;margin:1px 0}.dynModeBtn{height:14px;border:1px solid #444b55;border-radius:3px;background:#11151a;color:#cfd5dc;font:7px Consolas;font-weight:700}.dynModeBtn.on{background:#e8edf2;color:#090b0e}.dynControls{height:81px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.staticGrid .knob .dial{width:50px;height:50px}.staticGrid .knob .dial:before{height:14px;transform-origin:50% 21px}.dynControls .knob .dial{width:50px;height:50px}.dynControls .knob .dial:before{height:14px;transform-origin:50% 21px}.ottGrid,.bottomGrid{height:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.ottGrid .knob .dial,.bottomGrid .knob .dial{width:47px;height:47px}.ottGrid .knob .dial:before,.bottomGrid .knob .dial:before{height:13px;transform-origin:50% 20px}.knobTitle{height:12px}.knobValue{height:14px;line-height:12px}.bottomGrid{grid-template-columns:repeat(2,1fr);padding:0 18%}.dynMuted{opacity:.45;filter:grayscale(1)}.knob{text-align:center;font:7.7px Consolas;color:#bcc3cb;min-width:0;position:relative}.modeSwitch{position:absolute;left:50%;top:-25px;transform:translateX(-50%);width:36px;height:12px;padding:0;display:flex;align-items:center;justify-content:space-around;border:1px solid #4b525b;border-radius:4px;background:#0b0d10;color:#aeb5bd;font:10px Consolas;font-weight:900;z-index:4}.modeSwitch i{position:absolute;top:2px;left:2px;width:14px;height:6px;border-radius:3px;background:#60a5fa;opacity:.85;transition:left .08s}.modeSwitch.ss i{left:18px}.modeSwitch span{position:relative;z-index:1}.modeSwitch.ss span:last-child,.modeSwitch:not(.ss) span:first-child{color:#fff}.dial{width:58px;height:58px;margin:0 auto 2px;border-radius:50%;border:2px solid #676c75;background:radial-gradient(circle at 34% 28%,#50545d,#2b2f35 58%,#15171b 100%);box-shadow:0 4px 9px #000c,inset 0 1px 2px #fff2;position:relative;touch-action:none;cursor:ns-resize}.dial:before{content:"";position:absolute;left:50%;top:4px;width:3px;height:18px;background:#fff;box-shadow:0 0 0 1px #0008;transform:translateX(-50%) rotate(var(--angle,-125deg));transform-origin:50% 25px;border-radius:2px}.dial{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 9px #000c,inset 0 1px 2px #fff2}.dial:after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;background:#eef2f7;transform:translate(-50%,-50%)}.knobTitle{height:13px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.knobValue{height:16px;line-height:14px;border:1px solid #050608;border-radius:3px;background:#07090b;color:#dce2e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8.8px}
 .advPopup{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,calc(100% - 40px));height:330px;border:1px solid #facc15cc;border-radius:10px;background:linear-gradient(180deg,#28231a,#101216);z-index:50;padding:8px 12px;box-shadow:0 18px 44px #000c,0 0 0 1px #0009}.advPopupHead{height:34px;display:flex;align-items:center;justify-content:space-between;color:#facc15;font:10px Consolas;font-weight:900}.advPopupClose{height:21px;padding:0 8px;border:1px solid #5c4e1f;border-radius:4px;background:#17150f;color:#ffdf62;font:8px Consolas}.advPopupGrid{height:276px;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:1fr 1fr;gap:2px}.advPopupGrid .dial{width:50px;height:50px}.advPopupGrid .dial:before{height:14px;transform-origin:50% 22px}.advPopupGrid .knobTitle{font-size:6.82px;height:11px}.advPopupGrid .knobValue{font-size:7.7px;height:14px;line-height:12px}.advPopupGrid .tiny{height:22px;padding:0 3px;font-size:6.5px;margin:auto}
 .footer{display:none}.masterBypass{height:27px;min-width:72px;padding:0 9px;border:1px solid #69717b;border-radius:4px;background:#20242a;color:#e9eef3;font:9px Consolas;font-weight:900}.masterBypass.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 12px #dfe7ef88}.app.globalBypass{filter:grayscale(1)}.leds{margin-left:8px}.note{display:none}select{height:27px;background:#0f1115;color:#dce2e8;border:1px solid #3b4047;border-radius:4px;font-size:8px}
 @media(max-width:1100px){.chain{display:none}.ledLabel{display:none}.dial{width:57px;height:57px}.footer{grid-template-columns:1fr 245px}}
@@ -26,7 +26,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span><span class="tiny" id="cursorTime">0:00.000</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">GRAPH CONTROL PATCH · 2026-09-23</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">GRAPH CONTROL PATCH · 2026-09-23 14:41</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -238,7 +238,7 @@ function hz(v){return v>=1000?fmt(v/1000,2)+" kHz":fmt(v,0)+" Hz"}function graph
 for(let b=0;b<4;b++){
 const n=b,card=document.createElement("div");
 card.className="band";card.style.setProperty("--accent",cols[n]);
-card.innerHTML="<div class='bandHead'><span>BAND "+(n+1)+"</span><span class='bandHeadBtns'><button class='soloBtn'>SOLO</button><button class='bypassBtn'>BYPASS</button></span></div><div class='bandBody eqBody'><div class='knobGrid staticGrid'></div><div class='dynSection'><div class='dynHeader'><span>DYNAMIC EQ</span><span class='msReadout' id='msReadout"+n+"'>TARGET -3.0 dB · MID 50% / SIDE 50%</span></div><div class='dynModeRow'><button class='dynModeBtn detectBtn'>PEAK</button><button class='dynModeBtn triggerBtn'>ABOVE</button></div><div class='dynControls'></div></div><div class='knobGrid ottGrid'></div><div class='knobGrid bottomGrid'></div></div>";
+card.innerHTML="<div class='bandHead'><span>BAND "+(n+1)+"</span><span class='bandHeadBtns'><button class='advBtn'>+ ADV</button><button class='soloBtn'>SOLO</button><button class='bypassBtn'>BYPASS</button></span></div><div class='bandBody eqBody'><div class='knobGrid staticGrid'></div><div class='dynSection'><div class='dynHeader'><span>DYNAMIC EQ</span><span class='msReadout' id='msReadout"+n+"'>TARGET -3.0 dB · MID 50% / SIDE 50%</span></div><div class='dynModeRow'><button class='dynModeBtn detectBtn'>PEAK</button><button class='dynModeBtn triggerBtn'>ABOVE</button></div><div class='dynControls'></div></div><div class='knobGrid ottGrid'></div><div class='knobGrid bottomGrid'></div></div>";
 bg.appendChild(card);
 const bypassBtn=card.querySelector(".bypassBtn");
 const syncBandBypass=()=>{const on=!!state.bandBypass[n];card.classList.toggle("bypassed",on);bypassBtn.classList.toggle("on",on)};
@@ -249,8 +249,8 @@ const soloBtn=card.querySelector(".soloBtn");
 const syncSolo=()=>soloBtn.classList.toggle("on",Number(state.solo.band)===n);
 soloBtn.onclick=()=>{state.solo.band=Number(state.solo.band)===n?-1:n;document.querySelectorAll(".soloBtn").forEach((x,i)=>x.classList.toggle("on",i===state.solo.band));syncSolo();sendParams()};syncSolo();
 
-makeKnob(staticGrid,{label:"FREQ",get:()=>state.eq.freq[n],set:v=>state.eq.freq[n]=v,min:20,max:20000,suffix:" Hz",accent:cols[n],formatDigits:0,sensitivity:.20});
 makeKnob(staticGrid,{label:"GAIN",get:()=>state.eq.gain[n],set:v=>state.eq.gain[n]=v,min:-24,max:24,suffix:" dB",accent:cols[n],formatDigits:1});
+makeKnob(staticGrid,{label:"FREQ",get:()=>state.eq.freq[n],set:v=>state.eq.freq[n]=v,min:20,max:20000,suffix:" Hz",accent:cols[n],formatDigits:0,sensitivity:.20});
 makeKnob(staticGrid,{label:"Q",get:()=>state.eq.q[n],set:v=>state.eq.q[n]=v,min:.1,max:18,accent:cols[n],formatDigits:2});
 
 makeKnob(dynControls,{label:"DYNAMICS",get:()=>state.dyn.dynamics[n],set:v=>state.dyn.dynamics[n]=v,min:-100,max:100,suffix:" %",accent:"#f8fafc",formatDigits:0});
@@ -274,8 +274,8 @@ const syncMode=()=>mode.classList.toggle("ss",!!state.eq.mode[n]);mode.onclick=(
 
 const ottLed=document.createElement("button");ottLed.className="bandLed ott";ottLed.style.setProperty("--led","#facc15");ottLed.title="BAND "+(n+1)+" OTT：亮=啟用；按下=BYPASS";ottLed.classList.toggle("on",!state.ott.bandBypass[n]);ottLed.onclick=()=>{state.ott.bandBypass[n]=!state.ott.bandBypass[n];ottLed.classList.toggle("on",!state.ott.bandBypass[n]);sendParams()};
 const typeLed=document.createElement("button");typeLed.className="bandLed type";typeLed.style.setProperty("--led","#f472b6");typeLed.title="BAND "+(n+1)+" TYPE-A：亮=啟用；按下=BYPASS";typeLed.classList.toggle("on",!state.type.bandBypass[n]);typeLed.onclick=()=>{state.type.bandBypass[n]=!state.type.bandBypass[n];typeLed.classList.toggle("on",!state.type.bandBypass[n]);sendParams()};
-const ottAdvBtn=document.createElement("button");ottAdvBtn.className="ottAdvBtn";ottAdvBtn.textContent="+ ADV";ottAdvBtn.title="OTT ADVANCED · BAND "+(n+1);ottAdvBtn.onclick=()=>openAdvanced(n);
-card.append(ottAdvBtn,ottLed,typeLed);
+const advBtn=card.querySelector(".advBtn");advBtn.title="OTT ADVANCED · BAND "+(n+1);advBtn.onclick=()=>openAdvanced(n);
+ card.append(ottLed,typeLed);
 
 const msReadout=card.querySelector("#msReadout"+n);
 const syncMsReadout=()=>{msReadout.textContent="TARGET "+fmt(dynamicEffectiveTargetGain(n),1)+" dB · AUTO THR "+fmt(dynamicThresholdFromDynamics(state.dyn.dynamics[n]),1)+" dB · MID "+fmt(state.dyn.ms[n],0)+"% / SIDE "+fmt(100-state.dyn.ms[n],0)+"%"};
@@ -295,7 +295,7 @@ makeKnob(body,{label:"OUT",get:()=>state.mix.output,set:v=>state.mix.output=v,mi
 }
 function buildAdvanced(b){const grid=$("#advPopupGrid");grid.innerHTML="";const mk=(label,key,min,max,suffix,d=1)=>({label,get:()=>state.ott[key][b],set:v=>state.ott[key][b]=v,min,max,suffix,accent:"#facc15",formatDigits:d,formatValue:key==="compA"?()=>fmt(effectiveCompAttackMs(b),1)+" ms":key==="compR"?()=>fmt(effectiveCompReleaseMs(b),0)+" ms":undefined});[mk("LIFT THRESH","liftT",-80,0," dB"),mk("LIFT ATT","liftA",1,500," ms"),mk("LIFT REL","liftR",10,2500," ms",0),mk("LIFT MIX","liftM",0,100," %"),mk("COMP THRESH","compT",-24,0," dB"),mk("COMP ATT","compA",0.1,120," ms",1),mk("COMP REL","compR",10,2500," ms",0),mk("COMP MIX","compM",0,100," %"),mk("BAND LEVEL","level",-24,12," dB"),{label:"XOVER 1",get:()=>state.ott.x[0],set:v=>state.ott.x[0]=v,min:80,max:600,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"XOVER 2",get:()=>state.ott.x[1],set:v=>state.ott.x[1]=v,min:750,max:3000,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"XOVER 3",get:()=>state.ott.x[2],set:v=>state.ott.x[2]=v,min:6000,max:12000,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"INPUT",get:()=>state.ott.input,set:v=>state.ott.input=v,min:-24,max:24,suffix:" dB",accent:"#facc15"},{label:"GATE",get:()=>state.ott.gate,set:v=>state.ott.gate=v,min:-90,max:0,suffix:" dB",accent:"#facc15"},{label:"MASTER",get:()=>state.ott.mix,set:v=>state.ott.mix=v,min:0,max:100,suffix:" %",accent:"#facc15"},{label:"OUTPUT",get:()=>state.ott.output,set:v=>state.ott.output=v,min:-24,max:24,suffix:" dB",accent:"#facc15"}].forEach(c=>makeKnob(grid,c));const clip=document.createElement("button");clip.className="tiny";clip.textContent=state.ott.clip?"CLIP ON":"CLIP OFF";clip.onclick=()=>{state.ott.clip=!state.ott.clip;clip.textContent=state.ott.clip?"CLIP ON":"CLIP OFF";sendParams()};grid.appendChild(clip)}
 function openAdvanced(b){const popup=$("#advPopup");if(b<0){popup.hidden=true;return}buildAdvanced(b);popup.hidden=false;$("#advPopupTitle").textContent="OTT ADVANCED · BAND "+(b+1)}
-document.addEventListener("pointerdown",e=>{const popup=$("#advPopup");if(!popup.hidden&&!popup.contains(e.target)&&!e.target.closest(".ottAdvBtn"))openAdvanced(-1)});
+document.addEventListener("pointerdown",e=>{const popup=$("#advPopup");if(!popup.hidden&&!popup.contains(e.target)&&!e.target.closest(".advBtn"))openAdvanced(-1)});
 
 function dynamicNodePoint(b,w,h){
   const change=(+state.dyn.gainMid[b]||0 + (+state.dyn.gainSide[b]||0))*0.5;
@@ -390,20 +390,31 @@ function drawEQ(){
     eqCtx.beginPath();eqCtx.moveTo(0,y);eqCtx.lineTo(w,y);eqCtx.stroke();
   }
 
-  // X1 / X2 / X3 dedicated top strip.
+  // X1 / X2 / X3 crossover lines + top cross markers.
   for(let b=0;b<3;b++){
     const x=logX(state.ott.x[b],w);
     const ov=clamp((state.ott.overlap||[50,50,50])[b]||50,0,100);
+    const spread=16+ov*.52;
+    const markerY=20;
     eqCtx.strokeStyle="#facc15aa";
     eqCtx.beginPath();eqCtx.moveTo(x,20);eqCtx.lineTo(x,h-18);eqCtx.stroke();
-    eqCtx.fillStyle="#000b";
-    eqCtx.fillRect(x-48,2,96,15);
-    eqCtx.fillStyle="#ffe36a";
-    eqCtx.font="bold 8px Consolas";
-    eqCtx.textAlign="center";
+    eqCtx.beginPath();
+    eqCtx.moveTo(Math.max(4,x-spread),h*.5+20);
+    eqCtx.bezierCurveTo(Math.max(4,x-spread*.65),h*.5+20,x-spread*.20,h*.5-12,x,h*.5-2);
+    eqCtx.bezierCurveTo(x+spread*.20,h*.5-12,Math.min(w-4,x+spread*.65),h*.5+20,Math.min(w-4,x+spread),h*.5+20);
+    eqCtx.strokeStyle="#ffe36aaa";eqCtx.lineWidth=1.1;eqCtx.stroke();
+    eqCtx.fillStyle="#000b";eqCtx.fillRect(x-48,2,96,15);
+    eqCtx.fillStyle="#ffe36a";eqCtx.font="bold 8px Consolas";eqCtx.textAlign="center";
     eqCtx.fillText("X"+(b+1)+" "+hz(state.ott.x[b]),x,13);
+    const hovered=hoverXover===b;
+    eqCtx.strokeStyle=hovered?"#fff3a8":"#ffe36acc";eqCtx.lineWidth=hovered?2:1.2;
+    eqCtx.beginPath();
+    eqCtx.moveTo(x-5,markerY-5);eqCtx.lineTo(x+5,markerY+5);
+    eqCtx.moveTo(x+5,markerY-5);eqCtx.lineTo(x-5,markerY+5);
+    eqCtx.stroke();
+    eqCtx.fillStyle=hovered?"#fff8cc":"#facc15";
+    eqCtx.beginPath();eqCtx.arc(x,markerY,2.3,0,Math.PI*2);eqCtx.fill();
     eqCtx.textAlign="left";
-    void ov;
   }
 
   // Static Offset response.
@@ -482,17 +493,15 @@ function drawEQ(){
     eqCtx.fillStyle="#fff";
     eqCtx.beginPath();eqCtx.arc(n.x,n.y,6,0,Math.PI*2);eqCtx.fill();
     // Dedicated DYNAMICS drag handle follows the DYNAMICS point.
-    // It is visible only when DYNAMICS is actually enabled.
-    const dynValue=Number(state.dyn.dynamics[b]||0);
-    if(Math.abs(dynValue)>0.01){
-      const target=dynamicTargetPoint(b,w,h);
-      const handleX=clamp(target.x+11,18,w-12),handleY=target.y;
-      eqCtx.strokeStyle=c+"ee";eqCtx.lineWidth=1.4;
-      eqCtx.beginPath();eqCtx.moveTo(handleX,handleY-8);eqCtx.lineTo(handleX,handleY+8);eqCtx.stroke();
-      eqCtx.lineWidth=1.6;
-      eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY-4);eqCtx.lineTo(handleX,handleY-8);eqCtx.lineTo(handleX+4,handleY-4);eqCtx.stroke();
-      eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY+4);eqCtx.lineTo(handleX,handleY+8);eqCtx.lineTo(handleX+4,handleY+4);eqCtx.stroke();
-    }
+    // DYNAMICS arrow handle is always visible. At 0% it sits beside the EQ node;
+    // when DYNAMICS moves, it follows the effective target point vertically.
+    const target=dynamicTargetPoint(b,w,h);
+    const handleX=clamp(target.x+11,18,w-12),handleY=target.y;
+    eqCtx.strokeStyle=(hoverDynamicBand===b?c:"#f8fafc")+"ee";eqCtx.lineWidth=1.4;
+    eqCtx.beginPath();eqCtx.moveTo(handleX,handleY-8);eqCtx.lineTo(handleX,handleY+8);eqCtx.stroke();
+    eqCtx.lineWidth=1.6;
+    eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY-4);eqCtx.lineTo(handleX,handleY-8);eqCtx.lineTo(handleX+4,handleY-4);eqCtx.stroke();
+    eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY+4);eqCtx.lineTo(handleX,handleY+8);eqCtx.lineTo(handleX+4,handleY+4);eqCtx.stroke();
 
     const mid=clamp(Math.abs(+state.dyn.gainMid[b]||0),0,12)/12;
     const side=clamp(Math.abs(+state.dyn.gainSide[b]||0),0,12)/12;
@@ -542,22 +551,29 @@ function drawEQ(){
   eqCtx.font="bold 8px Consolas";
   eqCtx.fillText("OXFORD-STYLE DYNAMIC EQ · OFFSET / TARGET / LIVE GAIN · RIGHT CLICK = M/S",12,h-8);
 }
-let expandedDynamicBand=-1,hoverDynamicBand=-1,dragMode=0,dragBand=-1,dragXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dragDynamicHandleBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynFreqGrabOffsetX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0,dynHandleStartY=0,dynHandleStartValue=0;
+let expandedDynamicBand=-1,hoverDynamicBand=-1,hoverXover=-1,dragMode=0,dragBand=-1,dragXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dragDynamicHandleBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynFreqGrabOffsetX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0,dynHandleStartY=0,dynHandleStartValue=0;
 function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRatio||1;eqCanvas.width=Math.max(1,Math.round(r.width*d));eqCanvas.height=Math.max(1,Math.round(r.height*d));eqCtx.setTransform(d,0,0,d,0,0);drawEQ();}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function showGraphHint(e,text){const r=eqCanvas.getBoundingClientRect();graphHint.textContent=text;graphHint.hidden=false;const pad=6,ox=12,oy=12,x=clamp(e.clientX-r.left+ox,pad,r.width-graphHint.offsetWidth-pad),y=clamp(e.clientY-r.top+oy,pad,r.height-graphHint.offsetHeight-pad);graphHint.style.left=x+"px";graphHint.style.top=y+"px";}
 function hideGraphHint(){graphHint.hidden=true;}
 eqCanvas.addEventListener("contextmenu",e=>e.preventDefault());
-eqCanvas.addEventListener("mousemove",e=>{const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;hoverDynamicBand=dynamicBandAtPointer(x,y,w,h);drawEQ();});
+eqCanvas.addEventListener("mousemove",e=>{const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;const xo=state.ott.x.map(v=>logX(v,w));hoverXover=-1;for(let i=0;i<3;i++)if(Math.hypot(xo[i]-x,20-y)<=10){hoverXover=i;break;}hoverDynamicBand=dynamicBandAtPointer(x,y,w,h);drawEQ();});
 eqCanvas.addEventListener("wheel",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
   if(e.buttons===2||e.button===2){
     const band=hoverDynamicBand>=0?hoverDynamicBand:dynamicBandAtPointer(x,y,w,h);
     if(band>=0){e.preventDefault();state.dyn.ms[band]=clamp(state.dyn.ms[band]-(e.shiftKey?e.deltaY*0.01:e.deltaY*.04),0,100);expandedDynamicBand=band;sendParams();drawEQ();return;}
   }
-  const xo=state.ott.x.map(v=>logX(v,w));let xb=12,xi=-1;
-  for(let i=0;i<3;i++){const d=Math.abs(xo[i]-x);if(d<xb){xb=d;xi=i;}}
-  if(xi>=0){e.preventDefault();const ov=state.ott.overlap??[50,50,50];ov[xi]=clamp((ov[xi]??50)+e.deltaY*.02,0,100);sendParams();drawEQ();return;}
+  // Crossover curvature / OVERLAP is controlled ONLY by the top cross marker.
+  const xo=state.ott.x.map(v=>logX(v,w));let xb=10,xi=-1;
+  const markerY=20;
+  for(let i=0;i<3;i++){const dd=Math.hypot(xo[i]-x,markerY-y);if(dd<xb){xb=dd;xi=i;}}
+  if(xi>=0){
+    e.preventDefault();
+    const ov=state.ott.overlap??[50,50,50];
+    ov[xi]=clamp((ov[xi]??50)-e.deltaY*.50,0,100);
+    sendParams();drawEQ();return;
+  }
   // Wheel on either the static EQ point or active DYNAMICS point
   // adjusts the same shared Q parameter.
   let best=13,band=-1;
@@ -609,7 +625,6 @@ eqCanvas.addEventListener("pointerdown",e=>{
   // Dedicated DYNAMICS arrow handle; priority above the EQ XY node.
   for(let b=0;b<4;b++){
     const dyn=Number(state.dyn.dynamics[b]||0);
-    if(Math.abs(dyn)<=0.01)continue;
     const target=dynamicTargetPoint(b,w,h);
     const handleX=clamp(target.x+11,18,w-12),handleY=target.y;
     if(Math.abs(x-handleX)<=11&&Math.abs(y-handleY)<=14){
