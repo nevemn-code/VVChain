@@ -825,6 +825,8 @@ void VVChainAudioProcessorEditor::addKnob(
             wheelStep = 1.0;
         else if (id.contains("RELEASE"))
             wheelStep = 5.0;
+        else if (id == "DEESS_MODE")
+            wheelStep = 1.0;
         else if (id.contains("DEGREE") || id.contains("MIX")
                  || id.contains("COLOR") || id == "DRY_WET")
             wheelStep = 1.0;
@@ -2437,7 +2439,7 @@ void VVChainAudioProcessorEditor::resized()
             {
                 const auto r = knob->slider->getBounds();
                 analogX2Buttons[(size_t) b]->setBounds(
-                    r.getX() + 1, r.getY() - 7, 24, 14);
+                    r.getX() + 1, r.getY() - 13, 24, 14);
             }
 
         if (analogBypassButtons[(size_t) b])
@@ -3376,6 +3378,9 @@ void VVChainAudioProcessorEditor::mouseUp(
         const auto n = juce::String(dragBand + 1);
         if (auto* parameter =
                 audioProcessor.apvts.getParameter("DYN_DYNAMICS" + n))
+            parameter->endChangeGesture();
+        if (auto* parameter =
+                audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
             parameter->endChangeGesture();
     }
 
