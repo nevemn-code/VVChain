@@ -123,6 +123,62 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
     g.fillEllipse(cx - 2.2f, cy - 2.2f, 4.4f, 4.4f);
 }
 
+void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
+    juce::Graphics& g, int x, int y, int width, int height,
+    float sliderPosProportional, float sliderAsymmetry,
+    float sliderStart, float sliderEnd,
+    juce::Slider::SliderStyle style, juce::Slider& slider)
+{
+    if (slider.getComponentID() == "DEESS_MODE_SWITCH")
+    {
+        juce::ignoreUnused(sliderPosProportional, sliderAsymmetry,
+                           sliderStart, sliderEnd, style);
+        auto r = juce::Rectangle<float>(
+            static_cast<float>(x), static_cast<float>(y),
+            static_cast<float>(width), static_cast<float>(height)).reduced(1.0f);
+        const auto accent = monochrome
+            ? slider.findColour(juce::Slider::thumbColourId).withSaturation(0.0f)
+            : slider.findColour(juce::Slider::thumbColourId);
+        g.setColour(juce::Colours::black.withAlpha(.78f));
+        g.fillRoundedRectangle(r, 5.0f);
+        g.setFont(juce::FontOptions(8.0f).withStyle("Bold"));
+        g.setColour(juce::Colour(0xffcfd5dc));
+        g.drawText("DE-ESS MODE", r.withHeight(14.0f).toNearestInt(),
+                   juce::Justification::left);
+        const auto track = r.withY(r.getY() + 17.0f).withHeight(31.0f);
+        g.setColour(juce::Colour(0xff0c0f13));
+        g.fillRoundedRectangle(track, 5.0f);
+        g.setColour(accent.withAlpha(.45f));
+        g.drawRoundedRectangle(track, 5.0f, 1.0f);
+        static constexpr std::array<const char*, 4> labels { "I", "II", "III", "IV" };
+        const int selected = juce::jlimit(
+            1, 4, static_cast<int>(std::lround(slider.getValue()))) - 1;
+        const float segW = track.getWidth() / 4.0f;
+        for (int i = 0; i < 4; ++i)
+        {
+            auto seg = track.withX(track.getX() + segW * static_cast<float>(i))
+                            .withWidth(segW);
+            if (i == selected)
+            {
+                g.setColour(accent.withAlpha(.28f));
+                g.fillRoundedRectangle(seg.reduced(2.0f), 4.0f);
+                g.setColour(accent);
+                g.drawRoundedRectangle(seg.reduced(2.0f), 4.0f, 1.1f);
+            }
+            g.setFont(juce::FontOptions(8.5f).withStyle("Bold"));
+            g.setColour(i == selected ? juce::Colours::white
+                                      : juce::Colour(0xffaeb5bd));
+            g.drawText(labels[i], seg.toNearestInt(),
+                       juce::Justification::centred);
+        }
+        return;
+    }
+    juce::LookAndFeel_V4::drawLinearSlider(
+        g, x, y, width, height,
+        sliderPosProportional, sliderAsymmetry,
+        sliderStart, sliderEnd, style, slider);
+}
+
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
     juce::Graphics& g, juce::ToggleButton& button,
     bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown)
@@ -590,16 +646,23 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     addKnob("DEESS_INTENSITY", "MAXIMUM REDUCTION", 0, 8, .1,
             parameterValue("DEESS_INTENSITY"), " dB", 4, 1,
             juce::Colour(0xff67d3aa));
-    addKnob("DEESS_MODE", "DE-ESS MODE", 1, 4, 1,
-            parameterValue("DEESS_MODE"), "", 4, 2,
-            juce::Colour(0xff67d3aa));
-    if (auto* modeKnob = findKnob("DEESS_MODE"))
-    {
-        modeKnob->slider->setComponentID("DEESS_MODE");
-        modeKnob->slider->setRotaryParameters(
-            5.0f * juce::MathConstants<float>::pi / 3.0f,
-            7.0f * juce::MathConstants<float>::pi / 3.0f,
-            true);
+    deessModeSwitch = std::make_unique<juce::Slider>();
+    deessModeSwitch->setLookAndFeel(&metalLook);
+    deessModeSwitch->setComponentID("DEESS_MODE_SWITCH");
+    deessModeSwitch->setSliderStyle(juce::Slider::LinearHorizontal);
+    deessModeSwitch->setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    deessModeSwitch->setRange(1.0, 4.0, 1.0);
+    deessModeSwitch->setValue(
+        parameterValue("DEESS_MODE"), juce::dontSendNotification);
+    deessModeSwitch->setColour(
+        juce::Slider::thumbColourId, juce::Colour(0xff67d3aa));
+    deessModeSwitch->setTooltip(
+        "I SAFE 5/120 ms 3:1 · II VOCAL 2/70 ms 4:1 · "
+        "III FAST 0.75/35 ms 8:1 · IV HARD 0.25/20 ms 10:1");
+    deessModeAttachment =
+        std::make_unique<Attachment>(
+            audioProcessor.apvts, "DEESS_MODE", *deessModeSwitch);
+    addAndMakeVisible(*deessModeSwitch);
 
         modeKnob->slider->setTooltip(
             "I SAFE  5/120 ms 3:1   ·   "
@@ -1014,9 +1077,9 @@ float VVChainAudioProcessorEditor::constrainXoverFrequency(int index, float hz) 
 float VVChainAudioProcessorEditor::eqDbToY(
     const juce::Rectangle<float>& graph, float db) const
 {
-    constexpr float graphDb = 36.f;
-    return graph.getBottom() - graph.getHeight()
-        * juce::jlimit(0.f, 1.f, (db + graphDb) / (graphDb * 2.f));
+    const float t =
+        (juce::jlimit(-18.f, 18.f, db) + 18.f) / 36.f;
+    return graph.getBottom() - t * graph.getHeight();
 }
 
 float VVChainAudioProcessorEditor::dynamicThresholdFromDynamics(float dynamics) const
@@ -1265,7 +1328,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     // Restored graph axis labels: dB scale + frequency scale.
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
     g.setColour(juce::Colour(0xffaab0ba));
-    for (float db : { 36.f, 18.f, 0.f, -18.f, -36.f })
+    for (float db : { 18.f, 9.f, 0.f, -9.f, -18.f })
     {
         const float y = eqDbToY(graph, db);
         const auto label = (db > 0.f ? "+" : "")
@@ -2480,16 +2543,18 @@ void VVChainAudioProcessorEditor::resized()
         placeKnob("DEESS_INTENSITY",
                   { deInnerX, startY + deKnobH + deKnobGap,
                     deInnerW, deKnobH });
-        placeKnob("DEESS_MODE",
-                  { deInnerX, startY + (deKnobH + deKnobGap) * 2,
-                    deInnerW, deKnobH });
+        if (deessModeSwitch)
+            deessModeSwitch->setBounds(
+                deInnerX,
+                startY + (deKnobH + deKnobGap) * 2 + 22,
+                deInnerW, 72);
 
         // MIX / OUT are intentionally removed from the DE-ESSER column and
         // live in the right-side global-BYPASS block below DELTA.
         if (deessBypassButton)
             deessBypassButton->setBounds(
-                monitorX + halfW / 2 - 31,
-                cardY + 58, 62, 62);
+                monitorX + halfW / 2 - 25,
+                cardY + 58, 50, 50);
         
         if (deessLocalBypassButton)
             if (auto* knob = findKnob("DEESS_INTENSITY"))
@@ -2504,10 +2569,10 @@ void VVChainAudioProcessorEditor::resized()
                 monitorX + 9, cardY + 131, halfW - 18, 28);
 
         placeKnob("DRY_WET",
-                  { monitorX + 8, cardY + 205,
+                  { monitorX + 8, cardY + 223,
                     halfW - 16, 102 });
         placeKnob("OUTPUT_LEVEL",
-                  { monitorX + 8, cardY + 318,
+                  { monitorX + 8, cardY + 336,
                     halfW - 16, 102 });
     }
 
@@ -3135,49 +3200,18 @@ void VVChainAudioProcessorEditor::mouseDrag(
     if (dragOffsetBand >= 0)
     {
         const auto n = juce::String(dragOffsetBand + 1);
-        const float dragScale =
-            event.mods.isShiftDown() ? 0.1f : 1.0f;
-
-        // Convert the pointer back to the node's grabbed anchor point first.
-        // The old code subtracted the grab offset but then compared against
-        // the MOUSE start X, which introduced an artificial jump/overshoot.
-        const float nodeStartX =
-            graphFrequencyToX(graph, graphFreqDragStartHz);
-        const float correctedPointerX =
-            event.position.x - graphFreqDragGrabOffsetX;
-        const float rawDx = correctedPointerX - nodeStartX;
-        const float rawDy =
-            event.position.y - dynamicGainDragStartY;
-
-        // Static EQ is a true XY control:
-        //   horizontal = Frequency
-        //   vertical   = Gain
-        // Both axes remain active during the same drag, so diagonal dragging
-        // changes Frequency and +/- Gain together.
-        const float effectiveDx = rawDx;
-        const float effectiveDy = rawDy;
-
-        // Exact cursor lock: frequency is the inverse of the graph's own X mapping.
-        // The initial grab offset is preserved, so the EQ point stays under the
-        // same part of the mouse pointer for the entire gesture.
+        // Absolute cursor mapping: no accumulated Y delta and no grab offset.
         const float correctedX =
-            juce::jlimit(
-                graph.getX(),
-                graph.getRight(),
-                event.position.x - graphFreqDragGrabOffsetX);
-
+            juce::jlimit(graph.getX(), graph.getRight(), event.position.x);
         const float hz =
             graphXToFrequency(graph, correctedX);
-
-        const float deltaDb =
-            -effectiveDy
-            / juce::jmax(1.f, graph.getHeight())
-            * 36.f * dragScale;
-
+        const float gainAtCursor =
+            18.f
+            - (event.position.y - graph.getY())
+                / juce::jmax(1.f, graph.getHeight())
+                * 36.f;
         const float offset =
-            juce::jlimit(
-                -18.f, 18.f,
-                dynamicGainDragStartOffset + deltaDb);
+            juce::jlimit(-18.f, 18.f, gainAtCursor);
 
         setGraphControlMoving(true);
         setParameter("EQ" + n + "_FREQ", hz);
@@ -3303,34 +3337,23 @@ void VVChainAudioProcessorEditor::mouseDrag(
     {
         const auto n = juce::String(dragBand + 1);
 
-        const float rawDx =
-            (event.position.x - graphFreqDragGrabOffsetX)
-            - graphFrequencyToX(graph, graphFreqDragStartHz);
-        const float rawDy =
-            event.position.y - dynamicTargetDragStartY;
-        const float dragScale =
-            event.mods.isShiftDown() ? 0.1f : 1.0f;
-
-        // Exact cursor lock: DYNAMICS keeps the initial grab offset on X while
-        // the parameter itself follows the graph's direct log coordinate.
+        // Absolute cursor mapping: Dynamic Target follows live cursor X/Y.
         const float correctedX =
-            juce::jlimit(
-                graph.getX(),
-                graph.getRight(),
-                event.position.x - graphFreqDragGrabOffsetX);
-
+            juce::jlimit(graph.getX(), graph.getRight(), event.position.x);
         const float hz =
             graphXToFrequency(graph, correctedX);
-
-        const float deltaDynamics =
-            -rawDy
-            / juce::jmax(1.f, graph.getHeight())
-            * 200.f * dragScale;
-
+        const float targetGain =
+            juce::jlimit(
+                -18.f, 18.f,
+                18.f
+                - (event.position.y - graph.getY())
+                    / juce::jmax(1.f, graph.getHeight())
+                    * 36.f);
+        const float offset = parameterValue("EQ" + n + "_GAIN");
         const float dynamics =
             juce::jlimit(
                 -100.f, 100.f,
-                dynamicDragStartDynamics + deltaDynamics);
+                (targetGain - offset) / 18.f * 100.f);
 
         setGraphControlMoving(true);
         setParameter("EQ" + n + "_FREQ", hz);
