@@ -280,7 +280,7 @@ def test_eq_xy_drag_math():
     assert 'DIRECT AUDIO FALLBACK' in web
     assert 'onmessageerror' in web
     assert 'revision:paramSyncRevision' in web
-    assert '?v=1.0.6' in web
+    assert '?v=1.0.7' in web
     assert 'LAST ' not in web
     assert 'VVCHAIN v1.0.7' in web
 
