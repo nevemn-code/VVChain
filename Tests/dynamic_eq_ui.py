@@ -238,7 +238,7 @@ def test_eq_xy_drag_math():
     assert 'makeKnob(monitorKnobs,{label:"OUT",controlId:"OUTPUT_LEVEL"' in web
     assert 'AudioWorklet unsupported' in web
     assert 'vvchain-worklet.js' in web
-    assert 'TYPE-A SHARED XOVER + INDEPENDENT DELTA' in web
+    assert 'VVCHAIN v1.0.6' in web
     assert 'DSP ERROR · AudioWorklet processor failed' in web
     assert '.knob.graphActive .dial' in web
 
