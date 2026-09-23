@@ -294,6 +294,9 @@ def test_v104_tape_a_stateless_normalized():
     assert "c.typeFast[b]" not in worklet_tape
     assert "c.typeSlow[b]" not in worklet_tape
     assert "low2-low1" in worklet_tape and "low3-low2" in worklet_tape
+    assert "c.typeLp[0]+=a80*(ti-c.typeLp[0])" in worklet_tape
+    assert "c.typeLp[1]+=a3k*(ti-c.typeLp[1])" in worklet_tape
+    assert "c.typeLp[2]+=a9k*(ti-c.typeLp[2])" in worklet_tape
     assert "VVCHAIN v1.0.4" in web
     assert "VVCHAIN v1.0.4" in editor
 
