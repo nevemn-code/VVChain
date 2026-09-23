@@ -70,7 +70,7 @@ private:
     {
     public:
         FloatingValueBox()
-            : m_font(juce::FontOptions(9.0f).withStyle("Bold"))
+            : m_font(juce::FontOptions(8.5f).withStyle("Bold"))
         {
             setInterceptsMouseClicks(false, false);
             setMouseCursor(juce::MouseCursor::NormalCursor);
@@ -95,9 +95,9 @@ private:
             // Fixed width avoids repeated font-metric work on every mouse move.
             // The box is deliberately compact but wide enough for frequency + signed dB.
             if (textChanged || m_boxWidth <= 0)
-                m_boxWidth = 132;
+                m_boxWidth = 108;
 
-            constexpr int boxHeight = 40;
+            constexpr int boxHeight = 36;
             int targetX = mousePos.x + 14;
             int targetY = mousePos.y - boxHeight - 14;
 
@@ -138,10 +138,10 @@ private:
             g.setColour(juce::Colours::white);
             g.setFont(m_font);
             g.drawText(
-                m_freqText, 6, 4, getWidth() - 12, 15,
+                m_freqText, 5, 3, getWidth() - 10, 14,
                 juce::Justification::centredLeft);
             g.drawText(
-                m_gainText, 6, 21, getWidth() - 12, 15,
+                m_gainText, 5, 19, getWidth() - 10, 14,
                 juce::Justification::centredLeft);
         }
 
@@ -340,6 +340,10 @@ private:
         void drawRotarySlider(juce::Graphics&, int x, int y, int width, int height,
                               float sliderPosProportional, float rotaryStartAngle,
                               float rotaryEndAngle, juce::Slider&) override;
+        void drawLinearSlider(juce::Graphics&, int x, int y, int width, int height,
+                              float sliderPosProportional, float sliderAsymmetry,
+                              float sliderStart, float sliderEnd,
+                              juce::Slider::SliderStyle, juce::Slider&) override;
         void drawToggleButton(juce::Graphics&, juce::ToggleButton&,
                               bool shouldDrawButtonAsHighlighted,
                               bool shouldDrawButtonAsDown) override;
@@ -416,6 +420,8 @@ private:
     std::unique_ptr<BoolAttachment> masterBypassAttachment;
     std::unique_ptr<juce::ToggleButton> deessBypassButton;
     std::unique_ptr<BoolAttachment> deessBypassAttachment;
+    std::unique_ptr<juce::Slider> deessModeSwitch;
+    std::unique_ptr<Attachment> deessModeAttachment;
     std::unique_ptr<juce::ToggleButton> deessLocalBypassButton;
     std::unique_ptr<BoolAttachment> deessLocalBypassAttachment;
     std::unique_ptr<juce::ToggleButton> deltaMonitorButton;
