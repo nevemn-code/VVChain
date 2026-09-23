@@ -17,6 +17,7 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
     void mouseMove(const juce::MouseEvent&) override;
+    void mouseExit(const juce::MouseEvent&) override;
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
@@ -26,6 +27,98 @@ public:
 private:
     using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using BoolAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
+
+    class FloatingValueBox final : public juce::Component
+    {
+    public:
+        FloatingValueBox()
+        {
+            setInterceptsMouseClicks(false, false);
+            setMouseCursor(juce::MouseCursor::NormalCursor);
+            m_font = juce::FontOptions(9.0f).withStyle("Bold");
+            setVisible(false);
+        }
+
+        void updateInfo(const juce::String& freqText,
+                        const juce::String& gainText,
+                        juce::Point<int> mousePos,
+                        juce::Rectangle<int> parentBounds)
+        {
+            const bool textChanged =
+                m_freqText != freqText || m_gainText != gainText;
+
+            if (!textChanged && m_lastPos == mousePos && isVisible())
+                return;
+
+            m_freqText = freqText;
+            m_gainText = gainText;
+            m_lastPos = mousePos;
+
+            if (textChanged || m_boxWidth <= 0)
+            {
+                const int wFreq =
+                    static_cast<int>(m_font.getStringWidthFloat(m_freqText));
+                const int wGain =
+                    static_cast<int>(m_font.getStringWidthFloat(m_gainText));
+                m_boxWidth = juce::jlimit(
+                    118, 190, juce::jmax(wFreq, wGain) + 18);
+            }
+
+            constexpr int boxHeight = 36;
+            int targetX = mousePos.x + 14;
+            int targetY = mousePos.y - boxHeight - 14;
+
+            if (targetX + m_boxWidth > parentBounds.getRight())
+                targetX = mousePos.x - m_boxWidth - 14;
+            if (targetX < parentBounds.getX())
+                targetX = parentBounds.getX() + 4;
+
+            if (targetY < parentBounds.getY())
+                targetY = mousePos.y + 14;
+            if (targetY + boxHeight > parentBounds.getBottom())
+                targetY = parentBounds.getBottom() - boxHeight - 4;
+
+            setBounds(targetX, targetY, m_boxWidth, boxHeight);
+            if (!isVisible())
+                setVisible(true);
+            repaint();
+        }
+
+        void hideInstantly()
+        {
+            if (isVisible())
+                setVisible(false);
+            m_lastPos = { -1, -1 };
+            m_freqText.clear();
+            m_gainText.clear();
+        }
+
+        void paint(juce::Graphics& g) override
+        {
+            g.setColour(juce::Colour(0xE6111111));
+            g.fillRoundedRectangle(getLocalBounds().toFloat(), 4.0f);
+
+            g.setColour(juce::Colour(0x55FFFFFF));
+            g.drawRoundedRectangle(
+                getLocalBounds().toFloat(), 4.0f, 1.0f);
+
+            g.setColour(juce::Colours::white);
+            g.setFont(m_font);
+            g.drawText(
+                m_freqText, 7, 4, getWidth() - 14, 13,
+                juce::Justification::centred);
+            g.drawText(
+                m_gainText, 7, 19, getWidth() - 14, 13,
+                juce::Justification::centred);
+        }
+
+    private:
+        juce::String m_freqText;
+        juce::String m_gainText;
+        juce::Font m_font;
+        juce::Point<int> m_lastPos { -1, -1 };
+        int m_boxWidth = 0;
+    };
 
     class WheelSlider final : public juce::Slider
     {
@@ -190,10 +283,12 @@ private:
     juce::Rectangle<float> dynamicMsPopupBounds(int band) const;
     juce::Point<float> dynamicTargetPoint(int band) const;
     bool pointNearDynamicNode(juce::Point<float>, int& band) const;
+    void updateFloatingValueBoxAt(juce::Point<float> position);
     float dynamicAverageGainChangeDb(int band) const;
     float dynamicMidGainChangeDb(int band) const;
     float dynamicSideGainChangeDb(int band) const;
 
+    FloatingValueBox floatingValueBox;
     VVChainAudioProcessor& audioProcessor;
     MetalLookAndFeel metalLook;
 
