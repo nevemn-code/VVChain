@@ -52,6 +52,12 @@ https://nevemn-code.github.io/VVChain/
 - 已確認 Web 播放音訊處理鏈、參數控制、DELTA 與 Bypass 正常。
 - 此版本作為後續 UI 修改的基準，不回改其已驗證的音訊處理鏈。
 
+### v1.0.3｜Dynamic EQ / Graph 操作修正
+- 修正 DYNAMICS 與該頻段靜態 GAIN 重複計算造成的高增益／爆音問題；Native 與 Web 都限制動態總 GAIN 在安全範圍。
+- 上方 EQ / DYNAMICS / Q 操作統一顯示即時小框，列出 FREQ / GAIN / DYN / Q，正在移動的參數粗體化，滑鼠放開立即關閉。
+- DYNAMICS Target 點改為可直接抓取控制；上下箭頭保留為獨立 DYNAMICS 微調把手。
+- CI/CD 修正 JUCE `StringArray` 編譯陷阱與同步檢查範圍，並更新 GitHub Actions cache 版本。
+
 ### v1.0.2｜本次 UI / 操作更新
 - 上方 EQ Graph 補回 dB 正負刻度與頻率刻度。
 - 上方 DYNAMICS Target 點支援上下調整 DYNAMICS、左右同步移動 EQ 頻率；下方 DYNAMICS 與之同步。
