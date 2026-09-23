@@ -246,7 +246,7 @@ def test_eq_xy_drag_math():
     assert 'ANALOG COLOR is an independent module' in dsp_text
     assert 'if (p.eqColorGlobalBypass || p.eqColorBypass[band])' in dsp_text
     assert 'FloatingValueBox' in cpp
-    assert 'setInterceptsMouseClicks(false, false)' in cpp
+    assert 'setInterceptsMouseClicks(false, false)' in head
     assert 'updateFloatingValueBoxAt' in cpp
     assert 'void VVChainAudioProcessorEditor::mouseExit' in cpp
     assert 'if (id.startsWith("OTT_DEGREE")' in cpp
