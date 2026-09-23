@@ -1987,6 +1987,22 @@ void VVChainAudioProcessorEditor::mouseDown(
     const auto pos = event.position;
     const auto graph = eqGraphBounds();
 
+    // Any click outside the open M/S popup closes it immediately.
+    // This check is intentionally before the graph bounds check so a click
+    // anywhere else in the editor also closes the popup.
+    if (expandedDynamicBand >= 0
+        && !dynamicMsPopupBounds(expandedDynamicBand).contains(pos))
+    {
+        expandedDynamicBand = -1;
+        dragDynamicMsBand = -1;
+        dragDynamicTargetBand = -1;
+        dragBand = -1;
+        dragXover = -1;
+        showGraphDragHint = false;
+        repaint();
+        return;
+    }
+
     if (!graph.contains(pos))
         return;
 
@@ -2218,11 +2234,27 @@ void VVChainAudioProcessorEditor::mouseDrag(
 
     if (dragXover >= 0)
     {
+        const float xDelta =
+            (event.position.x - graphFrequencyToX(
+                graph,
+                parameterValue(
+                    dragXover == 0 ? "OTT_X1"
+                    : dragXover == 1 ? "OTT_X2"
+                                     : "OTT_X3")));
+        const float dragScale =
+            event.mods.isShiftDown() ? 0.1f : 1.0f;
         const float hz =
             constrainXoverFrequency(
                 dragXover,
                 graphXToFrequency(
-                    graph, event.position.x));
+                    graph,
+                    graphFrequencyToX(
+                        graph,
+                        parameterValue(
+                            dragXover == 0 ? "OTT_X1"
+                            : dragXover == 1 ? "OTT_X2"
+                                             : "OTT_X3"))
+                        + xDelta * dragScale)));
 
         setParameter(
             dragXover == 0 ? "OTT_X1"
@@ -2252,26 +2284,37 @@ void VVChainAudioProcessorEditor::mouseDrag(
     const auto n =
         juce::String(dragBand + 1);
 
-    // Linear Hz-per-pixel across the full 20 Hz..20 kHz range.
-    const float hzPerPixel =
-        19980.f / juce::jmax(
-            1.f, graph.getWidth());
+    // Match the lower FREQ knob exactly:
+    // range 20..20000 Hz, skew midpoint 632 Hz, 180 px full-range drag.
+    // Shift slows this by 10x, giving fine control without changing the
+    // parameter's minimum APVTS increment.
+    const juce::NormalisableRange<float> freqRange(
+        20.f, 20000.f, 0.01f, 5.02888112f);
+    const float startNorm =
+        freqRange.convertTo0to1(
+            juce::jlimit(20.f, 20000.f, dynamicFreqDragStartHz));
+    const float dragScale =
+        event.mods.isShiftDown() ? 0.1f : 1.0f;
+    const float norm =
+        juce::jlimit(
+            0.f, 1.f,
+            startNorm
+                + (event.position.x - dynamicFreqDragStartX)
+                    / 180.f * dragScale);
 
     const float hz =
-        juce::jlimit(
-            20.f, 20000.f,
-            dynamicFreqDragStartHz
-                + (event.position.x
-                    - dynamicFreqDragStartX)
-                    * hzPerPixel);
+        freqRange.convertFrom0to1(norm);
 
     // Sonnox-style vertical drag: Offset and Target move together,
     // preserving their relative separation.
+    const float dragScale =
+        event.mods.isShiftDown() ? 0.1f : 1.0f;
+
     const float deltaDb =
         -(event.position.y
             - dynamicGainDragStartY)
             / juce::jmax(1.f, graph.getHeight())
-            * 36.f;
+            * 36.f * dragScale;
 
     const float offset =
         juce::jlimit(
@@ -2337,7 +2380,7 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
         || std::abs(wheel.deltaY) < 0.0001f)
         return;
 
-    // Right-button + wheel = M/S percentage only.
+    // Right-button + wheel = M/S. Shift makes it the minimum 0.01 step.
     if (event.mods.isRightButtonDown())
     {
         int band = hoverDynamicBand;
@@ -2352,11 +2395,13 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
                 "DYN_MS"
                 + juce::String(band + 1);
 
+            const float step =
+                event.mods.isShiftDown() ? 0.01f : 4.0f;
             const float next =
                 juce::jlimit(
                     0.f, 100.f,
                     parameterValue(id)
-                        + wheel.deltaY * 4.0f);
+                        + wheel.deltaY * step);
 
             setParameter(id, next);
             expandedDynamicBand = band;
@@ -2407,10 +2452,14 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
                 "EQ" + n + "_Q"));
 
     const float nextQ =
-        juce::jlimit(
-            0.1f, 18.f,
-            q * std::exp(
-                -wheel.deltaY * .25f));
+        event.mods.isShiftDown()
+            ? juce::jlimit(
+                0.1f, 18.f,
+                q + wheel.deltaY * 0.01f)
+            : juce::jlimit(
+                0.1f, 18.f,
+                q * std::exp(
+                    -wheel.deltaY * .25f));
 
     setParameter(
         "EQ" + n + "_Q", nextQ);
