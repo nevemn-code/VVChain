@@ -225,6 +225,12 @@ private:
     bool showGraphDragHint = false;
     juce::String graphDragHint;
     juce::Point<float> graphDragHintPosition {};
+
+    // Graph gestures are deliberately separated:
+    // Static EQ node = XY (frequency + static gain)
+    // Dynamic range handle = vertical only (DYNAMICS parameter)
+    // X-overs = horizontal only
+    float dynamicDragStartDynamics = 0.0f;
     bool lastMasterBypassUi = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VVChainAudioProcessorEditor)
