@@ -263,7 +263,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         const auto n = juce::String(b + 1);
 
         // Main EQ controls.
-        addKnob("EQ" + n + "_GAIN", "GAIN", -24, 24, .1,
+        addKnob("EQ" + n + "_GAIN", "GAIN", -18, 18, .1,
                 parameterValue("EQ" + n + "_GAIN"), " dB", b, 0, c);
         addKnob("EQ" + n + "_FREQ", "FREQ", 20, 20000, 1,
                 parameterValue("EQ" + n + "_FREQ"), " Hz", b, 1, c);

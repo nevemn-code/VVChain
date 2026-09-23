@@ -67,7 +67,6 @@ def source_assertions():
         'followScale = 0.74f',
         'Dynamic Range is deliberately Y-only',
         'DYNAMICS uses a truly linear bipolar map',
-        'graphDb = 36.f',
         'constexpr float staticNodeRadius = 8.0f',
         'getTargetGainDB',
         'peakMagnitudeDBAtFrequency',
@@ -196,16 +195,16 @@ def test_dynamic_range_independence_500():
     """500 deterministic boundary/random cases for Static + Dynamic dB math."""
     rng = random.Random(20260923_500)
     for _ in range(500):
-        static_db = rng.uniform(-24.0, 24.0)
-        dynamic_range_db = rng.uniform(-24.0, 24.0)
+        static_db = rng.uniform(-18.0, 18.0)
+        dynamic_range_db = rng.uniform(-9.0, 9.0)
         dynamics_pct = rng.uniform(-100.0, 100.0)
         amount = abs(dynamics_pct) / 100.0
         direction = -1.0 if dynamics_pct < 0.0 else 1.0
         contribution = direction * abs(dynamic_range_db) * amount
 
-        expected = clamp(static_db + contribution, -36.0, 36.0)
+        expected = clamp(static_db + contribution, -27.0, 27.0)
         assert math.isfinite(expected)
-        assert -36.0 <= expected <= 36.0
+        assert -27.0 <= expected <= 27.0
 
         zero_static = clamp(contribution, -27.0, 27.0)
         plus_18 = clamp(18.0 + contribution, -27.0, 27.0)
@@ -216,7 +215,7 @@ def test_dynamic_range_independence_500():
             assert abs((minus_18 + 18.0) - contribution) < 1e-9
         assert abs(zero_static - contribution) < 1e-9
 
-    # Reference case: Static 0 dB + Dynamic Range -12 dB = -12 dB.
+    # Reference case: Static 0 dB + Dynamic Range -9 dB = -9 dB.
     assert abs(clamp(-9.0, -27.0, 27.0) - (-9.0)) < 1e-9
 
 def test_dynamic_target_preserves_full_range_when_static_gain_moves():
@@ -332,6 +331,7 @@ def main():
     test_dynamic_cross_zero_is_linear()
     test_eq_xy_drag_math()
     test_dynamic_range_independence_500()
+    test_dynamic_target_preserves_full_range_when_static_gain_moves()
     test_dynamic_target_is_linear()
     test_threshold_is_linear()
     test_target_visual_direction()

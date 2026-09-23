@@ -314,11 +314,11 @@ function dynamicThresholdFromDynamics(dynamics){
 }
 function dynamicEffectiveTargetGain(b){
   const offset=clamp(state.eq.gain[b],-18,18);
-  const dynamicRangeDb=Math.abs(clamp(Number(state.dyn.target[b]??0),-24,24));
+  const dynamicRangeDb=Math.abs(clamp(Number(state.dyn.target[b]??0),-9,9));
   const dynamics=clamp(Number(state.dyn.dynamics[b]??0),-100,100);
   const amount=Math.abs(dynamics)/100;
   const direction=dynamics<0?-1:1;
-  return clamp(offset+direction*dynamicRangeDb*amount,-36,36);
+  return clamp(offset+direction*dynamicRangeDb*amount,-27,27);
 }
 function dynamicBandAtPointer(x,y,w,h){
   let best=22,band=-1;
@@ -443,7 +443,7 @@ function drawEQ(){
   for(let b=0;b<4;b++){
     const c=cols[b];
     const target=dynamicEffectiveTargetGain(b);
-    const offset=clamp(state.eq.gain[b],-24,24);
+    const offset=clamp(state.eq.gain[b],-18,18);
     const upper=[],lower=[];
     for(let i=0;i<=220;i++){
       const hzv=invLog(i/220),x=logX(hzv,w);
@@ -709,7 +709,7 @@ eqCanvas.addEventListener("pointermove",e=>{
     const hzv=20*Math.pow(1000,norm);
     const deltaDb=-effectiveDy/Math.max(1,h)*36*fine;
     state.eq.freq[dragBand]=hzv;
-    state.eq.gain[dragBand]=clamp(dynGainStartOffset+deltaDb,-24,24);
+    state.eq.gain[dragBand]=clamp(dynGainStartOffset+deltaDb,-18,18);
     sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
   }
   if(dragMode===2&&dragBand>=0){

@@ -127,7 +127,7 @@ void VVChainDSP::updateDynamicPeak(Biquad& filter, double fs, double f0,
     const double safeF = juce::jlimit(10.0, fs * 0.45, f0);
     const double safeQ = juce::jlimit(0.05, 30.0, q);
     const double A = std::pow(
-        10.0, juce::jlimit(-36.0, 36.0, gainDb) / 40.0);
+        10.0, juce::jlimit(-27.0, 27.0, gainDb) / 40.0);
     const double w0 = juce::MathConstants<double>::twoPi * safeF / fs;
     const double c = std::cos(w0);
     const double s = std::sin(w0);
