@@ -728,18 +728,13 @@ float VVChainAudioProcessorEditor::dynamicEffectiveTargetGain(int band) const
     if (band < 0 || band >= 4)
         return 0.f;
 
+    // Target is a fixed endpoint in the UI, independent of current Dynamics.
+    // Dynamics controls how far the live gain travels toward Target.
+    // Keeping Target visible at 0% is essential: the user must still see
+    // what the Dynamic EQ is configured to do even while it is at Offset.
     const auto n = juce::String(band + 1);
-    const float offset =
-        juce::jlimit(-24.f, 24.f, parameterValue("EQ" + n + "_GAIN"));
-    const float target =
-        juce::jlimit(-24.f, 24.f, parameterValue("DYN_TARGET" + n));
-    const float dynamics =
-        juce::jlimit(-100.f, 100.f,
-            parameterValue("DYN_DYNAMICS" + n)) * 0.01f;
-
     return juce::jlimit(-24.f, 24.f,
-        offset + (dynamics >= 0.f ? 1.f : -1.f)
-            * std::abs(target - offset) * std::abs(dynamics));
+                        parameterValue("DYN_TARGET" + n));
 }
 
 juce::Rectangle<float> VVChainAudioProcessorEditor::dynamicMsPopupBounds(int band) const
@@ -780,19 +775,35 @@ bool VVChainAudioProcessorEditor::pointNearDynamicNode(
     juce::Point<float> p, int& band) const
 {
     const auto graph = eqGraphBounds();
-    float best = 24.f;
+    float best = 28.f;
     band = -1;
 
+    // A Dynamic EQ band has three visible states:
+    // Offset = resting EQ gain
+    // Target = configured dynamic endpoint
+    // Live   = instantaneous dynamic gain
+    //
+    // The hit-test must not depend on Live alone, otherwise the same mouse
+    // position changes meaning whenever the detector envelope moves.
     for (int b = 0; b < 4; ++b)
     {
         const auto n = juce::String(b + 1);
         const float x = graphFrequencyToX(
             graph, parameterValue("EQ" + n + "_FREQ"));
-        const float liveGain =
+
+        const float offsetY = eqDbToY(
+            graph, parameterValue("EQ" + n + "_GAIN"));
+        const float targetY = dynamicTargetPoint(b).y;
+        const float liveY = eqDbToY(
+            graph,
             parameterValue("EQ" + n + "_GAIN")
-            + dynamicAverageGainChangeDb(b);
-        const float y = eqDbToY(graph, liveGain);
-        const float d = p.getDistanceFrom({ x, y });
+                + dynamicAverageGainChangeDb(b));
+
+        const float d = std::min(
+            p.getDistanceFrom({ x, offsetY }),
+            std::min(
+                p.getDistanceFrom({ x, targetY }),
+                p.getDistanceFrom({ x, liveY })));
 
         if (d < best)
         {
@@ -2059,7 +2070,8 @@ void VVChainAudioProcessorEditor::mouseDown(
             dragDynamicMsBand = -1;
             dynamicTargetDragStartY = pos.y;
             dynamicTargetDragStartValue =
-                dynamicEffectiveTargetGain(b);
+                juce::jlimit(-24.f, 24.f,
+                    parameterValue("DYN_TARGET" + n));
             showGraphDragHint = true;
             graphDragHintPosition = pos;
             graphDragHint = "TARGET "
@@ -2110,8 +2122,44 @@ void VVChainAudioProcessorEditor::mouseDown(
         return;
     }
 
-    // Main Sonnox-style colour fill / live node:
+    // Offset handle: edit the normal/static EQ gain only.
+    // It must not move Target or change Dynamic EQ settings.
+    for (int b = 0; b < 4; ++b)
+    {
+        const auto n = juce::String(b + 1);
+        const float x = graphFrequencyToX(
+            graph, parameterValue("EQ" + n + "_FREQ"));
+        const float y = eqDbToY(
+            graph, parameterValue("EQ" + n + "_GAIN"));
+
+        if (event.mods.isLeftButtonDown()
+            && pos.getDistanceFrom({ x, y }) < 11.f)
+        {
+            dragDynamicTargetBand = -1;
+            dragOffsetBand = b;
+            dragBand = -1;
+            dragXover = -1;
+            dragDynamicMsBand = -1;
+
+            dynamicGainDragStartY = pos.y;
+            dynamicGainDragStartOffset =
+                parameterValue("EQ" + n + "_GAIN");
+
+            showGraphDragHint = true;
+            graphDragHintPosition = pos;
+            graphDragHint =
+                "EQ " + n + "   OFFSET "
+                + juce::String(dynamicGainDragStartOffset, 1)
+                + " dB";
+            repaint();
+            return;
+        }
+    }
+
+    // Main Sonnox-style colour fill:
     // horizontal = frequency, vertical = Offset + Target together.
+    // Clicking the coloured dynamic area moves the two handles together;
+    // clicking Offset or Target directly edits only that handle.
     if (event.mods.isLeftButtonDown()
         && pointNearDynamicNode(pos, band))
     {
@@ -2201,50 +2249,59 @@ void VVChainAudioProcessorEditor::mouseDrag(
 {
     const auto graph = eqGraphBounds();
 
+    if (dragOffsetBand >= 0)
+    {
+        const auto n = juce::String(dragOffsetBand + 1);
+        const float deltaDb =
+            -(event.position.y - dynamicGainDragStartY)
+            / juce::jmax(1.f, graph.getHeight())
+            * 36.f
+            * (event.mods.isShiftDown() ? 0.1f : 1.0f);
+
+        const float offset =
+            juce::jlimit(
+                -24.f, 24.f,
+                dynamicGainDragStartOffset + deltaDb);
+
+        setParameter("EQ" + n + "_GAIN", offset);
+
+        if (auto* gainKnob = findKnob("EQ" + n + "_GAIN"))
+            gainKnob->slider->setValue(
+                offset, juce::dontSendNotification);
+
+        graphDragHintPosition = event.position;
+        graphDragHint =
+            "EQ " + n + "   OFFSET "
+            + juce::String(offset, 1) + " dB";
+        showGraphDragHint = true;
+        repaint();
+        return;
+    }
+
     if (dragDynamicTargetBand >= 0)
     {
         const auto n =
             juce::String(dragDynamicTargetBand + 1);
-        const float dynamics =
+
+        const float deltaDb =
+            -(event.position.y - dynamicTargetDragStartY)
+            / juce::jmax(1.f, graph.getHeight())
+            * 36.f
+            * (event.mods.isShiftDown() ? 0.1f : 1.0f);
+
+        const float target =
             juce::jlimit(
-                -100.f, 100.f,
-                parameterValue("DYN_DYNAMICS" + n)) * 0.01f;
+                -24.f, 24.f,
+                dynamicTargetDragStartValue + deltaDb);
 
-        if (std::abs(dynamics) > 0.001f)
-        {
-            const float deltaDb =
-                -(event.position.y - dynamicTargetDragStartY)
-                / juce::jmax(1.f, graph.getHeight())
-                * 36.f;
+        setParameter("DYN_TARGET" + n, target);
 
-            const float offset =
-                juce::jlimit(
-                    -24.f, 24.f,
-                    parameterValue("EQ" + n + "_GAIN"));
-            const float desiredTarget =
-                juce::jlimit(
-                    -24.f, 24.f,
-                    dynamicTargetDragStartValue + deltaDb);
-            const float maxSpan =
-                std::min(
-                    48.f,
-                    std::abs(desiredTarget - offset)
-                        / std::max(std::abs(dynamics), 0.001f));
-            const float rawTarget =
-                offset
-                    + (dynamics >= 0.f ? 1.f : -1.f) * maxSpan;
-
-            setParameter(
-                "DYN_TARGET" + n,
-                juce::jlimit(-24.f, 24.f, rawTarget));
-
-            graphDragHintPosition = event.position;
-            graphDragHint =
-                "TARGET "
-                + juce::String(desiredTarget, 1)
-                + " dB   DYN "
-                + juce::String(dynamics * 100.f, 0);
-        }
+        graphDragHintPosition = event.position;
+        graphDragHint =
+            "TARGET " + juce::String(target, 1)
+            + " dB   DYN "
+            + juce::String(
+                parameterValue("DYN_DYNAMICS" + n), 0);
 
         showGraphDragHint = true;
         repaint();
@@ -2404,6 +2461,7 @@ void VVChainAudioProcessorEditor::mouseUp(
     const juce::MouseEvent&)
 {
     dragBand = -1;
+    dragOffsetBand = -1;
     dragXover = -1;
     dragDynamicMsBand = -1;
     dragDynamicTargetBand = -1;
@@ -2452,37 +2510,10 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
         }
     }
 
-    // Normal wheel near an EQ node still controls Q.
-    float best = 22.f;
+    // Normal wheel near any visible EQ / Dynamic EQ handle controls Q.
+    // Do not make Q hit-testing depend on the instantaneous detector state.
     int band = -1;
-
-    for (int b = 0; b < 4; ++b)
-    {
-        const auto n = juce::String(b + 1);
-        const float x =
-            graphFrequencyToX(
-                graph,
-                parameterValue(
-                    "EQ" + n + "_FREQ"));
-        const float live =
-            parameterValue(
-                "EQ" + n + "_GAIN")
-            + dynamicAverageGainChangeDb(b);
-        const float y =
-            eqDbToY(graph, live);
-
-        const float d =
-            event.position.getDistanceFrom(
-                { x, y });
-
-        if (d < best)
-        {
-            best = d;
-            band = b;
-        }
-    }
-
-    if (band < 0)
+    if (!pointNearDynamicNode(event.position, band))
         return;
 
     const auto n =
