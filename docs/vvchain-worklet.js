@@ -303,7 +303,6 @@ class VVChainWorklet extends AudioWorkletProcessor {
       if(s.delta){yL=yL-l;yR=yR-r;}
       out[0][n]=this.finite(yL);if(out[1])out[1][n]=this.finite(yR);
     }
-    this._meterBlocks++;
     // UI meters are diagnostic only; ~10 Hz is enough and keeps MessagePort
     // traffic well below the parameter-update rate.
     this._meterBlocks++;
