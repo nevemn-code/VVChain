@@ -1,5 +1,9 @@
 # VVChain 開發規則
 
+## 0. 版本識別
+所有專案版本統一使用 `vMAJOR.MINOR.PATCH`。禁止要求或同步使用者電腦時間；專案規則、Commit、Web Preview 不使用時間碼作為版本識別。
+
+
 ## 1. JUCE / Web Preview 雙版本同步
 任何功能、UI、操作邏輯、參數、DSP 或互動修改，只要該功能存在於 Web Preview，就必須同步修改兩套實作：
 
