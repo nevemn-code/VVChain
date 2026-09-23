@@ -218,7 +218,7 @@ def test_eq_xy_drag_math():
     assert 'yL=yL-l;' in worklet and 'yR=yR-r;' in worklet
     assert 'dryL=L,dryR=R' not in worklet
     assert 'yL=yL-l;' in worklet and 'yR=yR-r;' in worklet
-    assert 'type:"ready"' in web
+    assert 'type:"ready"' in worklet
     assert 'workletFaulted' in web
     assert 'DSP STARTING' in web
     assert 'class=\'deessPower\'' in web
