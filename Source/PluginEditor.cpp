@@ -1101,7 +1101,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             + juce::String(db, 0) + " dB";
         g.drawText(label,
                    (int)graph.getX() + 5,
-                   (int)y - 7,
+                   (int)juce::jmax(graph.getY() + 1.f, y - 7.f),
                    44, 12,
                    juce::Justification::left);
     }
@@ -1570,20 +1570,6 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                    graph.getHeight());
     }
 
-    g.setFont(juce::FontOptions(8.f));
-    g.setColour(juce::Colour(0xffaab0ba));
-    g.drawText(
-        "20", (int)graph.getX() + 6,
-        (int)graph.getBottom() - 15,
-        28, 12, juce::Justification::left);
-    g.drawText(
-        "1k", (int)graph.getCentreX() - 12,
-        (int)graph.getBottom() - 15,
-        24, 12, juce::Justification::centred);
-    g.drawText(
-        "20k", (int)graph.getRight() - 28,
-        (int)graph.getBottom() - 15,
-        28, 12, juce::Justification::right);
 
     drawGraphDragHint(g, graph);
 }
