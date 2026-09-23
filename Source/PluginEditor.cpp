@@ -126,7 +126,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
     juce::Graphics& g, int x, int y, int width, int height,
     float sliderPosProportional, float sliderAsymmetry,
-    float sliderStart, float sliderEnd,
+    float sliderStart,
     juce::Slider::SliderStyle style, juce::Slider& slider)
 {
     if (slider.getComponentID() == "DEESS_MODE_SWITCH")
@@ -176,7 +176,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
     juce::LookAndFeel_V4::drawLinearSlider(
         g, x, y, width, height,
         sliderPosProportional, sliderAsymmetry,
-        sliderStart, sliderEnd, style, slider);
+        sliderStart, style, slider);
 }
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
@@ -664,12 +664,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
             audioProcessor.apvts, "DEESS_MODE", *deessModeSwitch);
     addAndMakeVisible(*deessModeSwitch);
 
-        modeKnob->slider->setTooltip(
-            "I SAFE  5/120 ms 3:1   ·   "
-            "II VOCAL  2/70 ms 4:1   ·   "
-            "III FAST  0.75/35 ms 8:1   ·   "
-            "IV HARD  0.25/20 ms 10:1");
-    }
+
 
     deessBypassButton = std::make_unique<juce::ToggleButton>();
     deessBypassButton->setLookAndFeel(&metalLook);
