@@ -604,7 +604,8 @@ def main():
     test_dynamic_drag_anchor_is_exact()
     test_dynamic_cross_zero_is_linear()
     test_eq_xy_drag_math()
-    test_deess_500_candidate_matrix()
+    for _ in range(10):
+        test_deess_500_candidate_matrix()
     test_dynamic_range_centered_500()
     test_dynamic_target_preserves_eq_as_center()
     test_dynamic_target_is_linear()
