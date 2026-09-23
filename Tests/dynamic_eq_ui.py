@@ -211,6 +211,12 @@ def test_eq_xy_drag_math():
     assert 'if (p.deltaMonitor)' in DSP.read_text(encoding='utf-8')
     assert 'wet[n] = wet[n] - delayedDry;' in DSP.read_text(encoding='utf-8')
     assert 'final plugin output - the original input sample' in web
+    worklet_file = ROOT / "docs" / "vvchain-worklet.js"
+    assert worklet_file.exists(), "same-origin AudioWorklet module must exist"
+    worklet = worklet_file.read_text(encoding="utf-8")
+    assert 'registerProcessor("vvchain-worklet",VVChainWorklet)' in worklet
+    assert 'yL=yL-l;' in worklet and 'yR=yR-r;' in worklet
+    assert 'dryL=L,dryR=R' not in worklet
     assert 'yL=yL-dryL;' in web and 'yR=yR-dryR;' in web
     assert 'type:"ready"' in web
     assert 'workletFaulted' in web
@@ -221,7 +227,9 @@ def test_eq_xy_drag_math():
     assert 'makeKnob(monitorKnobs,{label:"MIX",controlId:"DRY_WET"' in web
     assert 'makeKnob(monitorKnobs,{label:"OUT",controlId:"OUTPUT_LEVEL"' in web
     assert 'AudioWorklet unsupported' in web
-    assert 'DIRECT AUDIO FALLBACK' in web
+    assert 'vvchain-worklet.js' in web
+    assert 'SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER' in web
+    assert 'DSP ERROR · AudioWorklet processor failed' in web
     assert '.knob.graphActive .dial' in web
     assert 'setGraphControlState' in cpp
     assert 'DSP PARAM BRIDGE + TRUE DELTA + BOTTOM QUADRATIC XOVER' in web
