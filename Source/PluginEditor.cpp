@@ -1664,7 +1664,8 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
 
     if (deessBypassButton)
         deessBypassButton->setColour(
-            juce::ToggleButton::tickColourId, uiColour(moduleColours[4]));
+            juce::ToggleButton::tickColourId,
+            uiColour(juce::Colour(0xffdfe7ef)));
 
     if (masterBypassButton)
         masterBypassButton->setColour(
@@ -1872,7 +1873,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("XOVER CONTINUOUS + GLOBAL BYPASS + DEESSER VERTICAL + DELTA · 2026-09-23 19:10",
+    g.drawText("PLAYBACK + GLOBAL BYPASS + CONTINUOUS XOVER + DEESSER VERTICAL + MIX/OUT · 2026-09-23 19:20",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -1908,8 +1909,8 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                  { (float) x + halfW + gap, (float) cardY,
                    (float) halfW, (float) cardH },
                  uiColour(juce::Colour(0xffe5e7eb)),
-                 "MONITOR",
-                 "POWER / DELTA · OUTPUT − DRY");
+                 "BYPASS",
+                 "GLOBAL BYPASS · DELTA · MIX / OUT");
     }
 
     // Floating OTT Advanced popup: it overlays the controls and never changes band height.
