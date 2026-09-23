@@ -2085,6 +2085,7 @@ void VVChainAudioProcessorEditor::mouseDown(
         dynamicFreqDragStartHz =
             parameterValue("EQ" + n + "_FREQ");
         dynamicFreqDragStartX = pos.x;
+        dynamicGainDragStartY = pos.y;
         dynamicGainDragStartOffset =
             parameterValue("EQ" + n + "_GAIN");
         dynamicGainDragStartTarget =
@@ -2268,7 +2269,7 @@ void VVChainAudioProcessorEditor::mouseDrag(
     // preserving their relative separation.
     const float deltaDb =
         -(event.position.y
-            - graphDragHintPosition.y)
+            - dynamicGainDragStartY)
             / juce::jmax(1.f, graph.getHeight())
             * 36.f;
 
