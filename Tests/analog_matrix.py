@@ -1,13 +1,14 @@
 import numpy as np
 
-# 20:56 ANALOG reference:
+# ANALOG #443 reference:
 # tanh drive -> T2/T3 shaping -> RMS Auto-Gain -> serial blend.
 # This matrix is intentionally aligned with Source/DSP/ChainDSP.cpp.
 
-def process_reference(x, drive, amount):
+def process_reference(x, drive, amount, colour_multiplier=1.0):
     x = np.asarray(x, dtype=np.float64)
     drive = max(0.0, float(drive))
     amount = float(np.clip(amount, 0.0, 1.0))
+    colour_multiplier = float(np.clip(colour_multiplier, 1.0, 1.6))
 
     if x.size == 0 or amount <= 0.0 or drive <= 0.0:
         return x.copy()
@@ -18,7 +19,7 @@ def process_reference(x, drive, amount):
 
     x_driven = np.tanh(x * drive)
 
-    # Match the production 20:56 C++ exactly.
+    # Match the production #443 C++ exactly.
     even_harmonics = 2.0 * x_driven * x_driven - 1.0
     odd_harmonics = 4.0 * x_driven * x_driven * x_driven
     shaped = (
@@ -30,7 +31,7 @@ def process_reference(x, drive, amount):
     output_rms = float(np.sqrt(np.mean(shaped * shaped)))
     gain_comp = input_rms / output_rms if output_rms > 0.0001 else 1.0
 
-    return x + ((shaped * gain_comp) - x) * amount
+    return x + ((shaped * gain_comp) - x) * amount * colour_multiplier
 
 
 def static_native_guard():
@@ -44,6 +45,7 @@ def static_native_guard():
     required = [
         "const float safeDrive = juce::jmax(0.0f, drive);",
         "const float safeAmount = juce::jlimit(0.0f, 1.0f, amount);",
+        "const float safeColourMultiplier",
         "inputSumSquares",
         "const float inputRms",
         "const float xDriven = std::tanh(x * safeDrive);",
@@ -58,9 +60,9 @@ def static_native_guard():
     ]
 
     for marker in required:
-        assert marker in core, f"missing 20:56 Analog marker: {marker}"
+        assert marker in core, f"missing #443 Analog marker: {marker}"
 
-    assert "analogTempBuffer" in core, "20:56 Analog scratch buffer is missing"
+    assert "analogTempBuffer" in core, "#443 Analog scratch buffer is missing"
 
     apply_start = source.index("void VVChainDSP::applyEq")
     apply_end = source.index("void VVChainDSP::applyOtt", apply_start)
@@ -181,10 +183,15 @@ def run():
     amount = 0.37
     expected_probe = process_reference(probe, drive, amount)
     actual_probe = process_reference(probe, drive, amount)
+    x2_probe = process_reference(probe, drive, amount, 1.6)
+    assert np.max(np.abs(
+        (x2_probe - actual_probe)
+        - ((actual_probe - probe) * 0.6)
+    )) < 1e-12
     assert np.max(np.abs(actual_probe - expected_probe)) == 0.0
 
     print(
-        "PASS ANALOG 20:56 500-case matrix: "
+        "PASS ANALOG #443 500-case matrix: "
         f"cases=500, exact_reference_error={max_exact_reference_error:.3e}, "
         f"stereo_error={max_stereo_error:.3e}, "
         f"min_tt_ss_delta={min_tt_ss_delta:.3e}, "
