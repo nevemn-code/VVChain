@@ -2190,7 +2190,10 @@ void VVChainAudioProcessorEditor::mouseDown(
                 parameterValue("EQ" + n + "_GAIN");
             graphFreqDragStartHz =
                 parameterValue("EQ" + n + "_FREQ");
+            const float nodeStartX =
+                graphFrequencyToX(graph, graphFreqDragStartHz);
             graphFreqDragStartX = pos.x;
+            graphFreqDragGrabOffsetX = pos.x - nodeStartX;
 
             if (auto* parameter = audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
                 parameter->beginChangeGesture();
@@ -2326,8 +2329,11 @@ void VVChainAudioProcessorEditor::mouseDrag(
         // Latch the intended axis after the first few pixels. This
         // completely prevents hand jitter during Gain drags from changing
         // Frequency, while still allowing deliberate Frequency-only movement.
+        // Compensate for the exact grab point so the EQ node stays under the pointer.
+        const float correctedPointerX =
+            event.position.x - graphFreqDragGrabOffsetX;
         const float rawDx =
-            event.position.x - graphFreqDragStartX;
+            correctedPointerX - graphFreqDragStartX;
         const float rawDy =
             event.position.y - dynamicGainDragStartY;
         constexpr float axisLockPixels = 6.0f;
@@ -2354,7 +2360,7 @@ void VVChainAudioProcessorEditor::mouseDrag(
             juce::jlimit(
                 0.f, 1.f,
                 startNorm
-                    + effectiveDx / 900.f * dragScale);
+                    + effectiveDx / 1350.f * dragScale);
 
         const float hz =
             graphEqDragAxis == GraphEqDragAxis::Frequency

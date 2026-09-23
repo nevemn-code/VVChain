@@ -572,7 +572,9 @@ eqCanvas.addEventListener("pointerdown",e=>{
   const staticBand=staticEqAtPointer(x,y,w,h);
   if(staticBand>=0){
     dragMode=1;dragBand=staticBand;dragXover=-1;dragDynamicTargetBand=-1;eqDragAxis=0;
-    dynFreqStartHz=state.eq.freq[staticBand];dynFreqStartX=x;
+    dynFreqStartHz=state.eq.freq[staticBand];
+    dynFreqStartX=x;
+    dynFreqGrabOffsetX=x-logX(dynFreqStartHz,w);
     dynGainStartY=y;dynGainStartOffset=state.eq.gain[staticBand];
     eqCanvas.setPointerCapture(e.pointerId);
     showGraphHint(e,"EQ "+(staticBand+1)+"  "+hz(state.eq.freq[staticBand])+"  GAIN "+fmt(state.eq.gain[staticBand],1)+" dB");
@@ -604,7 +606,9 @@ eqCanvas.addEventListener("pointermove",e=>{
   }
   if(dragMode===1&&dragBand>=0){
     const fine=e.shiftKey?0.1:1;
-    const rawDx=x-dynFreqStartX,rawDy=y-dynGainStartY;
+    // Compensate for the exact grab point so the EQ node stays under the pointer.
+    const correctedX=x-dynFreqGrabOffsetX;
+    const rawDx=correctedX-dynFreqStartX,rawDy=y-dynGainStartY;
     if(eqDragAxis===0){
       if(Math.hypot(rawDx,rawDy)<6)return;
       eqDragAxis=Math.abs(rawDx)>Math.abs(rawDy)?1:2; // 1=frequency, 2=gain
@@ -612,7 +616,7 @@ eqCanvas.addEventListener("pointermove",e=>{
     const effectiveDx=eqDragAxis===1?rawDx:0;
     const effectiveDy=eqDragAxis===2?rawDy:0;
     const startNorm=Math.pow(clamp((dynFreqStartHz-20)/(20000-20),0,1),1/5.02888112);
-    const norm=clamp(startNorm+effectiveDx/900*fine,0,1);
+    const norm=clamp(startNorm+effectiveDx/1350*fine,0,1);
     const hzv=eqDragAxis===1?20+(20000-20)*Math.pow(norm,5.02888112):dynFreqStartHz;
     const deltaDb=-effectiveDy/Math.max(1,h)*36*fine;
     state.eq.freq[dragBand]=hzv;

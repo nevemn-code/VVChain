@@ -58,7 +58,7 @@ def source_assertions():
         'dynamicTargetDragStartY = pos.y',
         'std::hypot(rawDx, rawDy)',
         'sendNotificationSync',
-        'effectiveDx / 900.f',
+        'effectiveDx / 1350.f',
         'Dynamic Range is deliberately Y-only',
         'DYNAMICS uses a truly linear bipolar map',
         '(db + 24.f) / 48.f',
@@ -258,3 +258,14 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def test_frequency_drag_is_slow_and_grab_anchored():
+    cpp = CPP.read_text(encoding="utf-8")
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    header = HEAD.read_text(encoding="utf-8")
+    assert "effectiveDx / 1350.f" in cpp
+    assert "effectiveDx/1350*fine" in web
+    assert "graphFreqDragGrabOffsetX" in header
+    assert "graphFreqDragGrabOffsetX = pos.x - nodeStartX;" in cpp
+    assert "dynFreqGrabOffsetX=x-logX(dynFreqStartHz,w);" in web
