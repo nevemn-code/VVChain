@@ -278,7 +278,7 @@ def test_eq_xy_drag_math():
     assert 'onmessageerror' in web
     assert 'revision:paramSyncRevision' in web
     assert '?v=1.0.6' in web
-    assert 'LAST 2026-09-23 22:10 TST' not in web
+    assert 'LAST ' not in web
     assert 'VVCHAIN v1.0.6' in web
 
     worklet_start = web.index('new URL("vvchain-worklet.js"')
@@ -326,7 +326,7 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
     assert "VVCHAIN v1.0.6" in web
     assert "VVCHAIN v1.0.6" in editor
-    assert "LAST 2026-09-23 22:10 TST" not in editor
+    assert "LAST " not in editor
 
     # ANALOG must use the same shared four-band crossover topology as OTT/Type-A.
     assert "std::array<juce::AudioBuffer<float>, 4> analogBandBuffers" in (
@@ -558,7 +558,7 @@ def test_v103_ui_rules_50():
     assert "VVCHAIN v1.0.6" in web
     assert "VVCHAIN v1.0.6" in cpp
     assert "LAST 2026-09-23 22:10 TST" not in web
-    assert "LAST 2026-09-23 22:10 TST" not in cpp
+    assert "LAST " not in cpp
 
 
 def test_v103_closed_10():
