@@ -2680,7 +2680,7 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
         || bestTarget == HoverTarget::Handle;
 
     const juce::String line1 =
-        (dynamicReadout ? "DYN EQ" : "EQ")
+        juce::String(dynamicReadout ? "DYN EQ" : "EQ")
         + "  GAIN " + signedDb;
     const juce::String line2 =
         "FREQ " + formatGraphFrequency(frequency)
