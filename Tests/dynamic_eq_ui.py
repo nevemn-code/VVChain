@@ -63,7 +63,7 @@ def source_assertions():
         'followScale = 0.74f',
         'Dynamic Range is deliberately Y-only',
         'DYNAMICS uses a truly linear bipolar map',
-        '(db + 24.f) / 48.f',
+        'graphDb = 36.f',
         'constexpr float staticNodeRadius = 8.0f',
     ]
     for token in required:
