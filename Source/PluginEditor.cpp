@@ -755,7 +755,7 @@ float VVChainAudioProcessorEditor::constrainXoverFrequency(int index, float hz) 
 float VVChainAudioProcessorEditor::eqDbToY(
     const juce::Rectangle<float>& graph, float db) const
 {
-    constexpr float graphDb = 36.f;
+    constexpr float graphDb = 27.f;
     return graph.getBottom() - graph.getHeight()
         * juce::jlimit(0.f, 1.f, (db + graphDb) / (graphDb * 2.f));
 }
@@ -781,7 +781,7 @@ float VVChainAudioProcessorEditor::dynamicEffectiveTargetGain(int band) const
 
     const auto n = juce::String(band + 1);
     const float offset =
-        juce::jlimit(-24.f, 24.f,
+        juce::jlimit(-18.f, 18.f,
                      parameterValue("EQ" + n + "_GAIN"));
     const float dynamicRangeDb =
         std::abs(juce::jlimit(-24.f, 24.f,
@@ -796,7 +796,7 @@ float VVChainAudioProcessorEditor::dynamicEffectiveTargetGain(int band) const
         direction * dynamicRangeDb * amount;
 
     return juce::jlimit(
-        -36.f, 36.f,
+        -27.f, 27.f,
         offset + dynamicOffsetDb);
 }
 
@@ -896,9 +896,9 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     g.setColour(juce::Colours::black.withAlpha(.95f));
     g.drawRoundedRectangle(graph, 8.f, 1.f);
 
-    for (int i = 0; i <= 8; ++i)
+    for (int i = 0; i <= 6; ++i)
     {
-        const float db = 36.f - i * 9.0f;
+        const float db = 27.f - i * 9.0f;
         const float y = eqDbToY(graph, db);
         g.setColour(juce::Colour(0xff69717c).withAlpha(.42f));
         g.drawHorizontalLine(

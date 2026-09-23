@@ -33,15 +33,15 @@ def dyn_from_drag(start_dyn, start_y, current_y, graph_h=315.0, scale=1.0):
                  -100.0, 100.0)
 
 def y_from_db(db, height=315.0):
-    return height - height * clamp((db + 36.0) / 72.0, 0.0, 1.0)
+    return height - height * clamp((db + 27.0) / 54.0, 0.0, 1.0)
 
 def db_from_y(y, height=315.0):
-    return clamp((height - y) / height * 72.0 - 36.0, -36.0, 36.0)
+    return clamp((height - y) / height * 54.0 - 27.0, -36.0, 36.0)
 
 def dynamic_target(offset, dyn_range, dynamics):
     amount = abs(clamp(dynamics, -100.0, 100.0)) / 100.0
     direction = -1.0 if dynamics < 0.0 else 1.0
-    return clamp(offset + direction * abs(dyn_range) * amount, -36.0, 36.0)
+    return clamp(offset + direction * abs(dyn_range) * amount, -27.0, 27.0)
 
 def source_assertions():
     cpp = CPP.read_text(encoding="utf-8")
@@ -71,6 +71,9 @@ def source_assertions():
         'constexpr float staticNodeRadius = 8.0f',
         'getTargetGainDB',
         'peakMagnitudeDBAtFrequency',
+        'getTargetGainDB',
+        'graphDb = 27.f',
+        'juce::jlimit(-18.f, 18.f',
     ]
     for token in required:
         assert token in cpp or token in proc or token in head or token in dsp or token in engine, f"missing source invariant: {token}"
@@ -104,7 +107,7 @@ def test_280_design_cases():
     assert count == 280
 
 def test_graph_roundtrip():
-    for db in [-36, -24, -12, 0, 12, 24, 36]:
+    for db in [-27, -18, -9, 0, 9, 18, 27]:
         y = y_from_db(db)
         back = db_from_y(y)
         assert abs(db - back) < 1e-6
@@ -167,6 +170,7 @@ def test_eq_xy_drag_math():
     assert 'dynamicRangeDb' in cpp
     assert 'dynamicOffsetDb' in cpp
     assert 'gainDeltaDb' in dsp
+    assert 'std::abs(juce::jlimit(-9.f, 9.f' in dsp
     assert 'dynamicRangeDb' in web
     assert 'const bool dynamicsEnabled = true;' in cpp
     assert 'const float markerY = graph.getBottom() - 18.f;' in cpp
@@ -203,17 +207,28 @@ def test_dynamic_range_independence_500():
         assert math.isfinite(expected)
         assert -36.0 <= expected <= 36.0
 
-        zero_static = clamp(contribution, -36.0, 36.0)
-        plus_24 = clamp(24.0 + contribution, -36.0, 36.0)
-        minus_24 = clamp(-24.0 + contribution, -36.0, 36.0)
-        if abs(plus_24) < 36.0:
-            assert abs((plus_24 - 24.0) - contribution) < 1e-9
-        if abs(minus_24) < 36.0:
-            assert abs((minus_24 + 24.0) - contribution) < 1e-9
+        zero_static = clamp(contribution, -27.0, 27.0)
+        plus_18 = clamp(18.0 + contribution, -27.0, 27.0)
+        minus_18 = clamp(-18.0 + contribution, -27.0, 27.0)
+        if abs(plus_18) < 27.0:
+            assert abs((plus_18 - 18.0) - contribution) < 1e-9
+        if abs(minus_18) < 27.0:
+            assert abs((minus_18 + 18.0) - contribution) < 1e-9
         assert abs(zero_static - contribution) < 1e-9
 
     # Reference case: Static 0 dB + Dynamic Range -12 dB = -12 dB.
-    assert abs(clamp(-12.0, -36.0, 36.0) - (-12.0)) < 1e-9
+    assert abs(clamp(-9.0, -27.0, 27.0) - (-9.0)) < 1e-9
+
+def test_dynamic_target_preserves_full_range_when_static_gain_moves():
+    # EQ Gain is the centre/offset. Dynamic EQ keeps a full ±9 dB range
+    # and translates with the static EQ gain instead of shrinking toward 0.
+    for static_gain in [-18.0, -12.0, -6.0, 0.0, 6.0, 12.0, 18.0]:
+        for direction in [-1.0, 1.0]:
+            target = dynamic_target(static_gain, 9.0, direction * 100.0)
+            expected = clamp(static_gain + direction * 9.0, -27.0, 27.0)
+            assert abs(target - expected) < 1e-9
+            assert abs(abs(target - static_gain) - 9.0) < 1e-9
+
 
 def test_dynamic_target_is_linear():
     offset = 0.0

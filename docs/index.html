@@ -26,7 +26,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span><span class="tiny" id="cursorTime">0:00.000</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">DYN EQ ENGINE + WEB FIX · 2026-09-23 15:14</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">DYN EQ RANGE PATCH · 2026-09-23 15:20</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -59,8 +59,8 @@ const WORKLET_SOURCE=`class VVChainWorklet extends AudioWorkletProcessor {\n  co
       if(s.bandBypass?.[b])continue;
       const f=this.clamp(Number(s.eq.freq[b]||1000),20,20000);
       const baseQ=this.clamp(Number(s.eq.q[b]||.707),.1,18);
-      const offset=this.clamp(Number(s.eq.gain[b]||0),-24,24);
-      const dynamicRangeDb=Math.abs(this.clamp(Number(s.dyn.target[b]??0),-24,24));
+      const offset=this.clamp(Number(s.eq.gain[b]||0),-18,18);
+      const dynamicRangeDb=Math.abs(this.clamp(Number(s.dyn.target[b]??0),-9,9));
       const dynamicsSigned=this.clamp(Number(s.dyn.dynamics[b]??0),-100,100)/100;
       const dynamicsAmount=Math.abs(dynamicsSigned);
       const dynamicsDirection=dynamicsSigned>=0?1:-1;
@@ -120,8 +120,8 @@ const WORKLET_SOURCE=`class VVChainWorklet extends AudioWorkletProcessor {\n  co
       s.dyn.gainMid[b]=.90*Number(s.dyn.gainMid[b]||0)+.10*mChange;
       s.dyn.gainSide[b]=.90*Number(s.dyn.gainSide[b]||0)+.10*sChange;
 
-      const mGain=this.clamp(offset+s.dyn.gainMid[b],-36,36);
-      const sGain=this.clamp(offset+s.dyn.gainSide[b],-36,36);
+      const mGain=this.clamp(offset+s.dyn.gainMid[b],-27,27);
+      const sGain=this.clamp(offset+s.dyn.gainSide[b],-27,27);
       const mq=this.clamp(baseQ/(1+.045*Math.abs(mGain)),.1,18);
       const sq=this.clamp(baseQ/(1+.045*Math.abs(sGain)),.1,18);
       const mCoef=this.peak(sampleRate,f,mq,mGain);
@@ -249,7 +249,7 @@ const soloBtn=card.querySelector(".soloBtn");
 const syncSolo=()=>soloBtn.classList.toggle("on",Number(state.solo.band)===n);
 soloBtn.onclick=()=>{state.solo.band=Number(state.solo.band)===n?-1:n;document.querySelectorAll(".soloBtn").forEach((x,i)=>x.classList.toggle("on",i===state.solo.band));syncSolo();sendParams()};syncSolo();
 
-makeKnob(staticGrid,{label:"GAIN",get:()=>state.eq.gain[n],set:v=>state.eq.gain[n]=v,min:-24,max:24,suffix:" dB",accent:cols[n],formatDigits:1});
+makeKnob(staticGrid,{label:"GAIN",get:()=>state.eq.gain[n],set:v=>state.eq.gain[n]=v,min:-18,max:18,suffix:" dB",accent:cols[n],formatDigits:1});
 makeKnob(staticGrid,{label:"FREQ",get:()=>state.eq.freq[n],set:v=>state.eq.freq[n]=v,min:20,max:20000,suffix:" Hz",accent:cols[n],formatDigits:0,sensitivity:.20});
 makeKnob(staticGrid,{label:"Q",get:()=>state.eq.q[n],set:v=>state.eq.q[n]=v,min:.1,max:18,accent:cols[n],formatDigits:2});
 
@@ -313,7 +313,7 @@ function dynamicThresholdFromDynamics(dynamics){
   return clamp(-12+d*0.12,-60,0);
 }
 function dynamicEffectiveTargetGain(b){
-  const offset=clamp(state.eq.gain[b],-24,24);
+  const offset=clamp(state.eq.gain[b],-18,18);
   const dynamicRangeDb=Math.abs(clamp(Number(state.dyn.target[b]??0),-24,24));
   const dynamics=clamp(Number(state.dyn.dynamics[b]??0),-100,100);
   const amount=Math.abs(dynamics)/100;
@@ -352,7 +352,7 @@ function dynamicTargetAtPointer(x,y,w,h){
   return band;
 }
 function dbToY(db,h){
-  return h-clamp((db+36)/72,0,1)*h;
+  return h-clamp((db+27)/54,0,1)*h;
 }
 function peakMagnitudeDb(fs,f,q,g,hz){
   const sr=fs>1000?fs:44100,cf=clamp(Number(f),10,sr*.45),fq=clamp(Number(q),.05,30),gd=clamp(Number(g),-36,36),x=clamp(Number(hz),10,sr*.45);
