@@ -48,7 +48,7 @@ const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=n
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
 const state={masterBypass:false,solo:{band:-1,post:false},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:[35,35,35,35],colorBypass:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,threshold:[-24,-24,-24,-24],target:[-3,-3,-2,-2],dynamics:[35,35,30,25],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[false,false,false,false],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},ott:{bypass:false,bandBypass:[false,false,false,false],degree:[25,25,22,18],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[6,12,28,22],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:8000,intensity:3,offset:0},mix:{bypass:false,drywet:100,output:0}};
 const defaults=structuredClone(state),knobRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
-const WORKLET_SOURCE="class VVChainWorklet extends AudioWorkletProcessor {\n  constructor(){\n    super();\n    this.ready=false; this.s=null;\n    this.N=512;\n    this.masterBlend=0;\n    this.soloBlend=0;\n    this._lastSoloBand=-9;\n    this._lastSoloPost=false;\n    this._meterBlocks=0;\n    this.ch=[this.makeCh(),this.makeCh()];\n    this.port.onmessage=e=>{\n      if(e.data&&e.data.type===\"params\"){\n        const next=e.data.state;\n        if(this.s&&(\n          Number(this.s.solo?.band??-1)!==Number(next.solo?.band??-1) ||\n          !!this.s.solo?.post!==!!next.solo?.post))\n          this.soloBlend=0;\n        this.s=next;\n        this.ready=true;\n      }\n    };\n  }\n  makeCh(){\n    const dynState=()=>({det:{z1:0,z2:0},eq:{z1:0,z2:0},env:-120});\n    return {\n      eq:Array.from({length:4},()=>({z1:0,z2:0})),\n      dynMid:Array.from({length:4},dynState),\n      dynSide:Array.from({length:4},dynState),\n      analogPrev:[0,0,0,0], analogDc:[0,0,0,0], analogPower:[0,0,0,0],\n      lp:[0,0,0], typeLp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,\n      lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0],\n      deHp:{z1:0,z2:0}, deHp2:{z1:0,z2:0}, deFast:0, deSlow:0, deGain:0, soloPre:[0,0,0], soloPost:[0,0,0]\n    };\n  }\n  clamp(v,a,b){return Math.max(a,Math.min(b,v))}\n  finite(v){return Number.isFinite(v)?v:0}\n  db2g(db){return Math.pow(10,db/20)}\n  g2db(g){return 20*Math.log10(Math.max(g,1e-9))}\n  tc(ms){return Math.exp(-1/(.001*Math.max(.1,ms)*sampleRate))}\n  biquad(x,c,z){const y=c[0]*x+z.z1;z.z1=c[1]*x-c[3]*y+z.z2;z.z2=c[2]*x-c[4]*y;return y}\n  peak(fs,f,q,g){\n    const A=Math.pow(10,g/40),w=2*Math.PI*this.clamp(f,10,fs*.45)/fs;\n    const a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w);\n    const b0=1+a*A,b1=-2*cc,b2=1-a*A,a0=1+a/A,a1=-2*cc,a2=1-a/A;\n    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]\n  }\n  bp(f,q=.707){\n    const w=2*Math.PI*this.clamp(f,10,sampleRate*.45)/sampleRate;\n    const sn=Math.sin(w),cc=Math.cos(w),a=sn/(2*Math.max(.1,q));\n    const b0=sn/2,b1=0,b2=-sn/2,a0=1+a,a1=-2*cc,a2=1-a;\n    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]\n  }\n  hp(f,q=.707){\n    const w=2*Math.PI*this.clamp(f,10,sampleRate*.45)/sampleRate;\n    const a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w);\n    const b0=(1+cc)/2,b1=-(1+cc),b2=(1+cc)/2;\n    const a0=1+a,a1=-2*cc,a2=1-a;\n    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]\n  }\n  dynamicStereo(l,r,stereo){
+const WORKLET_SOURCE=`class VVChainWorklet extends AudioWorkletProcessor {\n  constructor(){\n    super();\n    this.ready=false; this.s=null;\n    this.N=512;\n    this.masterBlend=0;\n    this.soloBlend=0;\n    this._lastSoloBand=-9;\n    this._lastSoloPost=false;\n    this._meterBlocks=0;\n    this.ch=[this.makeCh(),this.makeCh()];\n    this.port.onmessage=e=>{\n      if(e.data&&e.data.type===\"params\"){\n        const next=e.data.state;\n        if(this.s&&(\n          Number(this.s.solo?.band??-1)!==Number(next.solo?.band??-1) ||\n          !!this.s.solo?.post!==!!next.solo?.post))\n          this.soloBlend=0;\n        this.s=next;\n        this.ready=true;\n      }\n    };\n  }\n  makeCh(){\n    const dynState=()=>({det:{z1:0,z2:0},eq:{z1:0,z2:0},env:-120});\n    return {\n      eq:Array.from({length:4},()=>({z1:0,z2:0})),\n      dynMid:Array.from({length:4},dynState),\n      dynSide:Array.from({length:4},dynState),\n      analogPrev:[0,0,0,0], analogDc:[0,0,0,0], analogPower:[0,0,0,0],\n      lp:[0,0,0], typeLp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,\n      lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0],\n      deHp:{z1:0,z2:0}, deHp2:{z1:0,z2:0}, deFast:0, deSlow:0, deGain:0, soloPre:[0,0,0], soloPost:[0,0,0]\n    };\n  }\n  clamp(v,a,b){return Math.max(a,Math.min(b,v))}\n  finite(v){return Number.isFinite(v)?v:0}\n  db2g(db){return Math.pow(10,db/20)}\n  g2db(g){return 20*Math.log10(Math.max(g,1e-9))}\n  tc(ms){return Math.exp(-1/(.001*Math.max(.1,ms)*sampleRate))}\n  biquad(x,c,z){const y=c[0]*x+z.z1;z.z1=c[1]*x-c[3]*y+z.z2;z.z2=c[2]*x-c[4]*y;return y}\n  peak(fs,f,q,g){\n    const A=Math.pow(10,g/40),w=2*Math.PI*this.clamp(f,10,fs*.45)/fs;\n    const a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w);\n    const b0=1+a*A,b1=-2*cc,b2=1-a*A,a0=1+a/A,a1=-2*cc,a2=1-a/A;\n    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]\n  }\n  bp(f,q=.707){\n    const w=2*Math.PI*this.clamp(f,10,sampleRate*.45)/sampleRate;\n    const sn=Math.sin(w),cc=Math.cos(w),a=sn/(2*Math.max(.1,q));\n    const b0=sn/2,b1=0,b2=-sn/2,a0=1+a,a1=-2*cc,a2=1-a;\n    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]\n  }\n  hp(f,q=.707){\n    const w=2*Math.PI*this.clamp(f,10,sampleRate*.45)/sampleRate;\n    const a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w);\n    const b0=(1+cc)/2,b1=-(1+cc),b2=(1+cc)/2;\n    const a0=1+a,a1=-2*cc,a2=1-a;\n    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]\n  }\n  dynamicStereo(l,r,stereo){
     const s=this.s,c=this.ch[0];
     if(s.eq.bypass||s.dyn?.bypass)return[l,r];
     const invSqrt2=0.7071067811865476;
@@ -131,9 +131,9 @@ const WORKLET_SOURCE="class VVChainWorklet extends AudioWorkletProcessor {\n  co
     if(stereo)return[(mid+side)*invSqrt2,(mid-side)*invSqrt2];
     return[mid,r];
   }
-  analog(x,a,ss,ch,b){\n    a=this.clamp(a,0,1);\n    ch.analogPrev[b]=x; ch.analogDc[b]=0; ch.analogPower[b]=0;\n    if(a<=0)return x;\n    const u=this.clamp(x,-1,1),u2=u*u;\n    const t3=4*u*u2-3*u,u5=u*u2*u2;\n    const t5=16*u*u2*u2-20*u*u2+5*u;\n    const h3=ss?0.020:0.014,h5=ss?0.006:0.004;\n    const shaped=u+a*(h3*(t3-u)+h5*(t5-u));\n    return x+0.90*(shaped-u);\n  }\n  deessSample(x,c,coef){\n    const st=this.s.de;\n    if(st.bypass||Number(st.intensity||0)<=0)return x;\n    const high1=this.biquad(x,coef,c.deHp),high=this.biquad(high1,coef,c.deHp2);\n    const low=x-high,sc=Math.abs(high);\n    const fa=sc>c.deFast?this.tc(.25):this.tc(45);\n    c.deFast=fa*c.deFast+(1-fa)*sc;\n    const sa=sc>c.deSlow?this.tc(75):this.tc(260);\n    c.deSlow=sa*c.deSlow+(1-sa)*sc;\n    const excess=this.g2db(Math.max(c.deFast,1e-9))-this.g2db(Math.max(c.deSlow,1e-9))-2-Number(st.offset||0);\n    const red=this.clamp(Number(st.intensity||0)*this.clamp(excess/6,0,1),0,8);\n    const ga=red>c.deGain?this.tc(.35):this.tc(60);\n    c.deGain=ga*c.deGain+(1-ga)*red;\n    return low+high*this.db2g(-c.deGain);\n  }\n  zoneBands(x,c,which,xs){\n    const lp=c[which];\n    const a1=1-Math.exp(-2*Math.PI*this.clamp(xs[0],40,1000)/sampleRate);\n    const a2=1-Math.exp(-2*Math.PI*this.clamp(xs[1],120,5000)/sampleRate);\n    const a3=1-Math.exp(-2*Math.PI*this.clamp(xs[2],1000,Math.min(18000,sampleRate*.42))/sampleRate);\n    lp[0]+=a1*(x-lp[0]); const h0=x-lp[0];\n    lp[1]+=a2*(h0-lp[1]); const h1=h0-lp[1];\n    lp[2]+=a3*(h1-lp[2]); const h2=h1-lp[2];\n    return [lp[0],lp[1],lp[2],h2];\n  }\n  sample(x,ch){\n    const s=this.s,c=this.ch[ch];let y=x;\n    if(!s.eq.bypass){\n      for(let b=0;b<4;b++){\n        if(s.bandBypass?.[b])continue;\n        y=this.biquad(y,this.peak(sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]),c.eq[b]);\n        if(!s.eq.globalBypass&&!s.eq.colorBypass[b])y=this.analog(y,Number(s.eq.color[b]||0)/100,!!s.eq.mode[b],c,b);\n      }\n    }\n    if(!s.ott.bypass){\n      const original=y,inputGain=this.db2g(this.clamp(s.ott.input,-24,24)),xs=s.ott.x,z=original*inputGain;\n      c.lp[0]+=(1-Math.exp(-2*Math.PI*xs[0]/sampleRate))*(z-c.lp[0]);const h0=z-c.lp[0];\n      c.lp[1]+=(1-Math.exp(-2*Math.PI*xs[1]/sampleRate))*(h0-c.lp[1]);const h1=h0-c.lp[1];\n      c.lp[2]+=(1-Math.exp(-2*Math.PI*xs[2]/sampleRate))*(h1-c.lp[2]);\n      const bands=[c.lp[0],c.lp[1],c.lp[2],h1-c.lp[2]];\n      for(let b=0;b<4;b++){\n        if(s.bandBypass?.[b]||s.ott.bandBypass[b])continue;\n        const degree=this.clamp(Number(s.ott.degree[b]||0),0,100);\n        if(degree<=1e-4)continue;\n        let v=bands[b];\n        const gateDb=this.g2db(Math.abs(v)+1e-9),gt=s.ott.gate,knee=9,slope=5;\n        const kneeStart=gt-knee/2,kneeEnd=gt+knee/2;let gateTarget=0;\n        if(gateDb<kneeStart)gateTarget=(gateDb-gt)*slope;\n        else if(gateDb<kneeEnd){const t=this.clamp((gateDb-kneeStart)/knee,0,1);gateTarget=(gateDb-gt)*slope*(1-t)*(1-t);}\n        gateTarget=Math.min(0,gateTarget);\n        c.gateBand[b]=.99*c.gateBand[b]+.01*gateTarget;\n        v*=.9*this.db2g(c.gateBand[b])+.1;\n        const depth=degree/100,downRatio=1+depth*((b===3?100:66.7)-1),upRatio=1+depth*3;\n        const downDb=this.g2db(Math.abs(v)+1e-9),downThr=s.ott.compT[b],downSlope=1-1/downRatio;\n        const downTarget=downDb>downThr?(downDb-downThr)*downSlope:0;\n        const bandBaseAttackMs=Math.max(.1,Math.min(120,Number(s.ott.compA[b]||0))),k=Math.max(0,(120-bandBaseAttackMs)/.49);\n        const dynamicAttackMs=bandBaseAttackMs+k*(depth*depth),minAttackLimit=b===0?15:(b===1?8:1),finalAttackMs=Math.max(minAttackLimit,dynamicAttackMs);\n        const baseReleaseMs=Math.max(10,Math.min(2500,Number(s.ott.compR[b]||0))),finalReleaseMs=Math.max(20,baseReleaseMs+depth*100);\n        const attackCoef=Math.exp(-1000/(finalAttackMs*sampleRate)),releaseCoef=Math.exp(-1000/(finalReleaseMs*sampleRate));\n        const dr=releaseCoef;c.comp[b]=c.comp[b]*(downTarget>c.comp[b]?attackCoef:dr)+(1-(downTarget>c.comp[b]?attackCoef:dr))*downTarget;\n        const downMix=this.clamp(s.ott.compM[b]/100,0,1);v*=this.db2g(-c.comp[b]*downMix)+(1-downMix);\n        const upDb=this.g2db(Math.abs(v)+1e-9),upThr=s.ott.liftT[b],upSlope=1-1/upRatio,upTarget=upDb<upThr?(upThr-upDb)*upSlope:0;\n        const ua=this.tc(s.ott.liftA[b]),ur=this.tc(s.ott.liftR[b]),upGain=this.db2g(Math.min(12,Math.max(0,upTarget)));\n        c.lift[b]=c.lift[b]*(upGain>1?ua:ur)+(1-(upGain>1?ua:ur))*upGain;\n        const upMix=this.clamp(s.ott.liftM[b]/100,0,1);v*=c.lift[b]*upMix+(1-upMix);\n        v*=this.db2g(this.clamp(s.ott.level[b],-24,12));bands[b]=v;\n      }\n      let sum=bands[0]+bands[1]+bands[2]+bands[3];\n      if(s.ott.clip)sum=Math.tanh(sum*1.7);\n      sum*=this.db2g(this.clamp(s.ott.output,-24,24));\n      const ceilingDb=-.8,inputDb=this.g2db(Math.max(Math.abs(sum),1e-9)),targetRed=inputDb>ceilingDb?-(inputDb-ceilingDb):0;\n      const la=this.tc(.05),lr=this.tc(85),lc=targetRed<c.lim?la:lr;\n      c.lim=lc*c.lim+(1-lc)*targetRed;sum*=this.db2g(c.lim);\n      const mix=this.clamp(s.ott.mix/100,0,1);\n      y=original*(1-mix)+sum*mix;\n    }\n    if(!s.type.bypass){\n      const ti=y*this.db2g(s.type.input),attack=this.tc(s.type.attack),release=this.tc(s.type.release);\n      const a80=1-Math.exp(-2*Math.PI*80/sampleRate),a3k=1-Math.exp(-2*Math.PI*3000/sampleRate),a9k=1-Math.exp(-2*Math.PI*9000/sampleRate);\n      c.typeLp[0]+=a80*(ti-c.typeLp[0]);const b1=c.typeLp[0];\n      c.typeLp[1]+=a3k*(ti-c.typeLp[1]);const b3=ti-c.typeLp[1];\n      c.typeLp[2]+=a9k*(ti-c.typeLp[2]);const b4=ti-c.typeLp[2];\n      const bands=[b1,ti-b1-b3,b3,b4];let enhancement=0;\n      for(let b=0;b<4;b++){\n        if(s.bandBypass?.[b]||s.type.bandBypass[b])continue;\n        const degree=this.clamp(Number(s.type.degree[b]||0),0,100);if(degree<=0)continue;\n        const mag=Math.abs(bands[b]),fastA=mag>c.typeFast[b]?attack:release;\n        c.typeFast[b]=fastA*c.typeFast[b]+(1-fastA)*mag;\n        const slowA=mag>c.typeSlow[b]?attack:release;\n        c.typeSlow[b]=slowA*c.typeSlow[b]+(1-slowA)*mag;\n        const levelDb=this.g2db(Math.max(c.typeSlow[b],1e-7)),depth=degree/100,threshold=-56+20*Math.sqrt(depth),ratio=1+15*Math.sqrt(depth),slope=1-1/Math.max(1,ratio),kneeStart=threshold-3,kneeEnd=threshold+3;\n        let target=0;if(levelDb<kneeStart)target=(threshold-levelDb)*slope;else if(levelDb<kneeEnd){const xk=kneeEnd-levelDb;target=slope/12*xk*xk;}\n        target=this.clamp(target*depth,0,9);const ga=target>c.typeDc[b]?attack:release;c.typeDc[b]=ga*c.typeDc[b]+(1-ga)*target;\n        const bandTrim=this.db2g(this.clamp(s.type.level[b],-6,6));enhancement+=bands[b]*(this.db2g(c.typeDc[b])*bandTrim-1);\n      }\n      y=(ti+enhancement*this.clamp(s.type.mix/100,0,1))*this.db2g(this.clamp(s.type.output,-24,12));\n    }\n    return y;\n  }\n  process(inputs,outputs){\n    const out=outputs[0],inp=inputs[0];\n    if(!this.ready||!this.s||!inp||!inp.length){for(const c of out)c.fill(0);return true;}\n    const L=inp[0],R=inp[1]||inp[0],stereo=inp.length>1;\n    const deCoef=this.hp(this.clamp(Number(this.s.de.freq||8000),6000,18000));\n    const mix=this.clamp((this.s.mix.bypass?100:this.s.mix.drywet)/100,0,1),og=this.db2g(this.clamp(this.s.mix.output,-24,12));\n    const soloBand=Number(this.s.solo?.band??-1),soloEnabled=soloBand>=0&&soloBand<4,xs=this.s.ott.x;\n    for(let n=0;n<out[0].length;n++){\n      const l=L[n]||0,r=R[n]||0;\n      const dyn=this.dynamicStereo(l,r,stereo);\n      let yL=this.deessSample(this.sample(dyn[0],0),this.ch[0],deCoef);\n      let yR=this.deessSample(this.sample(dyn[1],1),this.ch[1],deCoef);\n      yL=(l+mix*(yL-l))*og;yR=(r+mix*(yR-r))*og;\n      if(this.s.solo && Number(this.s.solo.band)!==this._lastSoloBand){this.soloBlend=0;this._lastSoloBand=Number(this.s.solo.band)}\n      if(this.s.solo && !!this.s.solo.post!==this._lastSoloPost){this.soloBlend=0;this._lastSoloPost=!!this.s.solo.post}\n      const targetSolo=soloEnabled?1:0;\n      if(this.soloBlend<targetSolo)this.soloBlend=Math.min(targetSolo,this.soloBlend+1/64);else if(this.soloBlend>targetSolo)this.soloBlend=Math.max(targetSolo,this.soloBlend-1/64);\n      if(this.soloBlend>0){\n        const preL=this.zoneBands(l,this.ch[0],\"soloPre\",xs)[soloBand],preR=this.zoneBands(r,this.ch[1],\"soloPre\",xs)[soloBand];\n        const postL=this.zoneBands(yL,this.ch[0],\"soloPost\",xs)[soloBand],postR=this.zoneBands(yR,this.ch[1],\"soloPost\",xs)[soloBand];\n        const soloL=this.s.solo.post?postL:preL,soloR=this.s.solo.post?postR:preR;\n        yL=yL*(1-this.soloBlend)+soloL*this.soloBlend;yR=yR*(1-this.soloBlend)+soloR*this.soloBlend;\n      }\n      const target=this.s.masterBypass?1:0,step=1/64;\n      if(this.masterBlend<target)this.masterBlend=Math.min(target,this.masterBlend+step);else if(this.masterBlend>target)this.masterBlend=Math.max(target,this.masterBlend-step);\n      yL=yL*(1-this.masterBlend)+l*this.masterBlend;yR=yR*(1-this.masterBlend)+r*this.masterBlend;\n      out[0][n]=this.finite(yL);if(out[1])out[1][n]=this.finite(yR);\n    }\n    this._meterBlocks++;\n    if(this._meterBlocks%8===0){\n      this.port.postMessage({type:\"dynMeters\",mid:this.s.dyn.reductionMid,side:this.s.dyn.gainSide});\n    }\n    return true;\n  }\n}\nregisterProcessor(\"vvchain-worklet\",VVChainWorklet);";
+  analog(x,a,ss,ch,b){\n    a=this.clamp(a,0,1);\n    ch.analogPrev[b]=x; ch.analogDc[b]=0; ch.analogPower[b]=0;\n    if(a<=0)return x;\n    const u=this.clamp(x,-1,1),u2=u*u;\n    const t3=4*u*u2-3*u,u5=u*u2*u2;\n    const t5=16*u*u2*u2-20*u*u2+5*u;\n    const h3=ss?0.020:0.014,h5=ss?0.006:0.004;\n    const shaped=u+a*(h3*(t3-u)+h5*(t5-u));\n    return x+0.90*(shaped-u);\n  }\n  deessSample(x,c,coef){\n    const st=this.s.de;\n    if(st.bypass||Number(st.intensity||0)<=0)return x;\n    const high1=this.biquad(x,coef,c.deHp),high=this.biquad(high1,coef,c.deHp2);\n    const low=x-high,sc=Math.abs(high);\n    const fa=sc>c.deFast?this.tc(.25):this.tc(45);\n    c.deFast=fa*c.deFast+(1-fa)*sc;\n    const sa=sc>c.deSlow?this.tc(75):this.tc(260);\n    c.deSlow=sa*c.deSlow+(1-sa)*sc;\n    const excess=this.g2db(Math.max(c.deFast,1e-9))-this.g2db(Math.max(c.deSlow,1e-9))-2-Number(st.offset||0);\n    const red=this.clamp(Number(st.intensity||0)*this.clamp(excess/6,0,1),0,8);\n    const ga=red>c.deGain?this.tc(.35):this.tc(60);\n    c.deGain=ga*c.deGain+(1-ga)*red;\n    return low+high*this.db2g(-c.deGain);\n  }\n  zoneBands(x,c,which,xs){\n    const lp=c[which];\n    const a1=1-Math.exp(-2*Math.PI*this.clamp(xs[0],40,1000)/sampleRate);\n    const a2=1-Math.exp(-2*Math.PI*this.clamp(xs[1],120,5000)/sampleRate);\n    const a3=1-Math.exp(-2*Math.PI*this.clamp(xs[2],1000,Math.min(18000,sampleRate*.42))/sampleRate);\n    lp[0]+=a1*(x-lp[0]); const h0=x-lp[0];\n    lp[1]+=a2*(h0-lp[1]); const h1=h0-lp[1];\n    lp[2]+=a3*(h1-lp[2]); const h2=h1-lp[2];\n    return [lp[0],lp[1],lp[2],h2];\n  }\n  sample(x,ch){\n    const s=this.s,c=this.ch[ch];let y=x;\n    if(!s.eq.bypass){\n      for(let b=0;b<4;b++){\n        if(s.bandBypass?.[b])continue;\n        y=this.biquad(y,this.peak(sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]),c.eq[b]);\n        if(!s.eq.globalBypass&&!s.eq.colorBypass[b])y=this.analog(y,Number(s.eq.color[b]||0)/100,!!s.eq.mode[b],c,b);\n      }\n    }\n    if(!s.ott.bypass){\n      const original=y,inputGain=this.db2g(this.clamp(s.ott.input,-24,24)),xs=s.ott.x,z=original*inputGain;\n      c.lp[0]+=(1-Math.exp(-2*Math.PI*xs[0]/sampleRate))*(z-c.lp[0]);const h0=z-c.lp[0];\n      c.lp[1]+=(1-Math.exp(-2*Math.PI*xs[1]/sampleRate))*(h0-c.lp[1]);const h1=h0-c.lp[1];\n      c.lp[2]+=(1-Math.exp(-2*Math.PI*xs[2]/sampleRate))*(h1-c.lp[2]);\n      const bands=[c.lp[0],c.lp[1],c.lp[2],h1-c.lp[2]];\n      for(let b=0;b<4;b++){\n        if(s.bandBypass?.[b]||s.ott.bandBypass[b])continue;\n        const degree=this.clamp(Number(s.ott.degree[b]||0),0,100);\n        if(degree<=1e-4)continue;\n        let v=bands[b];\n        const gateDb=this.g2db(Math.abs(v)+1e-9),gt=s.ott.gate,knee=9,slope=5;\n        const kneeStart=gt-knee/2,kneeEnd=gt+knee/2;let gateTarget=0;\n        if(gateDb<kneeStart)gateTarget=(gateDb-gt)*slope;\n        else if(gateDb<kneeEnd){const t=this.clamp((gateDb-kneeStart)/knee,0,1);gateTarget=(gateDb-gt)*slope*(1-t)*(1-t);}\n        gateTarget=Math.min(0,gateTarget);\n        c.gateBand[b]=.99*c.gateBand[b]+.01*gateTarget;\n        v*=.9*this.db2g(c.gateBand[b])+.1;\n        const depth=degree/100,downRatio=1+depth*((b===3?100:66.7)-1),upRatio=1+depth*3;\n        const downDb=this.g2db(Math.abs(v)+1e-9),downThr=s.ott.compT[b],downSlope=1-1/downRatio;\n        const downTarget=downDb>downThr?(downDb-downThr)*downSlope:0;\n        const bandBaseAttackMs=Math.max(.1,Math.min(120,Number(s.ott.compA[b]||0))),k=Math.max(0,(120-bandBaseAttackMs)/.49);\n        const dynamicAttackMs=bandBaseAttackMs+k*(depth*depth),minAttackLimit=b===0?15:(b===1?8:1),finalAttackMs=Math.max(minAttackLimit,dynamicAttackMs);\n        const baseReleaseMs=Math.max(10,Math.min(2500,Number(s.ott.compR[b]||0))),finalReleaseMs=Math.max(20,baseReleaseMs+depth*100);\n        const attackCoef=Math.exp(-1000/(finalAttackMs*sampleRate)),releaseCoef=Math.exp(-1000/(finalReleaseMs*sampleRate));\n        const dr=releaseCoef;c.comp[b]=c.comp[b]*(downTarget>c.comp[b]?attackCoef:dr)+(1-(downTarget>c.comp[b]?attackCoef:dr))*downTarget;\n        const downMix=this.clamp(s.ott.compM[b]/100,0,1);v*=this.db2g(-c.comp[b]*downMix)+(1-downMix);\n        const upDb=this.g2db(Math.abs(v)+1e-9),upThr=s.ott.liftT[b],upSlope=1-1/upRatio,upTarget=upDb<upThr?(upThr-upDb)*upSlope:0;\n        const ua=this.tc(s.ott.liftA[b]),ur=this.tc(s.ott.liftR[b]),upGain=this.db2g(Math.min(12,Math.max(0,upTarget)));\n        c.lift[b]=c.lift[b]*(upGain>1?ua:ur)+(1-(upGain>1?ua:ur))*upGain;\n        const upMix=this.clamp(s.ott.liftM[b]/100,0,1);v*=c.lift[b]*upMix+(1-upMix);\n        v*=this.db2g(this.clamp(s.ott.level[b],-24,12));bands[b]=v;\n      }\n      let sum=bands[0]+bands[1]+bands[2]+bands[3];\n      if(s.ott.clip)sum=Math.tanh(sum*1.7);\n      sum*=this.db2g(this.clamp(s.ott.output,-24,24));\n      const ceilingDb=-.8,inputDb=this.g2db(Math.max(Math.abs(sum),1e-9)),targetRed=inputDb>ceilingDb?-(inputDb-ceilingDb):0;\n      const la=this.tc(.05),lr=this.tc(85),lc=targetRed<c.lim?la:lr;\n      c.lim=lc*c.lim+(1-lc)*targetRed;sum*=this.db2g(c.lim);\n      const mix=this.clamp(s.ott.mix/100,0,1);\n      y=original*(1-mix)+sum*mix;\n    }\n    if(!s.type.bypass){\n      const ti=y*this.db2g(s.type.input),attack=this.tc(s.type.attack),release=this.tc(s.type.release);\n      const a80=1-Math.exp(-2*Math.PI*80/sampleRate),a3k=1-Math.exp(-2*Math.PI*3000/sampleRate),a9k=1-Math.exp(-2*Math.PI*9000/sampleRate);\n      c.typeLp[0]+=a80*(ti-c.typeLp[0]);const b1=c.typeLp[0];\n      c.typeLp[1]+=a3k*(ti-c.typeLp[1]);const b3=ti-c.typeLp[1];\n      c.typeLp[2]+=a9k*(ti-c.typeLp[2]);const b4=ti-c.typeLp[2];\n      const bands=[b1,ti-b1-b3,b3,b4];let enhancement=0;\n      for(let b=0;b<4;b++){\n        if(s.bandBypass?.[b]||s.type.bandBypass[b])continue;\n        const degree=this.clamp(Number(s.type.degree[b]||0),0,100);if(degree<=0)continue;\n        const mag=Math.abs(bands[b]),fastA=mag>c.typeFast[b]?attack:release;\n        c.typeFast[b]=fastA*c.typeFast[b]+(1-fastA)*mag;\n        const slowA=mag>c.typeSlow[b]?attack:release;\n        c.typeSlow[b]=slowA*c.typeSlow[b]+(1-slowA)*mag;\n        const levelDb=this.g2db(Math.max(c.typeSlow[b],1e-7)),depth=degree/100,threshold=-56+20*Math.sqrt(depth),ratio=1+15*Math.sqrt(depth),slope=1-1/Math.max(1,ratio),kneeStart=threshold-3,kneeEnd=threshold+3;\n        let target=0;if(levelDb<kneeStart)target=(threshold-levelDb)*slope;else if(levelDb<kneeEnd){const xk=kneeEnd-levelDb;target=slope/12*xk*xk;}\n        target=this.clamp(target*depth,0,9);const ga=target>c.typeDc[b]?attack:release;c.typeDc[b]=ga*c.typeDc[b]+(1-ga)*target;\n        const bandTrim=this.db2g(this.clamp(s.type.level[b],-6,6));enhancement+=bands[b]*(this.db2g(c.typeDc[b])*bandTrim-1);\n      }\n      y=(ti+enhancement*this.clamp(s.type.mix/100,0,1))*this.db2g(this.clamp(s.type.output,-24,12));\n    }\n    return y;\n  }\n  process(inputs,outputs){\n    const out=outputs[0],inp=inputs[0];\n    if(!this.ready||!this.s||!inp||!inp.length){for(const c of out)c.fill(0);return true;}\n    const L=inp[0],R=inp[1]||inp[0],stereo=inp.length>1;\n    const deCoef=this.hp(this.clamp(Number(this.s.de.freq||8000),6000,18000));\n    const mix=this.clamp((this.s.mix.bypass?100:this.s.mix.drywet)/100,0,1),og=this.db2g(this.clamp(this.s.mix.output,-24,12));\n    const soloBand=Number(this.s.solo?.band??-1),soloEnabled=soloBand>=0&&soloBand<4,xs=this.s.ott.x;\n    for(let n=0;n<out[0].length;n++){\n      const l=L[n]||0,r=R[n]||0;\n      const dyn=this.dynamicStereo(l,r,stereo);\n      let yL=this.deessSample(this.sample(dyn[0],0),this.ch[0],deCoef);\n      let yR=this.deessSample(this.sample(dyn[1],1),this.ch[1],deCoef);\n      yL=(l+mix*(yL-l))*og;yR=(r+mix*(yR-r))*og;\n      if(this.s.solo && Number(this.s.solo.band)!==this._lastSoloBand){this.soloBlend=0;this._lastSoloBand=Number(this.s.solo.band)}\n      if(this.s.solo && !!this.s.solo.post!==this._lastSoloPost){this.soloBlend=0;this._lastSoloPost=!!this.s.solo.post}\n      const targetSolo=soloEnabled?1:0;\n      if(this.soloBlend<targetSolo)this.soloBlend=Math.min(targetSolo,this.soloBlend+1/64);else if(this.soloBlend>targetSolo)this.soloBlend=Math.max(targetSolo,this.soloBlend-1/64);\n      if(this.soloBlend>0){\n        const preL=this.zoneBands(l,this.ch[0],\"soloPre\",xs)[soloBand],preR=this.zoneBands(r,this.ch[1],\"soloPre\",xs)[soloBand];\n        const postL=this.zoneBands(yL,this.ch[0],\"soloPost\",xs)[soloBand],postR=this.zoneBands(yR,this.ch[1],\"soloPost\",xs)[soloBand];\n        const soloL=this.s.solo.post?postL:preL,soloR=this.s.solo.post?postR:preR;\n        yL=yL*(1-this.soloBlend)+soloL*this.soloBlend;yR=yR*(1-this.soloBlend)+soloR*this.soloBlend;\n      }\n      const target=this.s.masterBypass?1:0,step=1/64;\n      if(this.masterBlend<target)this.masterBlend=Math.min(target,this.masterBlend+step);else if(this.masterBlend>target)this.masterBlend=Math.max(target,this.masterBlend-step);\n      yL=yL*(1-this.masterBlend)+l*this.masterBlend;yR=yR*(1-this.masterBlend)+r*this.masterBlend;\n      out[0][n]=this.finite(yL);if(out[1])out[1][n]=this.finite(yR);\n    }\n    this._meterBlocks++;\n    if(this._meterBlocks%8===0){\n      this.port.postMessage({type:\"dynMeters\",mid:this.s.dyn.gainMid,side:this.s.dyn.gainSide});\n    }\n    return true;\n  }\n}\nregisterProcessor(\"vvchain-worklet\",VVChainWorklet);`;
 function makeWorkletUrl(){if(!workletModuleUrl)workletModuleUrl=URL.createObjectURL(new Blob([WORKLET_SOURCE],{type:"application/javascript"}));return workletModuleUrl}
-async function ensureAudioGraph(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(!workletNode){await audioCtx.audioWorklet.addModule(makeWorkletUrl());workletNode=new AudioWorkletNode(audioCtx,"vvchain-worklet",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});workletNode.onprocessorerror=()=>{$("#status").textContent="DSP ERROR"};workletNode.port.onmessage=e=>{if(e.data?.type==="dynMeters"){state.dyn.reductionMid=Array.from(e.data.mid||[0,0,0,0]);state.dyn.reductionSide=Array.from(e.data.side||[0,0,0,0]);drawEQ()}};workletNode.connect(audioCtx.destination);workletNode.port.postMessage({type:"params",state})}}function sendParams(){if(workletNode)workletNode.port.postMessage({type:"params",state})}
+async function ensureAudioGraph(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(!workletNode){await audioCtx.audioWorklet.addModule(makeWorkletUrl());workletNode=new AudioWorkletNode(audioCtx,"vvchain-worklet",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});workletNode.onprocessorerror=()=>{$("#status").textContent="DSP ERROR"};workletNode.port.onmessage=e=>{if(e.data?.type==="dynMeters"){state.dyn.gainMid=Array.from(e.data.mid||[0,0,0,0]);state.dyn.gainSide=Array.from(e.data.side||[0,0,0,0]);drawEQ()}};workletNode.connect(audioCtx.destination);workletNode.port.postMessage({type:"params",state})}}function sendParams(){if(workletNode)workletNode.port.postMessage({type:"params",state})}
 const masterBypass=$("#masterBypass"),syncMaster=()=>{
   masterBypass.classList.toggle("on",state.masterBypass);
   document.querySelector(".app").classList.toggle("globalBypass",state.masterBypass);
@@ -274,221 +274,257 @@ makeKnob(body,{label:"OUT",get:()=>state.mix.output,set:v=>state.mix.output=v,mi
 function buildAdvanced(b){const grid=$("#advPopupGrid");grid.innerHTML="";const mk=(label,key,min,max,suffix,d=1)=>({label,get:()=>state.ott[key][b],set:v=>state.ott[key][b]=v,min,max,suffix,accent:"#facc15",formatDigits:d,formatValue:key==="compA"?()=>fmt(effectiveCompAttackMs(b),1)+" ms":key==="compR"?()=>fmt(effectiveCompReleaseMs(b),0)+" ms":undefined});[mk("LIFT THRESH","liftT",-80,0," dB"),mk("LIFT ATT","liftA",1,500," ms"),mk("LIFT REL","liftR",10,2500," ms",0),mk("LIFT MIX","liftM",0,100," %"),mk("COMP THRESH","compT",-24,0," dB"),mk("COMP ATT","compA",0.1,120," ms",1),mk("COMP REL","compR",10,2500," ms",0),mk("COMP MIX","compM",0,100," %"),mk("BAND LEVEL","level",-24,12," dB"),{label:"XOVER 1",get:()=>state.ott.x[0],set:v=>state.ott.x[0]=v,min:80,max:600,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"XOVER 2",get:()=>state.ott.x[1],set:v=>state.ott.x[1]=v,min:750,max:3000,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"XOVER 3",get:()=>state.ott.x[2],set:v=>state.ott.x[2]=v,min:6000,max:12000,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"INPUT",get:()=>state.ott.input,set:v=>state.ott.input=v,min:-24,max:24,suffix:" dB",accent:"#facc15"},{label:"GATE",get:()=>state.ott.gate,set:v=>state.ott.gate=v,min:-90,max:0,suffix:" dB",accent:"#facc15"},{label:"MASTER",get:()=>state.ott.mix,set:v=>state.ott.mix=v,min:0,max:100,suffix:" %",accent:"#facc15"},{label:"OUTPUT",get:()=>state.ott.output,set:v=>state.ott.output=v,min:-24,max:24,suffix:" dB",accent:"#facc15"}].forEach(c=>makeKnob(grid,c));const clip=document.createElement("button");clip.className="tiny";clip.textContent=state.ott.clip?"CLIP ON":"CLIP OFF";clip.onclick=()=>{state.ott.clip=!state.ott.clip;clip.textContent=state.ott.clip?"CLIP ON":"CLIP OFF";sendParams()};grid.appendChild(clip)}
 function openAdvanced(b){const popup=$("#advPopup");if(b<0){popup.hidden=true;return}buildAdvanced(b);popup.hidden=false;$("#advPopupTitle").textContent="OTT ADVANCED · BAND "+(b+1)}
 document.addEventListener("pointerdown",e=>{const popup=$("#advPopup");if(!popup.hidden&&!popup.contains(e.target)&&!e.target.closest(".ottAdvBtn"))openAdvanced(-1)});
+
 function dynamicNodePoint(b,w,h){
-  const x=logX(state.eq.freq[b],w);
-  const reduction=(Number(state.dyn.reductionMid[b]||0)+Number(state.dyn.reductionSide[b]||0))/2;
-  const db=state.eq.gain[b]-reduction;
-  const y=h-(clamp(db,-18,18)+18)/36*h;
-  return{x,y,reduction};
+  const change=(+state.dyn.gainMid[b]||0 + (+state.dyn.gainSide[b]||0))*0.5;
+  const db=state.eq.gain[b]+change;
+  return {x:logX(state.eq.freq[b],w),y:h-(clamp(db,-18,18)+18)/36*h,change:change};
 }
-function dynamicThresholdPoint(b,w,h){
-  const x=logX(state.eq.freq[b],w);
-  const thr=clamp(Number(state.dyn.threshold[b]??-24),-60,0);
-  const y=20+(0-thr)/60*Math.max(20,h-40);
-  return{x,y,threshold:thr};
-}
-function dynamicThresholdAtPointer(x,y,w,h){
-  let best=15,band=-1;
-  for(let b=0;b<4;b++){
-    const p=dynamicThresholdPoint(b,w,h),d=Math.hypot(x-p.x,y-p.y);
-    if(d<best){best=d;band=b}
-  }
-  return band;
-}
-function dynamicPopupBounds(b,w,h){
-  const n=dynamicNodePoint(b,w,h),pw=190,ph=62;
-  let x=n.x-pw*.5,y=n.y-ph-24;
-  if(y<6)y=n.y+24;
-  return{x:clamp(x,6,w-pw-6),y:clamp(y,6,h-ph-6),w:pw,h:ph};
+function dynamicTargetPoint(b,w,h){
+  return {x:logX(state.eq.freq[b],w),y:h-(clamp(state.dyn.target[b],-18,18)+18)/36*h};
 }
 function dynamicBandAtPointer(x,y,w,h){
-  let best=20,band=-1;
+  let best=22,band=-1;
   for(let b=0;b<4;b++){
-    const n=dynamicNodePoint(b,w,h),d=Math.hypot(x-n.x,y-n.y);
-    if(d<best){best=d;band=b}
+    const n=dynamicNodePoint(b,w,h);
+    const d=Math.hypot(x-n.x,y-n.y);
+    if(d<best){best=d;band=b;}
   }
   return band;
+}
+function dynamicTargetAtPointer(x,y,w,h){
+  let best=14,band=-1;
+  for(let b=0;b<4;b++){
+    const n=dynamicTargetPoint(b,w,h);
+    const d=Math.hypot(x-n.x,y-n.y);
+    if(d<best){best=d;band=b;}
+  }
+  return band;
+}
+function gainShapeDb(b,hz,gain){
+  const f=Math.max(20,state.eq.freq[b]);
+  const q=Math.max(.1,state.eq.q[b]);
+  const qEff=clamp(q/(1+.045*Math.abs(gain)),.1,18);
+  const width=Math.max(.02,1/(qEff*1.8));
+  const xx=Math.log(Math.max(hz,20)/f);
+  return gain*Math.exp(-(xx*xx)/(2*width*width));
+}
+function dynamicPopupBounds(b,w,h){
+  const n=dynamicNodePoint(b,w,h);
+  const pw=230,ph=96;
+  let x=n.x-pw/2,y=n.y-ph-34;
+  if(y<6)y=n.y+34;
+  return {x:clamp(x,6,w-pw-6),y:clamp(y,6,h-ph-6),w:pw,h:ph};
 }
 function drawEQ(){
   const r=eqCanvas.getBoundingClientRect(),w=r.width,h=r.height;
   eqCtx.clearRect(0,0,w,h);
-  eqCtx.fillStyle="#111318";eqCtx.fillRect(0,0,w,h);
+  eqCtx.fillStyle="#111318";
+  eqCtx.fillRect(0,0,w,h);
 
-  eqCtx.strokeStyle="#4b556044";eqCtx.lineWidth=1;
-  for(let i=0;i<10;i++){const x=i*w/10;eqCtx.beginPath();eqCtx.moveTo(x,0);eqCtx.lineTo(x,h);eqCtx.stroke()}
-  for(let i=0;i<=4;i++){const y=i*h/4;eqCtx.beginPath();eqCtx.moveTo(0,y);eqCtx.lineTo(w,y);eqCtx.stroke()}
-  eqCtx.strokeStyle="#fff5";eqCtx.beginPath();eqCtx.moveTo(0,h/2);eqCtx.lineTo(w,h/2);eqCtx.stroke();
+  // Grid.
+  eqCtx.strokeStyle="#4b556044";
+  eqCtx.lineWidth=1;
+  for(let i=0;i<10;i++){
+    const x=i*w/10;
+    eqCtx.beginPath();eqCtx.moveTo(x,0);eqCtx.lineTo(x,h);eqCtx.stroke();
+  }
+  for(let i=0;i<=4;i++){
+    const y=i*h/4;
+    eqCtx.beginPath();eqCtx.moveTo(0,y);eqCtx.lineTo(w,y);eqCtx.stroke();
+  }
 
-  const xTicks=[20,50,100,200,500,1000,2000,5000,10000,20000],yTicks=[18,12,6,0,-6,-12,-18];
-  eqCtx.save();eqCtx.font="8px Consolas";eqCtx.fillStyle="#aeb6c0";eqCtx.strokeStyle="#7f899366";eqCtx.textBaseline="top";
-  xTicks.forEach(f=>{const x=logX(f,w);eqCtx.beginPath();eqCtx.moveTo(x,h-16);eqCtx.lineTo(x,h-10);eqCtx.stroke();const label=f>=1000?(f/1000)+"k":String(f);eqCtx.textAlign=x<28?"left":(x>w-28?"right":"center");eqCtx.fillText(label,x,h-9)});
-  eqCtx.textAlign="right";eqCtx.textBaseline="middle";yTicks.forEach(db=>{const y=h-(db+18)/36*h;eqCtx.beginPath();eqCtx.moveTo(0,y);eqCtx.lineTo(6,y);eqCtx.stroke();eqCtx.fillText((db>0?"+":"")+db+" dB",42,clamp(y,9,h-17))});eqCtx.restore();
-
-  const xo=state.ott.x.map(v=>logX(v,w)),bounds=[0,xo[0],xo[1],xo[2],w];
-  for(let b=0;b<4;b++){const alpha=clamp(state.eq.color[b],0,100)/100*.70;if(alpha>0){eqCtx.fillStyle=cols[b]+Math.round(alpha*255).toString(16).padStart(2,"0");eqCtx.fillRect(bounds[b],0,bounds[b+1]-bounds[b],h)}}
+  // X1 / X2 / X3 dedicated top strip.
   for(let b=0;b<3;b++){
-    const x=xo[b],ov=clamp((state.ott.overlap??[50,50,50])[b]??50,0,100),spread=16+ov*.52;
-    eqCtx.strokeStyle="#facc15cc";eqCtx.beginPath();eqCtx.moveTo(x,20);eqCtx.lineTo(x,h-18);eqCtx.stroke();
-    eqCtx.strokeStyle="#facc1588";eqCtx.beginPath();eqCtx.moveTo(Math.max(0,x-spread),h/2+20);eqCtx.bezierCurveTo(x-spread*.5,h/2+20,x-spread*.2,h/2-10,x,h/2-2);eqCtx.bezierCurveTo(x+spread*.2,h/2-10,x+spread*.5,h/2+20,Math.min(w,x+spread),h/2+20);eqCtx.stroke();
-    eqCtx.fillStyle="#000a";eqCtx.fillRect(x-46,2,92,15);eqCtx.fillStyle="#ffe36a";eqCtx.font="bold 8px Consolas";eqCtx.textAlign="center";eqCtx.fillText("X"+(b+1)+" "+hz(state.ott.x[b]),x,13);eqCtx.textAlign="left"
+    const x=logX(state.ott.x[b],w);
+    const ov=clamp((state.ott.overlap||[50,50,50])[b]||50,0,100);
+    eqCtx.strokeStyle="#facc15aa";
+    eqCtx.beginPath();eqCtx.moveTo(x,20);eqCtx.lineTo(x,h-18);eqCtx.stroke();
+    eqCtx.fillStyle="#000b";
+    eqCtx.fillRect(x-48,2,96,15);
+    eqCtx.fillStyle="#ffe36a";
+    eqCtx.font="bold 8px Consolas";
+    eqCtx.textAlign="center";
+    eqCtx.fillText("X"+(b+1)+" "+hz(state.ott.x[b]),x,13);
+    eqCtx.textAlign="left";
+    void ov;
   }
 
-  // Static EQ response.
-  eqCtx.strokeStyle="#ffffff66";eqCtx.lineWidth=1;
+  // Static Offset response.
+  eqCtx.strokeStyle="#ffffff55";
+  eqCtx.lineWidth=1.1;
   eqCtx.beginPath();
-  for(let i=0;i<=300;i++){
-    const x=i/300*w,hzv=invLog(i/300);let db=0;
-    for(let b=0;b<4;b++){
-      const f=state.eq.freq[b],q=Math.max(.1,state.eq.q[b]),xx=Math.log(Math.max(hzv,20)/Math.max(f,20)),wd=Math.max(.02,1/(q*1.8));
-      db+=state.eq.gain[b]*Math.exp(-(xx*xx)/(2*wd*wd));
-    }
-    const y=h-(clamp(db,-18,18)+18)/36*h;i?eqCtx.lineTo(x,y):eqCtx.moveTo(x,y)
+  for(let i=0;i<=420;i++){
+    const hzv=invLog(i/420);
+    let db=0;
+    for(let b=0;b<4;b++) db+=gainShapeDb(b,hzv,state.eq.gain[b]);
+    const x=logX(hzv,w),y=h-(clamp(db,-18,18)+18)/36*h;
+    if(i===0)eqCtx.moveTo(x,y);else eqCtx.lineTo(x,y);
   }
   eqCtx.stroke();
 
-  // Live Dynamic EQ response and nodes.
-  eqCtx.strokeStyle="#fff";eqCtx.lineWidth=2;eqCtx.beginPath();
-  for(let i=0;i<=300;i++){
-    const x=i/300*w,hzv=invLog(i/300);let db=0;
-    for(let b=0;b<4;b++){
-      const f=state.eq.freq[b],q=Math.max(.1,state.eq.q[b]),xx=Math.log(Math.max(hzv,20)/Math.max(f,20)),wd=Math.max(.02,1/(q*1.8));
-      const red=(Number(state.dyn.reductionMid[b]||0)+Number(state.dyn.reductionSide[b]||0))*.5;
-      db+=(state.eq.gain[b]-red)*Math.exp(-(xx*xx)/(2*wd*wd));
-    }
-    const y=h-(clamp(db,-18,18)+18)/36*h;i?eqCtx.lineTo(x,y):eqCtx.moveTo(x,y)
-  }
-  eqCtx.stroke();
-
+  // Sonnox-style Target/Offset range.
   for(let b=0;b<4;b++){
-    const sx=logX(state.eq.freq[b],w),sy=h-(clamp(state.eq.gain[b],-18,18)+18)/36*h,n=dynamicNodePoint(b,w,h);
-    const th=dynamicThresholdPoint(b,w,h);
+    const c=cols[b];
+    const target=clamp(state.dyn.target[b],-24,24);
+    const offset=clamp(state.eq.gain[b],-24,24);
+    const upper=[],lower=[];
+    for(let i=0;i<=220;i++){
+      const hzv=invLog(i/220),x=logX(hzv,w);
+      upper.push([x,h-(clamp(gainShapeDb(b,hzv,offset),-18,18)+18)/36*h]);
+      lower.push([x,h-(clamp(gainShapeDb(b,hzv,target),-18,18)+18)/36*h]);
+    }
+    eqCtx.beginPath();
+    for(let i=0;i<upper.length;i++) i===0?eqCtx.moveTo(upper[i][0],upper[i][1]):eqCtx.lineTo(upper[i][0],upper[i][1]);
+    for(let i=lower.length-1;i>=0;i--) eqCtx.lineTo(lower[i][0],lower[i][1]);
+    eqCtx.closePath();
+    eqCtx.fillStyle=c+"28";
+    eqCtx.fill();
+
+    eqCtx.strokeStyle=c+"aa";
+    eqCtx.lineWidth=1;
+    eqCtx.beginPath();
+    for(let i=0;i<lower.length;i++) i===0?eqCtx.moveTo(lower[i][0],lower[i][1]):eqCtx.lineTo(lower[i][0],lower[i][1]);
+    eqCtx.stroke();
+  }
+
+  // Live Gain curve.
+  eqCtx.strokeStyle="#ffffff";
+  eqCtx.lineWidth=2.2;
+  eqCtx.beginPath();
+  for(let i=0;i<=420;i++){
+    const hzv=invLog(i/420);
+    let db=0;
+    for(let b=0;b<4;b++) db+=gainShapeDb(b,hzv,state.eq.gain[b]+((+state.dyn.gainMid[b]||0)+(+state.dyn.gainSide[b]||0))*0.5);
+    const x=logX(hzv,w),y=h-(clamp(db,-18,18)+18)/36*h;
+    if(i===0)eqCtx.moveTo(x,y);else eqCtx.lineTo(x,y);
+  }
+  eqCtx.stroke();
+
+  // Nodes, live points, M/S rings and readable hover values.
+  for(let b=0;b<4;b++){
+    const c=cols[b],n=dynamicNodePoint(b,w,h),t=dynamicTargetPoint(b,w,h);
+    const offsetY=h-(clamp(state.eq.gain[b],-18,18)+18)/36*h;
     const hovered=hoverDynamicBand===b;
-    const ratio=Math.max(1,Number(state.dyn.ratio[b]||2.5));
-    const q=Math.max(.1,state.eq.q[b]);
-    const curveWidth=Math.max(24,Math.min(150,92/q));
-    const curveDepth=Math.max(7,Math.min(22,10+ratio*.45));
 
-    // DYN THRESH curve + draggable threshold handle.
-    eqCtx.strokeStyle=cols[b]+"b5";eqCtx.lineWidth=1.35;eqCtx.setLineDash([4,3]);eqCtx.beginPath();
-    for(let i=0;i<=40;i++){
-      const u=i/40*2-1,cx=sx+u*curveWidth,cy=th.y+curveDepth*Math.exp(-u*u*2.7)*(th.threshold<=-30?1:-1);
-      i?eqCtx.lineTo(cx,cy):eqCtx.moveTo(cx,cy);
-    }
-    eqCtx.stroke();eqCtx.setLineDash([]);
-    eqCtx.fillStyle="#050709cc";eqCtx.beginPath();eqCtx.arc(th.x,th.y,8,0,Math.PI*2);eqCtx.fill();
-    eqCtx.strokeStyle=cols[b];eqCtx.lineWidth=1.8;eqCtx.stroke();
-    eqCtx.fillStyle=cols[b];eqCtx.beginPath();eqCtx.arc(th.x,th.y,3,0,Math.PI*2);eqCtx.fill();
+    eqCtx.strokeStyle=c+"66";
+    eqCtx.lineWidth=2;
+    eqCtx.beginPath();eqCtx.moveTo(n.x,offsetY);eqCtx.lineTo(t.x,t.y);eqCtx.stroke();
 
-    // Static -> live Dynamic EQ movement.
-    eqCtx.strokeStyle=cols[b]+"66";eqCtx.lineWidth=1;eqCtx.beginPath();eqCtx.moveTo(sx,sy);eqCtx.lineTo(n.x,n.y);eqCtx.stroke();
-    eqCtx.fillStyle=cols[b];eqCtx.beginPath();eqCtx.arc(sx,sy,5.5,0,Math.PI*2);eqCtx.fill();
-    eqCtx.fillStyle="#fff";eqCtx.beginPath();eqCtx.arc(n.x,n.y,6,0,Math.PI*2);eqCtx.fill();
+    // Offset handle.
+    eqCtx.fillStyle=c+"dd";
+    eqCtx.beginPath();eqCtx.arc(n.x,offsetY,5.5,0,Math.PI*2);eqCtx.fill();
 
-    // M/S live-reduction ring.
-    const midRed=clamp(Number(state.dyn.reductionMid[b]||0),0,12),sideRed=clamp(Number(state.dyn.reductionSide[b]||0),0,12);
-    const ratioM=midRed/12,ratioS=sideRed/12;
-    eqCtx.strokeStyle="#f8fafc";eqCtx.lineWidth=2.5;eqCtx.beginPath();eqCtx.arc(n.x,n.y,11,-Math.PI/2,-Math.PI/2+ratioM*Math.PI);eqCtx.stroke();
-    eqCtx.strokeStyle="#737b86";eqCtx.beginPath();eqCtx.arc(n.x,n.y,11,-Math.PI/2+ratioM*Math.PI,-Math.PI/2+(ratioM+ratioS)*Math.PI);eqCtx.stroke();
+    // Target handle.
+    eqCtx.fillStyle="#06080be8";
+    eqCtx.beginPath();eqCtx.arc(t.x,t.y,7,0,Math.PI*2);eqCtx.fill();
+    eqCtx.strokeStyle=c;
+    eqCtx.lineWidth=1.6;
+    eqCtx.stroke();
 
-    // Compact compression action / transfer curve.
-    const cw=hovered?82:50,ch=hovered?48:30;
-    let cx=n.x+15,cy=n.y-ch-18;
-    if(cx+cw>w-4)cx=n.x-cw-15;
-    cy=clamp(cy,21,h-ch-5);
-    eqCtx.fillStyle="#050709aa";eqCtx.fillRect(cx,cy,cw,ch);
-    eqCtx.strokeStyle=cols[b]+(hovered?"cc":"55");eqCtx.lineWidth=1;eqCtx.strokeRect(cx,cy,cw,ch);
-    const t=clamp((th.threshold+60)/60,.06,.94),px0=cx+4,py0=cy+ch-4,px1=cx+cw-4,py1=cy+4,kx=px0+(px1-px0)*t,ky=py0-(py0-py1)*t,remain=px1-kx,outRemain=remain/ratio;
-    eqCtx.strokeStyle="#fff";eqCtx.lineWidth=hovered?1.7:1.0;eqCtx.beginPath();eqCtx.moveTo(px0,py0);eqCtx.lineTo(kx,ky);eqCtx.bezierCurveTo(kx+remain*.25,ky-outRemain*.18,kx+remain*.7,ky-outRemain*.78,px1,Math.max(py1,ky-outRemain));eqCtx.stroke();
-    if(hovered){eqCtx.fillStyle="#fff";eqCtx.font="bold 8px Consolas";eqCtx.textAlign="center";eqCtx.fillText("COMP "+fmt(ratio,2)+":1",cx+cw/2,cy+10);eqCtx.textAlign="left"}
+    // Live gain.
+    eqCtx.fillStyle="#fff";
+    eqCtx.beginPath();eqCtx.arc(n.x,n.y,6,0,Math.PI*2);eqCtx.fill();
 
-    // Direct hover readout above the point.
+    const mid=clamp(Math.abs(+state.dyn.gainMid[b]||0),0,12)/12;
+    const side=clamp(Math.abs(+state.dyn.gainSide[b]||0),0,12)/12;
+    eqCtx.strokeStyle="#fff";
+    eqCtx.lineWidth=2.5;
+    eqCtx.beginPath();eqCtx.arc(n.x,n.y,11,-Math.PI/2,-Math.PI/2+mid*Math.PI);eqCtx.stroke();
+    eqCtx.strokeStyle="#747b85";
+    eqCtx.beginPath();eqCtx.arc(n.x,n.y,11,-Math.PI/2+mid*Math.PI,-Math.PI/2+(mid+side)*Math.PI);eqCtx.stroke();
+
     if(hovered){
-      const gr=n.reduction;
-      const label="B"+(b+1)+"  "+hz(state.eq.freq[b])+"  "+(state.eq.gain[b]>=0?"+":"")+fmt(state.eq.gain[b],1)+" dB  DYN THR "+fmt(th.threshold,1)+" dB  R "+fmt(ratio,2)+":1  GR "+fmt(-gr,1)+" dB";
-      const lw=Math.min(292,w-12);
-      let lx=clamp(n.x-lw/2,6,w-lw-6),ly=n.y-ch-54;
-      if(ly<6)ly=n.y+20;
-      eqCtx.fillStyle="#05070bf0";eqCtx.fillRect(lx,ly,lw,27);eqCtx.strokeStyle=cols[b]+"ee";eqCtx.lineWidth=1;eqCtx.strokeRect(lx,ly,lw,27);
-      eqCtx.fillStyle="#fff";eqCtx.font="bold 8.5px Consolas";eqCtx.textAlign="center";eqCtx.fillText(label,lx+lw/2,ly+17);eqCtx.textAlign="left";
+      const live=state.eq.gain[b]+n.change;
+      const label="B"+(b+1)+"  "+hz(state.eq.freq[b])+"  Q "+fmt(state.eq.q[b],2)+"  TARGET "+fmt(state.dyn.target[b],1)+" dB  OFFSET "+fmt(state.eq.gain[b],1)+" dB  LIVE "+fmt(live,1)+" dB  DYN "+fmt(state.dyn.dynamics[b],0)+"%  THR "+fmt(state.dyn.threshold[b],1)+" dB  "+(state.dyn.detectOnsets[b]?"ONSETS":"PEAK")+" / "+(state.dyn.triggerBelow[b]?"BELOW":"ABOVE");
+      const lw=Math.min(530,w-12);
+      let bx=clamp(n.x-lw/2,6,w-lw-6),by=Math.min(offsetY,t.y,n.y)-42;
+      if(by<6)by=Math.max(offsetY,t.y,n.y)+18;
+      eqCtx.fillStyle="#05070bf4";eqCtx.fillRect(bx,by,lw,28);
+      eqCtx.strokeStyle=c;eqCtx.lineWidth=1;eqCtx.strokeRect(bx,by,lw,28);
+      eqCtx.fillStyle="#fff";eqCtx.font="bold 8px Consolas";eqCtx.textAlign="center";eqCtx.fillText(label,bx+lw/2,by+17);eqCtx.textAlign="left";
+    }
+
+    if(expandedDynamicBand===b){
+      const p=dynamicPopupBounds(b,w,h),ms=clamp(Number(state.dyn.ms[b]||50),0,100);
+      eqCtx.fillStyle="#06090ef7";eqCtx.strokeStyle="#fff9";eqCtx.lineWidth=1;eqCtx.fillRect(p.x,p.y,p.w,p.h);eqCtx.strokeRect(p.x,p.y,p.w,p.h);
+      eqCtx.fillStyle="#fff";eqCtx.font="bold 11px Consolas";eqCtx.fillText("BAND "+(b+1)+" · DYNAMIC MID / SIDE",p.x+12,p.y+17);
+      eqCtx.font="bold 10px Consolas";eqCtx.fillStyle=c;eqCtx.fillText("MID "+fmt(ms,0)+"%",p.x+12,p.y+37);
+      eqCtx.textAlign="right";eqCtx.fillStyle="#e8edf2";eqCtx.fillText("SIDE "+fmt(100-ms,0)+"%",p.x+p.w-12,p.y+37);eqCtx.textAlign="left";
+      const bx=p.x+12,by=p.y+50,bw=p.w-24;
+      eqCtx.fillStyle="#232830";eqCtx.fillRect(bx,by,bw,11);
+      eqCtx.fillStyle="#f8fafc";eqCtx.fillRect(bx,by,bw*ms/100,11);
+      eqCtx.strokeStyle="#707985";eqCtx.strokeRect(bx,by,bw,11);
+      eqCtx.fillStyle="#c6ccd3";eqCtx.font="bold 8px Consolas";eqCtx.fillText("RIGHT CLICK + WHEEL = MID / SIDE",bx,by+24);
     }
   }
 
-  eqCtx.fillStyle="#fff";eqCtx.font="bold 8px Consolas";eqCtx.fillText("DYNAMIC EQ · LIVE GAIN · HOVER = VALUES · RIGHT CLICK = M/S · 20 Hz — 20 kHz",12,h-8);
-
-  if(expandedDynamicBand>=0){
-    const p=dynamicPopupBounds(expandedDynamicBand,w,h),ms=clamp(Number(state.dyn.ms[expandedDynamicBand]||50),0,100);
-    eqCtx.fillStyle="#07090cf7";eqCtx.strokeStyle="#ffffffbb";eqCtx.lineWidth=1;eqCtx.fillRect(p.x,p.y,p.w,p.h);eqCtx.strokeRect(p.x,p.y,p.w,p.h);
-    eqCtx.fillStyle="#fff";eqCtx.font="bold 11px Consolas";eqCtx.textAlign="left";eqCtx.fillText("BAND "+(expandedDynamicBand+1)+" · DYNAMIC MID / SIDE",p.x+10,p.y+16);
-    eqCtx.fillStyle="#e8edf2";eqCtx.font="bold 10px Consolas";eqCtx.fillText("MID "+fmt(ms,0)+"%",p.x+10,p.y+36);eqCtx.textAlign="right";eqCtx.fillText("SIDE "+fmt(100-ms,0)+"%",p.x+p.w-10,p.y+36);eqCtx.textAlign="left";
-    const bx=p.x+10,by=p.y+48,bw=p.w-20;eqCtx.fillStyle="#242830";eqCtx.fillRect(bx,by,bw,11);eqCtx.fillStyle="#f8fafc";eqCtx.fillRect(bx,by,bw*ms/100,11);eqCtx.strokeStyle="#707985";eqCtx.strokeRect(bx,by,bw,11);
-    eqCtx.fillStyle="#c4cad2";eqCtx.font="bold 8px Consolas";eqCtx.fillText("RIGHT CLICK + WHEEL = MID / SIDE",bx,by+23);
-  }
+  eqCtx.fillStyle="#fff";
+  eqCtx.font="bold 8px Consolas";
+  eqCtx.fillText("OXFORD-STYLE DYNAMIC EQ · OFFSET / TARGET / LIVE GAIN · RIGHT CLICK = M/S",12,h-8);
 }
-let expandedDynamicBand=-1,hoverDynamicBand=-1,drag=-1,dragXover=-1,dragDynamicMsBand=-1,dragDynamicThresholdBand=-1,dynFreqStartHz=0,dynFreqStartX=0;
-function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRatio||1;eqCanvas.width=Math.max(1,Math.round(r.width*d));eqCanvas.height=Math.max(1,Math.round(r.height*d));eqCtx.setTransform(d,0,0,d,0,0);drawEQ()}
+let expandedDynamicBand=-1,hoverDynamicBand=-1,drag=-1,dragXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dynFreqStartHz=0,dynFreqStartX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0;
+function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRatio||1;eqCanvas.width=Math.max(1,Math.round(r.width*d));eqCanvas.height=Math.max(1,Math.round(r.height*d));eqCtx.setTransform(d,0,0,d,0,0);drawEQ();}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
-function showGraphHint(e,text){const r=eqCanvas.getBoundingClientRect();graphHint.textContent=text;graphHint.hidden=false;const pad=6,ox=12,oy=12,x=clamp(e.clientX-r.left+ox,pad,r.width-graphHint.offsetWidth-pad),y=clamp(e.clientY-r.top+oy,pad,r.height-graphHint.offsetHeight-pad);graphHint.style.left=x+"px";graphHint.style.top=y+"px"}
-function hideGraphHint(){graphHint.hidden=true}
-
+function showGraphHint(e,text){const r=eqCanvas.getBoundingClientRect();graphHint.textContent=text;graphHint.hidden=false;const pad=6,ox=12,oy=12,x=clamp(e.clientX-r.left+ox,pad,r.width-graphHint.offsetWidth-pad),y=clamp(e.clientY-r.top+oy,pad,r.height-graphHint.offsetHeight-pad);graphHint.style.left=x+"px";graphHint.style.top=y+"px";}
+function hideGraphHint(){graphHint.hidden=true;}
 eqCanvas.addEventListener("contextmenu",e=>e.preventDefault());
-
-eqCanvas.addEventListener("mousemove",e=>{
-  const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
-  const band=dynamicBandAtPointer(x,y,w,h);
-  hoverDynamicBand=band;
-  drawEQ();
-});
-
+eqCanvas.addEventListener("mousemove",e=>{const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;hoverDynamicBand=dynamicBandAtPointer(x,y,w,h);drawEQ();});
 eqCanvas.addEventListener("wheel",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
-  if(e.buttons===2 || e.button===2){
+  if(e.buttons===2||e.button===2){
     const band=hoverDynamicBand>=0?hoverDynamicBand:dynamicBandAtPointer(x,y,w,h);
-    if(band>=0){e.preventDefault();state.dyn.ms[band]=clamp(state.dyn.ms[band]-e.deltaY*.04,0,100);expandedDynamicBand=band;sendParams();drawEQ();return}
+    if(band>=0){e.preventDefault();state.dyn.ms[band]=clamp(state.dyn.ms[band]-e.deltaY*.04,0,100);expandedDynamicBand=band;sendParams();drawEQ();return;}
   }
   const xo=state.ott.x.map(v=>logX(v,w));let xb=12,xi=-1;
-  for(let i=0;i<3;i++){const d=Math.abs(xo[i]-x);if(d<xb){xb=d;xi=i}}
-  if(xi>=0){e.preventDefault();const ov=state.ott.overlap??[50,50,50];ov[xi]=clamp((ov[xi]??50)+e.deltaY*.02,0,100);sendParams();drawEQ();return}
+  for(let i=0;i<3;i++){const d=Math.abs(xo[i]-x);if(d<xb){xb=d;xi=i;}}
+  if(xi>=0){e.preventDefault();const ov=state.ott.overlap??[50,50,50];ov[xi]=clamp((ov[xi]??50)+e.deltaY*.02,0,100);sendParams();drawEQ();return;}
   let best=22,band=-1;
-  for(let b=0;b<4;b++){const px=logX(state.eq.freq[b],w),py=h-(clamp(state.eq.gain[b],-18,18)+18)/36*h,d=Math.hypot(px-x,py-y);if(d<best){best=d;band=b}}
-  if(band<0)return;e.preventDefault();state.eq.q[band]=clamp(state.eq.q[band]*Math.exp((e.deltaY/100)*.025),.1,18);sendParams();drawEQ();
+  for(let b=0;b<4;b++){const px=logX(state.eq.freq[b],w),py=h-(clamp(state.eq.gain[b]+((+state.dyn.gainMid[b]||0)+(+state.dyn.gainSide[b]||0))*.5,-18,18)+18)/36*h,d=Math.hypot(px-x,py-y);if(d<best){best=d;band=b;}}
+  if(band<0)return;
+  e.preventDefault();state.eq.q[band]=clamp(state.eq.q[band]*Math.exp((e.deltaY/100)*.025),.1,18);sendParams();drawEQ();
 },{passive:false});
-
 eqCanvas.addEventListener("pointerdown",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
-  if(expandedDynamicBand>=0){
-    const p=dynamicPopupBounds(expandedDynamicBand,w,h),bar={x:p.x+10,y:p.y+48,w:p.w-20,h:11};
-    if(x>=p.x&&x<=p.x+p.w&&y>=p.y&&y<=p.y+p.h){
-      if(e.button===0&&x>=bar.x&&x<=bar.x+bar.w&&y>=bar.y-8&&y<=bar.y+20){
-        dragDynamicMsBand=expandedDynamicBand;eqCanvas.setPointerCapture(e.pointerId);state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);sendParams();drawEQ();
-      } return;
-    }
-  }
   if(e.button===2){
     const band=dynamicBandAtPointer(x,y,w,h);
-    if(band>=0){e.preventDefault();expandedDynamicBand=band;drawEQ();return}
+    if(band>=0){e.preventDefault();expandedDynamicBand=band;drawEQ();return;}
   }
-  const dynThresholdBand=dynamicThresholdAtPointer(x,y,w,h);
-  if(e.button===0&&dynThresholdBand>=0){
-    dragDynamicThresholdBand=dynThresholdBand;eqCanvas.setPointerCapture(e.pointerId);state.dyn.threshold[dynThresholdBand]=clamp(-(y-20)/Math.max(20,h-40)*60,-60,0);sendParams();drawEQ();return
+  if(expandedDynamicBand>=0){
+    const p=dynamicPopupBounds(expandedDynamicBand,w,h),bar={x:p.x+12,y:p.y+50,w:p.w-24,h:11};
+    if(x>=p.x&&x<=p.x+p.w&&y>=p.y&&y<=p.y+p.h){
+      if(e.button===0&&x>=bar.x&&x<=bar.x+bar.w&&y>=bar.y-8&&y<=bar.y+20){dragDynamicMsBand=expandedDynamicBand;eqCanvas.setPointerCapture(e.pointerId);state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);sendParams();drawEQ();}
+      return;
+    }
   }
-  const dynBand=dynamicBandAtPointer(x,y,w,h);
-  if(e.button===0&&dynBand>=0){
-    drag=dynBand;dragXover=-1;dragDynamicMsBand=-1;dragDynamicThresholdBand=-1;dynFreqStartHz=state.eq.freq[dynBand];dynFreqStartX=x;eqCanvas.setPointerCapture(e.pointerId);return
-  }
-  const xo=state.ott.x.map(v=>logX(v,w));for(let i=0;i<3;i++)if(Math.abs(xo[i]-x)<14){dragXover=i;eqCanvas.setPointerCapture(e.pointerId);return}
+  const tb=dynamicTargetAtPointer(x,y,w,h);
+  if(e.button===0&&tb>=0){dragDynamicTargetBand=tb;drag=-1;dynGainStartY=y;dynGainStartTarget=state.dyn.target[tb];eqCanvas.setPointerCapture(e.pointerId);return;}
+  const band=dynamicBandAtPointer(x,y,w,h);
+  if(e.button===0&&band>=0){drag=band;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;dynFreqStartHz=state.eq.freq[band];dynFreqStartX=x;dynGainStartY=y;dynGainStartOffset=state.eq.gain[band];dynGainStartTarget=state.dyn.target[band];eqCanvas.setPointerCapture(e.pointerId);return;}
+  const xo=state.ott.x.map(v=>logX(v,w));
+  for(let i=0;i<3;i++)if(Math.abs(xo[i]-x)<14){dragXover=i;eqCanvas.setPointerCapture(e.pointerId);return;}
 });
-
 eqCanvas.addEventListener("pointermove",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,0,r.width),y=clamp(e.clientY-r.top,0,r.height),w=r.width,h=r.height;
   hoverDynamicBand=dynamicBandAtPointer(x,y,w,h);
-  if(dragDynamicMsBand>=0){const p=dynamicPopupBounds(dragDynamicMsBand,w,h),bar={x:p.x+10,y:p.y+48,w:p.w-20,h:11};state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);sendParams();drawEQ();return}
-  if(dragDynamicThresholdBand>=0){state.dyn.threshold[dragDynamicThresholdBand]=clamp(-(y-20)/Math.max(20,h-40)*60,-60,0);sendParams();drawEQ();return}
-  if(dragXover>=0){let f=invLog(x/w);if(dragXover===0)f=clamp(f,40,Math.min(1000,state.ott.x[1]-80));else if(dragXover===1)f=clamp(f,state.ott.x[0]+80,Math.min(5000,state.ott.x[2]-200));else f=clamp(f,state.ott.x[1]+200,18000);state.ott.x[dragXover]=f;sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return}
-  if(drag<0){drawEQ();return}
-  const hz=clamp(dynFreqStartHz+(x-dynFreqStartX)*(19980/Math.max(1,w)),20,20000),db=clamp(18-(y/h)*36,-24,24),n=String(drag+1);state.eq.freq[drag]=hz;state.eq.gain[drag]=db;sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());
+  if(dragDynamicMsBand>=0){const p=dynamicPopupBounds(dragDynamicMsBand,w,h),bar={x:p.x+12,y:p.y+50,w:p.w-24,h:11};state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);sendParams();drawEQ();return;}
+  if(dragDynamicTargetBand>=0){state.dyn.target[dragDynamicTargetBand]=clamp(dynGainStartTarget-(y-dynGainStartY)/Math.max(1,h)*36,-24,24);sendParams();drawEQ();return;}
+  if(dragXover>=0){
+    let f=invLog(x/w);
+    if(dragXover===0)f=clamp(f,40,Math.min(1000,state.ott.x[1]-80));
+    else if(dragXover===1)f=clamp(f,state.ott.x[0]+80,Math.min(5000,state.ott.x[2]-200));
+    else f=clamp(f,state.ott.x[1]+200,18000);
+    state.ott.x[dragXover]=f;sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
+  }
+  if(drag<0){drawEQ();return;}
+  const hzv=clamp(dynFreqStartHz+(x-dynFreqStartX)*(19980/Math.max(1,w)),20,20000),deltaDb=-(y-dynGainStartY)/Math.max(1,h)*36;
+  state.eq.freq[drag]=hzv;
+  state.eq.gain[drag]=clamp(dynGainStartOffset+deltaDb,-24,24);
+  state.dyn.target[drag]=clamp(dynGainStartTarget+deltaDb,-24,24);
+  sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());
 });
-eqCanvas.addEventListener("pointerup",()=>{drag=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicThresholdBand=-1;drawEQ()});
-eqCanvas.addEventListener("pointercancel",()=>{drag=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicThresholdBand=-1;drawEQ()});
+eqCanvas.addEventListener("pointerup",()=>{drag=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;drawEQ();});
+eqCanvas.addEventListener("pointercancel",()=>{drag=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;drawEQ();});
 
 function stopPlayback(){if(source){try{source.stop()}catch{}try{source.disconnect()}catch{}source=null}playing=false;$("#status").textContent="READY"}
 async function loadAudioFile(file){if(!file)return;try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();$("#status").textContent="DECODING…";audioBuffer=await audioCtx.decodeAudioData(await file.arrayBuffer());$("#fileName").textContent=file.name;$("#status").textContent="READY"}catch(e){$("#status").textContent="LOAD ERROR"}}
