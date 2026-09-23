@@ -33,10 +33,10 @@ def dyn_from_drag(start_dyn, start_y, current_y, graph_h=315.0, scale=1.0):
                  -100.0, 100.0)
 
 def y_from_db(db, height=315.0):
-    return height - height * clamp((db + 24.0) / 48.0, 0.0, 1.0)
+    return height - height * clamp((db + 36.0) / 72.0, 0.0, 1.0)
 
 def db_from_y(y, height=315.0):
-    return clamp((height - y) / height * 48.0 - 24.0, -24.0, 24.0)
+    return clamp((height - y) / height * 72.0 - 36.0, -36.0, 36.0)
 
 def dynamic_target(offset, dyn_range, dynamics):
     amount = abs(clamp(dynamics, -100.0, 100.0)) / 100.0
