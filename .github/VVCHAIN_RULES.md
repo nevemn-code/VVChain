@@ -64,8 +64,8 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 
 - Native C++ 與 Web Preview 的核心演算法一致。
 - Web Worklet JavaScript 可以正常解析。
-- 所有本次 GitHub 寫入行為都有時間碼。
-- 被修改的 Web 頁面都有頁面內時間碼。
++ 所有本次 GitHub 修改都使用對應版本號。
++ Web Preview 不要求加入或更新日期／時間碼。
 - 變更未重新引入 V1/V2/V3 舊版切換頁。
 
 ## Native VST3 / Web 雙版本同步（最高優先、強制）
