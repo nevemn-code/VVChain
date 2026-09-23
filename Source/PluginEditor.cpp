@@ -2009,7 +2009,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.3 · SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER",
+    g.drawText("VVCHAIN v1.0.4 · SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
