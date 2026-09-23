@@ -145,6 +145,7 @@ def test_eq_xy_drag_math():
 
     cpp = CPP.read_text(encoding="utf-8")
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    head = HEAD.read_text(encoding="utf-8")
     assert 'const float effectiveDx = rawDx;' in cpp
     assert 'const float effectiveDy = rawDy;' in cpp
     assert 'const effectiveDx=rawDx;' in web
