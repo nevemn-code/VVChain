@@ -251,7 +251,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
         addKnob("DYN_THRESH" + n, "THRESH", -60, 0, .1,
                 parameterValue("DYN_THRESH" + n), " dB", b, 8, c);
-        addKnob("DYN_DYNAMICS" + n, "DYNAMICS", 0, 100, .1,
+        addKnob("DYN_DYNAMICS" + n, "DYNAMICS", -100, 100, .1,
                 parameterValue("DYN_DYNAMICS" + n), " %", b, 9, c);
         addKnob("DYN_ATTACK" + n, "ATTACK", .1, 200, .1,
                 parameterValue("DYN_ATTACK" + n), " ms", b, 10, c);
