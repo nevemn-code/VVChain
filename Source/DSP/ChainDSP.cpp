@@ -889,10 +889,14 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     VVChain_DynEQ_Engine::getTargetGainDB(
                         offsetGain, gainDeltaDb, sideEnvRatio);
 
+                const float safeMidTotalGain =
+                    juce::jlimit(-18.f, 18.f, midTotalGain);
+                const float safeSideTotalGain =
+                    juce::jlimit(-18.f, 18.f, sideTotalGain);
                 const float midGainChange =
-                    midTotalGain - offsetGain;
+                    safeMidTotalGain - offsetGain;
                 const float sideGainChange =
-                    sideTotalGain - offsetGain;
+                    safeSideTotalGain - offsetGain;
 
                 dynMidGainChangeDb[band].store(
                     midGainChange, std::memory_order_relaxed);
@@ -905,11 +909,11 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 const double midQ = juce::jlimit(
                     0.1, 18.0,
                     baseQ / (1.0 + 0.045
-                        * std::abs(static_cast<double>(midTotalGain))));
+                        * std::abs(static_cast<double>(safeMidTotalGain))));
                 const double sideQ = juce::jlimit(
                     0.1, 18.0,
                     baseQ / (1.0 + 0.045
-                        * std::abs(static_cast<double>(sideTotalGain))));
+                        * std::abs(static_cast<double>(safeSideTotalGain))));
 
                 if ((sample & 3) == 0)
                 {
