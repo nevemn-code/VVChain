@@ -1190,131 +1190,83 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
 void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    const float ax1 = 80.f;
-    const float ax2 = 3000.f;
-    const float ax3 = 9000.f;
-    const float typeQ = 0.70710678f;
-
-    updateCrossover2nd(typeXover1, sr, ax1, typeQ);
-    updateCrossover2nd(typeXover2, sr, ax2, typeQ);
-    updateCrossover2nd(typeXover3, sr, ax3, typeQ);
-
+    // TAPE-A is intentionally stateless: no envelope/attack/release dependent
+    // gain jump is allowed when a new transient enters the processor.
+    // The transfer curve is normalized so a 0 dBFS sample (|x| = 1) remains
+    // at unity. The degree control determines both drive depth and wet amount.
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.atypeInputGainDb));
     const float outputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.atypeOutputGainDb));
-    const float attackCoeff =
-        timeCoeff(sr, juce::jlimit(1.f, 100.f, p.atypeAttackMs));
-    const float releaseCoeff =
-        timeCoeff(sr, juce::jlimit(20.f, 500.f, p.atypeReleaseMs));
     const float mix =
         juce::jlimit(0.f, 1.f, p.atypeMix / 100.f);
 
     for (int ch = 0; ch < channels; ++ch)
     {
         auto* data = buffer.getWritePointer(ch);
-        const bool right = ch == 1;
 
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
             const float original = data[n];
             const float x = original * inputGain;
 
-            const float b1 = typeXover1.low(x, right);
-            const float b3 = typeXover2.high(x, right);
-            const float b4 = typeXover3.high(x, right);
+            const float b1 = typeXover1.low(x, ch == 1);
+            const float b3 = typeXover2.high(x, ch == 1);
+            const float b4 = typeXover3.high(x, ch == 1);
             const float b2 = x - b1 - b3;
-
             const float bands[4] = { b1, b2, b3, b4 };
+
             float enhancement = 0.f;
 
             for (int band = 0; band < 4; ++band)
             {
-                if (p.atypeBandBypass[(size_t) band])
+                if (p.atypeBandBypass[static_cast<size_t>(band)])
                     continue;
 
-                const float degree =
-                    juce::jlimit(0.f, 100.f, p.atypeDegree[(size_t) band]);
-                if (degree <= 0.f)
+                const float depth =
+                    juce::jlimit(0.f, 1.f,
+                                 p.atypeDegree[static_cast<size_t>(band)] / 100.f);
+                if (depth <= 0.f)
                     continue;
 
-                const float magnitude = std::abs(bands[band]);
-                float& fastEnv = typeFastEnv[(size_t) band][(size_t) ch];
-                float& slowEnv = typeSlowEnv[(size_t) band][(size_t) ch];
-                float& gainState = typeDc[(size_t) band][(size_t) ch];
+                // Conservative drive mapping: defaults stay subtle, while 100%
+                // reaches a materially stronger tape-like transfer curve.
+                const float rawDriveParam = 1.0f + 1.5f * depth;
+                const float driveParam =
+                    juce::jmax(1.0f, rawDriveParam);
 
-                const float fastAlpha =
-                    magnitude > fastEnv ? attackCoeff : releaseCoeff;
-                fastEnv = fastAlpha * fastEnv
-                    + (1.f - fastAlpha) * magnitude;
+                float makeupDenominator = std::tanh(driveParam);
+                makeupDenominator =
+                    juce::jmax(makeupDenominator, 1.0e-6f);
 
-                const float slowAlpha =
-                    magnitude > slowEnv ? attackCoeff : releaseCoeff;
-                slowEnv = slowAlpha * slowEnv
-                    + (1.f - slowAlpha) * magnitude;
+                const float staticMakeupMultiplier =
+                    1.0f / makeupDenominator;
 
-                const float levelDb =
-                    gainToDb(std::max(slowEnv, 1.0e-7f));
-                const float depth = degree / 100.f;
-
-                const float thresholdDb =
-                    -56.f + 20.f * std::sqrt(depth);
-                const float ratio =
-                    1.f + 15.f * std::sqrt(depth);
-                const float slope =
-                    1.f - 1.f / juce::jmax(1.f, ratio);
-
-                const float kneeStart = thresholdDb - 3.f;
-                const float kneeEnd = thresholdDb + 3.f;
-
-                float targetGainDb = 0.f;
-                if (levelDb < kneeStart)
-                    targetGainDb =
-                        (thresholdDb - levelDb) * slope;
-                else if (levelDb < kneeEnd)
-                {
-                    const float xk = kneeEnd - levelDb;
-                    targetGainDb =
-                        slope / 12.f * xk * xk;
-                }
-
-                targetGainDb =
-                    juce::jlimit(0.f, 9.f, targetGainDb * depth);
-
-                const float gainAlpha =
-                    targetGainDb > gainState
-                        ? attackCoeff
-                        : releaseCoeff;
-                gainState =
-                    gainAlpha * gainState
-                    + (1.f - gainAlpha) * targetGainDb;
+                // Normalized tanh: an input of +1/-1 maps exactly to +1/-1.
+                // No envelope state, Attack or Release participates in the
+                // TAPE-A gain path, so the first incoming transient cannot
+                // acquire a state-dependent startup boost.
+                const float driven =
+                    std::tanh(bands[band] * driveParam)
+                    * staticMakeupMultiplier;
 
                 const float bandTrim =
                     dbToGain(juce::jlimit(
                         -6.f, 6.f,
-                        p.atypeBandLevelDb[(size_t) band]));
+                        p.atypeBandLevelDb[static_cast<size_t>(band)]));
 
-                const float processed =
-                    bands[band]
-                    * dbToGain(gainState)
-                    * bandTrim;
+                const float processed = driven * bandTrim;
 
-                enhancement += processed - bands[band];
+                // Degree also controls wetness: 0% is mathematically
+                // transparent, avoiding any hidden coloration at zero.
+                enhancement +=
+                    (processed - bands[band]) * depth;
             }
 
-            float delta = enhancement * mix;
+            const float processed =
+                (x + enhancement * mix) * outputGain;
 
-            if ((x > 0.f && delta > 0.f) || (x < 0.f && delta < 0.f))
-            {
-                const float headroom = 0.985f - std::abs(x);
-                if (headroom <= 0.f)
-                    delta = 0.f;
-                else
-                    delta = std::copysign(
-                        std::min(std::abs(delta), headroom), delta);
-            }
-
-            data[n] = (x + delta) * outputGain;
+            data[n] = processed;
         }
     }
 }
