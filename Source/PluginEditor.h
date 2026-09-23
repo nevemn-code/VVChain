@@ -193,6 +193,8 @@ private:
     int hoverDynamicBand = -1;
     float dynamicFreqDragStartHz = 0.0f;
     float dynamicFreqDragStartX = 0.0f;
+    float dynamicGainDragStartOffset = 0.0f;
+    float dynamicGainDragStartTarget = 0.0f;
     bool showGraphDragHint = false;
     juce::String graphDragHint;
     juce::Point<float> graphDragHintPosition {};
