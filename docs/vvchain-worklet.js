@@ -249,28 +249,32 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const ti=y*this.db2g(s.type.input);
       const mix=this.clamp(Number(s.type.mix)/100,0,1);
 
-      // TAPE-A is intentionally stateless. Its attack/release parameters are
-      // retained for preset/UI compatibility but do not drive gain movement.
-      const b1=c.typeLp[0],b3=ti-c.typeLp[1],b4=ti-c.typeLp[2],b2=ti-b1-b3;
-      const bands=[b1,b2,b3,b4];
-      let enhancement=0;
+      // TAPE-A is intentionally stateless. Attack / Release and envelope
+      // state are retained only for preset compatibility, not gain movement.
+      const low1=c.typeLp[0],low2=c.typeLp[1],low3=c.typeLp[2];
+      const bands=[low1,low2-low1,low3-low2,ti-low3];
 
+      const driveParams=[0,0,0,0];
+      const makeup=[0,0,0,0];
+      const trims=[0,0,0,0];
       for(let b=0;b<4;b++){
-        if(s.bandBypass?.[b]||s.type.bandBypass[b])continue;
-
         const depth=this.clamp(Number(s.type.degree[b]||0)/100,0,1);
-        if(depth<=0)continue;
-
         const rawDriveParam=1+1.5*depth;
         const driveParam=Math.max(1,rawDriveParam);
+        driveParams[b]=driveParam;
         let makeupDenominator=Math.tanh(driveParam);
         makeupDenominator=Math.max(makeupDenominator,1e-6);
-        const staticMakeupMultiplier=1/makeupDenominator;
-        const driven=Math.tanh(bands[b]*driveParam)*staticMakeupMultiplier;
+        makeup[b]=1/makeupDenominator;
+        trims[b]=this.db2g(this.clamp(Number(s.type.level[b]||0),-6,6));
+      }
 
-        const bandTrim=this.db2g(this.clamp(Number(s.type.level[b]||0),-6,6));
-        const processed=driven*bandTrim;
-        // 0% is transparent; degree also controls the wet contribution.
+      let enhancement=0;
+      for(let b=0;b<4;b++){
+        if(s.bandBypass?.[b]||s.type.bandBypass[b])continue;
+        const depth=this.clamp(Number(s.type.degree[b]||0)/100,0,1);
+        if(depth<=0)continue;
+        const driven=Math.tanh(bands[b]*driveParams[b])*makeup[b];
+        const processed=driven*trims[b];
         enhancement+=(processed-bands[b])*depth;
       }
 
