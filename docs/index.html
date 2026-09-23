@@ -26,7 +26,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span><span class="tiny" id="cursorTime">0:00.000</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">DYN EQ RANGE PATCH · 2026-09-23 15:20</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">DYN EQ CENTERED ±18 PATCH · 2026-09-23 15:30</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -314,11 +314,11 @@ function dynamicThresholdFromDynamics(dynamics){
 }
 function dynamicEffectiveTargetGain(b){
   const offset=clamp(state.eq.gain[b],-18,18);
-  const dynamicRangeDb=Math.abs(clamp(Number(state.dyn.target[b]??0),-9,9));
+  const dynamicRangeDb=Math.abs(clamp(Number(state.dyn.target[b]??0),-18,18));
   const dynamics=clamp(Number(state.dyn.dynamics[b]??0),-100,100);
   const amount=Math.abs(dynamics)/100;
   const direction=dynamics<0?-1:1;
-  return clamp(offset+direction*dynamicRangeDb*amount,-27,27);
+  return clamp(offset+direction*dynamicRangeDb*amount,-36,36);
 }
 function dynamicBandAtPointer(x,y,w,h){
   let best=22,band=-1;
@@ -352,7 +352,7 @@ function dynamicTargetAtPointer(x,y,w,h){
   return band;
 }
 function dbToY(db,h){
-  return h-clamp((db+27)/54,0,1)*h;
+  return h-clamp((db+36)/72,0,1)*h;
 }
 function peakMagnitudeDb(fs,f,q,g,hz){
   const sr=fs>1000?fs:44100,cf=clamp(Number(f),10,sr*.45),fq=clamp(Number(q),.05,30),gd=clamp(Number(g),-36,36),x=clamp(Number(hz),10,sr*.45);
