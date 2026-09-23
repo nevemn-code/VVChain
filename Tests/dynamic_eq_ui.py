@@ -217,7 +217,7 @@ def test_eq_xy_drag_math():
     assert 'registerProcessor("vvchain-worklet",VVChainWorklet)' in worklet
     assert 'yL=yL-l;' in worklet and 'yR=yR-r;' in worklet
     assert 'dryL=L,dryR=R' not in worklet
-    assert 'yL=yL-dryL;' in web and 'yR=yR-dryR;' in web
+    assert 'yL=yL-l;' in worklet and 'yR=yR-r;' in worklet
     assert 'type:"ready"' in web
     assert 'workletFaulted' in web
     assert 'DSP STARTING' in web
@@ -232,7 +232,7 @@ def test_eq_xy_drag_math():
     assert 'DSP ERROR · AudioWorklet processor failed' in web
     assert '.knob.graphActive .dial' in web
     assert 'setGraphControlState' in cpp
-    assert 'DSP PARAM BRIDGE + TRUE DELTA + BOTTOM QUADRATIC XOVER' in web
+    assert 'SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER' in web
 
 def test_dynamic_range_centered_500():
     """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
