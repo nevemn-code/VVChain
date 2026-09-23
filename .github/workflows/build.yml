@@ -48,6 +48,35 @@ jobs:
       with:
         python-version: "3.11"
 
+    - name: Enforce Plugin / Web Preview sync
+      shell: bash
+      run: |
+        set -euo pipefail
+        if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+          changed="$(git diff --name-only HEAD^ HEAD)"
+        else
+          changed="$(git diff-tree --no-commit-id --name-only -r HEAD)"
+        fi
+
+        source_changed=false
+        web_changed=false
+
+        while IFS= read -r file; do
+          [ -n "$file" ] || continue
+          case "$file" in
+            Source/*) source_changed=true ;;
+            docs/index.html) web_changed=true ;;
+          esac
+        done <<< "$changed"
+
+        if [ "$source_changed" = true ] && [ "$web_changed" != true ]; then
+          echo "ERROR: Source/ was changed without docs/index.html."
+          echo "VVChain requires JUCE Plugin and GitHub Pages Web Preview changes to stay synchronized."
+          exit 1
+        fi
+
+        echo "Plugin/Web Preview sync rule: PASS"
+
     - name: Configure CMake (Fast CI / VST3 only)
       run: |
         cmake -B build -G Ninja \
