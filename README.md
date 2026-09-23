@@ -52,6 +52,12 @@ https://nevemn-code.github.io/VVChain/
 - 已確認 Web 播放音訊處理鏈、參數控制、DELTA 與 Bypass 正常。
 - 此版本作為後續 UI 修改的基準，不回改其已驗證的音訊處理鏈。
 
+### v1.0.4｜TAPE-A 啟動瞬間爆音修正
+- TAPE-A 改為無狀態正規化 tanh 核心：不再用 Attack / Release / envelope state 決定增益，避免第一顆聲音因狀態初始化而突然放大。
+- Drive 在參數區塊預先計算；以 tanh(drive) 作為 Makeup 分母，讓 |input|=1 的基準點維持 |output|=1。
+- Native JUCE 與 GitHub Pages AudioWorklet 同步採同一套 4-band、stateless、normalized transfer；原有 Attack / Release 參數保留作為 preset/UI 相容，不再參與 TAPE-A 增益核心。
+- 同時修正 TAPE-A 四段 crossover 重建方式為 LP1 / (LP2-LP1) / (LP3-LP2) / HP3，避免各頻段重疊累加造成額外電平。
+- 此正規化保證的是 |input|≤1 的 0 dBFS 基準；內部超過 1.0 的 peak 仍由後級固定延遲 True-Peak Limiter 處理。
 ### v1.0.3｜Dynamic EQ / Graph 操作修正
 - 修正 DYNAMICS 與該頻段靜態 GAIN 重複計算造成的高增益／爆音問題；Native 與 Web 都限制動態總 GAIN 在安全範圍。
 - 上方 EQ / DYNAMICS / Q 操作統一顯示即時小框，列出 FREQ / GAIN / DYN / Q，正在移動的參數粗體化，滑鼠放開立即關閉。
