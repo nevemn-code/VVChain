@@ -42,6 +42,7 @@ public:
 
         std::array<float, 4> eqColor { 35.f, 35.f, 35.f, 35.f };
         std::array<bool, 4> eqColorBypass { false, false, false, false };
+        std::array<bool, 4> eqColorX2 { false, false, false, false };
         // false = TT (Tube Saturation), true = SS (Solid-State Saturation)
         std::array<bool, 4> eqColorSolidState { false, false, false, false };
 
