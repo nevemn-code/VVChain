@@ -783,9 +783,7 @@ float VVChainAudioProcessorEditor::dynamicEffectiveTargetGain(int band) const
     const float offset =
         juce::jlimit(-18.f, 18.f,
                      parameterValue("EQ" + n + "_GAIN"));
-    const float dynamicRangeDb =
-        std::abs(juce::jlimit(-18.f, 18.f,
-                              parameterValue("DYN_TARGET" + n)));
+    const float dynamicRangeDb = 18.0f;
     const float dynamics =
         juce::jlimit(-100.f, 100.f,
                      parameterValue("DYN_DYNAMICS" + n));
