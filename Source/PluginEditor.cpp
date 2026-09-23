@@ -609,6 +609,11 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     floatingValueBox.setAlwaysOnTop(true);
     addAndMakeVisible(floatingValueBox);
     floatingValueBox.hideInstantly();
+
+    // Graph hover must see mouse moves even when the pointer is over child
+    // components or the non-intercepting overlay.
+    juce::Desktop::getInstance().addGlobalMouseListener(
+        &globalGraphMouseListener);
 }
 
 VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
