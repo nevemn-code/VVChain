@@ -754,8 +754,9 @@ float VVChainAudioProcessorEditor::constrainXoverFrequency(int index, float hz) 
 float VVChainAudioProcessorEditor::eqDbToY(
     const juce::Rectangle<float>& graph, float db) const
 {
+    // Expose the full -24 .. +24 dB parameter range in the graph.
     return graph.getBottom() - graph.getHeight()
-        * juce::jlimit(0.f, 1.f, (db + 18.f) / 36.f);
+        * juce::jlimit(0.f, 1.f, (db + 24.f) / 48.f);
 }
 
 float VVChainAudioProcessorEditor::dynamicThresholdFromDynamics(float dynamics) const
@@ -792,15 +793,17 @@ float VVChainAudioProcessorEditor::dynamicEffectiveTargetGain(int band) const
         juce::jlimit(-100.f, 100.f,
                      parameterValue("DYN_DYNAMICS" + n));
 
-    // DYNAMICS is the direction + depth macro:
-    //   negative = compression direction
-    //   positive = expansion direction
-    // Target stores the available gain span; the visual endpoint follows
-    // the current DYNAMICS direction so the graph always matches the knob.
+    // DYNAMICS is the actual user-facing dynamic range:
+    //   -100..0% = downward compression
+    //    0..+100% = upward expansion
+    // DYN_TARGET remains the maximum available gain span; the graph endpoint
+    // moves continuously from Offset at 0% to the full Target at +/-100%.
+    const float amount = std::abs(dynamics) * 0.01f;
     const float direction = dynamics < 0.f ? -1.f : 1.f;
 
-    return juce::jlimit(-24.f, 24.f,
-                        offset + direction * span);
+    return juce::jlimit(
+        -24.f, 24.f,
+        offset + direction * span * amount);
 }
 
 juce::Rectangle<float> VVChainAudioProcessorEditor::dynamicMsPopupBounds(int band) const
@@ -890,7 +893,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
 
     for (int i = 0; i <= 8; ++i)
     {
-        const float db = 18.f - i * 4.5f;
+        const float db = 24.f - i * 6.0f;
         const float y = eqDbToY(graph, db);
         g.setColour(juce::Colour(0xff69717c).withAlpha(.42f));
         g.drawHorizontalLine(
@@ -1182,7 +1185,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.fillEllipse(
             x - 6.f, offsetY - 6.f, 12.f, 12.f);
 
-        // Dynamic Target handle: the sole editable Dynamic Gain point.
+        // Dynamic range handle: controls the same DYNAMICS parameter as the knob.
         // Static EQ Gain is the Offset handle; Live is meter-only.
         g.setColour(
             juce::Colours::black.withAlpha(.92f));
@@ -2143,7 +2146,7 @@ void VVChainAudioProcessorEditor::mouseDown(
             graph, parameterValue("EQ" + n + "_GAIN"));
 
         if (event.mods.isLeftButtonDown()
-            && pos.getDistanceFrom({ x, y }) < 18.f)
+            && pos.getDistanceFrom({ x, y }) < 8.f)
         {
             dragOffsetBand = b;
             dragBand = -1;
@@ -2186,7 +2189,7 @@ void VVChainAudioProcessorEditor::mouseDown(
 
         dynamicTargetDragStartY = target.y;
         dynamicTargetDragStartValue =
-            dynamicEffectiveTargetGain(band);
+            parameterValue("DYN_DYNAMICS" + n);
         graphFreqDragStartHz =
             parameterValue("EQ" + n + "_FREQ");
         graphFreqDragStartX = pos.x;
@@ -2194,10 +2197,9 @@ void VVChainAudioProcessorEditor::mouseDown(
         showGraphDragHint = true;
         graphDragHintPosition = pos;
         graphDragHint =
-            "DYN GAIN " + n + "   "
-            + juce::String(
-                dynamicTargetDragStartValue, 1)
-            + " dB   "
+            "DYN " + n + "   "
+            + juce::String(dynamicTargetDragStartValue, 0)
+            + "%   "
             + formatGraphFrequency(
                 parameterValue("EQ" + n + "_FREQ"));
         repaint();
@@ -2379,8 +2381,9 @@ void VVChainAudioProcessorEditor::mouseDrag(
         return;
     }
 
-    // Dynamic Gain graph Target drag = XY:
-    // horizontal = Frequency, vertical = Dynamic Gain.
+    // Dynamic range graph node drag = XY:
+    // horizontal = Frequency, vertical = the same DYNAMICS parameter shown below.
+    // Up = expansion (+%), down = downward compression (-%).
     if (dragBand >= 0)
     {
         const auto n = juce::String(dragBand + 1);
@@ -2402,52 +2405,39 @@ void VVChainAudioProcessorEditor::mouseDrag(
         const float hz =
             20.f * std::pow(1000.f, norm);
 
-        const float deltaDb =
+        const float deltaDynamics =
             -(event.position.y - dynamicTargetDragStartY)
             / juce::jmax(1.f, graph.getHeight())
-            * 36.f * dragScale;
+            * 200.f * dragScale;
 
-        const float desiredGain =
+        const float dynamics =
             juce::jlimit(
-                -24.f, 24.f,
-                dynamicTargetDragStartValue + deltaDb);
-
-        const float offset =
-            juce::jlimit(
-                -24.f, 24.f,
-                parameterValue("EQ" + n + "_GAIN"));
-
-        const float direction =
-            parameterValue("DYN_DYNAMICS" + n) < 0.f
-                ? -1.f : 1.f;
-
-        const float storedTarget =
-            juce::jlimit(
-                -24.f, 24.f,
-                offset + direction
-                    * std::abs(desiredGain - offset));
+                -100.f, 100.f,
+                dynamicTargetDragStartValue + deltaDynamics);
 
         setParameter("EQ" + n + "_FREQ", hz);
-        setParameter("DYN_TARGET" + n, storedTarget);
+        setParameter("DYN_DYNAMICS" + n, dynamics);
 
         if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
             freqKnob->slider->setValue(
                 hz, juce::dontSendNotification);
 
+        if (auto* dynamicsKnob = findKnob("DYN_DYNAMICS" + n))
+            dynamicsKnob->slider->setValue(
+                dynamics, juce::dontSendNotification);
+
         graphDragHintPosition = event.position;
         graphDragHint =
-            "DYN GAIN " + n + "  "
+            "DYN " + n + "  "
+            + juce::String(dynamics, 0)
+            + "%   "
+            + (dynamics < 0.f ? "COMPRESS" :
+               dynamics > 0.f ? "EXPAND" : "STATIC")
+            + "   "
             + formatGraphFrequency(hz)
-            + "   GAIN "
+            + "   AUTO THR "
             + juce::String(
-                dynamicEffectiveTargetGain(dragBand), 1)
-            + " dB   DYN "
-            + juce::String(
-                parameterValue("DYN_DYNAMICS" + n), 0)
-            + "%   AUTO THR "
-            + juce::String(
-                dynamicThresholdFromDynamics(
-                    parameterValue("DYN_DYNAMICS" + n)), 1)
+                dynamicThresholdFromDynamics(dynamics), 1)
             + " dB";
 
         showGraphDragHint = true;
