@@ -953,19 +953,27 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 }
             }
 
-            if (!p.eqColorGlobalBypass
-                && !p.eqColorBypass[band])
-            {
-                const float amount =
-                    juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
-                const float drive =
-                    p.eqColorSolidState[band] ? 1.15f : 0.95f;
-
-                // Keep Analog Color in conventional L/R so M/S weighting
-                // belongs only to the Dynamic EQ section.
-                processChebyshevAnalog(osBlock, drive, amount);
-            }
+            // Analog Color is routed after EQ/Dynamics gating below so EQ_BYPASS
+            // does not silently bypass the independently selectable ANALOG module.
         }
+    }
+
+    // ANALOG COLOR is an independent module. It must remain audible when
+    // EQ_BYPASS is active so DELTA can isolate ANALOG on its own.
+    for (size_t band = 0; band < 4; ++band)
+    {
+        if (p.eqColorGlobalBypass || p.eqColorBypass[band])
+            continue;
+
+        const float amount =
+            juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
+        if (amount <= 0.000001f)
+            continue;
+
+        const float drive =
+            p.eqColorSolidState[band] ? 1.15f : 0.95f;
+
+        processChebyshevAnalog(osBlock, drive, amount);
     }
 
     eqOversampler.processSamplesDown(outputBlock);
@@ -1199,6 +1207,17 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
     const float mix =
         juce::jlimit(0.f, 1.f, p.atypeMix / 100.f);
 
+    // TYPE-A uses the same shared graph crossovers as OTT.
+    const float x1 = juce::jlimit(40.f, 1000.f, p.ottX1);
+    const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.ottX2);
+    const float x3 = juce::jlimit(
+        x2 + 200.f, static_cast<float>(sr * 0.42), p.ottX3);
+    const float crossoverQ = crossoverQFromOverlap(p.ottXoverOverlap);
+
+    updateCrossover(typeXover1, sr, x1, crossoverQ);
+    updateCrossover(typeXover2, sr, x2, crossoverQ);
+    updateCrossover(typeXover3, sr, x3, crossoverQ);
+
     std::array<float, 4> driveParam {};
     std::array<float, 4> staticMakeupMultiplier {};
     std::array<float, 4> bandTrim {};
@@ -1231,17 +1250,23 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
             const float x = original * inputGain;
             const bool right = ch == 1;
 
-            // Proper 4-band reconstruction:
-            // LP1 / (LP2-LP1) / (LP3-LP2) / HP3.
-            const float low1 = typeXover1.low(x, right);
-            const float low2 = typeXover2.low(x, right);
-            const float low3 = typeXover3.low(x, right);
-            const float band4 = typeXover3.high(x, right);
+            // Exactly the same 4-band reconstruction used by OTT:
+            // LP(X1), BP(X1..X2), BP(X2..X3), HP(X3).
+            const float low =
+                typeXover1.low(x, right);
+            const float x1High =
+                typeXover1.high(x, right);
+            const float lowMid =
+                typeXover2.low(x1High, right);
+            const float x2High =
+                typeXover2.high(x1High, right);
+            const float midHigh =
+                typeXover3.low(x2High, right);
+            const float top =
+                typeXover3.high(x2High, right);
+
             const float bands[4] = {
-                low1,
-                low2 - low1,
-                low3 - low2,
-                band4
+                low, lowMid, midHigh, top
             };
 
             float enhancement = 0.f;

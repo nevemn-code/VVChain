@@ -591,6 +591,11 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
             parameterValue("OUTPUT_LEVEL"), " dB", 4, 3, juce::Colour(0xff9ed85c));
 
     setExpandedBand(-1);
+
+    // Hover value box sits above the graph but never intercepts the graph mouse.
+    floatingValueBox.setAlwaysOnTop(true);
+    addAndMakeVisible(floatingValueBox);
+    floatingValueBox.hideInstantly();
 }
 
 VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
@@ -744,6 +749,58 @@ void VVChainAudioProcessorEditor::addKnob(
     const auto parameterId = attachmentId.isNotEmpty() ? attachmentId : id;
     k.attachment = std::make_unique<Attachment>(
         audioProcessor.apvts, parameterId, *k.slider);
+
+    // Value=0 means the corresponding processing band/module is bypassed.
+    // Any value above 0 immediately re-enables it.
+    if (id.startsWith("OTT_DEGREE") && k.band >= 0)
+    {
+        const int band = k.band;
+        auto* slider = k.slider.get();
+        k.slider->onValueChange = [this, band, slider]
+        {
+            const float target =
+                slider->getValue() <= 0.0001 ? 1.0f : 0.0f;
+            const auto bypassId =
+                "OTT_BAND_BYPASS" + juce::String(band + 1);
+            if (auto* parameter = audioProcessor.apvts.getParameter(bypassId))
+            {
+                if (std::abs(parameter->getValue() - target) > 1.0e-6f)
+                    parameter->setValueNotifyingHost(target);
+            }
+        };
+    }
+    else if (id.startsWith("ATYPE_DEGREE") && k.band >= 0)
+    {
+        const int band = k.band;
+        auto* slider = k.slider.get();
+        k.slider->onValueChange = [this, band, slider]
+        {
+            const float target =
+                slider->getValue() <= 0.0001 ? 1.0f : 0.0f;
+            const auto bypassId =
+                "ATYPE_BAND_BYPASS" + juce::String(band + 1);
+            if (auto* parameter = audioProcessor.apvts.getParameter(bypassId))
+            {
+                if (std::abs(parameter->getValue() - target) > 1.0e-6f)
+                    parameter->setValueNotifyingHost(target);
+            }
+        };
+    }
+    else if (id == "DEESS_INTENSITY")
+    {
+        auto* slider = k.slider.get();
+        k.slider->onValueChange = [this, slider]
+        {
+            const float target =
+                slider->getValue() <= 0.0001 ? 1.0f : 0.0f;
+            if (auto* parameter =
+                    audioProcessor.apvts.getParameter("DEESS_BYPASS"))
+            {
+                if (std::abs(parameter->getValue() - target) > 1.0e-6f)
+                    parameter->setValueNotifyingHost(target);
+            }
+        };
+    }
 
     addAndMakeVisible(*k.slider);
     addAndMakeVisible(*k.label);
@@ -2009,7 +2066,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.4 · SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER",
+    g.drawText("VVCHAIN v1.0.5 · LAST 2026-09-23 22:10 TST · TYPE-A SHARED XOVER + INDEPENDENT DELTA",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2369,12 +2426,113 @@ void VVChainAudioProcessorEditor::resized()
     repaint();
 }
 
-void VVChainAudioProcessorEditor::mouseMove(const juce::MouseEvent& event)
+void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
+    juce::Point<float> position)
+{
+    const auto graph = eqGraphBounds();
+    if (!graph.contains(position))
+    {
+        floatingValueBox.hideInstantly();
+        return;
+    }
+
+    int bestBand = -1;
+    bool bestIsDynamic = false;
+    float bestDistance = 13.0f;
+
+    for (int b = 0; b < 4; ++b)
+    {
+        const auto n = juce::String(b + 1);
+        const float x =
+            graphFrequencyToX(graph, parameterValue("EQ" + n + "_FREQ"));
+
+        const float staticY =
+            eqDbToY(graph, parameterValue("EQ" + n + "_GAIN"));
+        const float staticDistance =
+            position.getDistanceFrom({ x, staticY });
+
+        if (staticDistance < bestDistance)
+        {
+            bestDistance = staticDistance;
+            bestBand = b;
+            bestIsDynamic = false;
+        }
+
+        const float dynamics =
+            parameterValue("DYN_DYNAMICS" + n);
+        if (std::abs(dynamics) > 0.01f)
+        {
+            const float dynamicY =
+                eqDbToY(graph, dynamicEffectiveTargetGain(b));
+            const float dynamicDistance =
+                position.getDistanceFrom({ x, dynamicY });
+
+            if (dynamicDistance < bestDistance)
+            {
+                bestDistance = dynamicDistance;
+                bestBand = b;
+                bestIsDynamic = true;
+            }
+        }
+
+        const float targetY =
+            eqDbToY(graph, dynamicEffectiveTargetGain(b));
+        const float handleX =
+            juce::jlimit(graph.getX() + 18.f,
+                         graph.getRight() - 12.f,
+                         x + 20.f);
+        const float handleDistance =
+            position.getDistanceFrom({ handleX, targetY });
+
+        if (handleDistance < bestDistance)
+        {
+            bestDistance = handleDistance;
+            bestBand = b;
+            bestIsDynamic = true;
+        }
+    }
+
+    if (bestBand < 0)
+    {
+        floatingValueBox.hideInstantly();
+        return;
+    }
+
+    const auto n = juce::String(bestBand + 1);
+    const float frequency =
+        parameterValue("EQ" + n + "_FREQ");
+    const float gainDb =
+        bestIsDynamic
+            ? dynamicEffectiveTargetGain(bestBand)
+            : parameterValue("EQ" + n + "_GAIN");
+    const float dynamics =
+        parameterValue("DYN_DYNAMICS" + n);
+
+    const juce::String signedDb =
+        juce::String(gainDb >= 0.0f ? "+" : "")
+        + juce::String(gainDb, 1) + " dB";
+
+    const juce::String gainText =
+        bestIsDynamic && std::abs(dynamics) > 0.01f
+            ? signedDb + " · DYN "
+                + juce::String(dynamics, 0) + "%"
+            : signedDb;
+
+    floatingValueBox.updateInfo(
+        "FREQ " + formatGraphFrequency(frequency),
+        "GAIN " + gainText,
+        position.toInt(),
+        getLocalBounds());
+}
+
+void VVChainAudioProcessorEditor::mouseMove(
+    const juce::MouseEvent& event)
 {
     const auto graph = eqGraphBounds();
 
     if (!graph.contains(event.position))
     {
+        floatingValueBox.hideInstantly();
         if (hoverDynamicBand != -1 || hoverXover != -1)
         {
             hoverDynamicBand = -1;
@@ -2404,19 +2562,24 @@ void VVChainAudioProcessorEditor::mouseMove(const juce::MouseEvent& event)
     int band = -1;
     if (pointNearDynamicNode(event.position, band))
     {
-        if (hoverDynamicBand != band)
-        {
-            hoverDynamicBand = band;
-            repaint();
-        }
-        return;
+        hoverDynamicBand = band;
     }
-
-    if (hoverDynamicBand != -1)
+    else
     {
         hoverDynamicBand = -1;
-        repaint();
     }
+
+    updateFloatingValueBoxAt(event.position);
+    repaint();
+}
+
+void VVChainAudioProcessorEditor::mouseExit(
+    const juce::MouseEvent&)
+{
+    hoverDynamicBand = -1;
+    hoverXover = -1;
+    floatingValueBox.hideInstantly();
+    repaint();
 }
 
 void VVChainAudioProcessorEditor::mouseDown(
@@ -2441,7 +2604,12 @@ void VVChainAudioProcessorEditor::mouseDown(
     }
 
     if (!graph.contains(pos))
+    {
+        floatingValueBox.hideInstantly();
         return;
+    }
+
+    updateFloatingValueBoxAt(pos);
 
     int band = -1;
 

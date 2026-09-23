@@ -26,7 +26,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span><span class="tiny" id="cursorTime">0:00.000</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.4 · SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.5 · LAST 2026-09-23 22:10 TST · TYPE-A SHARED XOVER + INDEPENDENT DELTA</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -50,7 +50,7 @@ const state={masterBypass:false,delta:false,solo:{band:-1,post:false},bandBypass
 const defaults=structuredClone(state),knobRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.4";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.5";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -214,7 +214,15 @@ function makeKnob(parent,cfg){
   w.append(d,t,v);parent.appendChild(w);
   const def=get();
   const render=()=>{const n=get();v.textContent=formatValue?formatValue(n):fmt(n,formatDigits)+suffix;dialVisual(d,n,min,max,accent);if(cfg.mutedWhen)w.classList.toggle("knobMuted",!!cfg.mutedWhen())};
-  const apply=n=>{set(clamp(n,min,max));render();if(label==="OTT %"||label==="MAXIMUM REDUCTION")knobRefreshers.forEach(fn=>fn());if(label==="MAXIMUM REDUCTION")document.querySelectorAll(".deessZone").forEach(z=>z.closest(".band")?.classList.toggle("deessMuted",state.de.intensity<=0.0001));sendParams();drawEQ()};
+  const apply=n=>{
+    const next=clamp(n,min,max);
+    set(next);
+    if(cfg.afterSet)cfg.afterSet(next);
+    render();
+    if(label==="OTT %"||label==="MAXIMUM REDUCTION")knobRefreshers.forEach(fn=>fn());
+    if(label==="MAXIMUM REDUCTION")document.querySelectorAll(".deessZone").forEach(z=>z.closest(".band")?.classList.toggle("deessMuted",state.de.intensity<=0.0001));
+    sendParams();drawEQ()
+  };
   const logarithmic=cfg.logWheel??(/FREQ|X-OVER|XOVER/.test(label));
   const wheelStep=cfg.wheelStep??(
     /Q$/.test(label)?0.02:
@@ -299,18 +307,23 @@ detectBtn.onclick=()=>{state.dyn.detectOnsets[n]=!state.dyn.detectOnsets[n];sync
 triggerBtn.onclick=()=>{state.dyn.triggerBelow[n]=!state.dyn.triggerBelow[n];syncDynMode();sendParams();drawEQ()};
 syncDynMode();
 
-makeKnob(ottGrid,{label:"OTT %",get:()=>state.ott.degree[n],set:v=>state.ott.degree[n]=v,min:0,max:100,suffix:" %",accent:"#facc15",mutedWhen:()=>state.ott.degree[n]<=0.0001});
+makeKnob(ottGrid,{label:"OTT %",get:()=>state.ott.degree[n],set:v=>state.ott.degree[n]=v,min:0,max:100,suffix:" %",accent:"#facc15",mutedWhen:()=>state.ott.degree[n]<=0.0001,afterSet:v=>{state.ott.bandBypass[n]=v<=0.0001;syncOttBandLed?.()}});
 makeKnob(ottGrid,{label:"ATTACK",get:()=>state.ott.compA[n],set:v=>state.ott.compA[n]=v,min:.1,max:120,suffix:" ms",accent:"#facc15",formatDigits:1,formatValue:()=>fmt(effectiveCompAttackMs(n),1)+" ms",mutedWhen:()=>state.ott.degree[n]<=0.0001});
 makeKnob(ottGrid,{label:"RELEASE",get:()=>state.ott.compR[n],set:v=>state.ott.compR[n]=v,min:10,max:2500,suffix:" ms",accent:"#facc15",formatDigits:0,formatValue:()=>fmt(effectiveCompReleaseMs(n),0)+" ms",mutedWhen:()=>state.ott.degree[n]<=0.0001});
 
 const analogKnob=makeKnob(bottomGrid,{label:"ANALOG COLOR",get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:100,suffix:" %",accent:"#60a5fa",mutedWhen:()=>state.eq.color[n]<=0.0001});
 analogKnob.classList.add("analogKnob");
-const typeKnob=makeKnob(bottomGrid,{label:"TAPE-A +",get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:100,accent:cols[n],formatValue:tape,mutedWhen:()=>state.type.degree[n]<=0.0001});
+let syncTapeLed=()=>{};
+const typeKnob=makeKnob(bottomGrid,{label:"TAPE-A +",get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:100,accent:cols[n],formatValue:tape,mutedWhen:()=>state.type.degree[n]<=0.0001,afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed()}});
 const mode=document.createElement("button");mode.className="modeSwitch";mode.title="TT = Tube Saturation；SS = Solid-State Saturation";mode.innerHTML="<span>TT</span><i></i><span>SS</span>";
 const syncMode=()=>{mode.classList.toggle("ss",!!state.eq.mode[n]);mode.classList.toggle("muted",state.eq.color[n]<=0.0001)};mode.onclick=()=>{state.eq.mode[n]=!state.eq.mode[n];syncMode();sendParams();drawEQ()};syncMode();analogKnob.appendChild(mode);
 
-const ottLed=document.createElement("button");ottLed.className="bandLed ott";ottLed.style.setProperty("--led","#facc15");ottLed.title="BAND "+(n+1)+" OTT：亮=啟用；按下=BYPASS";ottLed.classList.toggle("on",!state.ott.bandBypass[n]);ottLed.onclick=()=>{state.ott.bandBypass[n]=!state.ott.bandBypass[n];ottLed.classList.toggle("on",!state.ott.bandBypass[n]);sendParams()};
-const typeLed=document.createElement("button");typeLed.className="bandLed type";typeLed.style.setProperty("--led","#f472b6");typeLed.title="BAND "+(n+1)+" TYPE-A：亮=啟用；按下=BYPASS";typeLed.classList.toggle("on",!state.type.bandBypass[n]);typeLed.onclick=()=>{state.type.bandBypass[n]=!state.type.bandBypass[n];typeLed.classList.toggle("on",!state.type.bandBypass[n]);sendParams()};
+const ottLed=document.createElement("button");ottLed.className="bandLed ott";ottLed.style.setProperty("--led","#facc15");ottLed.title="BAND "+(n+1)+" OTT：亮=啟用；按下=BYPASS";
+const syncOttBandLed=()=>ottLed.classList.toggle("on",!state.ott.bandBypass[n]);
+ottLed.onclick=()=>{state.ott.bandBypass[n]=!state.ott.bandBypass[n];syncOttBandLed();sendParams()};syncOttBandLed();
+const typeLed=document.createElement("button");typeLed.className="bandLed type";typeLed.style.setProperty("--led","#f472b6");typeLed.title="BAND "+(n+1)+" TYPE-A：亮=啟用；按下=BYPASS";
+syncTapeLed=()=>typeLed.classList.toggle("on",!state.type.bandBypass[n]);
+typeLed.onclick=()=>{state.type.bandBypass[n]=!state.type.bandBypass[n];syncTapeLed();sendParams()};syncTapeLed();
 const advBtn=card.querySelector(".advBtn");advBtn.title="OTT ADVANCED · BAND "+(n+1);advBtn.onclick=()=>openAdvanced(n);
  ottGrid.children[0]?.appendChild(ottLed);typeKnob.appendChild(typeLed);
 
@@ -327,7 +340,7 @@ deessLocalBypass.onclick=()=>{state.de.bypass=!state.de.bypass;syncDeessLeds();s
 const syncDeessLocal=()=>{deessLocalBypass.classList.toggle("on",!state.de.bypass);card.classList.toggle("deessMuted",state.de.intensity<=0.0001)};
 syncDeessLeds();
 const deFreqKnob=makeKnob(body,{label:"DE-ESS FREQ",controlId:"DEESS_FREQ",get:()=>state.de.freq,set:v=>state.de.freq=v,min:6000,max:18000,suffix:" Hz",accent:"#67d3aa",formatValue:hz,mutedWhen:()=>state.de.intensity<=0.0001});
-const deIntensityKnob=makeKnob(body,{label:"MAXIMUM REDUCTION",controlId:"DEESS_INTENSITY",get:()=>state.de.intensity,set:v=>state.de.intensity=v,min:0,max:8,suffix:" dB",accent:"#67d3aa",formatDigits:1,mutedWhen:()=>state.de.intensity<=0.0001});
+const deIntensityKnob=makeKnob(body,{label:"MAXIMUM REDUCTION",controlId:"DEESS_INTENSITY",get:()=>state.de.intensity,set:v=>state.de.intensity=v,min:0,max:8,suffix:" dB",accent:"#67d3aa",formatDigits:1,mutedWhen:()=>state.de.intensity<=0.0001,afterSet:v=>{state.de.bypass=v<=0.0001;syncDeessLeds();syncDeessLocal()}});
 syncDeessLocal();
 requestAnimationFrame(()=>{const rr=deIntensityKnob.getBoundingClientRect(),cr=card.getBoundingClientRect();deessLocalBypass.style.left=(rr.right-cr.left-20)+"px";deessLocalBypass.style.top=(rr.top-cr.top+1)+"px";});
 }
@@ -616,17 +629,40 @@ resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function showGraphHint(e,text){const r=eqCanvas.getBoundingClientRect();graphHint.innerHTML=text;graphHint.hidden=false;const pad=6,ox=12,oy=12,x=clamp(e.clientX-r.left+ox,pad,r.width-graphHint.offsetWidth-pad),y=clamp(e.clientY-r.top+oy,pad,r.height-graphHint.offsetHeight-pad);graphHint.style.left=x+"px";graphHint.style.top=y+"px";}
 function hideGraphHint(){graphHint.hidden=true;}
 function graphHintBandHtml(b,mask){
+  const dyn=Number(state.dyn.dynamics[b]||0);
+  const gain=mask&4?dynamicEffectiveTargetGain(b):Number(state.eq.gain[b]||0);
+  const signed=(gain>=0?"+":"")+fmt(gain,1)+" dB";
   const parts=[
     ["FREQ",hz(state.eq.freq[b]),!!(mask&1)],
-    ["GAIN",fmt(state.eq.gain[b],1)+" dB",!!(mask&2)],
-    ["DYN",fmt(state.dyn.dynamics[b],0)+"%",!!(mask&4)],
+    ["GAIN",signed,!!(mask&2||mask&4)],
+    ["DYN",(dyn>=0?"+":"")+fmt(dyn,0)+"%",!!(mask&4)],
     ["Q",fmt(state.eq.q[b],2),!!(mask&8)]
   ];
   return parts.map(([k,v,a])=>'<span class="'+(a?"active":"muted")+'">'+k+" "+v+"</span>").join(" &nbsp;|&nbsp; ");
 }
 
 eqCanvas.addEventListener("contextmenu",e=>e.preventDefault());
-eqCanvas.addEventListener("mousemove",e=>{const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;const xo=state.ott.x.map(v=>logX(v,w));hoverXover=-1;for(let i=0;i<3;i++)if(Math.hypot(xo[i]-x,h-18-y)<=10){hoverXover=i;break;}hoverDynamicBand=dynamicBandAtPointer(x,y,w,h);drawEQ();});
+eqCanvas.addEventListener("mousemove",e=>{
+  const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
+  const xo=state.ott.x.map(v=>logX(v,w));hoverXover=-1;
+  for(let i=0;i<3;i++)if(Math.hypot(xo[i]-x,h-18-y)<=10){hoverXover=i;break;}
+  hoverDynamicBand=dynamicBandAtPointer(x,y,w,h);
+
+  let best=13,band=-1,mask=0;
+  for(let b=0;b<4;b++){
+    const px=logX(state.eq.freq[b],w),eqY=dbToY(state.eq.gain[b],h);
+    const eqD=Math.hypot(px-x,eqY-y);
+    if(eqD<best){best=eqD;band=b;mask=1|2;}
+    const dyn=Number(state.dyn.dynamics[b]||0);
+    if(Math.abs(dyn)>0.01){
+      const target=dynamicTargetPoint(b,w,h),dynD=Math.hypot(target.x-x,target.y-y);
+      if(dynD<best){best=dynD;band=b;mask=1|4;}
+    }
+  }
+  if(band>=0)showGraphHint(e,graphHintBandHtml(band,mask));else hideGraphHint();
+  drawEQ();
+});
+eqCanvas.addEventListener("mouseleave",()=>{hoverDynamicBand=-1;hoverXover=-1;hideGraphHint();drawEQ();});
 eqCanvas.addEventListener("wheel",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
   if(e.buttons===2||e.button===2){

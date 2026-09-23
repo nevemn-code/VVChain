@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# v1.0.5 regression matrix: shared Type-A crossovers, module-isolated Delta, and hover-value UI.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -237,9 +238,26 @@ def test_eq_xy_drag_math():
     assert 'makeKnob(monitorKnobs,{label:"OUT",controlId:"OUTPUT_LEVEL"' in web
     assert 'AudioWorklet unsupported' in web
     assert 'vvchain-worklet.js' in web
-    assert 'SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER' in web
+    assert 'TYPE-A SHARED XOVER + INDEPENDENT DELTA' in web
     assert 'DSP ERROR · AudioWorklet processor failed' in web
     assert '.knob.graphActive .dial' in web
+
+    # v1.0.5 module isolation / auto-bypass / hover value-box invariants.
+    dsp_text = DSP.read_text(encoding='utf-8')
+    assert 'ANALOG COLOR is an independent module' in dsp_text
+    assert 'if (p.eqColorGlobalBypass || p.eqColorBypass[band])' in dsp_text
+    assert 'FloatingValueBox' in cpp
+    assert 'setInterceptsMouseClicks(false, false)' in head
+    assert 'updateFloatingValueBoxAt' in cpp
+    assert 'void VVChainAudioProcessorEditor::mouseExit' in cpp
+    assert 'if (id.startsWith("OTT_DEGREE")' in cpp
+    assert 'OTT_BAND_BYPASS' in cpp
+    assert 'ATYPE_BAND_BYPASS' in cpp
+    assert 'DEESS_BYPASS' in cpp
+    assert 'afterSet:v=>{state.ott.bandBypass' in web
+    assert 'afterSet:v=>{state.type.bandBypass' in web
+    assert 'afterSet:v=>{state.de.bypass' in web
+    assert 'if(!s.eq.globalBypass){' in worklet
 
     # Delta regression: UI parameter traffic must be coalesced and the live
     # BufferSource must never be stopped merely because a Worklet faults.
@@ -253,9 +271,9 @@ def test_eq_xy_drag_math():
     assert 'DIRECT AUDIO FALLBACK' in web
     assert 'onmessageerror' in web
     assert 'revision:paramSyncRevision' in web
-    assert '?v=1.0.4' in web
-    assert '2026-09-23' not in web, "Web preview must not use timestamp identifiers"
-    assert 'VVCHAIN v1.0.4' in web
+    assert '?v=1.0.5' in web
+    assert 'LAST 2026-09-23 22:10 TST' in web
+    assert 'VVCHAIN v1.0.5' in web
 
     worklet_start = web.index('new URL("vvchain-worklet.js"')
     assert worklet_start >= 0
@@ -273,9 +291,9 @@ def test_eq_xy_drag_math():
     assert 'this._meterBlocks%8===0' not in worklet
     assert 'A DSP exception must never terminate the audio graph' in worklet
     assert 'setGraphControlState' in cpp
-    assert 'SAME-ORIGIN DSP + TRUE DELTA + BOTTOM QUADRATIC XOVER' in web
+    assert 'TYPE-A SHARED XOVER + INDEPENDENT DELTA' in web
 
-def test_v104_tape_a_stateless_normalized():
+def test_v105_tape_a_shared_xovers_and_isolation():
     cpp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
     worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
@@ -289,16 +307,20 @@ def test_v104_tape_a_stateless_normalized():
     assert "typeFastEnv" not in cpp_tape
     assert "typeSlowEnv" not in cpp_tape
     assert "targetGainDb" not in cpp_tape
-    assert "low2 - low1" in cpp_tape and "low3 - low2" in cpp_tape
+    assert "const float crossoverQ = crossoverQFromOverlap" in cpp_tape
+    assert "updateCrossover(typeXover1, sr, x1, crossoverQ)" in cpp_tape
+    assert "updateCrossover(typeXover2, sr, x2, crossoverQ)" in cpp_tape
+    assert "updateCrossover(typeXover3, sr, x3, crossoverQ)" in cpp_tape
+    assert "const float bands[4] = {" in cpp_tape
+    assert "low, lowMid, midHigh, top" in cpp_tape
     assert "Math.tanh(bands[b]*driveParams[b])*makeup[b]" in worklet_tape
     assert "c.typeFast[b]" not in worklet_tape
     assert "c.typeSlow[b]" not in worklet_tape
-    assert "low2-low1" in worklet_tape and "low3-low2" in worklet_tape
-    assert "c.typeLp[0]+=a80*(ti-c.typeLp[0])" in worklet_tape
-    assert "c.typeLp[1]+=a3k*(ti-c.typeLp[1])" in worklet_tape
-    assert "c.typeLp[2]+=a9k*(ti-c.typeLp[2])" in worklet_tape
-    assert "VVCHAIN v1.0.4" in web
-    assert "VVCHAIN v1.0.4" in editor
+    assert "const xs=s.ott.x;" in worklet_tape
+    assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
+    assert "VVCHAIN v1.0.5" in web
+    assert "VVCHAIN v1.0.5" in editor
+    assert "LAST 2026-09-23 22:10 TST" in editor
 
 def test_dynamic_range_centered_500():
     """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
@@ -483,10 +505,10 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.4" in web
-    assert "VVCHAIN v1.0.4" in cpp
-    assert "2026-09-23" not in web
-    assert "2026-09-23" not in cpp
+    assert "VVCHAIN v1.0.5" in web
+    assert "VVCHAIN v1.0.5" in cpp
+    assert "LAST 2026-09-23 22:10 TST" in web
+    assert "LAST 2026-09-23 22:10 TST" in cpp
 
 
 def test_v103_closed_10():
@@ -542,6 +564,7 @@ def main():
     for _ in range(10):
         test_all_features_rounds()
     test_full_simulation()
+    test_v105_tape_a_shared_xovers_and_isolation()
     test_v103_ui_rules_50()
     test_v103_closed_10()
     print("PASS: 280 design cases")
