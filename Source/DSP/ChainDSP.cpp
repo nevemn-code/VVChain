@@ -970,8 +970,10 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
     bool analogActive = false;
     for (size_t band = 0; band < 4; ++band)
     {
+        const float x2Multiplier =
+            p.eqColorX2[band] ? 1.6f : 1.0f;
         const float amount =
-            juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
+            juce::jlimit(0.f, 100.f, p.eqColor[band] * x2Multiplier) / 100.f;
         if (!p.eqColorGlobalBypass
             && !p.eqColorBypass[band]
             && amount > 0.000001f)
@@ -1045,8 +1047,10 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             if (p.eqColorGlobalBypass || p.eqColorBypass[band])
                 continue;
 
+            const float x2Multiplier =
+                p.eqColorX2[band] ? 1.6f : 1.0f;
             const float amount =
-                juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
+                juce::jlimit(0.f, 100.f, p.eqColor[band] * x2Multiplier) / 100.f;
             if (amount <= 0.000001f)
                 continue;
 
@@ -1318,13 +1322,16 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
     std::array<float, 4> driveParam {};
     std::array<float, 4> staticMakeupMultiplier {};
     std::array<float, 4> bandTrim {};
+    constexpr float kTypeAMaxDegree[4] = { 50.f, 60.f, 70.f, 90.f };
 
     // Parameter/update section: calculate each band's fixed drive and makeup
     // once per audio block, avoiding per-sample division.
     for (size_t band = 0; band < 4; ++band)
     {
+        const float limitedDegree =
+            juce::jlimit(0.f, kTypeAMaxDegree[band], p.atypeDegree[band]);
         const float depth =
-            juce::jlimit(0.f, 1.f, p.atypeDegree[band] / 100.f);
+            juce::jlimit(0.f, 1.f, limitedDegree / 100.f);
         const float rawDriveParam = 1.0f + 1.5f * depth;
         driveParam[band] = juce::jmax(1.0f, rawDriveParam);
 
@@ -1373,8 +1380,10 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
                 if (p.atypeBandBypass[band])
                     continue;
 
+                const float limitedDegree =
+                    juce::jlimit(0.f, kTypeAMaxDegree[band], p.atypeDegree[band]);
                 const float depth =
-                    juce::jlimit(0.f, 1.f, p.atypeDegree[band] / 100.f);
+                    juce::jlimit(0.f, 1.f, limitedDegree / 100.f);
                 if (depth <= 0.f)
                     continue;
 

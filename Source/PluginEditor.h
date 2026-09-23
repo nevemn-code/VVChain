@@ -95,9 +95,9 @@ private:
             // Fixed width avoids repeated font-metric work on every mouse move.
             // The box is deliberately compact but wide enough for frequency + signed dB.
             if (textChanged || m_boxWidth <= 0)
-                m_boxWidth = 150;
+                m_boxWidth = 132;
 
-            constexpr int boxHeight = 36;
+            constexpr int boxHeight = 40;
             int targetX = mousePos.x + 14;
             int targetY = mousePos.y - boxHeight - 14;
 
@@ -138,11 +138,11 @@ private:
             g.setColour(juce::Colours::white);
             g.setFont(m_font);
             g.drawText(
-                m_freqText, 7, 4, getWidth() - 14, 13,
-                juce::Justification::centred);
+                m_freqText, 6, 4, getWidth() - 12, 15,
+                juce::Justification::centredLeft);
             g.drawText(
-                m_gainText, 7, 19, getWidth() - 14, 13,
-                juce::Justification::centred);
+                m_gainText, 6, 21, getWidth() - 12, 15,
+                juce::Justification::centredLeft);
         }
 
     private:
@@ -181,18 +181,57 @@ private:
         bool isGraphControlActive() const noexcept { return graphControlActive; }
         bool isGraphControlMoving() const noexcept { return graphControlMoving; }
 
+        void setDragSensitivity(int normalSensitivity, int fineSensitivity)
+        {
+            dragSensitivity = std::max(1, normalSensitivity);
+            fineDragSensitivity = std::max(
+                dragSensitivity + 1, fineSensitivity);
+            if (!fineDragging)
+                setMouseDragSensitivity(dragSensitivity);
+        }
+
+        void setDiscreteArc(int positions, float startAngle, float endAngle)
+        {
+            discreteArcEnabled = positions >= 2
+                && endAngle > startAngle;
+            discretePositions = std::max(2, positions);
+            discreteScreenStartAngle = startAngle;
+            discreteScreenEndAngle = endAngle;
+        }
+
         void mouseDown(const juce::MouseEvent& e) override
         {
             fineDragging = e.mods.isShiftDown();
-            setMouseDragSensitivity(fineDragging ? 1800 : 180);
+
+            if (discreteArcEnabled)
+            {
+                setDiscreteValueFromPoint(e.position);
+                return;
+            }
+
+            setMouseDragSensitivity(
+                fineDragging ? fineDragSensitivity : dragSensitivity);
             juce::Slider::mouseDown(e);
+        }
+
+        void mouseDrag(const juce::MouseEvent& e) override
+        {
+            if (discreteArcEnabled)
+            {
+                setDiscreteValueFromPoint(e.position);
+                return;
+            }
+
+            juce::Slider::mouseDrag(e);
         }
 
         void mouseUp(const juce::MouseEvent& e) override
         {
-            juce::Slider::mouseUp(e);
+            if (!discreteArcEnabled)
+                juce::Slider::mouseUp(e);
+
             fineDragging = false;
-            setMouseDragSensitivity(180);
+            setMouseDragSensitivity(dragSensitivity);
         }
 
         void mouseWheelMove(const juce::MouseEvent& e,
@@ -241,10 +280,54 @@ private:
         }
 
     private:
+        void setDiscreteValueFromPoint(juce::Point<float> point)
+        {
+            if (!discreteArcEnabled)
+                return;
+
+            const auto area = getLocalBounds().toFloat();
+            const float cx = area.getCentreX();
+            const float cy = area.getCentreY() - 3.0f;
+
+            float angle = std::atan2(point.y - cy, point.x - cx);
+            if (angle < 0.0f)
+                angle += juce::MathConstants<float>::twoPi;
+
+            const float start = discreteScreenStartAngle;
+            const float end = discreteScreenEndAngle;
+
+            if (angle < start)
+                angle += juce::MathConstants<float>::twoPi;
+
+            angle = juce::jlimit(start, end, angle);
+
+            const float norm =
+                (angle - start) / juce::jmax(0.0001f, end - start);
+            const int index = juce::jlimit(
+                0, discretePositions - 1,
+                juce::roundToInt(
+                    norm * static_cast<float>(discretePositions - 1)));
+
+            const double next =
+                getMinimum()
+                + static_cast<double>(index)
+                    * static_cast<double>(getInterval());
+
+            setValue(
+                juce::jlimit(getMinimum(), getMaximum(), next),
+                juce::sendNotificationSync);
+        }
+
         double wheelStep = 1.0;
         double wheelRemainder = 0.0;
+        int dragSensitivity = 180;
+        int fineDragSensitivity = 1800;
         bool wheelLogarithmic = false;
         bool fineDragging = false;
+        bool discreteArcEnabled = false;
+        int discretePositions = 4;
+        float discreteScreenStartAngle = 7.0f * juce::MathConstants<float>::pi / 6.0f;
+        float discreteScreenEndAngle = 11.0f * juce::MathConstants<float>::pi / 6.0f;
         bool graphControlActive = false;
         bool graphControlMoving = false;
     };
@@ -340,6 +423,8 @@ private:
     std::array<std::unique_ptr<juce::TextButton>, 4> advancedButtons;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> ottBandBypassButtons;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> analogModeButtons;
+    std::array<std::unique_ptr<juce::ToggleButton>, 4> analogX2Buttons;
+    std::array<std::unique_ptr<BoolAttachment>, 4> analogX2Attachments;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> analogBypassButtons;
     std::array<std::unique_ptr<BoolAttachment>, 4> analogBypassAttachments;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> soloButtons;

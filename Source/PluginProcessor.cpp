@@ -69,6 +69,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
             "EQ_COLOR_BYPASS" + n, "EQ " + n + " Analog Color Bypass", false));
         p.push_back(std::make_unique<juce::AudioParameterBool>(
             "EQ_COLOR_MODE" + n, "EQ " + n + " Analog Mode SS", false));
+        p.push_back(std::make_unique<juce::AudioParameterBool>(
+            "EQ_COLOR_X2" + n, "EQ " + n + " Analog Color X2", false));
     }
     f("HF_CORNER", "EQ High-pass Corner", 40.f, 120.f, 70.f);
 
@@ -109,9 +111,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         const juce::String n = juce::String(i + 1);
         const float defaults[4] = { 6.f, 12.f, 28.f, 22.f };
         const float levels[4] = { 0.f, 0.f, 1.f, 1.f };
+        const float maxDegrees[4] = { 50.f, 60.f, 70.f, 90.f };
         p.push_back(std::make_unique<juce::AudioParameterBool>(
             "ATYPE_BAND_BYPASS" + n, "Type-A Band " + n + " Bypass", false));
-        f("ATYPE_DEGREE" + n, "Type-A Band " + n + " Degree", 0.f, 100.f, defaults[i]);
+        f("ATYPE_DEGREE" + n, "Type-A Band " + n + " Degree",
+          0.f, maxDegrees[i], defaults[i]);
         f("ATYPE_LEVEL" + n, "Type-A Band " + n + " Level", -6.f, 6.f, levels[i]);
     }
     f("ATYPE_ATTACK", "Type-A Attack", 1.f, 100.f, 1.f, 0.35f);
@@ -204,6 +208,8 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.eqColorBypass[(size_t)i] = value("EQ_COLOR_BYPASS" + n) > 0.5f;
         p.eqColorSolidState[(size_t)i] =
             value("EQ_COLOR_MODE" + n) > 0.5f;
+        p.eqColorX2[(size_t)i] =
+            value("EQ_COLOR_X2" + n) > 0.5f;
 
         p.ottBandBypass[(size_t)i] = value("OTT_BAND_BYPASS" + n) > 0.5f;
         p.ottDegree[(size_t)i] = value("OTT_DEGREE" + n);

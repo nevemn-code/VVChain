@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.6 regression matrix: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.7 regression matrix: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -65,7 +65,7 @@ def source_assertions():
         'dragDynamicHandleBand',
         'dynamicHandleDragStartValue',
         'sendNotificationSync',
-        'followScale = 0.74f',
+        'graphFreqDragGrabOffsetX',
         'DYNAMICS uses a truly linear bipolar map',
         'constexpr float staticNodeRadius = 5.5f',
         'getTargetGainDB',
@@ -166,6 +166,9 @@ def test_eq_xy_drag_math():
     assert 'const float effectiveDy = rawDy;' in cpp
     assert 'const effectiveDx=rawDx;' in web
     assert 'const effectiveDy=rawDy;' in web
+    assert 'const hzv=invLog(correctedX/w);' in web
+    assert '(cfg.sensitivity??1)' in web
+    assert 'sensitivity:.20' in web
     assert 'constexpr float hitRadius = 18.0f;' in cpp
     assert 'dragDynamicHandleBand' in web
     assert 'dragOverlapXover' in cpp
@@ -238,11 +241,11 @@ def test_eq_xy_drag_math():
     assert 'makeKnob(monitorKnobs,{label:"OUT",controlId:"OUTPUT_LEVEL"' in web
     assert 'AudioWorklet unsupported' in web
     assert 'vvchain-worklet.js' in web
-    assert 'VVCHAIN v1.0.6' in web
+    assert 'VVCHAIN v1.0.7' in web
     assert 'DSP ERROR · AudioWorklet processor failed' in web
     assert '.knob.graphActive .dial' in web
 
-    # v1.0.6 module isolation / auto-bypass / hover value-box invariants.
+    # v1.0.7 module isolation / auto-bypass / hover value-box invariants.
     dsp_text = DSP.read_text(encoding='utf-8')
     assert 'ANALOG COLOR is an independent four-band module' in dsp_text
     assert 'if (p.eqColorGlobalBypass || p.eqColorBypass[band])' in dsp_text
@@ -277,9 +280,9 @@ def test_eq_xy_drag_math():
     assert 'DIRECT AUDIO FALLBACK' in web
     assert 'onmessageerror' in web
     assert 'revision:paramSyncRevision' in web
-    assert '?v=1.0.6' in web
+    assert '?v=1.0.7' in web
     assert 'LAST ' not in web
-    assert 'VVCHAIN v1.0.6' in web
+    assert 'VVCHAIN v1.0.7' in web
 
     worklet_start = web.index('new URL("vvchain-worklet.js"')
     assert worklet_start >= 0
@@ -324,8 +327,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.6" in web
-    assert "VVCHAIN v1.0.6" in editor
+    assert "VVCHAIN v1.0.7" in web
+    assert "VVCHAIN v1.0.7" in editor
     assert "LAST " not in editor
 
     # ANALOG must use the same shared four-band crossover topology as OTT/Type-A.
@@ -543,8 +546,9 @@ def test_v103_ui_rules_50():
     assert "deessLocalBypassButton" in head
     assert 'DEESS_BYPASS", *deessLocalBypassButton' in cpp
 
-    assert "const rawDx=x-dynTargetStartX" in web
-    assert "const rawDx=x-dynTargetStartX,rawDy=y-dynDynamicsStartY;" in web
+    assert "const correctedX=clamp(x-dynFreqGrabOffsetX,0,w);" in web
+    assert "const rawDx=correctedX-logX(dynTargetStartFreq,w),rawDy=y-dynDynamicsStartY;" in web
+    assert "const hzv=invLog(correctedX/w);" in web
     assert "state.eq.freq[dragBand]=hzv" in web
     assert 'setParameter("EQ" + n + "_FREQ", hz);' in cpp
     assert 'setParameter("DYN_DYNAMICS" + n, dynamics);' in cpp
@@ -555,8 +559,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.6" in web
-    assert "VVCHAIN v1.0.6" in cpp
+    assert "VVCHAIN v1.0.7" in web
+    assert "VVCHAIN v1.0.7" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -578,9 +582,9 @@ def test_v103_closed_10():
         assert 'this.peak(sampleRate,f,sq,sGain)' not in worklet
 
         # DYNAMICS Target XY mapping.
-        assert "const rawDx=x-dynTargetStartX" in web
-        assert "const rawDx=x-dynTargetStartX,rawDy=y-dynDynamicsStartY;" in web
-        assert "const norm=clamp(startNorm+(rawDx/Math.max(1,w))*0.74*fine,0,1)" in web
+        assert "const correctedX=clamp(x-dynFreqGrabOffsetX,0,w);" in web
+        assert "const rawDx=correctedX-logX(dynTargetStartFreq,w),rawDy=y-dynDynamicsStartY;" in web
+        assert "const hzv=invLog(correctedX/w);" in web
         assert "state.eq.freq[dragBand]=hzv" in web
         assert "state.dyn.dynamics[dragBand]=clamp" in web
 
@@ -594,6 +598,60 @@ def test_v103_closed_10():
         assert "OTT_DEGREE" + "" in cpp
         assert ".knobMuted" in web
         assert ".deessMuted" in web
+
+
+
+def test_v107_ui_controls():
+    cpp = CPP.read_text(encoding="utf-8")
+    head = HEAD.read_text(encoding="utf-8")
+    proc = PROC.read_text(encoding="utf-8")
+    dsp = DSP.read_text(encoding="utf-8")
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
+
+    # Graph frequency follows the actual pointer coordinate with grab-offset preservation.
+    assert "graphFreqDragGrabOffsetX =" in cpp
+    assert "graphXToFrequency(graph, correctedX)" in cpp
+    assert "event.position.x - graphFreqDragGrabOffsetX" in cpp
+    assert "followScale = 0.74f" not in cpp
+    assert "const followScale=0.74" not in web
+    assert "const hzv=invLog(correctedX/w);" in web
+
+    # EQ / DE-ESS frequency knobs are intentionally slower than the base gain drag.
+    assert "setDragSensitivity(900, 9000)" in cpp
+    assert "(cfg.sensitivity??1)" in web
+    assert 'sensitivity:.20' in web
+
+    # DE-ESS MODE is a four-position discrete rotary with Roman tick labels.
+    assert 'setDiscreteArc(' in cpp
+    assert '"I", "II", "III", "IV"' in cpp
+    assert 'setRotaryParameters(' in cpp
+    assert 'controlId:"DEESS_MODE"' in web
+    assert 'min:1,max:4' in web
+
+    # Graph readout is compact: EQ / DYN EQ + GAIN, FREQ, Q only.
+    assert 'DYN EQ' in cpp
+    assert 'm_boxWidth = 132' in head
+    assert 'width:136px' in web
+    assert 'DYN EQ' in web
+    hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
+    assert ' | ' not in hint_block
+
+    # TYPE-A upper limits are 50/60/70/90 while tanh processing remains unchanged.
+    assert 'const float maxDegrees[4] = { 50.f, 60.f, 70.f, 90.f };' in proc
+    assert 'constexpr float kTypeAMaxDegree[4] = { 50.f, 60.f, 70.f, 90.f };' in dsp
+    assert '[50,60,70,90]' in web
+    assert '[50,60,70,90]' in worklet
+    assert 'std::tanh(bands[band] * driveParam[band])' in dsp
+
+    # ANALOG X2 is a saved parameter that multiplies only the current COLOR amount.
+    assert 'EQ_COLOR_X2' in proc
+    assert 'eqColorX2' in dsp
+    assert 'p.eqColorX2[band] ? 1.6f : 1.0f' in dsp
+    assert 'colorX2' in web
+    assert 'analogX2Btn' in web
+    assert 'colorX2?.[b]?1.6:1' in worklet
+    assert 'analogX2Buttons' in head
 
 
 def main():
@@ -619,6 +677,7 @@ def main():
     test_v106_shared_four_band_modules_and_deess_presets()
     test_v103_ui_rules_50()
     test_v103_closed_10()
+    test_v107_ui_controls()
     print("PASS: 280 design cases")
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
@@ -629,17 +688,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-def test_frequency_drag_is_slow_and_grab_anchored():
-    cpp = CPP.read_text(encoding="utf-8")
-    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
-    head = HEAD.read_text(encoding="utf-8")
-    assert 'followScale = 0.74f' in cpp
-    assert 'followScale=0.74' in web
-    assert 'graphFreqDragGrabOffsetX' in head
-    assert 'const float rawDx = correctedPointerX - nodeStartX;' in cpp
-    assert 'const nodeStartX=logX(dynFreqStartHz,w);' in web
-    assert 'dynFreqGrabOffsetX=x-logX(dynFreqStartHz,w);' in web
-    assert 'const effectiveDx=rawDx;' in web
-    assert 'const effectiveDy=rawDy;' in web
 

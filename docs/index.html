@@ -11,8 +11,8 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 .tiny{height:27px;padding:0 8px;border:1px solid #3a4048;border-radius:4px;background:#12151a;color:#cbd1d8;font:9px Consolas}.transport{height:32px;display:grid;grid-template-columns:110px 1fr 55px 55px 65px 75px;gap:5px;align-items:center;margin-bottom:5px}.file{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:9px Consolas;color:var(--muted);padding:0 6px}
 .header{height:56px;border:1px solid #08090b;border-radius:7px;padding:8px 12px;background:linear-gradient(180deg,#343840,#181b20);display:flex;align-items:center;box-shadow:inset 0 1px #fff2}.logo{font-size:21px;font-weight:900;letter-spacing:.32em}.brandLine{display:flex;align-items:baseline;gap:12px}.lastModified{font:700 8px Consolas;color:#7f8893;letter-spacing:.04em;white-space:nowrap}.sub{font:8px Consolas;color:#828b96;margin-top:2px}.headerControls{margin-left:auto;display:flex;align-items:center;gap:8px}
 .leds{display:flex;gap:8px;margin-left:0}.ledBox{display:grid;grid-template-columns:21px auto;gap:3px;align-items:center;cursor:pointer}.led{width:19px;height:19px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 2px 4px #000}.led.on{background:radial-gradient(circle at 36% 30%,#fff 0%,var(--led) 22%,#25272b 78%,#101216 100%);box-shadow:0 0 10px var(--led),inset 0 1px #fff5}.ledLabel{font:7px Consolas;color:#a9b0b9}
-.rowTop{height:315px;margin-top:5px;display:block}.rowTop>.panel{display:none}.panel,.band{border:1px solid #08090b;border-radius:7px;background:linear-gradient(180deg,#292c32,#13161a);box-shadow:0 9px 18px #0009,inset 0 1px #fff1}.panelHead{height:29px;padding:6px 10px;border-bottom:1px solid #06070a;font-size:10px;font-weight:900;letter-spacing:.08em}.panelSub{font:7px Consolas;color:#7f8790;margin-top:1px}.eqShared{display:none}.graph{height:315px;border:1px solid #06070a;border-radius:7px;background:#111318;overflow:hidden;position:relative}.graph canvas{width:100%;height:100%;display:block}.graphHint .active{font-weight:900;color:#fff}.graphHint .muted{font-weight:400;color:#9aa2ac}.graphHint{position:absolute;z-index:5;pointer-events:none;min-width:188px;padding:6px 9px;border:1px solid #fff9;border-radius:5px;background:#07090cf2;box-shadow:0 6px 18px #000b;color:#fff;font:700 9px Consolas;white-space:nowrap;text-align:center}
-.bandsFrame{height:500px;margin-top:6px;padding:7px;border:1px solid #07080a;border-radius:7px;background:linear-gradient(180deg,#20242a,#101216);box-shadow:0 10px 22px #0009}.bandGrid{height:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) .5fr .5fr;gap:7px}.band{position:relative;padding:7px;overflow:hidden}.band:after{content:"";position:absolute;inset:2px;border:1px solid var(--accent);opacity:.16;border-radius:5px;pointer-events:none}.bandHead{height:25px;display:flex;justify-content:space-between;align-items:center;color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.08em}.bandLed{position:absolute;right:7px;width:14px;height:14px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 1px 3px #000;z-index:3;padding:0}.bandLed.on{box-shadow:0 0 7px var(--led),inset 0 1px #fff5}.bandLed.ott{top:-9px;right:-3px}.bandLed.type{top:-9px;right:-3px}.bandLed.ott.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#facc15 25%,#25272b 78%,#101216 100%)}.bandLed.type.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#f472b6 25%,#25272b 78%,#101216 100%)}.bandHeadBtns{display:flex;align-items:center;gap:3px}.soloBtn{height:21px;padding:0 6px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.soloBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.advBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #555b63;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.band.bypassed{filter:grayscale(1)}.knob.graphActive .dial{box-shadow:0 0 0 2px #fff,0 0 11px #fff8,inset 0 1px 2px #fff2}.knob.graphMoving .dial{animation:vvGraphPulse .36s steps(2,end) infinite}@keyframes vvGraphPulse{0%,100%{box-shadow:0 0 0 2px #fff,0 0 12px #fff9,inset 0 1px 2px #fff2}50%{box-shadow:0 0 0 1px #fff4,0 0 4px #fff3,inset 0 1px 2px #fff2}}.ottAdvBtn{position:absolute;left:7px;top:6px;height:21px;padding:0 7px;border-radius:4px;border:1px solid #5b4c1d;background:#17150f;color:#ffdf62;font:8px Consolas;z-index:4}.bandBody{height:calc(100% - 25px)}.deessZone{height:100%;display:grid;grid-template-columns:1fr;grid-template-rows:repeat(3,1fr);gap:6px;padding:12px 6px 8px}.bandLed.de{top:4px;right:7px;width:19px;height:19px}.bandLed.de.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#67d3aa 25%,#25272b 78%,#101216 100%);box-shadow:0 0 10px #67d3aa,inset 0 1px #fff5}.eqBody{height:calc(100% - 25px);padding:11px 2px 0;display:grid;grid-template-rows:84px 110px 105px 128px;gap:5px}.knobGrid{height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr;gap:3px}.dynSection{height:110px;border:1px solid #30343a;border-radius:5px;background:#0c0f13;padding:8px 4px 2px}.dynModeRow{height:15px;display:grid;grid-template-columns:1fr 1fr;gap:3px;margin:1px 0}.dynModeBtn{height:14px;border:1px solid #444b55;border-radius:3px;background:#11151a;color:#cfd5dc;font:7px Consolas;font-weight:700}.dynModeBtn.on{background:#e8edf2;color:#090b0e}.dynControls{height:81px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.staticGrid .knob .dial{width:50px;height:50px}.staticGrid .knob .dial:before{height:14px;transform-origin:50% 21px}.dynControls .knob .dial{width:50px;height:50px}.dynControls .knob .dial:before{height:14px;transform-origin:50% 21px}.ottGrid,.bottomGrid{height:100%;display:grid;position:relative;grid-template-columns:repeat(3,1fr);gap:3px}.ottGrid .knob .dial,.bottomGrid .knob .dial{width:47px;height:47px}.ottGrid .knob .dial:before,.bottomGrid .knob .dial:before{height:13px;transform-origin:50% 20px}.knobTitle{height:12px}.knobValue{height:14px;line-height:12px}.bottomGrid{grid-template-columns:repeat(2,1fr);padding:0 18%}.dynMuted{opacity:.45;filter:grayscale(1)}.knobMuted{opacity:.42;filter:grayscale(1)}.knobMuted .modeSwitch,.modeSwitch.muted{opacity:.42;filter:grayscale(1)}.deessMuted .bandHead{color:#747b84}.deessMuted .bandLed.de{opacity:.42;filter:grayscale(1)}.deessLocal{top:auto;right:7px;width:19px;height:19px}.graphAxis{fill:#aab0ba}.knob{text-align:center;font:7.7px Consolas;color:#bcc3cb;min-width:0;position:relative}.modeSwitch{position:absolute;left:50%;top:-25px;transform:translateX(-50%);width:36px;height:12px;padding:0;display:flex;align-items:center;justify-content:space-around;border:1px solid #4b525b;border-radius:4px;background:#0b0d10;color:#aeb5bd;font:10px Consolas;font-weight:900;z-index:4}.modeSwitch i{position:absolute;top:2px;left:2px;width:14px;height:6px;border-radius:3px;background:#60a5fa;opacity:.85;transition:left .08s}.modeSwitch.ss i{left:18px}.modeSwitch span{position:relative;z-index:1}.modeSwitch.ss span:last-child,.modeSwitch:not(.ss) span:first-child{color:#fff}.dial{width:58px;height:58px;margin:0 auto 2px;border-radius:50%;border:2px solid #676c75;background:radial-gradient(circle at 34% 28%,#50545d,#2b2f35 58%,#15171b 100%);box-shadow:0 4px 9px #000c,inset 0 1px 2px #fff2;position:relative;touch-action:none;cursor:ns-resize}.dial:before{content:"";position:absolute;left:50%;top:4px;width:3px;height:18px;background:#fff;box-shadow:0 0 0 1px #0008;transform:translateX(-50%) rotate(var(--angle,-125deg));transform-origin:50% 25px;border-radius:2px}.dial{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 9px #000c,inset 0 1px 2px #fff2}.dial:after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;background:#eef2f7;transform:translate(-50%,-50%)}.knobTitle{height:13px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.knobValue{height:16px;line-height:14px;border:1px solid #050608;border-radius:3px;background:#07090b;color:#dce2e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8.8px}
+.rowTop{height:315px;margin-top:5px;display:block}.rowTop>.panel{display:none}.panel,.band{border:1px solid #08090b;border-radius:7px;background:linear-gradient(180deg,#292c32,#13161a);box-shadow:0 9px 18px #0009,inset 0 1px #fff1}.panelHead{height:29px;padding:6px 10px;border-bottom:1px solid #06070a;font-size:10px;font-weight:900;letter-spacing:.08em}.panelSub{font:7px Consolas;color:#7f8790;margin-top:1px}.eqShared{display:none}.graph{height:315px;border:1px solid #06070a;border-radius:7px;background:#111318;overflow:hidden;position:relative}.graph canvas{width:100%;height:100%;display:block}.graphHint .active{font-weight:900;color:#fff}.graphHint .muted{font-weight:400;color:#9aa2ac}.graphHint{position:absolute;z-index:5;pointer-events:none;width:136px;min-width:136px;padding:6px 8px;border:1px solid #fff9;border-radius:5px;background:#07090cf2;box-shadow:0 6px 18px #000b;color:#fff;font:700 8.5px/13px Consolas;white-space:normal;text-align:left}
+.bandsFrame{height:500px;margin-top:6px;padding:7px;border:1px solid #07080a;border-radius:7px;background:linear-gradient(180deg,#20242a,#101216);box-shadow:0 10px 22px #0009}.bandGrid{height:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) .5fr .5fr;gap:7px}.band{position:relative;padding:7px;overflow:hidden}.band:after{content:"";position:absolute;inset:2px;border:1px solid var(--accent);opacity:.16;border-radius:5px;pointer-events:none}.bandHead{height:25px;display:flex;justify-content:space-between;align-items:center;color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.08em}.bandLed{position:absolute;right:7px;width:14px;height:14px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 1px 3px #000;z-index:3;padding:0}.bandLed.on{box-shadow:0 0 7px var(--led),inset 0 1px #fff5}.bandLed.ott{top:-9px;right:-3px}.bandLed.type{top:-9px;right:-3px}.bandLed.ott.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#facc15 25%,#25272b 78%,#101216 100%)}.bandLed.type.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#f472b6 25%,#25272b 78%,#101216 100%)}.bandHeadBtns{display:flex;align-items:center;gap:3px}.soloBtn{height:21px;padding:0 6px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.soloBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.advBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #555b63;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.band.bypassed{filter:grayscale(1)}.knob.graphActive .dial{box-shadow:0 0 0 2px #fff,0 0 11px #fff8,inset 0 1px 2px #fff2}.knob.graphMoving .dial{animation:vvGraphPulse .36s steps(2,end) infinite}@keyframes vvGraphPulse{0%,100%{box-shadow:0 0 0 2px #fff,0 0 12px #fff9,inset 0 1px 2px #fff2}50%{box-shadow:0 0 0 1px #fff4,0 0 4px #fff3,inset 0 1px 2px #fff2}}.ottAdvBtn{position:absolute;left:7px;top:6px;height:21px;padding:0 7px;border-radius:4px;border:1px solid #5b4c1d;background:#17150f;color:#ffdf62;font:8px Consolas;z-index:4}.bandBody{height:calc(100% - 25px)}.deessZone{height:100%;display:grid;grid-template-columns:1fr;grid-template-rows:repeat(3,1fr);gap:6px;padding:12px 6px 8px}.bandLed.de{top:4px;right:7px;width:19px;height:19px}.bandLed.de.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#67d3aa 25%,#25272b 78%,#101216 100%);box-shadow:0 0 10px #67d3aa,inset 0 1px #fff5}.eqBody{height:calc(100% - 25px);padding:11px 2px 0;display:grid;grid-template-rows:84px 110px 105px 128px;gap:5px}.knobGrid{height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr;gap:3px}.dynSection{height:110px;border:1px solid #30343a;border-radius:5px;background:#0c0f13;padding:8px 4px 2px}.dynModeRow{height:15px;display:grid;grid-template-columns:1fr 1fr;gap:3px;margin:1px 0}.dynModeBtn{height:14px;border:1px solid #444b55;border-radius:3px;background:#11151a;color:#cfd5dc;font:7px Consolas;font-weight:700}.dynModeBtn.on{background:#e8edf2;color:#090b0e}.dynControls{height:81px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.staticGrid .knob .dial{width:50px;height:50px}.staticGrid .knob .dial:before{height:14px;transform-origin:50% 21px}.dynControls .knob .dial{width:50px;height:50px}.dynControls .knob .dial:before{height:14px;transform-origin:50% 21px}.ottGrid,.bottomGrid{height:100%;display:grid;position:relative;grid-template-columns:repeat(3,1fr);gap:3px}.ottGrid .knob .dial,.bottomGrid .knob .dial{width:47px;height:47px}.ottGrid .knob .dial:before,.bottomGrid .knob .dial:before{height:13px;transform-origin:50% 20px}.knobTitle{height:12px}.knobValue{height:14px;line-height:12px}.bottomGrid{grid-template-columns:repeat(2,1fr);padding:0 18%}.dynMuted{opacity:.45;filter:grayscale(1)}.knobMuted{opacity:.42;filter:grayscale(1)}.knobMuted .modeSwitch,.modeSwitch.muted{opacity:.42;filter:grayscale(1)}.deessMuted .bandHead{color:#747b84}.deessMuted .bandLed.de{opacity:.42;filter:grayscale(1)}.deessLocal{top:auto;right:7px;width:19px;height:19px}.graphAxis{fill:#aab0ba}.knob{text-align:center;font:7.7px Consolas;color:#bcc3cb;min-width:0;position:relative}.modeSwitch{position:absolute;left:50%;top:-25px;transform:translateX(-50%);width:36px;height:12px;padding:0;display:flex;align-items:center;justify-content:space-around;border:1px solid #4b525b;border-radius:4px;background:#0b0d10;color:#aeb5bd;font:10px Consolas;font-weight:900;z-index:4}.deEssModeDial{overflow:visible}.deEssModeTick{position:absolute;z-index:6;transform:translate(-50%,-50%);pointer-events:none;color:var(--accent);font:7px Consolas;font-weight:900;text-shadow:0 1px 2px #000}.analogX2Btn{position:absolute;left:2px;top:-12px;width:22px;height:12px;padding:0;border:1px solid #4b525b;border-radius:4px;background:#0b0d10;color:#7f8790;font:7px Consolas;font-weight:900;z-index:5}.analogX2Btn.on{color:#fff;border-color:#60a5fa;background:#193047;box-shadow:0 0 7px #60a5fa88}.modeSwitch i{position:absolute;top:2px;left:2px;width:14px;height:6px;border-radius:3px;background:#60a5fa;opacity:.85;transition:left .08s}.modeSwitch.ss i{left:18px}.modeSwitch span{position:relative;z-index:1}.modeSwitch.ss span:last-child,.modeSwitch:not(.ss) span:first-child{color:#fff}.dial{width:58px;height:58px;margin:0 auto 2px;border-radius:50%;border:2px solid #676c75;background:radial-gradient(circle at 34% 28%,#50545d,#2b2f35 58%,#15171b 100%);box-shadow:0 4px 9px #000c,inset 0 1px 2px #fff2;position:relative;touch-action:none;cursor:ns-resize}.dial:before{content:"";position:absolute;left:50%;top:4px;width:3px;height:18px;background:#fff;box-shadow:0 0 0 1px #0008;transform:translateX(-50%) rotate(var(--angle,-125deg));transform-origin:50% 25px;border-radius:2px}.dial{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 9px #000c,inset 0 1px 2px #fff2}.dial:after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;background:#eef2f7;transform:translate(-50%,-50%)}.knobTitle{height:13px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.knobValue{height:16px;line-height:14px;border:1px solid #050608;border-radius:3px;background:#07090b;color:#dce2e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8.8px}
 .advPopup{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,calc(100% - 40px));height:330px;border:1px solid #facc15cc;border-radius:10px;background:linear-gradient(180deg,#28231a,#101216);z-index:50;padding:8px 12px;box-shadow:0 18px 44px #000c,0 0 0 1px #0009}.advPopupHead{height:34px;display:flex;align-items:center;justify-content:space-between;color:#facc15;font:10px Consolas;font-weight:900}.advPopupClose{height:21px;padding:0 8px;border:1px solid #5c4e1f;border-radius:4px;background:#17150f;color:#ffdf62;font:8px Consolas}.advPopupGrid{height:276px;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:1fr 1fr;gap:2px}.advPopupGrid .dial{width:50px;height:50px}.advPopupGrid .dial:before{height:14px;transform-origin:50% 22px}.advPopupGrid .knobTitle{font-size:6.82px;height:11px}.advPopupGrid .knobValue{font-size:7.7px;height:14px;line-height:12px}.advPopupGrid .tiny{height:22px;padding:0 3px;font-size:6.5px;margin:auto}
 .footer{display:none}.masterBypass{height:27px;min-width:72px;padding:0 9px;border:1px solid #69717b;border-radius:4px;background:#20242a;color:#e9eef3;font:9px Consolas;font-weight:900}.masterBypass.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 12px #dfe7ef88}.app.globalBypass{filter:grayscale(1)}.leds{margin-left:8px}.deessMonitor{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:30px 8px 8px;gap:10px}.monitorKnobRow{width:100%;height:224px;display:grid;grid-template-columns:1fr;grid-template-rows:1fr 1fr;gap:4px}.deessPower{width:72px;height:72px;border-radius:50%;border:2px solid #50565f;background:radial-gradient(circle at 35% 28%,#454a52,#171a1f 68%,#0b0d10 100%);color:#8b929a;font-size:28px;font-weight:800;line-height:1;box-shadow:0 7px 12px #000b,inset 0 1px 2px #fff2;cursor:pointer}.deessPower.on{border-color:#e5e7eb;color:#fff;box-shadow:0 0 18px #e5e7eb77,0 7px 12px #000b,inset 0 1px 2px #fff3}.deltaBtn{width:100%;height:30px;border:1px solid #555b63;border-radius:5px;background:#12161b;color:#dfe5eb;font:800 9px Consolas}.deltaBtn.on{border-color:#fff;background:#e6edf2;color:#090b0e;box-shadow:0 0 9px #fff6}.monitorHint{font:7px Consolas;color:#7e8791;text-align:center;line-height:1.4}.note{display:none}select{height:27px;background:#0f1115;color:#dce2e8;border:1px solid #3b4047;border-radius:4px;font-size:8px}
 @media(max-width:1100px){.chain{display:none}.ledLabel{display:none}.dial{width:57px;height:57px}.footer{grid-template-columns:1fr 245px}}
@@ -26,7 +26,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span><span class="tiny" id="cursorTime">0:00.000</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.6 · ANALOG 4-BAND + DEESS PRESETS</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.7 · ANALOG 4-BAND + DEESS PRESETS</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -46,11 +46,11 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 <script>
 const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=null,workletNode=null,workletModuleUrl=null,playing=false,directFallback=false,workletHeartbeatSeen=false;
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
-const state={masterBypass:false,delta:false,solo:{band:-1,post:false},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:[35,35,35,35],colorBypass:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[false,false,false,false],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},ott:{bypass:false,bandBypass:[false,false,false,false],degree:[25,25,22,18],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[6,12,28,22],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:8000,intensity:3,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
+const state={masterBypass:false,delta:false,solo:{band:-1,post:false},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:[35,35,35,35],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[false,false,false,false],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},ott:{bypass:false,bandBypass:[false,false,false,false],degree:[25,25,22,18],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[6,12,28,22],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:8000,intensity:3,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
 const defaults=structuredClone(state),knobRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.6
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.7
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.6";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.7";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -204,13 +204,33 @@ const syncSoloMode=()=>{soloMode.classList.toggle("on",!!state.solo.post);soloMo
 soloMode.onclick=()=>{state.solo.post=!state.solo.post;syncSoloMode()};
 syncSoloMode();
 $("#advPopupClose").onclick=()=>openAdvanced(-1);
-function dialVisual(d,v,min,max,a){d.style.setProperty("--accent",a);d.style.setProperty("--angle",(-125+250*((v-min)/(max-min)))+"deg")}
+function dialVisual(d,v,min,max,a){
+  d.style.setProperty("--accent",a);
+  const p=clamp((v-min)/Math.max(0.000001,max-min),0,1);
+  const angle=d.classList.contains("deEssModeDial")
+    ? (-60+120*p)
+    : (-125+250*p);
+  d.style.setProperty("--angle",angle+"deg");
+}
 function makeKnob(parent,cfg){
   const{label,get,set,min,max,suffix="",accent="#38bdf8",formatDigits=1,formatValue=null}=cfg;
   const w=document.createElement("div");w.className="knob";w.style.setProperty("--accent",accent);if(cfg.controlId)w.dataset.controlId=cfg.controlId;
   const d=document.createElement("div");d.className="dial";
   const t=document.createElement("div");t.className="knobTitle";t.textContent=label;
   const v=document.createElement("div");v.className="knobValue";
+  const discreteMode=cfg.controlId==="DEESS_MODE";
+  if(discreteMode){
+    d.classList.add("deEssModeDial");
+    ["I","II","III","IV"].forEach((labelText,index)=>{
+      const tick=document.createElement("span");
+      tick.className="deEssModeTick";
+      tick.textContent=labelText;
+      const a=(210+index*40)*Math.PI/180;
+      tick.style.left=(50+43*Math.cos(a))+"%";
+      tick.style.top=(50+43*Math.sin(a))+"%";
+      d.appendChild(tick);
+    });
+  }
   w.append(d,t,v);parent.appendChild(w);
   const def=get();
   const render=()=>{const n=get();v.textContent=formatValue?formatValue(n):fmt(n,formatDigits)+suffix;dialVisual(d,n,min,max,accent);if(cfg.mutedWhen)w.classList.toggle("knobMuted",!!cfg.mutedWhen())};
@@ -230,6 +250,7 @@ function makeKnob(parent,cfg){
     /ATTACK/.test(label)?1:
     /RELEASE/.test(label)?5:
     /DEGREE|MIX|COLOR/.test(label)?1:
+    discreteMode?1:
     Math.max(0.1,(max-min)*0.01)
   );
   const fineStep=0.01;
@@ -237,17 +258,32 @@ function makeKnob(parent,cfg){
   const freqToNorm=x=>Math.pow(clamp((x-20)/(20000-20),0,1),1/freqSkew);
   const normToFreq=x=>20+(20000-20)*Math.pow(clamp(x,0,1),freqSkew);
   let wheelRemainder=0,dragging=false,dragStartY=0,dragStartValue=0,dragStartNorm=0,dragFine=false;
+  const discreteFromPointer=e=>{
+    const r=d.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+    let a=Math.atan2(e.clientY-cy,e.clientX-cx);
+    if(a<0)a+=2*Math.PI;
+    const start=7*Math.PI/6,end=11*Math.PI/6;
+    a=clamp(a,start,end);
+    const index=Math.round((a-start)/(end-start)*3);
+    apply(min+index*(max-min)/3);
+  };
   knobRefreshers.push(render);
   d.addEventListener("pointerdown",e=>{
     d.setPointerCapture(e.pointerId);
     dragging=true;dragFine=!!e.shiftKey;dragStartY=e.clientY;dragStartValue=get();
+    if(discreteMode){discreteFromPointer(e);return}
     if(logarithmic)dragStartNorm=freqToNorm(dragStartValue);
   });
   d.addEventListener("pointermove",e=>{
     if(!dragging)return;
+    if(discreteMode){discreteFromPointer(e);return}
     const fineScale=dragFine?0.1:1;
     if(logarithmic){
-      const norm=clamp(dragStartNorm+(dragStartY-e.clientY)/180*fineScale,0,1);
+      const norm=clamp(
+        dragStartNorm
+        + (dragStartY-e.clientY)/180
+            * (cfg.sensitivity??1) * fineScale,
+        0,1);
       apply(normToFreq(norm));
     }else{
       const mult=(max-min)/180*(cfg.sensitivity??1)*fineScale;
@@ -260,7 +296,8 @@ function makeKnob(parent,cfg){
     e.preventDefault();wheelRemainder-=clamp(e.deltaY,-4,4);
     const ticks=Math.trunc(wheelRemainder);if(ticks===0)return;
     wheelRemainder-=ticks;let next=get();
-    if(e.shiftKey)next+=ticks*fineStep;
+    if(discreteMode)next=Math.round(next)+ticks;
+    else if(e.shiftKey)next+=ticks*fineStep;
     else if(logarithmic)next*=Math.pow(2,ticks/24);
     else next+=ticks*wheelStep;
     apply(next)
@@ -314,9 +351,14 @@ makeKnob(ottGrid,{label:"RELEASE",get:()=>state.ott.compR[n],set:v=>state.ott.co
 const analogKnob=makeKnob(bottomGrid,{label:"ANALOG COLOR",get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:100,suffix:" %",accent:"#60a5fa",mutedWhen:()=>state.eq.color[n]<=0.0001});
 analogKnob.classList.add("analogKnob");
 let syncTapeLed=()=>{};
-const typeKnob=makeKnob(bottomGrid,{label:"TAPE-A +",get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:100,accent:cols[n],formatValue:tape,mutedWhen:()=>state.type.degree[n]<=0.0001,afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed()}});
+const typeMax=[50,60,70,90][n];
+const typeKnob=makeKnob(bottomGrid,{label:"TAPE-A +",get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:typeMax,accent:cols[n],formatValue:tape,mutedWhen:()=>state.type.degree[n]<=0.0001,afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed()}});
 const mode=document.createElement("button");mode.className="modeSwitch";mode.title="TT = Tube Saturation；SS = Solid-State Saturation";mode.innerHTML="<span>TT</span><i></i><span>SS</span>";
 const syncMode=()=>{mode.classList.toggle("ss",!!state.eq.mode[n]);mode.classList.toggle("muted",state.eq.color[n]<=0.0001)};mode.onclick=()=>{state.eq.mode[n]=!state.eq.mode[n];syncMode();sendParams();drawEQ()};syncMode();analogKnob.appendChild(mode);
+const x2=document.createElement("button");x2.className="analogX2Btn";x2.textContent="X2";x2.title="ANALOG COLOR X2：當前量 × 1.6";
+const syncX2=()=>x2.classList.toggle("on",!!state.eq.colorX2[n]);
+x2.onclick=()=>{state.eq.colorX2[n]=!state.eq.colorX2[n];syncX2();sendParams();drawEQ()};syncX2();
+analogKnob.appendChild(x2);
 
 const ottLed=document.createElement("button");ottLed.className="bandLed ott";ottLed.style.setProperty("--led","#facc15");ottLed.title="BAND "+(n+1)+" OTT：亮=啟用；按下=BYPASS";
 const syncOttBandLed=()=>ottLed.classList.toggle("on",!state.ott.bandBypass[n]);
@@ -339,7 +381,7 @@ const deessLocalBypass=document.createElement("button");deessLocalBypass.classNa
 deessLocalBypass.onclick=()=>{state.de.bypass=!state.de.bypass;syncDeessLeds();syncDeessLocal();sendParams()};card.appendChild(deessLocalBypass);
 const syncDeessLocal=()=>{deessLocalBypass.classList.toggle("on",!state.de.bypass);card.classList.toggle("deessMuted",state.de.intensity<=0.0001)};
 syncDeessLeds();
-const deFreqKnob=makeKnob(body,{label:"DE-ESS FREQ",controlId:"DEESS_FREQ",get:()=>state.de.freq,set:v=>state.de.freq=v,min:6000,max:18000,suffix:" Hz",accent:"#67d3aa",formatValue:hz,mutedWhen:()=>state.de.intensity<=0.0001});
+const deFreqKnob=makeKnob(body,{label:"DE-ESS FREQ",controlId:"DEESS_FREQ",get:()=>state.de.freq,set:v=>state.de.freq=v,min:6000,max:18000,suffix:" Hz",accent:"#67d3aa",formatValue:hz,sensitivity:.20,mutedWhen:()=>state.de.intensity<=0.0001});
 const deIntensityKnob=makeKnob(body,{label:"MAXIMUM REDUCTION",controlId:"DEESS_INTENSITY",get:()=>state.de.intensity,set:v=>state.de.intensity=v,min:0,max:8,suffix:" dB",accent:"#67d3aa",formatDigits:1,mutedWhen:()=>state.de.intensity<=0.0001,afterSet:v=>{state.de.bypass=v<=0.0001;syncDeessLeds();syncDeessLocal()}});
 const deModeKnob=makeKnob(body,{label:"DE-ESS MODE",controlId:"DEESS_MODE",get:()=>state.de.mode,set:v=>state.de.mode=v,min:1,max:4,suffix:"",accent:"#67d3aa",formatDigits:0,mutedWhen:()=>state.de.intensity<=0.0001});
 deModeKnob.title="";
@@ -640,16 +682,15 @@ resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function showGraphHint(e,text){const r=eqCanvas.getBoundingClientRect();graphHint.innerHTML=text;graphHint.hidden=false;const pad=6,ox=12,oy=12,x=clamp(e.clientX-r.left+ox,pad,r.width-graphHint.offsetWidth-pad),y=clamp(e.clientY-r.top+oy,pad,r.height-graphHint.offsetHeight-pad);graphHint.style.left=x+"px";graphHint.style.top=y+"px";}
 function hideGraphHint(){graphHint.hidden=true;}
 function graphHintBandHtml(b,mask){
-  const dyn=Number(state.dyn.dynamics[b]||0);
-  const gain=mask&4?dynamicEffectiveTargetGain(b):Number(state.eq.gain[b]||0);
+  const dynamicReadout=!!(mask&4);
+  const gain=dynamicReadout
+    ? dynamicEffectiveTargetGain(b)
+    : Number(state.eq.gain[b]||0);
   const signed=(gain>=0?"+":"")+fmt(gain,1)+" dB";
-  const parts=[
-    ["FREQ",hz(state.eq.freq[b]),!!(mask&1)],
-    ["GAIN",signed,!!(mask&2||mask&4)],
-    ["DYN",(dyn>=0?"+":"")+fmt(dyn,0)+"%",!!(mask&4)],
-    ["Q",fmt(state.eq.q[b],2),!!(mask&8)]
-  ];
-  return parts.map(([k,v,a])=>'<span class="'+(a?"active":"muted")+'">'+k+" "+v+"</span>").join(" &nbsp;|&nbsp; ");
+  const label=dynamicReadout?"DYN EQ":"EQ";
+  return '<div class="active">'+label+"  GAIN "+signed
+    +'</div><div class="active">FREQ '+hz(state.eq.freq[b])
+    +"  Q "+fmt(state.eq.q[b],2)+"</div>";
 }
 
 eqCanvas.addEventListener("contextmenu",e=>e.preventDefault());
@@ -786,6 +827,8 @@ eqCanvas.addEventListener("pointerdown",e=>{
   if(tb>=0){
     dragMode=2;dragBand=tb;dragXover=-1;dragDynamicTargetBand=tb;
     setGraphControls(["EQ"+(tb+1)+"_FREQ","DYN_DYNAMICS"+(tb+1)],false);
+    dynFreqStartHz=state.eq.freq[tb];
+    dynFreqGrabOffsetX=x-logX(dynFreqStartHz,w);
     dynDynamicsStartY=y;
     dynDynamicsStartValue=state.dyn.dynamics[tb];
     dynTargetStartFreq=state.eq.freq[tb];
@@ -851,19 +894,13 @@ eqCanvas.addEventListener("pointermove",e=>{
     // Comparing that corrected coordinate with the mouse-start X caused
     // an artificial first-frame jump and made the node run ahead.
     const nodeStartX=logX(dynFreqStartHz,w);
-    const correctedX=x-dynFreqGrabOffsetX;
+    const correctedX=clamp(x-dynFreqGrabOffsetX,0,w);
     const rawDx=correctedX-nodeStartX,rawDy=y-dynGainStartY;
-    // Static EQ is a true XY control:
-    // horizontal = Frequency, vertical = Gain.
-    // Both axes remain active during the same drag.
+    // Frequency is mapped directly from the corrected cursor position.
+    // No follow multiplier is used, so the node stays exactly under its grab offset.
     const effectiveDx=rawDx;
     const effectiveDy=rawDy;
-    // Match logX()/invLog() exactly so the graph node follows the cursor.
-    // 0.74 retains the requested slower feel without the previous overshoot.
-    const startNorm=Math.log(Math.max(20,dynFreqStartHz)/20)/Math.log(1000);
-    const followScale=0.74;
-    const norm=clamp(startNorm+(effectiveDx/Math.max(1,w))*followScale*fine,0,1);
-    const hzv=20*Math.pow(1000,norm);
+    const hzv=invLog(correctedX/w);
     const deltaDb=-effectiveDy/Math.max(1,h)*36*fine;
     state.eq.freq[dragBand]=hzv;
     state.eq.gain[dragBand]=clamp(dynGainStartOffset+deltaDb,-18,18);
@@ -873,10 +910,9 @@ eqCanvas.addEventListener("pointermove",e=>{
   }
   if(dragMode===2&&dragBand>=0){
     const fine=e.shiftKey?0.1:1;
-    const rawDx=x-dynTargetStartX,rawDy=y-dynDynamicsStartY;
-    const startNorm=Math.log(Math.max(20,dynTargetStartFreq)/20)/Math.log(1000);
-    const norm=clamp(startNorm+(rawDx/Math.max(1,w))*0.74*fine,0,1);
-    const hzv=20*Math.pow(1000,norm);
+    const correctedX=clamp(x-dynFreqGrabOffsetX,0,w);
+    const rawDx=correctedX-logX(dynTargetStartFreq,w),rawDy=y-dynDynamicsStartY;
+    const hzv=invLog(correctedX/w);
     const deltaDynamics=-rawDy/Math.max(1,h)*200*fine;
     state.eq.freq[dragBand]=hzv;
     state.dyn.dynamics[dragBand]=clamp(dynDynamicsStartValue+deltaDynamics,-100,100);

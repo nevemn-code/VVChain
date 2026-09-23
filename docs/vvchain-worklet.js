@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.6
+// VVChain Web AudioWorklet DSP module · v1.0.7
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -227,7 +227,8 @@ class VVChainWorklet extends AudioWorkletProcessor {
         let analogOut=0;
         for(let b=0;b<4;b++){
           if(s.eq.colorBypass[b]){ analogOut+=bands[b]; continue; }
-          const amount=Number(s.eq.color[b]||0)/100;
+          const x2Multiplier=s.eq.colorX2?.[b]?1.6:1;
+          const amount=this.clamp(Number(s.eq.color[b]||0)*x2Multiplier/100,0,1);
           analogOut+=amount>1e-6
             ? this.analog(bands[b],amount,!!s.eq.mode[b],c,b)
             : bands[b];
@@ -292,7 +293,9 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const makeup=[0,0,0,0];
       const trims=[0,0,0,0];
       for(let b=0;b<4;b++){
-        const depth=this.clamp(Number(s.type.degree[b]||0)/100,0,1);
+        const typeMax=[50,60,70,90][b];
+        const limitedDegree=this.clamp(Number(s.type.degree[b]||0),0,typeMax);
+        const depth=this.clamp(limitedDegree/100,0,1);
         const rawDriveParam=1+1.5*depth;
         const driveParam=Math.max(1,rawDriveParam);
         driveParams[b]=driveParam;
@@ -305,7 +308,9 @@ class VVChainWorklet extends AudioWorkletProcessor {
       let enhancement=0;
       for(let b=0;b<4;b++){
         if(s.bandBypass?.[b]||s.type.bandBypass[b])continue;
-        const depth=this.clamp(Number(s.type.degree[b]||0)/100,0,1);
+        const typeMax=[50,60,70,90][b];
+        const limitedDegree=this.clamp(Number(s.type.degree[b]||0),0,typeMax);
+        const depth=this.clamp(limitedDegree/100,0,1);
         if(depth<=0)continue;
         const driven=Math.tanh(bands[b]*driveParams[b])*makeup[b];
         const processed=driven*trims[b];
