@@ -2145,7 +2145,6 @@ void VVChainAudioProcessorEditor::mouseDown(
         if (event.mods.isLeftButtonDown()
             && pos.getDistanceFrom({ x, y }) < 18.f)
         {
-            dragDynamicTargetBand = -1;
             dragOffsetBand = b;
             dragBand = -1;
             dragXover = -1;
@@ -2180,7 +2179,6 @@ void VVChainAudioProcessorEditor::mouseDown(
         dragBand = band;
         dragXover = -1;
         dragDynamicMsBand = -1;
-        dragDynamicTargetBand = -1;
         dragOffsetBand = -1;
 
         dynamicTargetDragStartY = target.y;
@@ -2229,7 +2227,6 @@ void VVChainAudioProcessorEditor::mouseDown(
     if (dragXover >= 0)
     {
         dragBand = -1;
-        dragDynamicTargetBand = -1;
         showGraphDragHint = true;
         graphDragHintPosition = pos;
 
@@ -2422,7 +2419,6 @@ void VVChainAudioProcessorEditor::mouseUp(
     dragOffsetBand = -1;
     dragXover = -1;
     dragDynamicMsBand = -1;
-    dragDynamicTargetBand = -1;
     showGraphDragHint = false;
     graphDragHint.clear();
     repaint();
