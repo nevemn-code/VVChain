@@ -2,59 +2,39 @@
 
 LAST MODIFIED 2026-09-22 21:42（Asia/Taipei / UTC+8）
 
-## 全部 GitHub 動作時間碼（最高優先、強制）
+## 版本規則（最高優先）
 
-凡是任何會寫入或修改 GitHub 的動作，都必須留下本次實際動作的台灣時間碼，不只網頁版。
+VVChain 所有 GitHub 版本追蹤統一使用「版本號」，不再使用任何時間碼。
 
-適用範圍包含但不限於：
+### 版本號格式
 
-1. 修改 / 新增 / 刪除任何原始碼、Header、測試、Workflow、文件、設定檔。
-2. GitHub Commit / Push。
-3. Pull Request、Issue、Comment、Review 等 GitHub 內容寫入。
-4. GitHub Pages / Web Preview。
-5. 任何 CI/CD、測試規則或部署規則的修改。
-6. 一次操作涉及多個檔案時，每次寫入行為仍必須使用實際時間碼。
+Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內容，使用：
 
-統一格式：
+`[vMAJOR.MINOR.PATCH]`
 
-`[YYYY-MM-DD HH:MM:SS TST]`
+例如：
 
-其中 TST = Taiwan Standard Time，固定使用 Asia/Taipei（UTC+8）。
+`[v1.0.0] DSP: update OTT smoothing`
 
-### Commit 規則
+版本號只代表程式版本，不代表日期或電腦時間。
 
-所有 GitHub Commit message 必須以本次實際台灣時間碼開頭，例如：
+### 強制規則
 
-`[2026-09-22 21:28:35 TST] DSP: update OTT smoothing`
+1. 不得要求使用者提供、比對、同步或確認電腦時間。
+2. 不讀取使用者電腦系統時間來建立版本識別。
+3. 不在 Commit message、PR、Issue、Review、Workflow、Web Preview 中加入 TST / TIMECODE / LAST MODIFIED 等時間欄位。
+4. 每次可發版的功能修改，版本號至少遞增 PATCH；重大不相容變更才遞增 MAJOR / MINOR。
+5. 同一批連續修正可使用同一版本號，直到該版本完成。
+6. Web Preview 不需要因程式修改而同步更新日期或時間顯示。
+7. GitHub 自己產生的建立時間、Push 時間、Workflow 時間屬於 GitHub 平台資料，不納入 VVChain 版本規則。
 
-不得只靠 GitHub 自動顯示的 commit 時間；時間碼必須明確寫入 commit message。
+### 版本驗收
 
-### PR / Issue / Comment / Review 規則
-
-凡建立或修改上述內容，正文第一行必須放本次實際時間碼：
-
-`TIMECODE: 2026-09-22 21:28:35 TST`
-
-### Workflow / CI/CD 規則
-
-凡修改 `.github/workflows/*`：
-
-- Commit message 必須有時間碼。
-- Workflow 本身若有可見版本 / 狀態紀錄，也必須保留時間碼。
-- 不得只替 Web Preview 加時間碼，而忽略 CI、測試或其他 GitHub 動作。
-
-## Web 頁面時間碼（強制）
-
-凡是任何會修改 `docs/*.html` 的工作：
-
-1. 必須同步更新頁面內的：
-   `LAST MODIFIED YYYY-MM-DD HH:MM`
-2. 時區固定使用台灣時間（Asia/Taipei / UTC+8）。
-3. 時間碼必須是該次實際修改的時間，不得沿用舊時間。
-4. 若一次修改多個網頁，所有被修改的網頁都必須更新時間碼。
-5. 不得只修改 GitHub commit message 而不更新頁面內時間碼。
-6. 不得移除時間碼。
-7. 同時仍必須遵守「全部 GitHub 動作時間碼」規則；Web 頁面的時間碼不能取代 Commit 時間碼。
+每次改版確認：
+- Commit 有版本號。
+- 需要對外識別的 Web Preview / Release 有對應版本號。
+- 不再使用舊的時間碼規則。
+- Native VST3 與 Web Preview 仍遵守雙版本同步規則。
 
 ## ANALOG 規則
 
