@@ -342,7 +342,7 @@ private:
                               float rotaryEndAngle, juce::Slider&) override;
         void drawLinearSlider(juce::Graphics&, int x, int y, int width, int height,
                               float sliderPosProportional, float sliderAsymmetry,
-                              float sliderStart, float sliderEnd,
+                              float sliderStart,
                               juce::Slider::SliderStyle, juce::Slider&) override;
         void drawToggleButton(juce::Graphics&, juce::ToggleButton&,
                               bool shouldDrawButtonAsHighlighted,
