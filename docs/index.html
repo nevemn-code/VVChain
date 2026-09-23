@@ -308,7 +308,10 @@ function dynamicTargetPoint(b,w,h){
 }
 function dynamicThresholdFromDynamics(dynamics){
   const d=clamp(Number(dynamics||0),-100,100);
-  // Linear bipolar mapping: -100%=-24 dB, 0%=-12 dB, +100%=0 dB.
+  // JUCE/Web parity: DYNAMICS uses a truly linear bipolar map.
+  // -100%=-24 dB, 0%=-12 dB, +100%=0 dB.
+  // Graph hit-testing remains axis-locked and uses APVTS-equivalent state as
+  // the single source of truth, matching the JUCE graph interaction model.
   return clamp(-12+d*0.12,-60,0);
 }
 function dynamicEffectiveTargetGain(b){

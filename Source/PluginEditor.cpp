@@ -763,16 +763,14 @@ float VVChainAudioProcessorEditor::dynamicThresholdFromDynamics(float dynamics) 
 {
     const float signedDynamics =
         juce::jlimit(-100.f, 100.f, dynamics);
-    const float amount =
-        std::pow(std::abs(signedDynamics) * 0.01f, 0.65f);
 
-    // Single user-facing DYNAMICS macro:
-    // negative = compression; threshold moves lower;
-    // positive = expansion; threshold moves higher.
+    // DYNAMICS uses a truly linear bipolar map:
+    // -100% = -24 dB, 0% = -12 dB, +100% = 0 dB.
+    // This keeps equal mouse/knob movement equal in parameter space,
+    // including across the zero crossing.
     return juce::jlimit(
         -60.f, 0.f,
-        -12.f
-            + (signedDynamics < 0.f ? -12.f : 12.f) * amount);
+        -12.f + signedDynamics * 0.12f);
 }
 
 float VVChainAudioProcessorEditor::dynamicEffectiveTargetGain(int band) const
@@ -2159,6 +2157,9 @@ void VVChainAudioProcessorEditor::mouseDown(
                 midPct);
 
             dragDynamicMsBand = expandedDynamicBand;
+            if (auto* parameter = audioProcessor.apvts.getParameter(
+                    "DYN_MS" + juce::String(expandedDynamicBand + 1)))
+                parameter->beginChangeGesture();
             repaint();
         }
 
@@ -2190,6 +2191,11 @@ void VVChainAudioProcessorEditor::mouseDown(
             graphFreqDragStartHz =
                 parameterValue("EQ" + n + "_FREQ");
             graphFreqDragStartX = pos.x;
+
+            if (auto* parameter = audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
+                parameter->beginChangeGesture();
+            if (auto* parameter = audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
+                parameter->beginChangeGesture();
 
             showGraphDragHint = true;
             graphDragHintPosition = pos;
@@ -2271,6 +2277,14 @@ void VVChainAudioProcessorEditor::mouseDown(
     if (dragXover >= 0)
     {
         dragBand = -1;
+
+        const auto xoverId =
+            dragXover == 0 ? "OTT_X1"
+            : dragXover == 1 ? "OTT_X2"
+                             : "OTT_X3";
+        if (auto* parameter = audioProcessor.apvts.getParameter(xoverId))
+            parameter->beginChangeGesture();
+
         showGraphDragHint = true;
         graphDragHintPosition = pos;
 
@@ -2505,6 +2519,34 @@ void VVChainAudioProcessorEditor::mouseUp(
         const auto n = juce::String(dragBand + 1);
         if (auto* parameter =
                 audioProcessor.apvts.getParameter("DYN_DYNAMICS" + n))
+            parameter->endChangeGesture();
+    }
+
+    if (dragOffsetBand >= 0)
+    {
+        const auto n = juce::String(dragOffsetBand + 1);
+        if (auto* parameter =
+                audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
+            parameter->endChangeGesture();
+        if (auto* parameter =
+                audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
+            parameter->endChangeGesture();
+    }
+
+    if (dragXover >= 0)
+    {
+        const auto xoverId =
+            dragXover == 0 ? "OTT_X1"
+            : dragXover == 1 ? "OTT_X2"
+                             : "OTT_X3";
+        if (auto* parameter = audioProcessor.apvts.getParameter(xoverId))
+            parameter->endChangeGesture();
+    }
+
+    if (dragDynamicMsBand >= 0)
+    {
+        if (auto* parameter = audioProcessor.apvts.getParameter(
+                "DYN_MS" + juce::String(dragDynamicMsBand + 1)))
             parameter->endChangeGesture();
     }
 
