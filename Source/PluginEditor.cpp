@@ -727,40 +727,42 @@ juce::Rectangle<float> VVChainAudioProcessorEditor::dynamicMsPopupBounds(int ban
 {
     const auto graph = eqGraphBounds();
     const auto n = juce::String(band + 1);
-    const float x = graphFrequencyToX(graph, parameterValue("EQ" + n + "_FREQ"));
-    const float y = eqDbToY(graph, parameterValue("EQ" + n + "_GAIN"));
+    const float x = graphFrequencyToX(
+        graph, parameterValue("EQ" + n + "_FREQ"));
+    const float y = eqDbToY(
+        graph, parameterValue("EQ" + n + "_GAIN"));
 
-    const float w = 220.f;
-    const float h = 92.f;
+    const float w = 230.f;
+    const float h = 96.f;
     float px = x - w * 0.5f;
     float py = y - h - 34.f;
 
     if (py < graph.getY() + 6.f)
         py = y + 34.f;
 
-    px = juce::jlimit(graph.getX() + 6.f, graph.getRight() - w - 6.f, px);
-    py = juce::jlimit(graph.getY() + 6.f, graph.getBottom() - h - 6.f, py);
+    px = juce::jlimit(graph.getX() + 6.f,
+                      graph.getRight() - w - 6.f, px);
+    py = juce::jlimit(graph.getY() + 6.f,
+                      graph.getBottom() - h - 6.f, py);
     return { px, py, w, h };
 }
 
-juce::Point<float> VVChainAudioProcessorEditor::dynamicThresholdHandlePoint(int band) const
+juce::Point<float> VVChainAudioProcessorEditor::dynamicTargetPoint(int band) const
 {
     const auto graph = eqGraphBounds();
     const auto n = juce::String(band + 1);
-    const float x = graphFrequencyToX(graph, parameterValue("EQ" + n + "_FREQ"));
-    const float threshold = juce::jlimit(
-        -60.f, 0.f, parameterValue("DYN_THRESH" + n));
-    const float t = (0.f - threshold) / 60.f;
-    const float y = graph.getY() + 20.f
-        + t * juce::jmax(20.f, graph.getHeight() - 40.f);
-    return { x, y };
+    const float x = graphFrequencyToX(
+        graph, parameterValue("EQ" + n + "_FREQ"));
+    const float target = juce::jlimit(
+        -24.f, 24.f, parameterValue("DYN_TARGET" + n));
+    return { x, eqDbToY(graph, target) };
 }
 
 bool VVChainAudioProcessorEditor::pointNearDynamicNode(
     juce::Point<float> p, int& band) const
 {
     const auto graph = eqGraphBounds();
-    float best = 22.f;
+    float best = 24.f;
     band = -1;
 
     for (int b = 0; b < 4; ++b)
@@ -768,8 +770,9 @@ bool VVChainAudioProcessorEditor::pointNearDynamicNode(
         const auto n = juce::String(b + 1);
         const float x = graphFrequencyToX(
             graph, parameterValue("EQ" + n + "_FREQ"));
-        const float liveGain = parameterValue("EQ" + n + "_GAIN")
-            + dynamicAverageReductionDb(b);
+        const float liveGain =
+            parameterValue("EQ" + n + "_GAIN")
+            + dynamicAverageGainChangeDb(b);
         const float y = eqDbToY(graph, liveGain);
         const float d = p.getDistanceFrom({ x, y });
 
@@ -783,40 +786,19 @@ bool VVChainAudioProcessorEditor::pointNearDynamicNode(
     return band >= 0;
 }
 
-bool VVChainAudioProcessorEditor::pointNearDynamicThresholdHandle(
-    juce::Point<float> p, int& band) const
+float VVChainAudioProcessorEditor::dynamicAverageGainChangeDb(int band) const
 {
-    float best = 14.f;
-    band = -1;
-
-    for (int b = 0; b < 4; ++b)
-    {
-        const auto hp = dynamicThresholdHandlePoint(b);
-        const float d = p.getDistanceFrom(hp);
-
-        if (d < best)
-        {
-            best = d;
-            band = b;
-        }
-    }
-
-    return band >= 0;
+    return audioProcessor.getDynamicAverageGainChangeDb(band);
 }
 
-float VVChainAudioProcessorEditor::dynamicAverageReductionDb(int band) const
+float VVChainAudioProcessorEditor::dynamicMidGainChangeDb(int band) const
 {
-    return audioProcessor.getDynamicAverageReductionDb(band);
+    return audioProcessor.getDynamicMidGainChangeDb(band);
 }
 
-float VVChainAudioProcessorEditor::dynamicMidReductionDb(int band) const
+float VVChainAudioProcessorEditor::dynamicSideGainChangeDb(int band) const
 {
-    return audioProcessor.getDynamicMidReductionDb(band);
-}
-
-float VVChainAudioProcessorEditor::dynamicSideReductionDb(int band) const
-{
-    return audioProcessor.getDynamicSideReductionDb(band);
+    return audioProcessor.getDynamicSideGainChangeDb(band);
 }
 
 void VVChainAudioProcessorEditor::drawEqGraph(
@@ -827,6 +809,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         juce::Colour(0xff20242a), graph.getRight(), graph.getBottom(), false);
     g.setGradientFill(bg);
     g.fillRoundedRectangle(graph, 8.f);
+
     g.setColour(juce::Colours::black.withAlpha(.95f));
     g.drawRoundedRectangle(graph, 8.f, 1.f);
 
@@ -835,7 +818,8 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         const float db = 18.f - i * 4.5f;
         const float y = eqDbToY(graph, db);
         g.setColour(juce::Colour(0xff69717c).withAlpha(.42f));
-        g.drawHorizontalLine((int)y, graph.getX(), graph.getRight());
+        g.drawHorizontalLine(
+            (int)y, graph.getX(), graph.getRight());
     }
 
     for (float f : { 20.f, 50.f, 100.f, 200.f, 500.f, 1000.f,
@@ -843,7 +827,8 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     {
         const float x = graphFrequencyToX(graph, f);
         g.setColour(juce::Colour(0xff68727d).withAlpha(.33f));
-        g.drawVerticalLine((int)x, graph.getY(), graph.getBottom());
+        g.drawVerticalLine(
+            (int)x, graph.getY(), graph.getBottom());
     }
 
     const float xovers[3]
@@ -861,17 +846,19 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         graph.getX(), xovers[0], xovers[1], xovers[2], graph.getRight()
     };
 
-    // Four graph zones track the four Analog Color controls.
     for (int band = 0; band < 4; ++band)
     {
-        const float amount = juce::jlimit(
-            0.f, 100.f,
-            parameterValue("EQ_COLOR" + juce::String(band + 1))) / 100.f;
-        const float alpha = amount * .70f;
+        const float amount =
+            juce::jlimit(
+                0.f, 100.f,
+                parameterValue("EQ_COLOR" + juce::String(band + 1)))
+            / 100.f;
 
+        const float alpha = amount * .70f;
         if (alpha > 0.f && boundaries[band + 1] > boundaries[band])
         {
-            g.setColour(uiColour(kBandColours[(size_t)band]).withAlpha(alpha));
+            g.setColour(
+                uiColour(kBandColours[(size_t)band]).withAlpha(alpha));
             g.fillRect(
                 boundaries[band], graph.getY(),
                 boundaries[band + 1] - boundaries[band],
@@ -879,18 +866,24 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         }
     }
 
-    // Shared OTT crossover controls stay at the very top of the graph.
+    // X1/X2/X3 live in a dedicated top strip so they never cover EQ nodes.
     const float spread = 16.f + overlap * .52f;
+
     for (int i = 0; i < 3; ++i)
     {
         const float x = xovers[i];
+        const float hz = parameterValue(
+            i == 0 ? "OTT_X1" : i == 1 ? "OTT_X2" : "OTT_X3");
 
-        g.setColour(uiColour(juce::Colour(0xffffd84d)).withAlpha(.92f));
+        g.setColour(
+            uiColour(juce::Colour(0xffffd84d)).withAlpha(.92f));
         g.drawVerticalLine(
             (int)x, graph.getY() + 20.f, graph.getBottom() - 18.f);
 
-        const float l = juce::jmax(graph.getX() + 4.f, x - spread);
-        const float r = juce::jmin(graph.getRight() - 4.f, x + spread);
+        const float l = juce::jmax(
+            graph.getX() + 4.f, x - spread);
+        const float r = juce::jmin(
+            graph.getRight() - 4.f, x + spread);
 
         juce::Path curve;
         curve.startNewSubPath(
@@ -904,326 +897,437 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             r - spread * .35f, graph.getCentreY() + 20.f,
             r, graph.getCentreY() + 20.f);
 
-        g.setColour(uiColour(juce::Colour(0xffffdf67)).withAlpha(.65f));
-        g.strokePath(curve, juce::PathStrokeType(1.1f));
+        g.setColour(
+            uiColour(juce::Colour(0xffffdf67)).withAlpha(.60f));
+        g.strokePath(
+            curve, juce::PathStrokeType(1.1f));
 
-        const float hz = parameterValue(
-            i == 0 ? "OTT_X1" : i == 1 ? "OTT_X2" : "OTT_X3");
-
-        g.setColour(juce::Colours::black.withAlpha(.62f));
-        g.fillRoundedRectangle(x - 46.f, graph.getY() + 2.f, 92.f, 15.f, 3.f);
-        g.setColour(uiColour(juce::Colour(0xffffdf67)));
-        g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
+        g.setColour(juce::Colours::black.withAlpha(.70f));
+        g.fillRoundedRectangle(
+            x - 47.f, graph.getY() + 2.f, 94.f, 15.f, 3.f);
+        g.setColour(
+            uiColour(juce::Colour(0xffffdf67)));
+        g.setFont(
+            juce::FontOptions(7.5f).withStyle("Bold"));
         g.drawText(
-            "X" + juce::String(i + 1) + "  " + formatGraphFrequency(hz),
-            (int)x - 44, (int)graph.getY() + 3, 88, 11,
+            "X" + juce::String(i + 1) + "  "
+                + formatGraphFrequency(hz),
+            (int)x - 45, (int)graph.getY() + 3, 90, 11,
             juce::Justification::centred);
     }
 
-    g.setColour(uiColour(juce::Colour(0xffffdf67)).withAlpha(.88f));
-    g.setFont(juce::FontOptions(8.f).withStyle("Bold"));
-    g.drawText(
-        "SHARED X-OVER · 4 BANDS · 拖曳交叉線 = 頻率 · 線上滾輪 = OVERLAP "
-            + juce::String(overlap, 0) + "%",
-        (int)graph.getX() + 12,
-        (int)graph.getBottom() - 30,
-        600, 13, juce::Justification::left);
+    // Static Offset EQ response.
+    auto qForGain = [](float baseQ, float gainDb)
+    {
+        // Oxford Type-3 philosophy: Q reduces as gain moves away from 0,
+        // making stronger boosts/cuts progressively wider and softer.
+        return juce::jlimit(
+            0.10f, 18.0f,
+            baseQ / (1.0f + 0.045f * std::abs(gainDb)));
+    };
 
-    juce::Path response;
-    juce::Path dynamicResponse;
+    juce::Path offsetResponse;
 
     for (int i = 0; i <= 420; ++i)
     {
-        const float hz = invLogMap(i / 420.f, 20.f, 20000.f);
-        float staticDb = 0.f;
-        float liveDb = 0.f;
+        const float hz = invLogMap(
+            i / 420.f, 20.f, 20000.f);
+        float db = 0.f;
 
-        for (int b = 0; b < 4; ++b)
+        for (int band = 0; band < 4; ++band)
         {
-            const auto n = juce::String(b + 1);
-            const float f0 = parameterValue("EQ" + n + "_FREQ");
-            const float gain = parameterValue("EQ" + n + "_GAIN");
-            const float q = juce::jmax(
-                .1f, parameterValue("EQ" + n + "_Q"));
-            const float width = juce::jmax(
-                .02f, 1.f / (q * 1.8f));
+            const auto n = juce::String(band + 1);
+            const float f0 =
+                parameterValue("EQ" + n + "_FREQ");
+            const float gain =
+                parameterValue("EQ" + n + "_GAIN");
+            const float q =
+                qForGain(
+                    parameterValue("EQ" + n + "_Q"), gain);
+            const float width =
+                juce::jmax(.02f, 1.f / (q * 1.8f));
             const float xx = std::log(
                 std::max(hz, 20.f) / std::max(f0, 20.f));
-            const float shape = std::exp(
-                -(xx * xx) / (2.f * width * width));
-
-            staticDb += gain * shape;
-            liveDb += (gain + dynamicAverageReductionDb(b)) * shape;
+            const float shape =
+                std::exp(
+                    -(xx * xx) /
+                    (2.f * width * width));
+            db += gain * shape;
         }
 
-        const auto ptStatic = juce::Point<float>(
-            graphFrequencyToX(graph, hz), eqDbToY(graph, staticDb));
-        const auto ptLive = juce::Point<float>(
-            graphFrequencyToX(graph, hz), eqDbToY(graph, liveDb));
+        const auto pt = juce::Point<float>(
+            graphFrequencyToX(graph, hz),
+            eqDbToY(graph, db));
 
         if (i == 0)
-        {
-            response.startNewSubPath(ptStatic);
-            dynamicResponse.startNewSubPath(ptLive);
-        }
+            offsetResponse.startNewSubPath(pt);
         else
-        {
-            response.lineTo(ptStatic);
-            dynamicResponse.lineTo(ptLive);
-        }
+            offsetResponse.lineTo(pt);
     }
 
-    g.setColour(juce::Colours::white.withAlpha(.28f));
-    g.strokePath(response, juce::PathStrokeType(1.15f));
-    g.setColour(juce::Colours::white.withAlpha(.96f));
-    g.strokePath(dynamicResponse, juce::PathStrokeType(2.35f));
+    g.setColour(
+        juce::Colours::white.withAlpha(.35f));
+    g.strokePath(
+        offsetResponse, juce::PathStrokeType(1.15f));
 
-    for (int b = 0; b < 4; ++b)
+    // Sonnox-style Target/Offset dynamic fill.
+    for (int band = 0; band < 4; ++band)
     {
-        const auto n = juce::String(b + 1);
-        const float freq = parameterValue("EQ" + n + "_FREQ");
-        const float x = graphFrequencyToX(graph, freq);
-        const float staticGain = parameterValue("EQ" + n + "_GAIN");
-        const float staticY = eqDbToY(graph, staticGain);
-        const float currentDb = dynamicAverageReductionDb(b);
-        const float liveY = eqDbToY(graph, staticGain + currentDb);
-        const auto c = uiColour(kBandColours[(size_t)b]);
-        const float threshold = juce::jlimit(
-            -60.f, 0.f, parameterValue("DYN_THRESH" + n));
-        const float thresholdY = dynamicThresholdHandlePoint(b).y;
+        const auto n = juce::String(band + 1);
+        const float f0 =
+            parameterValue("EQ" + n + "_FREQ");
+        const float offset =
+            parameterValue("EQ" + n + "_GAIN");
+        const float target =
+            parameterValue("DYN_TARGET" + n);
+        const float baseQ =
+            parameterValue("EQ" + n + "_Q");
+        const auto c =
+            uiColour(kBandColours[(size_t)band]);
 
-        // DYN THRESH visual curve.
-        const float q = juce::jmax(
-            .1f, parameterValue("EQ" + n + "_Q"));
-        const float curveWidth = juce::jlimit(24.f, 150.f, 92.f / q);
-        const float curveDepth = juce::jlimit(
-            7.f, 22.f, 10.f + parameterValue("DYN_RATIO" + n) * .45f);
+        juce::Path top;
+        juce::Path bottom;
 
-        juce::Path thresholdCurve;
-        for (int i = 0; i <= 40; ++i)
+        for (int i = 0; i <= 220; ++i)
         {
-            const float u = i / 40.f * 2.f - 1.f;
-            const float sx = x + u * curveWidth;
-            const float sy =
-                thresholdY + curveDepth * std::exp(-(u * u) * 2.7f)
-                    * (threshold <= -30.f ? 1.f : -1.f);
+            const float hz =
+                invLogMap(i / 220.f, 20.f, 20000.f);
+            const float xx =
+                std::log(
+                    std::max(hz, 20.f) /
+                    std::max(f0, 20.f));
+
+            const float offsetQ =
+                qForGain(baseQ, offset);
+            const float targetQ =
+                qForGain(baseQ, target);
+
+            const float offsetWidth =
+                juce::jmax(.02f, 1.f / (offsetQ * 1.8f));
+            const float targetWidth =
+                juce::jmax(.02f, 1.f / (targetQ * 1.8f));
+
+            const float offsetShape =
+                std::exp(
+                    -(xx * xx) /
+                    (2.f * offsetWidth * offsetWidth));
+            const float targetShape =
+                std::exp(
+                    -(xx * xx) /
+                    (2.f * targetWidth * targetWidth));
+
+            const float offsetDb =
+                offset * offsetShape;
+            const float targetDb =
+                target * targetShape;
+            const float gx =
+                graphFrequencyToX(graph, hz);
+
+            const float yA =
+                eqDbToY(graph, offsetDb);
+            const float yB =
+                eqDbToY(graph, targetDb);
 
             if (i == 0)
-                thresholdCurve.startNewSubPath(sx, sy);
+            {
+                top.startNewSubPath(gx, yA);
+                bottom.startNewSubPath(gx, yB);
+            }
             else
-                thresholdCurve.lineTo(sx, sy);
+            {
+                top.lineTo(gx, yA);
+                bottom.lineTo(gx, yB);
+            }
         }
 
-        g.setColour(c.withAlpha(.72f));
-        g.strokePath(thresholdCurve, juce::PathStrokeType(1.35f));
+        bottom = bottom.createPathWithRoundedCorners(0.f);
 
-        const auto th = dynamicThresholdHandlePoint(b);
-        g.setColour(juce::Colours::black.withAlpha(.76f));
-        g.fillEllipse(th.x - 8.f, th.y - 8.f, 16.f, 16.f);
-        g.setColour(c.brighter(.28f));
-        g.drawEllipse(th.x - 6.f, th.y - 6.f, 12.f, 12.f, 1.7f);
-        g.setColour(c.brighter(.55f));
-        g.fillEllipse(th.x - 3.f, th.y - 3.f, 6.f, 6.f);
+        juce::Path fill = top;
+        fill.addSubPath(bottom);
+        fill.closeSubPath();
 
-        g.setColour(c.withAlpha(.10f));
-        g.fillEllipse(x - 20.f, staticY - 20.f, 40.f, 40.f);
-        g.setColour(c.withAlpha(.18f));
-        g.fillEllipse(x - 13.f, liveY - 13.f, 26.f, 26.f);
-        g.setColour(c.withAlpha(.65f));
-        g.drawLine(x, staticY, x, liveY, 1.5f);
+        g.setColour(c.withAlpha(.16f));
+        g.fillPath(fill);
 
-        const float midReduction =
-            juce::jlimit(0.f, 12.f, -dynamicMidReductionDb(b));
-        const float sideReduction =
-            juce::jlimit(0.f, 12.f, -dynamicSideReductionDb(b));
+        // Target response itself is visible as a thin coloured contour.
+        juce::Path targetCurve;
+
+        for (int i = 0; i <= 220; ++i)
+        {
+            const float hz =
+                invLogMap(i / 220.f, 20.f, 20000.f);
+            const float xx =
+                std::log(
+                    std::max(hz, 20.f) /
+                    std::max(f0, 20.f));
+            const float targetQ =
+                qForGain(baseQ, target);
+            const float width =
+                juce::jmax(.02f, 1.f / (targetQ * 1.8f));
+            const float shape =
+                std::exp(
+                    -(xx * xx) /
+                    (2.f * width * width));
+            const float y =
+                eqDbToY(
+                    graph,
+                    target * shape);
+            const float gx =
+                graphFrequencyToX(graph, hz);
+
+            if (i == 0)
+                targetCurve.startNewSubPath(gx, y);
+            else
+                targetCurve.lineTo(gx, y);
+        }
+
+        g.setColour(c.withAlpha(.58f));
+        g.strokePath(
+            targetCurve, juce::PathStrokeType(1.0f));
+
+        const float x =
+            graphFrequencyToX(graph, f0);
+        const float offsetY =
+            eqDbToY(graph, offset);
+        const float targetY =
+            eqDbToY(graph, target);
+
+        const float liveGain =
+            offset + dynamicAverageGainChangeDb(band);
+        const float liveY =
+            eqDbToY(graph, liveGain);
+
+        // Offset / Target vertical span.
+        g.setColour(c.withAlpha(.42f));
+        g.drawLine(
+            x, offsetY, x, targetY, 2.0f);
+
+        // Offset handle.
+        g.setColour(c.withAlpha(.85f));
+        g.fillEllipse(
+            x - 6.f, offsetY - 6.f, 12.f, 12.f);
+
+        // Target handle.
+        g.setColour(
+            juce::Colours::black.withAlpha(.85f));
+        g.fillEllipse(
+            x - 7.f, targetY - 7.f, 14.f, 14.f);
+        g.setColour(c.withAlpha(.95f));
+        g.drawEllipse(
+            x - 6.f, targetY - 6.f, 12.f, 12.f, 1.5f);
+
+        // Live gain point = the actual dynamic state.
+        g.setColour(juce::Colours::white);
+        g.fillEllipse(
+            x - 6.f, liveY - 6.f, 12.f, 12.f);
+
+        const float midChange =
+            dynamicMidGainChangeDb(band);
+        const float sideChange =
+            dynamicSideGainChangeDb(band);
+
+        const float midMag =
+            juce::jlimit(0.f, 12.f, std::abs(midChange));
+        const float sideMag =
+            juce::jlimit(0.f, 12.f, std::abs(sideChange));
 
         juce::Path midRing;
         midRing.addCentredArc(
             x, liveY, 15.f, 15.f, 0.f,
             -juce::MathConstants<float>::halfPi,
             -juce::MathConstants<float>::halfPi
-                + juce::MathConstants<float>::pi * (midReduction / 12.f),
+                + juce::MathConstants<float>::pi
+                    * (midMag / 12.f),
             true);
         g.setColour(c.brighter(.30f));
-        g.strokePath(midRing, juce::PathStrokeType(2.7f));
+        g.strokePath(
+            midRing, juce::PathStrokeType(2.7f));
 
         juce::Path sideRing;
         sideRing.addCentredArc(
             x, liveY, 15.f, 15.f, 0.f,
             juce::MathConstants<float>::halfPi,
             juce::MathConstants<float>::halfPi
-                + juce::MathConstants<float>::pi * (sideReduction / 12.f),
+                + juce::MathConstants<float>::pi
+                    * (sideMag / 12.f),
             true);
-        g.setColour(juce::Colours::white.withAlpha(.82f));
-        g.strokePath(sideRing, juce::PathStrokeType(2.3f));
-
-        g.setColour(c);
-        g.fillEllipse(x - 7.f, liveY - 7.f, 14.f, 14.f);
-        g.setColour(juce::Colours::black.withAlpha(.92f));
-        g.setFont(juce::FontOptions(8.f).withStyle("Bold"));
-        g.drawText(
-            n, (int)x - 6, (int)liveY - 5, 12, 10,
-            juce::Justification::centred);
-
-        // Compression transfer curve.
-        const bool hovered = hoverDynamicBand == b;
-        const float cw = hovered ? 82.f : 50.f;
-        const float ch = hovered ? 48.f : 30.f;
-        float cx = x + 15.f;
-        float cy = liveY - ch - 18.f;
-
-        if (cx + cw > graph.getRight() - 4.f)
-            cx = x - cw - 15.f;
-
-        cy = juce::jlimit(
-            graph.getY() + 21.f,
-            graph.getBottom() - ch - 5.f, cy);
-
         g.setColour(
-            juce::Colours::black.withAlpha(hovered ? .78f : .34f));
-        g.fillRoundedRectangle(cx, cy, cw, ch, 4.f);
-        g.setColour(c.withAlpha(hovered ? .78f : .34f));
-        g.drawRoundedRectangle(cx, cy, cw, ch, 4.f, 1.f);
-
-        const float pad = 4.f;
-        const float x0 = cx + pad;
-        const float x1 = cx + cw - pad;
-        const float y0 = cy + ch - pad;
-        const float y1 = cy + pad;
-        const float t = juce::jlimit(
-            .06f, .94f, (threshold + 60.f) / 60.f);
-        const float ratio = juce::jmax(
-            1.f, parameterValue("DYN_RATIO" + n));
-
-        juce::Path transfer;
-        transfer.startNewSubPath(x0, y0);
-        const float kneeX = x0 + (x1 - x0) * t;
-        const float kneeY = y0 - (y0 - y1) * t;
-        transfer.lineTo(kneeX, kneeY);
-        const float remain = x1 - kneeX;
-        const float outRemain = remain / ratio;
-        transfer.cubicTo(
-            kneeX + remain * .25f, kneeY - outRemain * .18f,
-            kneeX + remain * .70f, kneeY - outRemain * .78f,
-            x1, juce::jmax(y1, kneeY - outRemain));
-
-        g.setColour(juce::Colours::white.withAlpha(.92f));
+            juce::Colours::white.withAlpha(.82f));
         g.strokePath(
-            transfer, juce::PathStrokeType(hovered ? 1.8f : 1.05f));
+            sideRing, juce::PathStrokeType(2.3f));
+
+        const bool hovered =
+            hoverDynamicBand == band;
 
         if (hovered)
         {
-            g.setColour(juce::Colours::white);
-            g.setFont(juce::FontOptions(8.5f).withStyle("Bold"));
-            g.drawText(
-                "COMP " + juce::String(ratio, 2) + ":1",
-                (int)cx + 4, (int)cy + 2,
-                (int)cw - 8, 11, juce::Justification::centred);
+            const float dynamics =
+                parameterValue("DYN_DYNAMICS" + n);
+            const float threshold =
+                parameterValue("DYN_THRESH" + n);
+            const float q =
+                parameterValue("EQ" + n + "_Q");
+
+            const bool onsets =
+                parameterValue(
+                    "DYN_DETECT_ONSETS" + n) > .5f;
+            const bool below =
+                parameterValue(
+                    "DYN_TRIGGER_BELOW" + n) > .5f;
+
+            const juce::String text =
+                "B" + n
+                + "   " + formatGraphFrequency(f0)
+                + "   Q " + juce::String(q, 2)
+                + "   TARGET " + juce::String(target, 1)
+                + " dB   OFFSET " + juce::String(offset, 1)
+                + " dB   LIVE " + juce::String(liveGain, 1)
+                + " dB   DYN " + juce::String(dynamics, 0)
+                + "%   THR " + juce::String(threshold, 1)
+                + " dB   "
+                + (onsets ? "ONSETS" : "PEAK")
+                + " / " + (below ? "BELOW" : "ABOVE");
 
             const float boxW =
-                juce::jmin(286.f, graph.getWidth() - 12.f);
-            const float boxH = 27.f;
+                juce::jmin(510.f, graph.getWidth() - 12.f);
+            const float boxH = 30.f;
             float bx = x - boxW * .5f;
-            float by = liveY - ch - 53.f;
+            float by = juce::jmin(
+                liveY, targetY, offsetY) - 46.f;
 
-            if (by < graph.getY() + 4.f)
-                by = liveY + 22.f;
+            if (by < graph.getY() + 22.f)
+                by = juce::jmax(
+                    liveY, targetY, offsetY) + 20.f;
 
             bx = juce::jlimit(
-                graph.getX() + 6.f, graph.getRight() - boxW - 6.f, bx);
+                graph.getX() + 6.f,
+                graph.getRight() - boxW - 6.f,
+                bx);
 
-            g.setColour(juce::Colours::black.withAlpha(.90f));
-            g.fillRoundedRectangle(bx, by, boxW, boxH, 5.f);
-            g.setColour(c.withAlpha(.95f));
-            g.drawRoundedRectangle(bx, by, boxW, boxH, 5.f, 1.f);
+            g.setColour(
+                juce::Colours::black.withAlpha(.93f));
+            g.fillRoundedRectangle(
+                bx, by, boxW, boxH, 5.f);
+            g.setColour(
+                c.withAlpha(.96f));
+            g.drawRoundedRectangle(
+                bx, by, boxW, boxH, 5.f, 1.f);
+
             g.setColour(juce::Colours::white);
-            g.setFont(juce::FontOptions(8.7f).withStyle("Bold"));
+            g.setFont(
+                juce::FontOptions(8.6f).withStyle("Bold"));
             g.drawText(
-                "B" + n + "  " + formatGraphFrequency(freq)
-                + "  " + juce::String(staticGain >= 0.f ? "+" : "")
-                + juce::String(staticGain, 1) + " dB"
-                + "  DYN THR " + juce::String(threshold, 1) + " dB"
-                + "  R " + juce::String(ratio, 2) + ":1"
-                + "  GR " + juce::String(currentDb, 1) + " dB",
-                (int)bx + 7, (int)by + 7, (int)boxW - 14, 13,
+                text,
+                (int)bx + 8, (int)by + 8,
+                (int)boxW - 16, 14,
                 juce::Justification::centred);
         }
 
-        if (expandedDynamicBand == b)
+        if (expandedDynamicBand == band)
         {
-            const auto popup = dynamicMsPopupBounds(b);
+            const auto popup =
+                dynamicMsPopupBounds(band);
 
-            g.setColour(juce::Colours::black.withAlpha(.78f));
-            g.fillRoundedRectangle(popup.translated(5.f, 6.f), 8.f);
+            g.setColour(
+                juce::Colours::black.withAlpha(.80f));
+            g.fillRoundedRectangle(
+                popup.translated(5.f, 6.f), 8.f);
 
             juce::ColourGradient panel(
-                juce::Colour(0xff30343a), popup.getX(), popup.getY(),
-                juce::Colour(0xff12151a), popup.getRight(), popup.getBottom(),
+                juce::Colour(0xff30343a),
+                popup.getX(), popup.getY(),
+                juce::Colour(0xff12151a),
+                popup.getRight(), popup.getBottom(),
                 false);
             g.setGradientFill(panel);
-            g.fillRoundedRectangle(popup, 8.f);
+            g.fillRoundedRectangle(
+                popup, 8.f);
 
             g.setColour(c.withAlpha(.94f));
-            g.drawRoundedRectangle(popup, 8.f, 1.1f);
+            g.drawRoundedRectangle(
+                popup, 8.f, 1.1f);
 
             g.setColour(juce::Colours::white);
-            g.setFont(juce::FontOptions(11.f).withStyle("Bold"));
+            g.setFont(
+                juce::FontOptions(11.f).withStyle("Bold"));
             g.drawText(
-                "BAND " + n + " · DYNAMIC M/S",
-                (int)popup.getX() + 12, (int)popup.getY() + 8,
-                196, 16, juce::Justification::left);
+                "BAND " + n + " · DYNAMIC MID / SIDE",
+                (int)popup.getX() + 12,
+                (int)popup.getY() + 9,
+                204, 16,
+                juce::Justification::left);
 
-            const float midPct = juce::jlimit(
-                0.f, 100.f, parameterValue("DYN_MS" + n));
-            const float sidePct = 100.f - midPct;
+            const float midPct =
+                juce::jlimit(
+                    0.f, 100.f,
+                    parameterValue("DYN_MS" + n));
+            const float sidePct =
+                100.f - midPct;
 
             g.setColour(c.brighter(.25f));
-            g.setFont(juce::FontOptions(10.5f).withStyle("Bold"));
+            g.setFont(
+                juce::FontOptions(10.5f).withStyle("Bold"));
             g.drawText(
                 "MID " + juce::String(midPct, 0) + "%",
-                (int)popup.getX() + 12, (int)popup.getY() + 29,
-                88, 15, juce::Justification::left);
+                (int)popup.getX() + 12,
+                (int)popup.getY() + 30,
+                88, 15,
+                juce::Justification::left);
 
-            g.setColour(juce::Colours::white.withAlpha(.92f));
+            g.setColour(
+                juce::Colours::white.withAlpha(.92f));
             g.drawText(
                 "SIDE " + juce::String(sidePct, 0) + "%",
-                (int)popup.getRight() - 100, (int)popup.getY() + 29,
-                88, 15, juce::Justification::right);
+                (int)popup.getRight() - 100,
+                (int)popup.getY() + 30,
+                88, 15,
+                juce::Justification::right);
 
-            const auto bar = popup.reduced(12.f)
-                .withY(popup.getY() + 51.f).withHeight(11.f);
+            const auto bar =
+                popup.reduced(12.f)
+                    .withY(popup.getY() + 52.f)
+                    .withHeight(11.f);
 
             g.setColour(juce::Colour(0xff090c10));
             g.fillRoundedRectangle(bar, 5.f);
 
             const float splitX =
-                bar.getX() + bar.getWidth() * midPct / 100.f;
+                bar.getX()
+                + bar.getWidth() * midPct / 100.f;
 
             if (splitX > bar.getX())
             {
                 g.setColour(c.withAlpha(.94f));
                 g.fillRoundedRectangle(
                     { bar.getX(), bar.getY(),
-                      splitX - bar.getX(), bar.getHeight() }, 5.f);
+                      splitX - bar.getX(),
+                      bar.getHeight() }, 5.f);
             }
 
             if (splitX < bar.getRight())
             {
-                g.setColour(juce::Colours::white.withAlpha(.56f));
+                g.setColour(
+                    juce::Colours::white.withAlpha(.56f));
                 g.fillRoundedRectangle(
                     { splitX, bar.getY(),
-                      bar.getRight() - splitX, bar.getHeight() }, 5.f);
+                      bar.getRight() - splitX,
+                      bar.getHeight() }, 5.f);
             }
 
             g.setColour(juce::Colours::white);
             g.fillEllipse(
-                splitX - 6.f, bar.getCentreY() - 6.f, 12.f, 12.f);
+                splitX - 6.f,
+                bar.getCentreY() - 6.f,
+                12.f, 12.f);
 
-            g.setColour(juce::Colour(0xffc0c7d0));
-            g.setFont(juce::FontOptions(8.3f).withStyle("Bold"));
+            g.setColour(
+                juce::Colour(0xffc0c7d0));
+            g.setFont(
+                juce::FontOptions(8.3f).withStyle("Bold"));
             g.drawText(
-                "右鍵 + 滾輪：MID / SIDE　　左鍵拖曳：比例",
-                (int)popup.getX() + 12, (int)popup.getBottom() - 18,
+                "RIGHT CLICK + WHEEL = MID / SIDE",
+                (int)popup.getX() + 12,
+                (int)popup.getBottom() - 18,
                 (int)popup.getWidth() - 24, 12,
                 juce::Justification::centred);
         }
@@ -1232,20 +1336,24 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     g.setColour(juce::Colour(0xffc4cad2));
     g.setFont(juce::FontOptions(9.f).withStyle("Bold"));
     g.drawText(
-        "DYNAMIC EQ · LIVE GAIN · HOVER = VALUES · RIGHT CLICK = M/S · 20 Hz — 20 kHz",
-        (int)graph.getX() + 12, (int)graph.getY() + 9,
-        420, 14, juce::Justification::left);
+        "OXFORD-STYLE DYNAMIC EQ · OFFSET / TARGET / LIVE GAIN · 20 Hz — 20 kHz",
+        (int)graph.getX() + 12,
+        (int)graph.getY() + 9,
+        470, 14, juce::Justification::left);
 
     g.setFont(juce::FontOptions(8.f));
     g.setColour(juce::Colour(0xffaab0ba));
     g.drawText(
-        "20", (int)graph.getX() + 6, (int)graph.getBottom() - 15,
+        "20", (int)graph.getX() + 6,
+        (int)graph.getBottom() - 15,
         28, 12, juce::Justification::left);
     g.drawText(
-        "1k", (int)graph.getCentreX() - 12, (int)graph.getBottom() - 15,
+        "1k", (int)graph.getCentreX() - 12,
+        (int)graph.getBottom() - 15,
         24, 12, juce::Justification::centred);
     g.drawText(
-        "20k", (int)graph.getRight() - 28, (int)graph.getBottom() - 15,
+        "20k", (int)graph.getRight() - 28,
+        (int)graph.getBottom() - 15,
         28, 12, juce::Justification::right);
 
     drawGraphDragHint(g, graph);
