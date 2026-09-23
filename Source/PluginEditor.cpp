@@ -2367,7 +2367,7 @@ void VVChainAudioProcessorEditor::mouseDown(
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
-                         x + 11.f);
+                         x + 20.f);
         const float targetY =
             eqDbToY(graph, dynamicEffectiveTargetGain(b));
         const auto handleRect =
@@ -2387,6 +2387,8 @@ void VVChainAudioProcessorEditor::mouseDown(
             if (auto* parameter =
                     audioProcessor.apvts.getParameter("DYN_DYNAMICS" + n))
                 parameter->beginChangeGesture();
+            setGraphControlState(
+                juce::StringArray({ "DYN_DYNAMICS" + n }), false);
             showGraphDragHint = true;
             graphDragHintPosition = pos;
             graphDragHint =
@@ -2432,6 +2434,12 @@ void VVChainAudioProcessorEditor::mouseDown(
             if (auto* parameter = audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
                 parameter->beginChangeGesture();
 
+            setGraphControlState(
+                juce::StringArray({
+                    "EQ" + n + "_FREQ",
+                    "EQ" + n + "_GAIN"
+                }), false);
+
             showGraphDragHint = true;
             graphDragHintPosition = pos;
             graphDragHint =
@@ -2470,6 +2478,8 @@ void VVChainAudioProcessorEditor::mouseDown(
         if (auto* parameter =
                 audioProcessor.apvts.getParameter("DYN_DYNAMICS" + n))
             parameter->beginChangeGesture();
+        setGraphControlState(
+            juce::StringArray({ "DYN_DYNAMICS" + n }), false);
         graphFreqDragStartX = pos.x;
 
         showGraphDragHint = true;
@@ -2520,6 +2530,8 @@ void VVChainAudioProcessorEditor::mouseDown(
         if (auto* parameter = audioProcessor.apvts.getParameter(xoverId))
             parameter->beginChangeGesture();
 
+        setGraphControlState(
+            juce::StringArray({ xoverId }), false);
         showGraphDragHint = true;
         graphDragHintPosition = pos;
 
@@ -2561,6 +2573,7 @@ void VVChainAudioProcessorEditor::mouseDrag(
             juce::jlimit(-100.f, 100.f,
                          dynamicHandleDragStartValue + deltaDynamics);
 
+        setGraphControlMoving(true);
         setParameter("DYN_DYNAMICS" + n, dynamics);
         if (auto* dynamicsKnob = findKnob("DYN_DYNAMICS" + n))
             dynamicsKnob->slider->setValue(
@@ -2632,6 +2645,7 @@ void VVChainAudioProcessorEditor::mouseDrag(
                 -18.f, 18.f,
                 dynamicGainDragStartOffset + deltaDb);
 
+        setGraphControlMoving(true);
         setParameter("EQ" + n + "_FREQ", hz);
         setParameter("EQ" + n + "_GAIN", offset);
 
@@ -2705,6 +2719,7 @@ void VVChainAudioProcessorEditor::mouseDrag(
                 dragXover,
                 graphXToFrequency(graph, effectiveX));
 
+        setGraphControlMoving(true);
         setParameter(xoverId, hz);
 
         graphDragHintPosition = event.position;
@@ -2743,6 +2758,7 @@ void VVChainAudioProcessorEditor::mouseDrag(
                 -100.f, 100.f,
                 dynamicDragStartDynamics + deltaDynamics);
 
+        setGraphControlMoving(true);
         setParameter("DYN_DYNAMICS" + n, dynamics);
 
         // APVTS is the source of truth; also refresh the visible knob
@@ -2818,6 +2834,8 @@ void VVChainAudioProcessorEditor::mouseUp(
                 "DYN_MS" + juce::String(dragDynamicMsBand + 1)))
             parameter->endChangeGesture();
     }
+
+    clearGraphControlState();
 
     dragBand = -1;
     dragOffsetBand = -1;
@@ -2896,6 +2914,8 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
             const float next = juce::jlimit(
                 0.f, 100.f,
                 parameterValue("XOVER_OVERLAP") - wheel.deltaY * .5f);
+            setGraphControlState(
+                juce::StringArray({ "XOVER_OVERLAP" }), false);
             setParameter("XOVER_OVERLAP", next);
             repaint();
             return;
@@ -2961,6 +2981,8 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
                 q * std::exp(
                     -wheel.deltaY * .25f));
 
+    setGraphControlState(
+        juce::StringArray({ "EQ" + n + "_Q" }), false);
     setParameter(
         "EQ" + n + "_Q", nextQ);
 
