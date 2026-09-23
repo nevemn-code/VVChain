@@ -37,6 +37,39 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
         : slider.findColour(juce::Slider::rotarySliderFillColourId);
     const float angle = juce::jmap(sliderPosProportional, rotaryStartAngle, rotaryEndAngle);
 
+    if (slider.getComponentID() == "DEESS_MODE")
+    {
+        static constexpr std::array<const char*, 4> labels { "I", "II", "III", "IV" };
+        const float labelRadius = radius + 12.0f;
+
+        for (size_t i = 0; i < labels.size(); ++i)
+        {
+            const float t = static_cast<float>(i)
+                / static_cast<float>(labels.size() - 1);
+            const float tickAngle =
+                juce::jmap(t, rotaryStartAngle, rotaryEndAngle);
+            const float screenAngle =
+                tickAngle - juce::MathConstants<float>::halfPi;
+
+            const float inner = radius + 5.0f;
+            const float outer = radius + 9.0f;
+            const float x1 = cx + std::cos(screenAngle) * inner;
+            const float y1 = cy + std::sin(screenAngle) * inner;
+            const float x2 = cx + std::cos(screenAngle) * outer;
+            const float y2 = cy + std::sin(screenAngle) * outer;
+
+            g.setColour(accent.withAlpha(0.92f));
+            g.drawLine(x1, y1, x2, y2, 1.4f);
+
+            const float tx = cx + std::cos(screenAngle) * labelRadius - 7.0f;
+            const float ty = cy + std::sin(screenAngle) * labelRadius - 5.0f;
+            g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
+            g.drawText(labels[i],
+                       juce::Rectangle<float>(tx, ty, 14.0f, 10.0f).toNearestInt(),
+                       juce::Justification::centred);
+        }
+    }
+
     g.setColour(juce::Colours::black.withAlpha(0.92f));
     g.fillEllipse(cx - radius - 3.f, cy - radius - 3.f,
                   (radius + 3.f) * 2.f, (radius + 3.f) * 2.f);
@@ -210,6 +243,31 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
             d * .22f, d * .22f, 0.f,
             pi * 0.23f, pi * 1.77f, true);
         g.strokePath(powerArc, juce::PathStrokeType(3.f));
+        return;
+    }
+
+    if (button.getComponentID() == "ANALOG_X2")
+    {
+        const auto r = button.getLocalBounds().toFloat().reduced(1.0f);
+        const bool on = button.getToggleState();
+        const auto accent = monochrome
+            ? button.findColour(juce::ToggleButton::tickColourId).withSaturation(0.0f)
+            : button.findColour(juce::ToggleButton::tickColourId);
+
+        g.setColour(juce::Colours::black.withAlpha(0.92f));
+        g.fillRoundedRectangle(r, 3.5f);
+        g.setColour(accent.withAlpha(on ? 0.95f : 0.35f));
+        g.drawRoundedRectangle(r, 3.5f, on ? 1.2f : 1.0f);
+
+        if (on)
+        {
+            g.setColour(accent.withAlpha(0.28f));
+            g.fillRoundedRectangle(r.reduced(1.5f), 3.0f);
+        }
+
+        g.setColour(on ? juce::Colours::white : juce::Colour(0xff7f8790));
+        g.setFont(juce::FontOptions(7.0f).withStyle("Bold"));
+        g.drawText("X2", r.toNearestInt(), juce::Justification::centred);
         return;
     }
 
@@ -414,6 +472,22 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
                 *analogModeButtons[(size_t) b]);
         addAndMakeVisible(*analogModeButtons[(size_t) b]);
 
+        analogX2Buttons[(size_t) b] =
+            std::make_unique<juce::ToggleButton>("X2");
+        analogX2Buttons[(size_t) b]->setLookAndFeel(&metalLook);
+        analogX2Buttons[(size_t) b]->setComponentID("ANALOG_X2");
+        analogX2Buttons[(size_t) b]->setButtonText("X2");
+        analogX2Buttons[(size_t) b]->setColour(
+            juce::ToggleButton::tickColourId,
+            juce::Colour(0xff60a5fa));
+        analogX2Buttons[(size_t) b]->setTooltip(
+            "ANALOG COLOR X2：亮起時，當前 ANALOG COLOR 量 × 1.6");
+        analogX2Attachments[(size_t) b] =
+            std::make_unique<BoolAttachment>(
+                audioProcessor.apvts, "EQ_COLOR_X2" + n,
+                *analogX2Buttons[(size_t) b]);
+        addAndMakeVisible(*analogX2Buttons[(size_t) b]);
+
         analogBypassButtons[(size_t) b] = std::make_unique<juce::ToggleButton>();
         analogBypassButtons[(size_t) b]->setLookAndFeel(&metalLook);
         analogBypassButtons[(size_t) b]->setButtonText("");
@@ -521,11 +595,17 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
             juce::Colour(0xff67d3aa));
     if (auto* modeKnob = findKnob("DEESS_MODE"))
     {
+        modeKnob->slider->setComponentID("DEESS_MODE");
+        modeKnob->slider->setRotaryParameters(
+            5.0f * juce::MathConstants<float>::pi / 3.0f,
+            7.0f * juce::MathConstants<float>::pi / 3.0f,
+            true);
+
         modeKnob->slider->setTooltip(
-            "1 SAFE  5/120 ms 3:1  ·  "
-            "2 VOCAL  2/70 ms 4:1  ·  "
-            "3 FAST  0.75/35 ms 8:1  ·  "
-            "4 HARD  0.25/20 ms 10:1");
+            "I SAFE  5/120 ms 3:1   ·   "
+            "II VOCAL  2/70 ms 4:1   ·   "
+            "III FAST  0.75/35 ms 8:1   ·   "
+            "IV HARD  0.25/20 ms 10:1");
     }
 
     deessBypassButton = std::make_unique<juce::ToggleButton>();
@@ -718,6 +798,17 @@ void VVChainAudioProcessorEditor::addKnob(
     {
         const bool logarithmic =
             id.endsWith("_FREQ") || id.startsWith("OTT_X");
+
+        if (id.endsWith("_FREQ"))
+            wheelSlider->setDragSensitivity(900, 9000);
+        else
+            wheelSlider->setDragSensitivity(180, 1800);
+
+        if (id == "DEESS_MODE")
+            wheelSlider->setDiscreteArc(
+                4,
+                7.0f * juce::MathConstants<float>::pi / 6.0f,
+                11.0f * juce::MathConstants<float>::pi / 6.0f);
 
         double wheelStep = std::max(
             0.01, (max - min) * 0.01);
@@ -1785,6 +1876,10 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
             analogBypassButtons[band]->setColour(
                 juce::ToggleButton::tickColourId,
                 uiColour(juce::Colour(0xff60a5fa)));
+        if (analogX2Buttons[band])
+            analogX2Buttons[band]->setColour(
+                juce::ToggleButton::tickColourId,
+                uiColour(juce::Colour(0xff60a5fa)));
     }
 
     if (soloModeButton)
@@ -2094,7 +2189,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.6 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
+    g.drawText("VVCHAIN v1.0.7 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2335,6 +2430,14 @@ void VVChainAudioProcessorEditor::resized()
                 const auto r = knob->slider->getBounds();
                 ottBandBypassButtons[(size_t) b]->setBounds(
                     r.getCentreX() - 7, r.getY() - 10, 14, 14);
+            }
+
+        if (analogX2Buttons[(size_t) b])
+            if (auto* knob = findKnob("EQ_COLOR_B" + n))
+            {
+                const auto r = knob->slider->getBounds();
+                analogX2Buttons[(size_t) b]->setBounds(
+                    r.getX() + 1, r.getY() - 7, 24, 14);
             }
 
         if (analogBypassButtons[(size_t) b])
@@ -2818,6 +2921,8 @@ void VVChainAudioProcessorEditor::mouseDown(
             parameter->beginChangeGesture();
         graphFreqDragStartX = pos.x;
         graphFreqDragStartHz = hz;
+        graphFreqDragGrabOffsetX =
+            pos.x - graphFrequencyToX(graph, hz);
         if (auto* parameter =
                 audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
             parameter->beginChangeGesture();
@@ -3044,22 +3149,17 @@ void VVChainAudioProcessorEditor::mouseDrag(
         const float effectiveDx = rawDx;
         const float effectiveDy = rawDy;
 
-        // Use the exact logarithmic X mapping used by the graph. The previous
-        // polynomial conversion did not match graphFrequencyToX(), so the node
-        // visually ran ahead of the cursor. 0.74 keeps the requested slower
-        // feel while preserving the correct cursor-to-node relationship.
-        const float startNorm =
-            logMap(graphFreqDragStartHz, 20.f, 20000.f);
-        constexpr float followScale = 0.74f;
-        const float norm =
+        // Exact cursor lock: frequency is the inverse of the graph's own X mapping.
+        // The initial grab offset is preserved, so the EQ point stays under the
+        // same part of the mouse pointer for the entire gesture.
+        const float correctedX =
             juce::jlimit(
-                0.f, 1.f,
-                startNorm
-                    + (effectiveDx / juce::jmax(1.f, graph.getWidth()))
-                        * followScale * dragScale);
+                graph.getX(),
+                graph.getRight(),
+                event.position.x - graphFreqDragGrabOffsetX);
 
         const float hz =
-            invLogMap(norm, 20.f, 20000.f);
+            graphXToFrequency(graph, correctedX);
 
         const float deltaDb =
             -effectiveDy
@@ -3195,20 +3295,24 @@ void VVChainAudioProcessorEditor::mouseDrag(
     {
         const auto n = juce::String(dragBand + 1);
 
-        const float rawDx = event.position.x - graphFreqDragStartX;
-        const float rawDy = event.position.y - dynamicTargetDragStartY;
+        const float rawDx =
+            (event.position.x - graphFreqDragGrabOffsetX)
+            - graphFrequencyToX(graph, graphFreqDragStartHz);
+        const float rawDy =
+            event.position.y - dynamicTargetDragStartY;
         const float dragScale =
             event.mods.isShiftDown() ? 0.1f : 1.0f;
 
-        // Horizontal = Frequency; vertical = DYNAMICS.
-        // Use the same 0.74 slow follow scale as the normal EQ XY drag.
-        const float startNorm = logMap(graphFreqDragStartHz, 20.f, 20000.f);
-        const float hzNorm = juce::jlimit(
-            0.f, 1.f,
-            startNorm
-                + rawDx / juce::jmax(1.f, graph.getWidth())
-                    * 0.74f * dragScale);
-        const float hz = invLogMap(hzNorm, 20.f, 20000.f);
+        // Exact cursor lock: DYNAMICS keeps the initial grab offset on X while
+        // the parameter itself follows the graph's direct log coordinate.
+        const float correctedX =
+            juce::jlimit(
+                graph.getX(),
+                graph.getRight(),
+                event.position.x - graphFreqDragGrabOffsetX);
+
+        const float hz =
+            graphXToFrequency(graph, correctedX);
 
         const float deltaDynamics =
             -rawDy
