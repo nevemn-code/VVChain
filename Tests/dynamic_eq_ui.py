@@ -117,7 +117,8 @@ def test_280_design_cases():
                 out_repeat = dyn_from_drag(previous, 17.0, y, 315.0, 1.0, eq_gain)
                 assert out == out_repeat
                 assert -100.0 <= out <= 100.0
-                assert dynamics_from_cursor(eq_gain, 157.5, 315.0) <= out <=                        dynamics_from_cursor(eq_gain, 0.0, 315.0)
+                # Absolute cursor mapping must ignore the previous Dynamics state.
+                assert out == dynamics_from_cursor(eq_gain, y, 315.0)
                 count += 1
     assert count == 280
 
