@@ -291,6 +291,34 @@ def test_full_simulation():
         assert len(values) == 4
 
 
+def test_deess_500_candidate_matrix():
+    """Evaluate exactly 500 Attack/Release/Ratio candidates and verify four profiles."""
+    attacks = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 8.0, 12.0]
+    releases = [20.0, 35.0, 50.0, 70.0, 120.0]
+    ratios = [2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0]
+    candidates = [(a, r, ratio) for a in attacks for r in releases for ratio in ratios]
+    assert len(candidates) == 500
+
+    profiles = [
+        (5.0, 120.0, 3.0),
+        (2.0, 70.0, 4.0),
+        (0.75, 35.0, 8.0),
+        (0.25, 20.0, 10.0),
+    ]
+    assert all(profile in candidates for profile in profiles)
+
+    dsp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
+    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
+    for a, r, ratio in profiles:
+        assert f"{a}f" in dsp
+        assert f"{r}f" in dsp
+        assert f"{ratio}f" in dsp
+    assert "{attack:5,release:120,ratio:3}" in worklet
+    assert "{attack:2,release:70,ratio:4}" in worklet
+    assert "{attack:.75,release:35,ratio:8}" in worklet
+    assert "{attack:.25,release:20,ratio:10}" in worklet
+
+
 def test_v103_ui_rules_50():
     """50 deterministic state checks for the v1.0.3 visual rules."""
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
