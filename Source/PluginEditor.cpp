@@ -2211,7 +2211,6 @@ void VVChainAudioProcessorEditor::mouseDown(
         && pointNearDynamicNode(pos, band))
     {
         const auto n = juce::String(band + 1);
-        const auto target = dynamicTargetPoint(band);
 
         dragBand = band;
         dragXover = -1;
