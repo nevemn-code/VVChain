@@ -277,8 +277,6 @@ const typeLed=document.createElement("button");typeLed.className="bandLed type";
 const advBtn=card.querySelector(".advBtn");advBtn.title="OTT ADVANCED · BAND "+(n+1);advBtn.onclick=()=>openAdvanced(n);
  ottGrid.appendChild(ottLed);bottomGrid.appendChild(typeLed);
 
-const msReadout=card.querySelector("#msReadout"+n);
-const syncMsReadout=()=>{msReadout.textContent="TARGET "+fmt(dynamicEffectiveTargetGain(n),1)+" dB · AUTO THR "+fmt(dynamicThresholdFromDynamics(state.dyn.dynamics[n]),1)+" dB · MID "+fmt(state.dyn.ms[n],0)+"% / SIDE "+fmt(100-state.dyn.ms[n],0)+"%"};
 syncMsReadout();
 }
 
