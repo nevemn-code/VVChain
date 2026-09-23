@@ -244,7 +244,7 @@ def test_eq_xy_drag_math():
 
     # v1.0.6 module isolation / auto-bypass / hover value-box invariants.
     dsp_text = DSP.read_text(encoding='utf-8')
-    assert 'ANALOG COLOR is an independent module' in dsp_text
+    assert 'ANALOG COLOR is an independent four-band module' in dsp_text
     assert 'if (p.eqColorGlobalBypass || p.eqColorBypass[band])' in dsp_text
     assert 'FloatingValueBox' in cpp
     assert 'setInterceptsMouseClicks(false, false)' in head
