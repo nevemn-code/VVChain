@@ -175,7 +175,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const high1=this.biquad(x,coef,c.deHp),high=this.biquad(high1,coef,c.deHp2);
     const low=x-high,sc=Math.abs(high);
     const modes=[
-      {attack:.5,release:120,ratio:3},
+      {attack:5,release:120,ratio:3},
       {attack:2,release:70,ratio:4},
       {attack:.75,release:35,ratio:8},
       {attack:.25,release:20,ratio:10}
