@@ -60,7 +60,7 @@ const WORKLET_SOURCE=`class VVChainWorklet extends AudioWorkletProcessor {\n  co
       const f=this.clamp(Number(s.eq.freq[b]||1000),20,20000);
       const baseQ=this.clamp(Number(s.eq.q[b]||.707),.1,18);
       const offset=this.clamp(Number(s.eq.gain[b]||0),-18,18);
-      const dynamicRangeDb=Math.abs(this.clamp(Number(s.dyn.target[b]??0),-9,9));
+      const dynamicRangeDb=Math.abs(this.clamp(Number(s.dyn.target[b]??0),-18,18));
       const dynamicsSigned=this.clamp(Number(s.dyn.dynamics[b]??0),-100,100)/100;
       const dynamicsAmount=Math.abs(dynamicsSigned);
       const dynamicsDirection=dynamicsSigned>=0?1:-1;
@@ -120,8 +120,8 @@ const WORKLET_SOURCE=`class VVChainWorklet extends AudioWorkletProcessor {\n  co
       s.dyn.gainMid[b]=.90*Number(s.dyn.gainMid[b]||0)+.10*mChange;
       s.dyn.gainSide[b]=.90*Number(s.dyn.gainSide[b]||0)+.10*sChange;
 
-      const mGain=this.clamp(offset+s.dyn.gainMid[b],-27,27);
-      const sGain=this.clamp(offset+s.dyn.gainSide[b],-27,27);
+      const mGain=this.clamp(offset+s.dyn.gainMid[b],-36,36);
+      const sGain=this.clamp(offset+s.dyn.gainSide[b],-36,36);
       const mq=this.clamp(baseQ/(1+.045*Math.abs(mGain)),.1,18);
       const sq=this.clamp(baseQ/(1+.045*Math.abs(sGain)),.1,18);
       const mCoef=this.peak(sampleRate,f,mq,mGain);
@@ -512,8 +512,8 @@ function drawEQ(){
     eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY-4);eqCtx.lineTo(handleX,handleY-8);eqCtx.lineTo(handleX+4,handleY-4);eqCtx.stroke();
     eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY+4);eqCtx.lineTo(handleX,handleY+8);eqCtx.lineTo(handleX+4,handleY+4);eqCtx.stroke();
 
-    const mid=clamp(Math.abs(+state.dyn.gainMid[b]||0),0,12)/12;
-    const side=clamp(Math.abs(+state.dyn.gainSide[b]||0),0,12)/12;
+    const mid=clamp(Math.abs(+state.dyn.gainMid[b]||0),0,18)/18;
+    const side=clamp(Math.abs(+state.dyn.gainSide[b]||0),0,18)/18;
     eqCtx.strokeStyle="#fff";
     eqCtx.lineWidth=2.5;
     eqCtx.beginPath();eqCtx.arc(n.x,n.y,11,-Math.PI/2,-Math.PI/2+mid*Math.PI);eqCtx.stroke();
