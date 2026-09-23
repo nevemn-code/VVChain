@@ -39,18 +39,25 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         f("EQ" + n + "_Q", "EQ " + n + " Q", 0.10f, 18.f, 0.707f, 0.35f);
 
         const float dynThresholdDefaults[4] = { -24.f, -24.f, -24.f, -24.f };
-        const float dynRatioDefaults[4] = { 2.5f, 2.5f, 2.0f, 2.0f };
+        const float dynTargetDefaults[4] = { -3.f, -3.f, -2.f, -2.f };
+        const float dynDynamicsDefaults[4] = { 35.f, 35.f, 30.f, 25.f };
         const float dynAttackDefaults[4] = { 8.f, 8.f, 5.f, 3.f };
         const float dynReleaseDefaults[4] = { 120.f, 120.f, 100.f, 80.f };
 
         f("DYN_THRESH" + n, "Dynamic EQ " + n + " Threshold",
           -60.f, 0.f, dynThresholdDefaults[i], 0.6f);
-        f("DYN_RATIO" + n, "Dynamic EQ " + n + " Ratio",
-          1.f, 20.f, dynRatioDefaults[i], 0.35f);
+        f("DYN_TARGET" + n, "Dynamic EQ " + n + " Target Gain",
+          -24.f, 24.f, dynTargetDefaults[i]);
+        f("DYN_DYNAMICS" + n, "Dynamic EQ " + n + " Dynamics",
+          0.f, 100.f, dynDynamicsDefaults[i]);
         f("DYN_ATTACK" + n, "Dynamic EQ " + n + " Attack",
           0.1f, 200.f, dynAttackDefaults[i], 0.35f);
         f("DYN_RELEASE" + n, "Dynamic EQ " + n + " Release",
           5.f, 2000.f, dynReleaseDefaults[i], 0.35f);
+        p.push_back(std::make_unique<juce::AudioParameterBool>(
+            "DYN_DETECT_ONSETS" + n, "Dynamic EQ " + n + " Detect Onsets", false));
+        p.push_back(std::make_unique<juce::AudioParameterBool>(
+            "DYN_TRIGGER_BELOW" + n, "Dynamic EQ " + n + " Trigger Below", false));
         f("DYN_MS" + n, "Dynamic EQ " + n + " Mid Weight",
           0.f, 100.f, 50.f);
     }
@@ -186,9 +193,12 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.gain[(size_t)i] = value("EQ" + n + "_GAIN");
         p.q[(size_t)i] = value("EQ" + n + "_Q");
         p.dynThreshold[(size_t)i] = value("DYN_THRESH" + n);
-        p.dynRatio[(size_t)i] = value("DYN_RATIO" + n);
+        p.dynTarget[(size_t)i] = value("DYN_TARGET" + n);
+        p.dynDynamics[(size_t)i] = value("DYN_DYNAMICS" + n);
         p.dynAttack[(size_t)i] = value("DYN_ATTACK" + n);
         p.dynRelease[(size_t)i] = value("DYN_RELEASE" + n);
+        p.dynDetectOnsets[(size_t)i] = value("DYN_DETECT_ONSETS" + n) > 0.5f;
+        p.dynTriggerBelow[(size_t)i] = value("DYN_TRIGGER_BELOW" + n) > 0.5f;
         p.dynMSBalance[(size_t)i] = value("DYN_MS" + n);
         p.eqColor[(size_t)i] = value("EQ_COLOR" + n);
         p.eqColorBypass[(size_t)i] = value("EQ_COLOR_BYPASS" + n) > 0.5f;
