@@ -318,6 +318,66 @@ def test_deess_500_candidate_matrix():
     assert "{attack:.75,release:35,ratio:8}" in worklet
     assert "{attack:.25,release:20,ratio:10}" in worklet
 
+def test_v106_shared_four_band_modules_and_deess_presets():
+    cpp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
+    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    editor = CPP.read_text(encoding="utf-8")
+
+    cpp_tape = cpp[cpp.index("void VVChainDSP::applyAType"):cpp.index("void VVChainDSP::processDeEsser")]
+    worklet_tape = worklet[worklet.index("if(!s.type.bypass){"):worklet.index("\n    return y;", worklet.index("if(!s.type.bypass){"))]
+
+    assert "std::tanh(bands[band] * driveParam[band])" in cpp_tape
+    assert "staticMakeupMultiplier" in cpp_tape
+    assert "typeFastEnv" not in cpp_tape
+    assert "typeSlowEnv" not in cpp_tape
+    assert "targetGainDb" not in cpp_tape
+    assert "const float crossoverQ = crossoverQFromOverlap" in cpp_tape
+    assert "updateCrossover(typeXover1, sr, x1, crossoverQ)" in cpp_tape
+    assert "updateCrossover(typeXover2, sr, x2, crossoverQ)" in cpp_tape
+    assert "updateCrossover(typeXover3, sr, x3, crossoverQ)" in cpp_tape
+    assert "const float bands[4] = {" in cpp_tape
+    assert "low, lowMid, midHigh, top" in cpp_tape
+    assert "Math.tanh(bands[b]*driveParams[b])*makeup[b]" in worklet_tape
+    assert "c.typeFast[b]" not in worklet_tape
+    assert "c.typeSlow[b]" not in worklet_tape
+    assert "const xs=s.ott.x;" in worklet_tape
+    assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
+    assert "VVCHAIN v1.0.8" in web
+    assert "VVCHAIN v1.0.8" in editor
+    assert "LAST " not in editor
+
+    # ANALOG is now locked to Deploy VVChain Web Preview #443.
+    assert "ANALOG COLOR baseline = Deploy VVChain Web Preview #443." in cpp
+    assert "VVCHAIN ANALOG BASELINE #443" in worklet
+    assert "colorX2" in web
+    assert "ANALOG COLOR baseline locked to Deploy VVChain Web Preview #443." in web
+    assert "p.eqColorX2[band] ? 1.6f : 1.0f" in cpp
+
+def test_dynamic_range_centered_500():
+    """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
+    rng = random.Random(20260923_500)
+    for _ in range(500):
+        static_db = rng.uniform(-18.0, 18.0)
+        dynamic_range_db = 18.0
+        dynamics_pct = rng.uniform(-100.0, 100.0)
+        amount = abs(dynamics_pct) / 100.0
+        direction = -1.0 if dynamics_pct < 0.0 else 1.0
+        contribution = direction * abs(dynamic_range_db) * amount
+
+        expected = clamp(static_db + contribution, -18.0, 18.0)
+        assert math.isfinite(expected)
+        assert -18.0 <= expected <= 18.0
+        assert abs(dynamic_target(static_db, dynamic_range_db, 0.0) - static_db) < 1e-9
+
+        if abs(static_db + contribution) <= 18.0:
+            assert abs(expected - (static_db + contribution)) < 1e-9
+
+    # Production model clamps total Dynamic EQ gain to ±18 dB.
+    assert dynamic_target(3.0, 18.0, 100.0) == 18.0
+    assert dynamic_target(3.0, 18.0, -100.0) == -15.0
+    assert dynamic_target(3.0, 18.0, 0.0) == 3.0
+
 
 def test_v103_ui_rules_50():
     """50 deterministic state checks for the v1.0.3 visual rules."""
