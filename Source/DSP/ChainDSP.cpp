@@ -699,8 +699,21 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             updateDynamicDetector(
                 dynSideDetectors[band], osSr, frequency, baseQ);
 
+            // Single user-facing DYNAMICS macro:
+            // higher absolute Dynamics = deeper move + lower trigger point.
+            // This replaces the old independent Threshold control while
+            // preserving the signed direction convention:
+            //   -100..0 = compression
+            //     0..100 = expansion
+            const float dynamicsAbs01 =
+                juce::jlimit(0.f, 1.f,
+                    std::abs(juce::jlimit(
+                        -100.f, 100.f, p.dynDynamics[band])) * 0.01f);
             const float thresholdDb =
-                juce::jlimit(-60.f, 0.f, p.dynThreshold[band]);
+                juce::jlimit(
+                    -60.f, -6.f,
+                    -12.f - 12.f
+                        * std::pow(dynamicsAbs01, 0.65f));
             const float attackCoeff = timeCoeff(
                 osSr, juce::jlimit(0.1f, 200.f, p.dynAttack[band]));
             const float releaseCoeff = timeCoeff(
