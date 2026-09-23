@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · 2026-09-23 22:10
+// VVChain Web AudioWorklet DSP module · v1.0.6
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -38,7 +38,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       dynMid:Array.from({length:4},dynState),
       dynSide:Array.from({length:4},dynState),
       analogPrev:[0,0,0,0], analogDc:[0,0,0,0], analogPower:[0,0,0,0],
-      lp:[0,0,0], typeLp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,
+      analogLp:[0,0,0], lp:[0,0,0], typeLp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,
       lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0],
       deHp:{z1:0,z2:0}, deHp2:{z1:0,z2:0}, deFast:0, deSlow:0, deGain:0, soloPre:[0,0,0], soloPost:[0,0,0]
     };
@@ -174,13 +174,23 @@ class VVChainWorklet extends AudioWorkletProcessor {
     if(st.bypass||Number(st.intensity||0)<=0)return x;
     const high1=this.biquad(x,coef,c.deHp),high=this.biquad(high1,coef,c.deHp2);
     const low=x-high,sc=Math.abs(high);
-    const fa=sc>c.deFast?this.tc(.25):this.tc(45);
+    const modes=[
+      {attack:.5,release:120,ratio:3},
+      {attack:2,release:70,ratio:4},
+      {attack:.75,release:35,ratio:8},
+      {attack:.25,release:20,ratio:10}
+    ];
+    const mode=Math.max(0,Math.min(3,Math.round(Number(st.mode||2))-1));
+    const preset=modes[mode];
+    const fa=sc>c.deFast?this.tc(preset.attack):this.tc(preset.release);
     c.deFast=fa*c.deFast+(1-fa)*sc;
-    const sa=sc>c.deSlow?this.tc(75):this.tc(260);
+    const sa=sc>c.deSlow?this.tc(Math.max(20,preset.attack*10)):this.tc(Math.max(80,preset.release*4));
     c.deSlow=sa*c.deSlow+(1-sa)*sc;
     const excess=this.g2db(Math.max(c.deFast,1e-9))-this.g2db(Math.max(c.deSlow,1e-9))-2-Number(st.offset||0);
-    const red=this.clamp(Number(st.intensity||0)*this.clamp(excess/6,0,1),0,8);
-    const ga=red>c.deGain?this.tc(.35):this.tc(60);
+    const ratioShape=1-1/Math.max(1.1,preset.ratio);
+    const red=this.clamp(
+      Number(st.intensity||0)*this.clamp((excess/6)*ratioShape,0,1),0,8);
+    const ga=red>c.deGain?this.tc(preset.attack):this.tc(preset.release);
     c.deGain=ga*c.deGain+(1-ga)*red;
     return low+high*this.db2g(-c.deGain);
   }
@@ -205,10 +215,24 @@ class VVChainWorklet extends AudioWorkletProcessor {
     // ANALOG COLOR is an independent module and must remain audible
     // while EQ_BYPASS is active.
     if(!s.eq.globalBypass){
+      let anyAnalog=false;
       for(let b=0;b<4;b++){
-        if(s.eq.colorBypass[b])continue;
-        const amount=Number(s.eq.color[b]||0)/100;
-        if(amount>1e-6)y=this.analog(y,amount,!!s.eq.mode[b],c,b);
+        if(!s.eq.colorBypass[b] && Number(s.eq.color[b]||0)>1e-6){
+          anyAnalog=true;break;
+        }
+      }
+      if(anyAnalog){
+        // Same shared X1/X2/X3 split as OTT and TYPE-A.
+        const bands=this.zoneBands(y,c,"analogLp",s.ott.x);
+        let analogOut=0;
+        for(let b=0;b<4;b++){
+          if(s.eq.colorBypass[b]){ analogOut+=bands[b]; continue; }
+          const amount=Number(s.eq.color[b]||0)/100;
+          analogOut+=amount>1e-6
+            ? this.analog(bands[b],amount,!!s.eq.mode[b],c,b)
+            : bands[b];
+        }
+        y=analogOut;
       }
     }
     if(!s.ott.bypass){
