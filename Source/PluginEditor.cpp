@@ -953,8 +953,9 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         }
     }
 
-    // LAST MODIFICATION: 2026-09-23 14:41
-    // X1/X2/X3 live in a dedicated top strip. The top cross marker is the only hover target for crossover curvature / OVERLAP.
+    // X1/X2/X3 crossover controls live at the BOTTOM of the graph.
+    // Frequency remains draggable on the vertical line; curvature/OVERLAP is
+    // controlled only by the bottom cross marker with the mouse wheel.
     const float spread = 16.f + overlap * .52f;
 
     for (int i = 0; i < 3; ++i)
@@ -966,7 +967,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.setColour(
             uiColour(juce::Colour(0xffffd84d)).withAlpha(.92f));
         g.drawVerticalLine(
-            (int)x, graph.getY() + 20.f, graph.getBottom() - 18.f);
+            (int)x, graph.getY() + 20.f, graph.getBottom() - 28.f);
 
         const float l = juce::jmax(
             graph.getX() + 4.f, x - spread);
@@ -990,9 +991,13 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.strokePath(
             curve, juce::PathStrokeType(1.1f));
 
-        g.setColour(juce::Colours::black.withAlpha(.70f));
+        const bool xoverHovered = hoverXover == i;
+        const float markerY = graph.getBottom() - 18.f;
+        const float labelY = graph.getBottom() - 35.f;
+
+        g.setColour(juce::Colours::black.withAlpha(.72f));
         g.fillRoundedRectangle(
-            x - 47.f, graph.getY() + 2.f, 94.f, 15.f, 3.f);
+            x - 47.f, labelY, 94.f, 15.f, 3.f);
         g.setColour(
             uiColour(juce::Colour(0xffffdf67)));
         g.setFont(
@@ -1000,21 +1005,19 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.drawText(
             "X" + juce::String(i + 1) + "  "
                 + formatGraphFrequency(hz),
-            (int)x - 45, (int)graph.getY() + 3, 90, 11,
+            (int)x - 45, (int)labelY + 3, 90, 11,
             juce::Justification::centred);
 
-        const bool xoverHovered = hoverXover == i;
-        const float markerY = graph.getY() + 20.f;
         g.setColour(uiColour(xoverHovered
             ? juce::Colour(0xfffff3a8)
             : juce::Colour(0xffffdf67)));
-        g.drawLine(x - 5.f, markerY - 5.f,
-                   x + 5.f, markerY + 5.f,
+        g.drawLine(x - 6.f, markerY - 6.f,
+                   x + 6.f, markerY + 6.f,
                    xoverHovered ? 2.f : 1.2f);
-        g.drawLine(x + 5.f, markerY - 5.f,
-                   x - 5.f, markerY + 5.f,
+        g.drawLine(x + 6.f, markerY - 6.f,
+                   x - 6.f, markerY + 6.f,
                    xoverHovered ? 2.f : 1.2f);
-        g.fillEllipse(x - 2.2f, markerY - 2.2f, 4.4f, 4.4f);
+        g.fillEllipse(x - 2.5f, markerY - 2.5f, 5.f, 5.f);
     }
 
     // Static Offset EQ response.
@@ -1792,7 +1795,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                  { (float) x, (float) cardY, (float) cardW, (float) cardH },
                  uiColour(kBandColours[(size_t) b]),
                  "BAND " + juce::String(b + 1),
-                 "DYNAMIC EQ · OTT · ANALOG · TAPE-A");
+                 "OTT · ANALOG · TAPE-A");
     }
 
     {
@@ -2004,7 +2007,7 @@ void VVChainAudioProcessorEditor::resized()
             {
                 const auto r = knob->slider->getBounds();
                 ottBandBypassButtons[(size_t) b]->setBounds(
-                    r.getRight() - 12, r.getY() - 6, 12, 12);
+                    r.getRight() - 3, r.getY() + 13, 16, 16);
             }
 
         if (analogBypassButtons[(size_t) b])
@@ -2020,7 +2023,7 @@ void VVChainAudioProcessorEditor::resized()
             {
                 const auto r = knob->slider->getBounds();
                 atypeBandBypassButtons[(size_t) b]->setBounds(
-                    r.getRight() - 12, r.getY() - 6, 12, 12);
+                    r.getRight() - 3, r.getY() + 13, 16, 16);
             }
     }
 
@@ -2109,7 +2112,7 @@ void VVChainAudioProcessorEditor::mouseMove(const juce::MouseEvent& event)
     }
 
     hoverXover = -1;
-    const float markerY = graph.getY() + 20.f;
+    const float markerY = graph.getBottom() - 18.f;
     const float xovers[3]
     {
         graphFrequencyToX(graph, parameterValue("OTT_X1")),
@@ -2756,9 +2759,9 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
     }
 
     // Crossover curvature / OVERLAP is controlled ONLY by the
-    // small cross marker at the top of each X1/X2/X3 line.
+    // small cross marker at the bottom of each X1/X2/X3 line.
     {
-        const float markerY = graph.getY() + 20.f;
+        const float markerY = graph.getBottom() - 18.f;
         int xover = -1;
         float bestMarker = 10.f;
         const float xovers[3]
