@@ -343,7 +343,7 @@ function staticEqAtPointer(x,y,w,h){
   return band;
 }
 function dynamicTargetAtPointer(x,y,w,h){
-  let best=18,band=-1;
+  let best=11,band=-1;
   for(let b=0;b<4;b++){
     const n=dynamicTargetPoint(b,w,h);
     const d=Math.hypot(x-n.x,y-n.y);
@@ -635,7 +635,7 @@ eqCanvas.addEventListener("pointerdown",e=>{
   for(let b=0;b<4;b++){
     const dyn=Number(state.dyn.dynamics[b]||0);
     const target=dynamicTargetPoint(b,w,h);
-    const handleX=clamp(target.x+11,18,w-12),handleY=target.y;
+    const handleX=clamp(target.x+20,18,w-12),handleY=target.y;
     if(Math.abs(x-handleX)<=6&&Math.abs(y-handleY)<=9){
       dragMode=5;dragDynamicHandleBand=b;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;
       dynHandleStartY=y;dynHandleStartValue=dyn;
