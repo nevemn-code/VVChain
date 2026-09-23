@@ -513,9 +513,18 @@ VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
         if (b) b->setLookAndFeel(nullptr);
     for (auto& b : soloButtons)
         if (b) b->setLookAndFeel(nullptr);
+    for (auto& b : dynDetectButtons)
+        if (b) b->setLookAndFeel(nullptr);
+    for (auto& b : dynTriggerButtons)
+        if (b) b->setLookAndFeel(nullptr);
     if (soloModeButton) soloModeButton->setLookAndFeel(nullptr);
 
     for (auto& a : analogBypassAttachments)
+        a.reset();
+
+    for (auto& a : dynDetectAttachments)
+        a.reset();
+    for (auto& a : dynTriggerAttachments)
         a.reset();
 
     for (auto& a : ottBandBypassAttachments)
@@ -1413,6 +1422,19 @@ void VVChainAudioProcessorEditor::timerCallback()
         soloModeButton->setButtonText(
             parameterValue("SOLO_MODE") > 0.5f ? "SOLO POST" : "SOLO PRE");
 
+    for (int b = 0; b < 4; ++b)
+    {
+        const auto n = juce::String(b + 1);
+        if (dynDetectButtons[(size_t) b])
+            dynDetectButtons[(size_t) b]->setButtonText(
+                parameterValue("DYN_DETECT_ONSETS" + n) > 0.5f
+                    ? "ONSETS" : "PEAK");
+        if (dynTriggerButtons[(size_t) b])
+            dynTriggerButtons[(size_t) b]->setButtonText(
+                parameterValue("DYN_TRIGGER_BELOW" + n) > 0.5f
+                    ? "BELOW" : "ABOVE");
+    }
+
     // Both DE-ESSER bypass controls read the exact same APVTS parameter.
     // Keep an explicit UI sync in addition to their attachments so automation
     // or host state recall cannot leave the upper/lower indicators different.
@@ -1688,9 +1710,29 @@ void VVChainAudioProcessorEditor::resized()
         };
 
         placeKnob("DYN_THRESH" + n, dynPos(0));
-        placeKnob("DYN_RATIO" + n, dynPos(1));
+        placeKnob("DYN_DYNAMICS" + n, dynPos(1));
         placeKnob("DYN_ATTACK" + n, dynPos(2));
         placeKnob("DYN_RELEASE" + n, dynPos(3));
+
+        if (dynDetectButtons[(size_t) b])
+        {
+            dynDetectButtons[(size_t) b]->setBounds(
+                innerX + 1, dynY + 1, (innerW - dynGap - 2) / 2, 16);
+            dynDetectButtons[(size_t) b]->setButtonText(
+                parameterValue("DYN_DETECT_ONSETS" + n) > 0.5f
+                    ? "ONSETS" : "PEAK");
+        }
+
+        if (dynTriggerButtons[(size_t) b])
+        {
+            const int bx =
+                innerX + 1 + (innerW - dynGap - 2) / 2 + dynGap;
+            dynTriggerButtons[(size_t) b]->setBounds(
+                bx, dynY + 1, (innerW - dynGap - 2) / 2, 16);
+            dynTriggerButtons[(size_t) b]->setButtonText(
+                parameterValue("DYN_TRIGGER_BELOW" + n) > 0.5f
+                    ? "BELOW" : "ABOVE");
+        }
 
         placeKnob("OTT_DEGREE" + n, pos3(6));
         placeKnob("OTT_COMP_A" + n, pos3(7));
