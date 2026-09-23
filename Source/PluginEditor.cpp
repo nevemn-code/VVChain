@@ -132,7 +132,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
     if (slider.getComponentID() == "DEESS_MODE_SWITCH")
     {
         juce::ignoreUnused(sliderPosProportional, sliderAsymmetry,
-                           sliderStart, sliderEnd, style);
+                           sliderStart, style);
         auto r = juce::Rectangle<float>(
             static_cast<float>(x), static_cast<float>(y),
             static_cast<float>(width), static_cast<float>(height)).reduced(1.0f);
