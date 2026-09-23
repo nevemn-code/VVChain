@@ -63,6 +63,9 @@ jobs:
     - name: Install Python test dependencies
       run: python -m pip install --upgrade numpy scipy
 
+    - name: Dynamic EQ UI/control regression matrix
+      run: python Tests/dynamic_eq_ui.py
+
     - name: Run fast DSP stress test
       run: |
         if [ "${{ inputs.full_stress }}" = "true" ]; then
