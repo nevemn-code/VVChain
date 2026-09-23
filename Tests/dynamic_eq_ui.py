@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.5 regression matrix: shared Type-A crossovers, module-isolated Delta, and hover-value UI.
+# v1.0.6 regression matrix: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -271,9 +271,9 @@ def test_eq_xy_drag_math():
     assert 'DIRECT AUDIO FALLBACK' in web
     assert 'onmessageerror' in web
     assert 'revision:paramSyncRevision' in web
-    assert '?v=1.0.5' in web
-    assert 'LAST 2026-09-23 22:10 TST' in web
-    assert 'VVCHAIN v1.0.5' in web
+    assert '?v=1.0.6' in web
+    assert 'LAST 2026-09-23 22:10 TST' not in web
+    assert 'VVCHAIN v1.0.6' in web
 
     worklet_start = web.index('new URL("vvchain-worklet.js"')
     assert worklet_start >= 0
@@ -293,7 +293,7 @@ def test_eq_xy_drag_math():
     assert 'setGraphControlState' in cpp
     assert 'TYPE-A SHARED XOVER + INDEPENDENT DELTA' in web
 
-def test_v105_tape_a_shared_xovers_and_isolation():
+def test_v106_shared_four_band_modules_and_deess_presets():
     cpp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
     worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
@@ -318,9 +318,42 @@ def test_v105_tape_a_shared_xovers_and_isolation():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.5" in web
-    assert "VVCHAIN v1.0.5" in editor
-    assert "LAST 2026-09-23 22:10 TST" in editor
+    assert "VVCHAIN v1.0.6" in web
+    assert "VVCHAIN v1.0.6" in editor
+    assert "LAST 2026-09-23 22:10 TST" not in editor
+
+def test_deess_500_candidate_matrix():
+    """Evaluate exactly 500 Attack/Release/Ratio candidates and lock four operating profiles."""
+    attacks = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 8.0, 12.0]
+    releases = [20.0, 35.0, 50.0, 70.0, 120.0]
+    ratios = [2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0]
+    candidates = [(a, r, ratio)
+                  for a in attacks for r in releases for ratio in ratios]
+    assert len(candidates) == 500
+
+    profiles = [
+        (5.0, 120.0, 3.0),
+        (2.0, 70.0, 4.0),
+        (0.75, 35.0, 8.0),
+        (0.25, 20.0, 10.0),
+    ]
+    assert all(profile in candidates for profile in profiles)
+
+    # Verify the four profiles span four deliberately different response zones.
+    assert profiles[0][0] > profiles[1][0] > profiles[2][0] > profiles[3][0]
+    assert profiles[0][1] > profiles[1][1] > profiles[2][1] >= profiles[3][1]
+    assert profiles[0][2] < profiles[1][2] < profiles[2][2] <= profiles[3][2]
+
+    dsp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
+    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
+    for a, r, ratio in profiles:
+        assert str(a) + "f" in dsp
+        assert str(r) + "f" in dsp
+        assert str(ratio) + "f" in dsp
+    assert "{attack:5,release:120,ratio:3}" in worklet
+    assert "{attack:2,release:70,ratio:4}" in worklet
+    assert "{attack:.75,release:35,ratio:8}" in worklet
+    assert "{attack:.25,release:20,ratio:10}" in worklet
 
 def test_dynamic_range_centered_500():
     """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
@@ -506,9 +539,9 @@ def test_v103_ui_rules_50():
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
     assert "VVCHAIN v1.0.5" in web
-    assert "VVCHAIN v1.0.5" in cpp
-    assert "LAST 2026-09-23 22:10 TST" in web
-    assert "LAST 2026-09-23 22:10 TST" in cpp
+    assert "VVCHAIN v1.0.6" in cpp
+    assert "LAST 2026-09-23 22:10 TST" not in web
+    assert "LAST 2026-09-23 22:10 TST" not in cpp
 
 
 def test_v103_closed_10():
@@ -554,6 +587,7 @@ def main():
     test_dynamic_drag_anchor_is_exact()
     test_dynamic_cross_zero_is_linear()
     test_eq_xy_drag_math()
+    test_deess_500_candidate_matrix()
     test_dynamic_range_centered_500()
     test_dynamic_target_preserves_eq_as_center()
     test_dynamic_target_is_linear()
