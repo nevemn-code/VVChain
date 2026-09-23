@@ -249,14 +249,17 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addKnob("EQ" + n + "_Q", "Q", .1, 18, .01,
                 parameterValue("EQ" + n + "_Q"), "", b, 2, c);
 
-        addKnob("DYN_THRESH" + n, "THRESH", -60, 0, .1,
-                parameterValue("DYN_THRESH" + n), " dB", b, 8, c);
+        // DYNAMICS is the single user-facing dynamic macro.
+        // Threshold is automatically linked to DYNAMICS in the DSP.
         addKnob("DYN_DYNAMICS" + n, "DYNAMICS", -100, 100, .1,
-                parameterValue("DYN_DYNAMICS" + n), " %", b, 9, c);
+                parameterValue("DYN_DYNAMICS" + n), " %", b, 8, c);
+        if (auto* dynamicsKnob = findKnob("DYN_DYNAMICS" + n))
+            dynamicsKnob->slider->setTooltip(
+                "DYNAMICS：中心 0% = 靜態；逆時鐘 = 壓縮；順時鐘 = 擴展。Threshold 會依 DYNAMICS 自動連動，不再獨立操作。");
         addKnob("DYN_ATTACK" + n, "ATTACK", .1, 200, .1,
-                parameterValue("DYN_ATTACK" + n), " ms", b, 10, c);
+                parameterValue("DYN_ATTACK" + n), " ms", b, 9, c);
         addKnob("DYN_RELEASE" + n, "RELEASE", 5, 2000, 1,
-                parameterValue("DYN_RELEASE" + n), " ms", b, 11, c);
+                parameterValue("DYN_RELEASE" + n), " ms", b, 10, c);
 
         dynDetectButtons[(size_t) b] =
             std::make_unique<juce::ToggleButton>("PEAK");
@@ -588,6 +591,8 @@ void VVChainAudioProcessorEditor::addKnob(
             wheelStep = 0.5;
         else if (id.endsWith("_Q"))
             wheelStep = 0.02;
+        else if (id.contains("DYNAMICS"))
+            wheelStep = 1.0;
         else if (id.contains("ATTACK"))
             wheelStep = 1.0;
         else if (id.contains("RELEASE"))
@@ -663,6 +668,13 @@ void VVChainAudioProcessorEditor::placeKnob(const juce::String& id, juce::Rectan
     if (auto* k = findKnob(id))
     {
         k->label->setBounds(area.removeFromTop(13));
+
+        // The original fixed 68 px textbox was wider than the four-column
+        // dynamic row (~65 px at 1500 px editor width), causing value text
+        // to overlap neighbouring knobs. Size the editor to the actual cell.
+        const int textBoxW = juce::jmax(48, juce::jmin(68, area.getWidth() - 4));
+        k->slider->setTextBoxStyle(
+            juce::Slider::TextBoxBelow, false, textBoxW, 17);
         k->slider->setBounds(area);
     }
 }
@@ -728,13 +740,28 @@ float VVChainAudioProcessorEditor::dynamicEffectiveTargetGain(int band) const
     if (band < 0 || band >= 4)
         return 0.f;
 
-    // Target is a fixed endpoint in the UI, independent of current Dynamics.
-    // Dynamics controls how far the live gain travels toward Target.
-    // Keeping Target visible at 0% is essential: the user must still see
-    // what the Dynamic EQ is configured to do even while it is at Offset.
     const auto n = juce::String(band + 1);
+    const float offset =
+        juce::jlimit(-24.f, 24.f,
+                     parameterValue("EQ" + n + "_GAIN"));
+    const float storedTarget =
+        juce::jlimit(-24.f, 24.f,
+                     parameterValue("DYN_TARGET" + n));
+    const float span =
+        std::abs(storedTarget - offset);
+    const float dynamics =
+        juce::jlimit(-100.f, 100.f,
+                     parameterValue("DYN_DYNAMICS" + n));
+
+    // DYNAMICS is the direction + depth macro:
+    //   negative = compression direction
+    //   positive = expansion direction
+    // Target stores the available gain span; the visual endpoint follows
+    // the current DYNAMICS direction so the graph always matches the knob.
+    const float direction = dynamics < 0.f ? -1.f : 1.f;
+
     return juce::jlimit(-24.f, 24.f,
-                        parameterValue("DYN_TARGET" + n));
+                        offset + direction * span);
 }
 
 juce::Rectangle<float> VVChainAudioProcessorEditor::dynamicMsPopupBounds(int band) const
@@ -1818,45 +1845,47 @@ void VVChainAudioProcessorEditor::resized()
         const int innerX = x + 8;
         const int innerTop = cardY + 48;
         const int innerW = cardW - 16;
-        const int cellGap = 4;
+        const int cellGap = 6;
         const int cellW = (innerW - cellGap * 2) / 3;
         const int rowH = 92;
+        const int knobH = 82;
 
-        const auto pos3 = [&](int slot)
+        const auto rowPos = [&](int row, int col)
         {
-            const int row = slot / 3;
-            const int col = slot % 3;
             return juce::Rectangle<int>(
                 innerX + col * (cellW + cellGap),
                 innerTop + row * rowH,
-                cellW, 82);
+                cellW, knobH);
         };
 
         const auto n = juce::String(b + 1);
 
-        placeKnob("EQ" + n + "_FREQ", pos3(0));
-        placeKnob("EQ" + n + "_GAIN", pos3(1));
-        placeKnob("EQ" + n + "_Q", pos3(2));
+        // Row 1 — static EQ
+        placeKnob("EQ" + n + "_FREQ", rowPos(0, 0));
+        placeKnob("EQ" + n + "_GAIN", rowPos(0, 1));
+        placeKnob("EQ" + n + "_Q", rowPos(0, 2));
 
-        const int dynGap = 3;
-        const int dynW = (innerW - dynGap * 3) / 4;
-        const int dynY = innerTop + rowH;
-        const auto dynPos = [&](int i)
-        {
-            return juce::Rectangle<int>(
-                innerX + i * (dynW + dynGap),
-                dynY, dynW, 82);
-        };
+        // Row 2 — one Dynamic EQ macro + time controls
+        placeKnob("DYN_DYNAMICS" + n, rowPos(1, 0));
+        placeKnob("DYN_ATTACK" + n, rowPos(1, 1));
+        placeKnob("DYN_RELEASE" + n, rowPos(1, 2));
 
-        placeKnob("DYN_THRESH" + n, dynPos(0));
-        placeKnob("DYN_DYNAMICS" + n, dynPos(1));
-        placeKnob("DYN_ATTACK" + n, dynPos(2));
-        placeKnob("DYN_RELEASE" + n, dynPos(3));
+        // Row 3 — OTT controls
+        placeKnob("OTT_DEGREE" + n, rowPos(2, 0));
+        placeKnob("OTT_COMP_A" + n, rowPos(2, 1));
+        placeKnob("OTT_COMP_R" + n, rowPos(2, 2));
 
+        // Row 4 — colour/enhancer controls + compact detector mode buttons
+        const int lowerY = innerTop + rowH * 3;
+        placeKnob("EQ_COLOR_B" + n, rowPos(3, 0));
+        placeKnob("ATYPE_DEGREE" + n, rowPos(3, 1));
+
+        const auto modeCell = rowPos(3, 2);
         if (dynDetectButtons[(size_t) b])
         {
             dynDetectButtons[(size_t) b]->setBounds(
-                innerX + 1, dynY + 1, (innerW - dynGap - 2) / 2, 16);
+                modeCell.getX() + 4, modeCell.getY() + 16,
+                (modeCell.getWidth() - 8) / 2, 20);
             dynDetectButtons[(size_t) b]->setButtonText(
                 parameterValue("DYN_DETECT_ONSETS" + n) > 0.5f
                     ? "ONSETS" : "PEAK");
@@ -1864,27 +1893,20 @@ void VVChainAudioProcessorEditor::resized()
 
         if (dynTriggerButtons[(size_t) b])
         {
-            const int bx =
-                innerX + 1 + (innerW - dynGap - 2) / 2 + dynGap;
+            const int bx = modeCell.getCentreX() + 2;
             dynTriggerButtons[(size_t) b]->setBounds(
-                bx, dynY + 1, (innerW - dynGap - 2) / 2, 16);
+                bx, modeCell.getY() + 16,
+                (modeCell.getWidth() - 8) / 2, 20);
             dynTriggerButtons[(size_t) b]->setButtonText(
                 parameterValue("DYN_TRIGGER_BELOW" + n) > 0.5f
                     ? "BELOW" : "ABOVE");
         }
 
-        placeKnob("OTT_DEGREE" + n, pos3(6));
-        placeKnob("OTT_COMP_A" + n, pos3(7));
-        placeKnob("OTT_COMP_R" + n, pos3(8));
-
-        const int lowerY = innerTop + rowH * 3;
-        placeKnob("EQ_COLOR_B" + n, { innerX, lowerY, cellW, 82 });
-        placeKnob("ATYPE_DEGREE" + n,
-                  { innerX + cellW + cellGap, lowerY, cellW, 82 });
-
+        // Keep the advanced switches outside knob text boxes.
         if (analogModeButtons[(size_t) b])
             analogModeButtons[(size_t) b]->setBounds(
-                innerX + cellW - 8, lowerY + 4, 36, 12);
+                innerX + cellW + cellGap + cellW - 26,
+                lowerY + 4, 36, 12);
 
         if (ottBandBypassButtons[(size_t) b])
             if (auto* knob = findKnob("OTT_DEGREE" + n))
@@ -2070,8 +2092,9 @@ void VVChainAudioProcessorEditor::mouseDown(
             dragDynamicMsBand = -1;
             dynamicTargetDragStartY = pos.y;
             dynamicTargetDragStartValue =
-                juce::jlimit(-24.f, 24.f,
-                    parameterValue("DYN_TARGET" + n));
+                dynamicTargetPoint(b).y == dynamicTargetPoint(b).y
+                    ? dynamicEffectiveTargetGain(b)
+                    : 0.f;
             showGraphDragHint = true;
             graphDragHintPosition = pos;
             graphDragHint = "TARGET "
@@ -2156,10 +2179,14 @@ void VVChainAudioProcessorEditor::mouseDown(
         }
     }
 
-    // Main Sonnox-style colour fill:
-    // horizontal = frequency, vertical = Offset + Target together.
-    // Clicking the coloured dynamic area moves the two handles together;
-    // clicking Offset or Target directly edits only that handle.
+    // Main Dynamic EQ point:
+    //   horizontal drag = frequency
+    //   vertical drag   = Dynamic Gain / Target
+    // Threshold is NEVER changed by graph dragging.
+    //
+    // Sonnox-style: the static Offset handle and the dynamic Target handle
+    // are separate. Clicking the live moving point is treated as editing
+    // the dynamic Target as well, so the gain point is always actionable.
     if (event.mods.isLeftButtonDown()
         && pointNearDynamicNode(pos, band))
     {
@@ -2172,23 +2199,18 @@ void VVChainAudioProcessorEditor::mouseDown(
         dynamicFreqDragStartHz =
             parameterValue("EQ" + n + "_FREQ");
         dynamicFreqDragStartX = pos.x;
-        dynamicGainDragStartY = pos.y;
-        dynamicGainDragStartOffset =
-            parameterValue("EQ" + n + "_GAIN");
-        dynamicGainDragStartTarget =
-            parameterValue("DYN_TARGET" + n);
+        dynamicTargetDragStartY = pos.y;
+        dynamicTargetDragStartValue =
+            dynamicEffectiveTargetGain(band);
 
         showGraphDragHint = true;
         graphDragHintPosition = pos;
         graphDragHint =
-            "DYN EQ " + n + "  "
+            "DYN EQ " + n + "   "
             + formatGraphFrequency(dynamicFreqDragStartHz)
-            + "   OFFSET "
+            + "   GAIN "
             + juce::String(
-                dynamicGainDragStartOffset, 1)
-            + " dB   TARGET "
-            + juce::String(
-                dynamicGainDragStartTarget, 1)
+                dynamicTargetDragStartValue, 1)
             + " dB";
         repaint();
         return;
@@ -2289,19 +2311,30 @@ void VVChainAudioProcessorEditor::mouseDrag(
             * 36.f
             * (event.mods.isShiftDown() ? 0.1f : 1.0f);
 
-        const float target =
+        const float desiredGain =
             juce::jlimit(
                 -24.f, 24.f,
                 dynamicTargetDragStartValue + deltaDb);
 
-        setParameter("DYN_TARGET" + n, target);
+        const float offset =
+            juce::jlimit(
+                -24.f, 24.f,
+                parameterValue("EQ" + n + "_GAIN"));
+
+        const float storedTarget =
+            juce::jlimit(
+                -24.f, 24.f,
+                offset + std::abs(desiredGain - offset));
+
+        setParameter("DYN_TARGET" + n, storedTarget);
 
         graphDragHintPosition = event.position;
         graphDragHint =
-            "TARGET " + juce::String(target, 1)
+            "GAIN " + juce::String(desiredGain, 1)
             + " dB   DYN "
             + juce::String(
-                parameterValue("DYN_DYNAMICS" + n), 0);
+                parameterValue("DYN_DYNAMICS" + n), 0)
+            + "%";
 
         showGraphDragHint = true;
         repaint();
@@ -2385,17 +2418,16 @@ void VVChainAudioProcessorEditor::mouseDrag(
     const auto n =
         juce::String(dragBand + 1);
 
-    // Match the lower FREQ knob exactly:
-    // range 20..20000 Hz, skew midpoint 632 Hz, 180 px full-range drag.
-    // Shift slows this by 10x, giving fine control without changing the
-    // parameter's minimum APVTS increment.
     const juce::NormalisableRange<float> freqRange(
         20.f, 20000.f, 0.01f, 5.02888112f);
+
     const float startNorm =
         freqRange.convertTo0to1(
             juce::jlimit(20.f, 20000.f, dynamicFreqDragStartHz));
+
     const float dragScale =
         event.mods.isShiftDown() ? 0.1f : 1.0f;
+
     const float norm =
         juce::jlimit(
             0.f, 1.f,
@@ -2406,53 +2438,44 @@ void VVChainAudioProcessorEditor::mouseDrag(
     const float hz =
         freqRange.convertFrom0to1(norm);
 
-    // Sonnox-style vertical drag: Offset and Target move together,
-    // preserving their relative separation.
-
     const float deltaDb =
-        -(event.position.y
-            - dynamicGainDragStartY)
-            / juce::jmax(1.f, graph.getHeight())
-            * 36.f * dragScale;
+        -(event.position.y - dynamicTargetDragStartY)
+        / juce::jmax(1.f, graph.getHeight())
+        * 36.f * dragScale;
+
+    const float desiredGain =
+        juce::jlimit(
+            -24.f, 24.f,
+            dynamicTargetDragStartValue + deltaDb);
 
     const float offset =
+        juce::jlimit(-24.f, 24.f,
+                     parameterValue("EQ" + n + "_GAIN"));
+
+    // DYN_TARGET stores the available gain span from Offset. The signed
+    // DYNAMICS control chooses whether that span is used below or above Offset.
+    const float storedTarget =
         juce::jlimit(
             -24.f, 24.f,
-            dynamicGainDragStartOffset
-                + deltaDb);
-    const float target =
-        juce::jlimit(
-            -24.f, 24.f,
-            dynamicGainDragStartTarget
-                + deltaDb);
+            offset + std::abs(desiredGain - offset));
 
-    setParameter(
-        "EQ" + n + "_FREQ", hz);
-    setParameter(
-        "EQ" + n + "_GAIN", offset);
-    setParameter(
-        "DYN_TARGET" + n, target);
+    setParameter("EQ" + n + "_FREQ", hz);
+    setParameter("DYN_TARGET" + n, storedTarget);
 
-    if (auto* freqKnob =
-            findKnob("EQ" + n + "_FREQ"))
+    if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
         freqKnob->slider->setValue(
             hz, juce::dontSendNotification);
-
-    if (auto* gainKnob =
-            findKnob("EQ" + n + "_GAIN"))
-        gainKnob->slider->setValue(
-            offset,
-            juce::dontSendNotification);
 
     graphDragHintPosition = event.position;
     graphDragHint =
         "DYN EQ " + n + "   "
         + formatGraphFrequency(hz)
-        + "   OFFSET "
-        + juce::String(offset, 1)
-        + " dB   TARGET "
-        + juce::String(target, 1)
-        + " dB";
+        + "   GAIN "
+        + juce::String(desiredGain, 1)
+        + " dB   DYN "
+        + juce::String(
+            parameterValue("DYN_DYNAMICS" + n), 0)
+        + "%";
     showGraphDragHint = true;
     repaint();
 }
