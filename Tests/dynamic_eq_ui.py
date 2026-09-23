@@ -507,7 +507,7 @@ def test_v103_ui_rules_50():
     assert "VVCHAIN v1.0.5" in web
     assert "VVCHAIN v1.0.5" in cpp
     assert "LAST 2026-09-23 22:10 TST" in web
-    assert "2026-09-23" not in cpp
+    assert "LAST 2026-09-23 22:10 TST" in cpp
 
 
 def test_v103_closed_10():
