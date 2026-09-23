@@ -1210,26 +1210,35 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.fillEllipse(
             x - 6.f, liveY - 6.f, 12.f, 12.f);
 
-        // Dedicated DYNAMICS drag handle, immediately to the right of the
-        // frequency node. Up = +DYNAMICS / expansion; down = -DYNAMICS.
+        // Dedicated DYNAMICS drag handle follows the DYNAMICS target point.
+        // It is hidden at 0% so the static EQ point remains visually clean.
+        const float dynamicsValue =
+            juce::jlimit(-100.f, 100.f,
+                         parameterValue("DYN_DYNAMICS" + n));
+        const bool dynamicsEnabled =
+            std::abs(dynamicsValue) > 0.01f;
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
-                         x + 20.f);
-        const float handleY = liveY;
-        g.setColour(c.withAlpha(.92f));
-        g.drawLine(handleX, handleY - 8.f,
-                   handleX, handleY + 8.f, 1.4f);
-        juce::Path upArrow;
-        upArrow.startNewSubPath(handleX - 4.f, handleY - 4.f);
-        upArrow.lineTo(handleX, handleY - 8.f);
-        upArrow.lineTo(handleX + 4.f, handleY - 4.f);
-        g.strokePath(upArrow, juce::PathStrokeType(1.6f));
-        juce::Path downArrow;
-        downArrow.startNewSubPath(handleX - 4.f, handleY + 4.f);
-        downArrow.lineTo(handleX, handleY + 8.f);
-        downArrow.lineTo(handleX + 4.f, handleY + 4.f);
-        g.strokePath(downArrow, juce::PathStrokeType(1.6f));
+                         x + 11.f);
+        const float handleY = targetY;
+
+        if (dynamicsEnabled)
+        {
+            g.setColour(c.withAlpha(.92f));
+            g.drawLine(handleX, handleY - 8.f,
+                       handleX, handleY + 8.f, 1.4f);
+            juce::Path upArrow;
+            upArrow.startNewSubPath(handleX - 4.f, handleY - 4.f);
+            upArrow.lineTo(handleX, handleY - 8.f);
+            upArrow.lineTo(handleX + 4.f, handleY - 4.f);
+            g.strokePath(upArrow, juce::PathStrokeType(1.6f));
+            juce::Path downArrow;
+            downArrow.startNewSubPath(handleX - 4.f, handleY + 4.f);
+            downArrow.lineTo(handleX, handleY + 8.f);
+            downArrow.lineTo(handleX + 4.f, handleY + 4.f);
+            g.strokePath(downArrow, juce::PathStrokeType(1.6f));
+        }
 
         const float midChange =
             dynamicMidGainChangeDb(band);
@@ -1452,6 +1461,22 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         (int)graph.getX() + 12,
         (int)graph.getY() + 9,
         470, 14, juce::Justification::left);
+
+    // Mirror the per-band BYPASS state in the upper frequency zone.
+    for (int band = 0; band < 4; ++band)
+    {
+        const bool bypassed =
+            parameterValue("OTT_BAND_BYPASS" + juce::String(band + 1)) > 0.5f;
+        if (!bypassed)
+            continue;
+
+        const float leftX = boundaries[band];
+        const float rightX = boundaries[band + 1];
+        g.setColour(juce::Colour(0xff5b6066).withAlpha(.62f));
+        g.fillRect(leftX, graph.getY(),
+                   juce::jmax(0.f, rightX - leftX),
+                   graph.getHeight());
+    }
 
     g.setFont(juce::FontOptions(8.f));
     g.setColour(juce::Colour(0xffaab0ba));
@@ -2193,16 +2218,20 @@ void VVChainAudioProcessorEditor::mouseDown(
         const auto n = juce::String(b + 1);
         const float x = graphFrequencyToX(
             graph, parameterValue("EQ" + n + "_FREQ"));
-        const float liveY = eqDbToY(
-            graph,
-            parameterValue("EQ" + n + "_GAIN")
-                + dynamicAverageGainChangeDb(b));
+        const float dynamicsValue =
+            juce::jlimit(-100.f, 100.f,
+                         parameterValue("DYN_DYNAMICS" + n));
+        if (std::abs(dynamicsValue) <= 0.01f)
+            continue;
+
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
-                         x + 20.f);
+                         x + 11.f);
+        const float targetY =
+            eqDbToY(graph, dynamicEffectiveTargetGain(b));
         const auto handleRect =
-            juce::Rectangle<float>(handleX - 11.f, liveY - 14.f,
+            juce::Rectangle<float>(handleX - 11.f, targetY - 14.f,
                                    22.f, 28.f);
 
         if (event.mods.isLeftButtonDown() && handleRect.contains(pos))
@@ -2701,10 +2730,45 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
         }
     }
 
-    // Normal wheel near any visible EQ / Dynamic EQ handle controls Q.
-    // Do not make Q hit-testing depend on the instantaneous detector state.
+    // Wheel on either the static EQ point or the active DYNAMICS target
+    // point adjusts the same shared Q parameter.
     int band = -1;
-    if (!pointNearDynamicNode(event.position, band))
+    float bestDistance = 13.0f;
+
+    for (int b = 0; b < 4; ++b)
+    {
+        const auto n = juce::String(b + 1);
+        const float x = graphFrequencyToX(
+            graph, parameterValue("EQ" + n + "_FREQ"));
+        const float eqY = eqDbToY(
+            graph, parameterValue("EQ" + n + "_GAIN"));
+        const float eqDistance =
+            event.position.getDistanceFrom({ x, eqY });
+
+        if (eqDistance < bestDistance)
+        {
+            bestDistance = eqDistance;
+            band = b;
+        }
+
+        const float dynamics =
+            parameterValue("DYN_DYNAMICS" + n);
+        if (std::abs(dynamics) > 0.01f)
+        {
+            const float dynY = eqDbToY(
+                graph, dynamicEffectiveTargetGain(b));
+            const float dynDistance =
+                event.position.getDistanceFrom({ x, dynY });
+
+            if (dynDistance < bestDistance)
+            {
+                bestDistance = dynDistance;
+                band = b;
+            }
+        }
+    }
+
+    if (band < 0)
         return;
 
     const auto n =
