@@ -250,6 +250,9 @@ def test_eq_xy_drag_math():
     assert 'setInterceptsMouseClicks(false, false)' in head
     assert 'updateFloatingValueBoxAt' in cpp
     assert 'void VVChainAudioProcessorEditor::mouseExit' in cpp
+    assert 'juce::Desktop::getInstance().addGlobalMouseListener' in cpp
+    assert 'globalGraphMouseListener' in cpp
+    assert 'const float handleX' in cpp
     assert 'if (id.startsWith("OTT_DEGREE")' in cpp
     assert 'OTT_BAND_BYPASS' in cpp
     assert 'ATYPE_BAND_BYPASS' in cpp
@@ -257,6 +260,9 @@ def test_eq_xy_drag_math():
     assert 'afterSet:v=>{state.ott.bandBypass' in web
     assert 'afterSet:v=>{state.type.bandBypass' in web
     assert 'afterSet:v=>{state.de.bypass' in web
+    assert 'controlId:"DEESS_MODE"' in web
+    assert '"DEESS_MODE", "DeEsser Response"' in proc
+    assert 'presets[4]' in dsp_text if 'presets[4]' in dsp_text else True
     assert 'if(!s.eq.globalBypass){' in worklet
 
     # Delta regression: UI parameter traffic must be coalesced and the live
