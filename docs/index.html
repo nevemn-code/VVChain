@@ -253,7 +253,7 @@ makeKnob(staticGrid,{label:"GAIN",get:()=>state.eq.gain[n],set:v=>state.eq.gain[
 makeKnob(staticGrid,{label:"Q",get:()=>state.eq.q[n],set:v=>state.eq.q[n]=v,min:.1,max:18,accent:cols[n],formatDigits:2});
 
 makeKnob(dynControls,{label:"THRESH",get:()=>state.dyn.threshold[n],set:v=>state.dyn.threshold[n]=v,min:-60,max:0,suffix:" dB",accent:"#f8fafc",formatDigits:1});
-makeKnob(dynControls,{label:"DYNAMICS",get:()=>state.dyn.dynamics[n],set:v=>state.dyn.dynamics[n]=v,min:0,max:100,suffix:" %",accent:"#f8fafc",formatDigits:0});
+makeKnob(dynControls,{label:"DYNAMICS",get:()=>state.dyn.dynamics[n],set:v=>state.dyn.dynamics[n]=v,min:-100,max:100,suffix:" %",accent:"#f8fafc",formatDigits:0});
 makeKnob(dynControls,{label:"ATTACK",get:()=>state.dyn.attack[n],set:v=>state.dyn.attack[n]=v,min:.1,max:200,suffix:" ms",accent:"#f8fafc",formatDigits:1});
 makeKnob(dynControls,{label:"RELEASE",get:()=>state.dyn.release[n],set:v=>state.dyn.release[n]=v,min:5,max:2000,suffix:" ms",accent:"#f8fafc",formatDigits:0});
 const detectBtn=card.querySelector(".detectBtn"),triggerBtn=card.querySelector(".triggerBtn");
