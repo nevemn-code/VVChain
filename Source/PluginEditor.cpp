@@ -262,10 +262,10 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         const auto n = juce::String(b + 1);
 
         // Main EQ controls.
-        addKnob("EQ" + n + "_FREQ", "FREQ", 20, 20000, 1,
-                parameterValue("EQ" + n + "_FREQ"), " Hz", b, 0, c);
         addKnob("EQ" + n + "_GAIN", "GAIN", -24, 24, .1,
-                parameterValue("EQ" + n + "_GAIN"), " dB", b, 1, c);
+                parameterValue("EQ" + n + "_GAIN"), " dB", b, 0, c);
+        addKnob("EQ" + n + "_FREQ", "FREQ", 20, 20000, 1,
+                parameterValue("EQ" + n + "_FREQ"), " Hz", b, 1, c);
         addKnob("EQ" + n + "_Q", "Q", .1, 18, .01,
                 parameterValue("EQ" + n + "_Q"), "", b, 2, c);
 
@@ -953,7 +953,8 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         }
     }
 
-    // X1/X2/X3 live in a dedicated top strip so they never cover EQ nodes.
+    // LAST MODIFICATION: 2026-09-23 14:41
+    // X1/X2/X3 live in a dedicated top strip. The top cross marker is the only hover target for crossover curvature / OVERLAP.
     const float spread = 16.f + overlap * .52f;
 
     for (int i = 0; i < 3; ++i)
@@ -1001,6 +1002,19 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                 + formatGraphFrequency(hz),
             (int)x - 45, (int)graph.getY() + 3, 90, 11,
             juce::Justification::centred);
+
+        const bool xoverHovered = hoverXover == i;
+        const float markerY = graph.getY() + 20.f;
+        g.setColour(uiColour(xoverHovered
+            ? juce::Colour(0xfffff3a8)
+            : juce::Colour(0xffffdf67)));
+        g.drawLine(x - 5.f, markerY - 5.f,
+                   x + 5.f, markerY + 5.f,
+                   xoverHovered ? 2.f : 1.2f);
+        g.drawLine(x + 5.f, markerY - 5.f,
+                   x - 5.f, markerY + 5.f,
+                   xoverHovered ? 2.f : 1.2f);
+        g.fillEllipse(x - 2.2f, markerY - 2.2f, 4.4f, 4.4f);
     }
 
     // Static Offset EQ response.
@@ -1211,12 +1225,8 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             x - 6.f, liveY - 6.f, 12.f, 12.f);
 
         // Dedicated DYNAMICS drag handle follows the DYNAMICS target point.
-        // It is hidden at 0% so the static EQ point remains visually clean.
-        const float dynamicsValue =
-            juce::jlimit(-100.f, 100.f,
-                         parameterValue("DYN_DYNAMICS" + n));
-        const bool dynamicsEnabled =
-            std::abs(dynamicsValue) > 0.01f;
+        // It is always visible, including the default 0% state.
+        const bool dynamicsEnabled = true;
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
@@ -1919,13 +1929,13 @@ void VVChainAudioProcessorEditor::resized()
 
         if (advancedButtons[(size_t) b])
             advancedButtons[(size_t) b]->setBounds(
-                x + cardW - 58, cardY + 8, 50, 20);
+                x + cardW - 108, cardY + 8, 50, 20);
         if (soloButtons[(size_t) b])
             soloButtons[(size_t) b]->setBounds(
-                x + cardW - 108, cardY + 8, 46, 20);
+                x + cardW - 58, cardY + 8, 46, 20);
 
         const int innerX = x + 8;
-        const int innerTop = cardY + 48;
+        const int innerTop = cardY + 56;
         const int innerW = cardW - 16;
         const int cellGap = 6;
         const int cellW = (innerW - cellGap * 2) / 3;
@@ -1942,9 +1952,9 @@ void VVChainAudioProcessorEditor::resized()
 
         const auto n = juce::String(b + 1);
 
-        // ROW 1 — static EQ
-        placeKnob("EQ" + n + "_FREQ", cell(0, 0));
-        placeKnob("EQ" + n + "_GAIN", cell(0, 1));
+        // ROW 1 — static EQ: GAIN / FREQ / Q
+        placeKnob("EQ" + n + "_GAIN", cell(0, 0));
+        placeKnob("EQ" + n + "_FREQ", cell(0, 1));
         placeKnob("EQ" + n + "_Q",    cell(0, 2));
 
         // ROW 2 — Dynamic EQ
@@ -2089,12 +2099,30 @@ void VVChainAudioProcessorEditor::mouseMove(const juce::MouseEvent& event)
 
     if (!graph.contains(event.position))
     {
-        if (hoverDynamicBand != -1)
+        if (hoverDynamicBand != -1 || hoverXover != -1)
         {
             hoverDynamicBand = -1;
+            hoverXover = -1;
             repaint();
         }
         return;
+    }
+
+    hoverXover = -1;
+    const float markerY = graph.getY() + 20.f;
+    const float xovers[3]
+    {
+        graphFrequencyToX(graph, parameterValue("OTT_X1")),
+        graphFrequencyToX(graph, parameterValue("OTT_X2")),
+        graphFrequencyToX(graph, parameterValue("OTT_X3"))
+    };
+    for (int i = 0; i < 3; ++i)
+    {
+        if (event.position.getDistanceFrom({ xovers[i], markerY }) <= 10.f)
+        {
+            hoverXover = i;
+            break;
+        }
     }
 
     int band = -1;
@@ -2221,9 +2249,6 @@ void VVChainAudioProcessorEditor::mouseDown(
         const float dynamicsValue =
             juce::jlimit(-100.f, 100.f,
                          parameterValue("DYN_DYNAMICS" + n));
-        if (std::abs(dynamicsValue) <= 0.01f)
-            continue;
-
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
@@ -2730,8 +2755,40 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
         }
     }
 
-    // Wheel on either the static EQ point or the active DYNAMICS target
-    // point adjusts the same shared Q parameter.
+    // Crossover curvature / OVERLAP is controlled ONLY by the
+    // small cross marker at the top of each X1/X2/X3 line.
+    {
+        const float markerY = graph.getY() + 20.f;
+        int xover = -1;
+        float bestMarker = 10.f;
+        const float xovers[3]
+        {
+            graphFrequencyToX(graph, parameterValue("OTT_X1")),
+            graphFrequencyToX(graph, parameterValue("OTT_X2")),
+            graphFrequencyToX(graph, parameterValue("OTT_X3"))
+        };
+        for (int i = 0; i < 3; ++i)
+        {
+            const float d = event.position.getDistanceFrom({ xovers[i], markerY });
+            if (d < bestMarker)
+            {
+                bestMarker = d;
+                xover = i;
+            }
+        }
+        if (xover >= 0)
+        {
+            const float next = juce::jlimit(
+                0.f, 100.f,
+                parameterValue("XOVER_OVERLAP") - wheel.deltaY * .5f);
+            setParameter("XOVER_OVERLAP", next);
+            repaint();
+            return;
+        }
+    }
+
+    // Wheel on either the static EQ point or the DYNAMICS target point
+    // adjusts the same shared Q parameter.
     int band = -1;
     float bestDistance = 13.0f;
 
