@@ -1,7 +1,7 @@
 #pragma once
-#include <JuceHeader.h>
+#include <algorithm>
 #include <cmath>
-
+#include <JuceHeader.h>
 // VVChain Dynamic EQ shared math.
 // Keeps DSP target math and graph response math explicit and deterministic.
 class VVChain_DynEQ_Engine
