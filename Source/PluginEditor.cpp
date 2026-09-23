@@ -2331,25 +2331,14 @@ void VVChainAudioProcessorEditor::mouseDrag(
         const float rawDx = correctedPointerX - nodeStartX;
         const float rawDy =
             event.position.y - dynamicGainDragStartY;
-        constexpr float axisLockPixels = 6.0f;
 
-        if (graphEqDragAxis == GraphEqDragAxis::Undetermined)
-        {
-            if (std::hypot(rawDx, rawDy) < axisLockPixels)
-                return;
-
-            graphEqDragAxis =
-                std::abs(rawDx) > std::abs(rawDy)
-                    ? GraphEqDragAxis::Frequency
-                    : GraphEqDragAxis::Gain;
-        }
-
-        const float effectiveDx =
-            graphEqDragAxis == GraphEqDragAxis::Frequency
-                ? rawDx : 0.0f;
-        const float effectiveDy =
-            graphEqDragAxis == GraphEqDragAxis::Gain
-                ? rawDy : 0.0f;
+        // Static EQ is a true XY control:
+        //   horizontal = Frequency
+        //   vertical   = Gain
+        // Both axes remain active during the same drag, so diagonal dragging
+        // changes Frequency and +/- Gain together.
+        const float effectiveDx = rawDx;
+        const float effectiveDy = rawDy;
 
         // Use the exact logarithmic X mapping used by the graph. The previous
         // polynomial conversion did not match graphFrequencyToX(), so the node
@@ -2366,9 +2355,7 @@ void VVChainAudioProcessorEditor::mouseDrag(
                         * followScale * dragScale);
 
         const float hz =
-            graphEqDragAxis == GraphEqDragAxis::Frequency
-                ? invLogMap(norm, 20.f, 20000.f)
-                : graphFreqDragStartHz;
+            invLogMap(norm, 20.f, 20000.f);
 
         const float deltaDb =
             -effectiveDy

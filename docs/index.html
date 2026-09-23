@@ -612,18 +612,17 @@ eqCanvas.addEventListener("pointermove",e=>{
     const nodeStartX=logX(dynFreqStartHz,w);
     const correctedX=x-dynFreqGrabOffsetX;
     const rawDx=correctedX-nodeStartX,rawDy=y-dynGainStartY;
-    if(eqDragAxis===0){
-      if(Math.hypot(rawDx,rawDy)<6)return;
-      eqDragAxis=Math.abs(rawDx)>Math.abs(rawDy)?1:2;
-    }
-    const effectiveDx=eqDragAxis===1?rawDx:0;
-    const effectiveDy=eqDragAxis===2?rawDy:0;
+    // Static EQ is a true XY control:
+    // horizontal = Frequency, vertical = Gain.
+    // Both axes remain active during the same drag.
+    const effectiveDx=rawDx;
+    const effectiveDy=rawDy;
     // Match logX()/invLog() exactly so the graph node follows the cursor.
     // 0.74 retains the requested slower feel without the previous overshoot.
     const startNorm=Math.log(Math.max(20,dynFreqStartHz)/20)/Math.log(1000);
     const followScale=0.74;
     const norm=clamp(startNorm+(effectiveDx/Math.max(1,w))*followScale*fine,0,1);
-    const hzv=eqDragAxis===1?20*Math.pow(1000,norm):dynFreqStartHz;
+    const hzv=20*Math.pow(1000,norm);
     const deltaDb=-effectiveDy/Math.max(1,h)*36*fine;
     state.eq.freq[dragBand]=hzv;
     state.eq.gain[dragBand]=clamp(dynGainStartOffset+deltaDb,-24,24);
