@@ -30,7 +30,6 @@ public:
         // Offset = resting EQ gain; Target defines the maximum dynamic span.
         // DYNAMICS is signed: -100..0% = downward compression,
         // 0..+100% = upward expansion. 0% is fully static.
-        std::array<float, 4> dynThreshold { -24.f, -24.f, -24.f, -24.f };
         std::array<float, 4> dynTarget { 3.f, 3.f, 2.f, 2.f };
         std::array<float, 4> dynDynamics { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> dynAttack { 8.f, 8.f, 5.f, 3.f };
