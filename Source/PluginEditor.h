@@ -152,9 +152,9 @@ private:
     juce::Point<float> dynamicThresholdHandlePoint(int band) const;
     bool pointNearDynamicNode(juce::Point<float>, int& band) const;
     bool pointNearDynamicThresholdHandle(juce::Point<float>, int& band) const;
-    float dynamicAverageReductionDb(int band) const;
-    float dynamicMidReductionDb(int band) const;
-    float dynamicSideReductionDb(int band) const;
+    float dynamicAverageGainChangeDb(int band) const;
+    float dynamicMidGainChangeDb(int band) const;
+    float dynamicSideGainChangeDb(int band) const;
 
     VVChainAudioProcessor& audioProcessor;
     MetalLookAndFeel metalLook;
@@ -172,6 +172,8 @@ private:
     std::array<std::unique_ptr<juce::ToggleButton>, 4> analogBypassButtons;
     std::array<std::unique_ptr<BoolAttachment>, 4> analogBypassAttachments;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> soloButtons;
+    std::array<std::unique_ptr<juce::ToggleButton>, 4> dynDetectButtons;
+    std::array<std::unique_ptr<juce::ToggleButton>, 4> dynTriggerButtons;
     std::unique_ptr<juce::ToggleButton> soloModeButton;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> atypeBandBypassButtons;
     std::array<std::unique_ptr<BoolAttachment>, 4> ottBandBypassAttachments;
