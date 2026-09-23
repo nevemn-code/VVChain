@@ -1037,23 +1037,6 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.drawVerticalLine(
             (int)x, graph.getY() + 20.f, graph.getBottom() - 28.f);
 
-        const float l = juce::jmax(
-            graph.getX() + 4.f, x - spread);
-        const float r = juce::jmin(
-            graph.getRight() - 4.f, x + spread);
-
-        juce::Path curve;
-        curve.startNewSubPath(
-            l, graph.getCentreY() + 20.f);
-        curve.quadraticTo(
-            x, graph.getCentreY() - 16.f,
-            r, graph.getCentreY() + 20.f);
-
-        g.setColour(
-            uiColour(juce::Colour(0xffffdf67)).withAlpha(.60f));
-        g.strokePath(
-            curve, juce::PathStrokeType(1.1f));
-
         const bool xoverHovered = hoverXover == i;
         const float markerY = graph.getBottom() - 18.f;
         const float labelY = graph.getBottom() - 35.f;
@@ -1071,26 +1054,28 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             (int)x - 45, (int)labelY + 3, 90, 11,
             juce::Justification::centred);
 
-        // Bottom infinity / bow-tie marker replaces the old X marker.
+        // Bottom infinity / bow-tie marker is the continuous OVERLAP control.
+        const float bowWidth = 5.f + overlap * 0.10f;
+        const float bowHeight = 3.f + overlap * 0.055f;
         g.setColour(uiColour(xoverHovered
             ? juce::Colour(0xfffff3a8)
             : juce::Colour(0xffffdf67)));
         juce::Path infinity;
         infinity.startNewSubPath(x, markerY);
-        infinity.cubicTo(x - 4.f, markerY - 7.f,
-                         x - 10.f, markerY - 7.f,
-                         x - 10.f, markerY);
-        infinity.cubicTo(x - 10.f, markerY + 7.f,
-                         x - 4.f, markerY + 7.f,
+        infinity.cubicTo(x - bowWidth * .38f, markerY - bowHeight,
+                         x - bowWidth, markerY - bowHeight,
+                         x - bowWidth, markerY);
+        infinity.cubicTo(x - bowWidth, markerY + bowHeight,
+                         x - bowWidth * .38f, markerY + bowHeight,
                          x, markerY);
-        infinity.cubicTo(x + 4.f, markerY - 7.f,
-                         x + 10.f, markerY - 7.f,
-                         x + 10.f, markerY);
-        infinity.cubicTo(x + 10.f, markerY + 7.f,
-                         x + 4.f, markerY + 7.f,
+        infinity.cubicTo(x + bowWidth * .38f, markerY - bowHeight,
+                         x + bowWidth, markerY - bowHeight,
+                         x + bowWidth, markerY);
+        infinity.cubicTo(x + bowWidth, markerY + bowHeight,
+                         x + bowWidth * .38f, markerY + bowHeight,
                          x, markerY);
         g.strokePath(infinity, juce::PathStrokeType(
-            xoverHovered ? 2.0f : 1.35f));
+            xoverHovered ? 2.0f : 1.45f));
         g.fillEllipse(x - 2.5f, markerY - 2.5f, 5.f, 5.f);
     }
 
@@ -2509,7 +2494,7 @@ void VVChainAudioProcessorEditor::mouseDown(
         return;
     }
 
-    // X1/X2/X3 remain independent draggable controls.
+    // Bottom infinity marker = continuous shared OVERLAP control.
     const float xovers[3]
     {
         graphFrequencyToX(
@@ -2520,6 +2505,36 @@ void VVChainAudioProcessorEditor::mouseDown(
             graph, parameterValue("OTT_X3"))
     };
 
+    const float markerY = graph.getBottom() - 18.f;
+    for (int i = 0; i < 3; ++i)
+    {
+        if (pos.getDistanceFrom({ xovers[i], markerY }) < 14.f)
+        {
+            dragOverlapXover = i;
+            dragXover = -1;
+            overlapDragStartY = pos.y;
+            overlapDragStartValue = parameterValue("XOVER_OVERLAP");
+
+            if (auto* parameter =
+                    audioProcessor.apvts.getParameter("XOVER_OVERLAP"))
+                parameter->beginChangeGesture();
+
+            juce::StringArray graphIds;
+            graphIds.add("XOVER_OVERLAP");
+            setGraphControlState(graphIds, false);
+
+            showGraphDragHint = true;
+            graphDragHintPosition = pos;
+            graphDragHint =
+                "X" + juce::String(i + 1)
+                + "  OVERLAP "
+                + juce::String(overlapDragStartValue, 1) + "%";
+            repaint();
+            return;
+        }
+    }
+
+    // X1/X2/X3 frequency remains independently draggable on the line.
     float bestXover = 11.f;
     dragXover = -1;
 
@@ -2709,6 +2724,34 @@ void VVChainAudioProcessorEditor::mouseDrag(
         return;
     }
 
+    // Continuous XOVER overlap drag: vertical movement maps linearly 0..100%.
+    if (dragOverlapXover >= 0)
+    {
+        const float dragScale =
+            event.mods.isShiftDown() ? 0.1f : 1.0f;
+        const float next =
+            juce::jlimit(
+                0.f, 100.f,
+                overlapDragStartValue
+                    - (event.position.y - overlapDragStartY)
+                        / juce::jmax(1.f, graph.getHeight())
+                        * 200.f * dragScale);
+
+        setGraphControlMoving(true);
+        setParameter("XOVER_OVERLAP", next);
+        if (auto* knob = findKnob("XOVER_OVERLAP"))
+            knob->slider->setValue(
+                next, juce::dontSendNotification);
+
+        graphDragHintPosition = event.position;
+        graphDragHint =
+            "XOVER OVERLAP "
+            + juce::String(next, 1) + "%";
+        showGraphDragHint = true;
+        repaint();
+        return;
+    }
+
     // X1/X2/X3 crossover drag.
     if (dragXover >= 0)
     {
@@ -2834,6 +2877,13 @@ void VVChainAudioProcessorEditor::mouseUp(
             parameter->endChangeGesture();
     }
 
+    if (dragOverlapXover >= 0)
+    {
+        if (auto* parameter =
+                audioProcessor.apvts.getParameter("XOVER_OVERLAP"))
+            parameter->endChangeGesture();
+    }
+
     if (dragXover >= 0)
     {
         const auto xoverId =
@@ -2857,6 +2907,7 @@ void VVChainAudioProcessorEditor::mouseUp(
     dragOffsetBand = -1;
     graphEqDragAxis = GraphEqDragAxis::Undetermined;
     dragXover = -1;
+    dragOverlapXover = -1;
     dragDynamicMsBand = -1;
     dragDynamicHandleBand = -1;
     showGraphDragHint = false;
