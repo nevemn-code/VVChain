@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · 2026-09-23 19:17
+// VVChain Web AudioWorklet DSP module · 2026-09-23 19:30
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -10,17 +10,25 @@ class VVChainWorklet extends AudioWorkletProcessor {
     this._lastSoloPost=false;
     this._meterBlocks=0;
     this._sentReady=false;
+    this.pendingState=null;
+    this.pendingRevision=0;
+    this.activeRevision=0;
+    this._errorReported=false;
     this.ch=[this.makeCh(),this.makeCh()];
     this.port.onmessage=e=>{
-      if(e.data&&e.data.type==="params"){
-        const next=e.data.state;
-        if(this.s&&(
-          Number(this.s.solo?.band??-1)!==Number(next.solo?.band??-1) ||
-          !!this.s.solo?.post!==!!next.solo?.post))
-          this.soloBlend=0;
-        this.s=next;
-        this.ready=true;
-      }
+      if(!e.data||e.data.type!=="params")return;
+      const next=e.data.state;
+      if(!next||typeof next!=="object")return;
+      // Keep only the newest parameter snapshot. Older drag events are
+      // obsolete by definition and must not queue behind the realtime audio.
+      const previous=this.pendingState||this.s;
+      if(previous&&(
+        Number(previous.solo?.band??-1)!==Number(next.solo?.band??-1) ||
+        !!previous.solo?.post!==!!next.solo?.post))
+        this.soloBlend=0;
+      this.pendingState=next;
+      this.pendingRevision=Number(e.data.revision||0);
+      this.ready=true;
     };
   }
   makeCh(){
@@ -258,7 +266,13 @@ class VVChainWorklet extends AudioWorkletProcessor {
   }
   process(inputs,outputs){
     const out=outputs[0],inp=inputs[0];
-    if(!this.ready||!this.s||!inp||!inp.length){for(const c of out)c.fill(0);return true;}
+    try{
+      if(this.pendingState){
+        this.s=this.pendingState;
+        this.activeRevision=this.pendingRevision;
+        this.pendingState=null;
+      }
+      if(!this.ready||!this.s||!inp||!inp.length){for(const c of out)c.fill(0);return true;}
     if(!this._sentReady){
       this._sentReady=true;
       this.port.postMessage({type:"ready"});
@@ -290,10 +304,41 @@ class VVChainWorklet extends AudioWorkletProcessor {
       out[0][n]=this.finite(yL);if(out[1])out[1][n]=this.finite(yR);
     }
     this._meterBlocks++;
-    if(this._meterBlocks%8===0){
-      this.port.postMessage({type:"dynMeters",mid:this.s.dyn.gainMid,side:this.s.dyn.gainSide});
+    // UI meters are diagnostic only; ~10 Hz is enough and keeps MessagePort
+    // traffic well below the parameter-update rate.
+    this._meterBlocks++;
+    if(this._meterBlocks%32===0){
+      this.port.postMessage({
+        type:"dynMeters",
+        revision:this.activeRevision,
+        mid:(this.s.dyn.gainMid||[0,0,0,0]).slice(),
+        side:(this.s.dyn.gainSide||[0,0,0,0]).slice()
+      });
     }
     return true;
+    }catch(err){
+      // A DSP exception must never terminate the audio graph. Pass the current
+      // input through for this quantum and let the UI route around the failed
+      // processor.
+      if(out?.[0]){
+        const inL=inp?.[0],inR=inp?.[1]||inL;
+        for(let n=0;n<out[0].length;n++){
+          out[0][n]=this.finite(inL?.[n]||0);
+          if(out[1])out[1][n]=this.finite(inR?.[n]||0);
+        }
+      }
+      if(!this._errorReported){
+        this._errorReported=true;
+        try{
+          this.port.postMessage({
+            type:"error",
+            revision:this.activeRevision,
+            message:String(err?.message||err)
+          });
+        }catch{}
+      }
+      return true;
+    }
   }
 }
 registerProcessor("vvchain-worklet",VVChainWorklet);
