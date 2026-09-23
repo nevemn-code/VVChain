@@ -171,6 +171,9 @@ private:
     juce::String formatGraphFrequency(float hz) const;
     juce::Colour uiColour(juce::Colour) const noexcept;
     void updateBypassVisuals();
+    void setGraphControlState(const juce::StringArray& ids, bool moving);
+    void clearGraphControlState();
+    void setGraphControlMoving(bool moving);
     bool isMasterBypassed() const noexcept;
     juce::Rectangle<float> dynamicMsPopupBounds(int band) const;
     juce::Point<float> dynamicTargetPoint(int band) const;
@@ -189,6 +192,8 @@ private:
     std::unique_ptr<BoolAttachment> masterBypassAttachment;
     std::unique_ptr<juce::ToggleButton> deessBypassButton;
     std::unique_ptr<BoolAttachment> deessBypassAttachment;
+    std::unique_ptr<juce::ToggleButton> deltaMonitorButton;
+    std::unique_ptr<BoolAttachment> deltaMonitorAttachment;
     std::array<std::unique_ptr<juce::TextButton>, 4> advancedButtons;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> ottBandBypassButtons;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> analogModeButtons;
