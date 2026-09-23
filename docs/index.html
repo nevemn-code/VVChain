@@ -300,29 +300,35 @@ document.addEventListener("pointerdown",e=>{const popup=$("#advPopup");if(!popup
 function dynamicNodePoint(b,w,h){
   const change=(+state.dyn.gainMid[b]||0 + (+state.dyn.gainSide[b]||0))*0.5;
   const db=state.eq.gain[b]+change;
-  return {x:logX(state.eq.freq[b],w),y:h-(clamp(db,-18,18)+18)/36*h,change:change};
+  return {x:logX(state.eq.freq[b],w),y:dbToY(db,h),change:change};
 }
 function dynamicTargetPoint(b,w,h){
   const target=dynamicEffectiveTargetGain(b);
-  return {x:logX(state.eq.freq[b],w),y:h-(clamp(target,-18,18)+18)/36*h};
+  return {x:logX(state.eq.freq[b],w),y:dbToY(target,h)};
 }
 function dynamicThresholdFromDynamics(dynamics){
   const d=clamp(Number(dynamics||0),-100,100);
-  const shape=Math.pow(Math.abs(d)*0.01,0.65);
-  return clamp(-12+(d<0?-12:12)*shape,-60,0);
+  // Linear bipolar mapping: -100%=-24 dB, 0%=-12 dB, +100%=0 dB.
+  return clamp(-12+d*0.12,-60,0);
 }
 function dynamicEffectiveTargetGain(b){
   const offset=clamp(state.eq.gain[b],-24,24);
   const target=clamp(state.dyn.target[b],-24,24);
   const dynamics=clamp(Number(state.dyn.dynamics[b]??0),-100,100);
-  return clamp(offset+(dynamics<0?-1:1)*Math.abs(target-offset),-24,24);
+  const amount=Math.abs(dynamics)/100;
+  const direction=dynamics<0?-1:1;
+  const span=Math.abs(target-offset);
+  return clamp(offset+direction*span*amount,-24,24);
 }
 function dynamicBandAtPointer(x,y,w,h){
   let best=22,band=-1;
+  const staticRadius=8;
   for(let b=0;b<4;b++){
-    const n=dynamicNodePoint(b,w,h);
+    const n=dynamicTargetPoint(b,w,h);
     const d=Math.hypot(x-n.x,y-n.y);
-    if(d<best){best=d;band=b;}
+    const zeroRange=Math.abs(Number(state.dyn.dynamics[b]??0))<0.01;
+    const hit=zeroRange ? (d>=staticRadius&&d<22) : d<22;
+    if(hit&&d<best){best=d;band=b;}
   }
   return band;
 }
@@ -330,7 +336,7 @@ function staticEqAtPointer(x,y,w,h){
   let best=18,band=-1;
   for(let b=0;b<4;b++){
     const px=logX(state.eq.freq[b],w);
-    const py=h-(clamp(state.eq.gain[b],-18,18)+18)/36*h;
+    const py=dbToY(state.eq.gain[b],h);
     const d=Math.hypot(x-px,y-py);
     if(d<best){best=d;band=b;}
   }
@@ -344,6 +350,9 @@ function dynamicTargetAtPointer(x,y,w,h){
     if(d<best){best=d;band=b;}
   }
   return band;
+}
+function dbToY(db,h){
+  return h-clamp((db+24)/48,0,1)*h;
 }
 function gainShapeDb(b,hz,gain){
   const f=Math.max(20,state.eq.freq[b]);
@@ -402,7 +411,7 @@ function drawEQ(){
     const hzv=invLog(i/420);
     let db=0;
     for(let b=0;b<4;b++) db+=gainShapeDb(b,hzv,state.eq.gain[b]);
-    const x=logX(hzv,w),y=h-(clamp(db,-18,18)+18)/36*h;
+    const x=logX(hzv,w),y=dbToY(db,h);
     if(i===0)eqCtx.moveTo(x,y);else eqCtx.lineTo(x,y);
   }
   eqCtx.stroke();
@@ -415,8 +424,8 @@ function drawEQ(){
     const upper=[],lower=[];
     for(let i=0;i<=220;i++){
       const hzv=invLog(i/220),x=logX(hzv,w);
-      upper.push([x,h-(clamp(gainShapeDb(b,hzv,offset),-18,18)+18)/36*h]);
-      lower.push([x,h-(clamp(gainShapeDb(b,hzv,target),-18,18)+18)/36*h]);
+      upper.push([x,dbToY(gainShapeDb(b,hzv,offset),h)]);
+      lower.push([x,dbToY(gainShapeDb(b,hzv,target),h)]);
     }
     eqCtx.beginPath();
     for(let i=0;i<upper.length;i++) i===0?eqCtx.moveTo(upper[i][0],upper[i][1]):eqCtx.lineTo(upper[i][0],upper[i][1]);
@@ -440,7 +449,7 @@ function drawEQ(){
     const hzv=invLog(i/420);
     let db=0;
     for(let b=0;b<4;b++) db+=gainShapeDb(b,hzv,state.eq.gain[b]+((+state.dyn.gainMid[b]||0)+(+state.dyn.gainSide[b]||0))*0.5);
-    const x=logX(hzv,w),y=h-(clamp(db,-18,18)+18)/36*h;
+    const x=logX(hzv,w),y=dbToY(db,h);
     if(i===0)eqCtx.moveTo(x,y);else eqCtx.lineTo(x,y);
   }
   eqCtx.stroke();
@@ -448,7 +457,7 @@ function drawEQ(){
   // Nodes, live points, M/S rings and readable hover values.
   for(let b=0;b<4;b++){
     const c=cols[b],n=dynamicNodePoint(b,w,h),t=dynamicTargetPoint(b,w,h);
-    const offsetY=h-(clamp(state.eq.gain[b],-18,18)+18)/36*h;
+    const offsetY=dbToY(state.eq.gain[b],h);
     const hovered=hoverDynamicBand===b;
 
     eqCtx.strokeStyle=c+"66";
@@ -509,7 +518,7 @@ function drawEQ(){
   eqCtx.font="bold 8px Consolas";
   eqCtx.fillText("OXFORD-STYLE DYNAMIC EQ · OFFSET / TARGET / LIVE GAIN · RIGHT CLICK = M/S",12,h-8);
 }
-let expandedDynamicBand=-1,hoverDynamicBand=-1,dragMode=0,dragBand=-1,dragXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dynFreqStartHz=0,dynFreqStartX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0;
+let expandedDynamicBand=-1,hoverDynamicBand=-1,dragMode=0,dragBand=-1,dragXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0;
 function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRatio||1;eqCanvas.width=Math.max(1,Math.round(r.width*d));eqCanvas.height=Math.max(1,Math.round(r.height*d));eqCtx.setTransform(d,0,0,d,0,0);drawEQ();}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function showGraphHint(e,text){const r=eqCanvas.getBoundingClientRect();graphHint.textContent=text;graphHint.hidden=false;const pad=6,ox=12,oy=12,x=clamp(e.clientX-r.left+ox,pad,r.width-graphHint.offsetWidth-pad),y=clamp(e.clientY-r.top+oy,pad,r.height-graphHint.offsetHeight-pad);graphHint.style.left=x+"px";graphHint.style.top=y+"px";}
@@ -526,7 +535,7 @@ eqCanvas.addEventListener("wheel",e=>{
   for(let i=0;i<3;i++){const d=Math.abs(xo[i]-x);if(d<xb){xb=d;xi=i;}}
   if(xi>=0){e.preventDefault();const ov=state.ott.overlap??[50,50,50];ov[xi]=clamp((ov[xi]??50)+e.deltaY*.02,0,100);sendParams();drawEQ();return;}
   let best=22,band=-1;
-  for(let b=0;b<4;b++){const px=logX(state.eq.freq[b],w),py=h-(clamp(state.eq.gain[b]+((+state.dyn.gainMid[b]||0)+(+state.dyn.gainSide[b]||0))*.5,-18,18)+18)/36*h,d=Math.hypot(px-x,py-y);if(d<best){best=d;band=b;}}
+  for(let b=0;b<4;b++){const px=logX(state.eq.freq[b],w),py=dbToY(state.eq.gain[b]+((+state.dyn.gainMid[b]||0)+(+state.dyn.gainSide[b]||0))*.5,h),d=Math.hypot(px-x,py-y);if(d<best){best=d;band=b;}}
   if(band<0)return;
   e.preventDefault();state.eq.q[band]=e.shiftKey?clamp(state.eq.q[band]+e.deltaY*0.01,.1,18):clamp(state.eq.q[band]*Math.exp((e.deltaY/100)*.025),.1,18);sendParams();drawEQ();
 },{passive:false});
@@ -556,10 +565,10 @@ eqCanvas.addEventListener("pointerdown",e=>{
   }
   if(e.button!==0)return;
 
-  // Static EQ node: direct XY editing of Frequency + Gain.
+  // Static EQ node: latch one axis after the first few pixels.
   const staticBand=staticEqAtPointer(x,y,w,h);
   if(staticBand>=0){
-    dragMode=1;dragBand=staticBand;dragXover=-1;dragDynamicTargetBand=-1;
+    dragMode=1;dragBand=staticBand;dragXover=-1;dragDynamicTargetBand=-1;eqDragAxis=0;
     dynFreqStartHz=state.eq.freq[staticBand];dynFreqStartX=x;
     dynGainStartY=y;dynGainStartOffset=state.eq.gain[staticBand];
     eqCanvas.setPointerCapture(e.pointerId);
@@ -567,14 +576,15 @@ eqCanvas.addEventListener("pointerdown",e=>{
     return;
   }
 
-  // Dynamic Target node: direct XY editing of Frequency + Dynamic Gain.
+  // Dynamic range handle: vertical-only DYNAMICS, anchored at exact mouse-down pixel.
   const tb=dynamicTargetAtPointer(x,y,w,h);
   if(tb>=0){
     dragMode=2;dragBand=tb;dragXover=-1;dragDynamicTargetBand=tb;
-    dynTargetStartFreq=state.eq.freq[tb];dynTargetStartX=x;
-    dynGainStartY=y;dynGainStartTarget=dynamicEffectiveTargetGain(tb);
+    dynDynamicsStartY=y;
+    dynDynamicsStartValue=state.dyn.dynamics[tb];
+    dynTargetStartFreq=state.eq.freq[tb];
     eqCanvas.setPointerCapture(e.pointerId);
-    showGraphHint(e,"DYN GAIN "+(tb+1)+"  "+fmt(dynGainStartTarget,1)+" dB  "+hz(dynTargetStartFreq)+"  AUTO THR "+fmt(dynamicThresholdFromDynamics(state.dyn.dynamics[tb]),1)+" dB");
+    showGraphHint(e,"DYN "+(tb+1)+"  "+fmt(dynDynamicsStartValue,0)+"%  "+hz(dynTargetStartFreq)+"  AUTO THR "+fmt(dynamicThresholdFromDynamics(dynDynamicsStartValue),1)+" dB");
     return;
   }
 
@@ -591,23 +601,25 @@ eqCanvas.addEventListener("pointermove",e=>{
   }
   if(dragMode===1&&dragBand>=0){
     const fine=e.shiftKey?0.1:1;
+    const rawDx=x-dynFreqStartX,rawDy=y-dynGainStartY;
+    if(eqDragAxis===0){
+      if(Math.hypot(rawDx,rawDy)<6)return;
+      eqDragAxis=Math.abs(rawDx)>Math.abs(rawDy)?1:2; // 1=frequency, 2=gain
+    }
+    const effectiveDx=eqDragAxis===1?rawDx:0;
+    const effectiveDy=eqDragAxis===2?rawDy:0;
     const startNorm=Math.pow(clamp((dynFreqStartHz-20)/(20000-20),0,1),1/5.02888112);
-    const norm=clamp(startNorm+(x-dynFreqStartX)/180*fine,0,1);
-    const hzv=20+(20000-20)*Math.pow(norm,5.02888112);
-    const deltaDb=-(y-dynGainStartY)/Math.max(1,h)*36*fine;
+    const norm=clamp(startNorm+effectiveDx/180*fine,0,1);
+    const hzv=eqDragAxis===1?20+(20000-20)*Math.pow(norm,5.02888112):dynFreqStartHz;
+    const deltaDb=-effectiveDy/Math.max(1,h)*36*fine;
     state.eq.freq[dragBand]=hzv;
     state.eq.gain[dragBand]=clamp(dynGainStartOffset+deltaDb,-24,24);
     sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
   }
   if(dragMode===2&&dragBand>=0){
     const fine=e.shiftKey?0.1:1;
-    const startNorm=Math.pow(clamp((dynTargetStartFreq-20)/(20000-20),0,1),1/5.02888112);
-    const norm=clamp(startNorm+(x-dynTargetStartX)/180*fine,0,1);
-    const hzv=20+(20000-20)*Math.pow(norm,5.02888112);
-    const desiredGain=clamp(dynGainStartTarget-(y-dynGainStartY)/Math.max(1,h)*36*fine,-24,24);
-    const offset=clamp(state.eq.gain[dragBand],-24,24);
-    state.eq.freq[dragBand]=hzv;
-    state.dyn.target[dragBand]=clamp(offset+(state.dyn.dynamics[dragBand]<0?-1:1)*Math.abs(desiredGain-offset),-24,24);
+    const deltaDynamics=-(y-dynDynamicsStartY)/Math.max(1,h)*200*fine;
+    state.dyn.dynamics[dragBand]=clamp(dynDynamicsStartValue+deltaDynamics,-100,100);
     sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
   }
   if(dragMode===4&&dragXover>=0){
@@ -619,8 +631,8 @@ eqCanvas.addEventListener("pointermove",e=>{
   }
   drawEQ();
 });
-eqCanvas.addEventListener("pointerup",()=>{dragMode=0;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;hideGraphHint();drawEQ();});
-eqCanvas.addEventListener("pointercancel",()=>{dragMode=0;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;hideGraphHint();drawEQ();});
+eqCanvas.addEventListener("pointerup",()=>{dragMode=0;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;eqDragAxis=0;hideGraphHint();drawEQ();});
+eqCanvas.addEventListener("pointercancel",()=>{dragMode=0;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;eqDragAxis=0;hideGraphHint();drawEQ();});
 function stopPlayback(){if(source){try{source.stop()}catch{}try{source.disconnect()}catch{}source=null}playing=false;$("#status").textContent="READY"}
 async function loadAudioFile(file){if(!file)return;try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();$("#status").textContent="DECODING…";audioBuffer=await audioCtx.decodeAudioData(await file.arrayBuffer());$("#fileName").textContent=file.name;$("#status").textContent="READY"}catch(e){$("#status").textContent="LOAD ERROR"}}
 async function startPlayback(){if(!audioBuffer){$("#status").textContent="先 LOAD AUDIO";return}await ensureAudioGraph();await audioCtx.resume();stopPlayback();source=audioCtx.createBufferSource();source.buffer=audioBuffer;source.loop=true;source.connect(workletNode);source.onended=()=>{if(playing){source=null;return}playing=false;$("#status").textContent="READY"};source.start();playing=true;$("#status").textContent="PLAYING · LOOP"}
