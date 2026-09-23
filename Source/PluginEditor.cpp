@@ -2563,16 +2563,16 @@ void VVChainAudioProcessorEditor::mouseDown(
         if (auto* parameter =
                 audioProcessor.apvts.getParameter("DYN_DYNAMICS" + n))
             parameter->beginChangeGesture();
-        setGraphControlState(
-            juce::StringArray({ "DYN_DYNAMICS" + n }), false);
         graphFreqDragStartX = pos.x;
         graphFreqDragStartHz = hz;
         if (auto* parameter =
                 audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
             parameter->beginChangeGesture();
-        setGraphControlState(
-            juce::StringArray({ "DYN_DYNAMICS" + n,
-                                "EQ" + n + "_FREQ" }), false);
+
+        juce::StringArray graphIds;
+        graphIds.add("DYN_DYNAMICS" + n);
+        graphIds.add("EQ" + n + "_FREQ");
+        setGraphControlState(graphIds, false);
 
         showGraphDragHint = true;
         graphDragHintPosition = pos;
