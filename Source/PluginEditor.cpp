@@ -852,10 +852,10 @@ bool VVChainAudioProcessorEditor::pointNearDynamicNode(
             juce::jlimit(-100.0f, 100.0f,
                          parameterValue("DYN_DYNAMICS" + juce::String(b + 1)));
 
-        const bool zeroRange = std::abs(dynamics) < 0.01f;
-        const bool hit = zeroRange
-            ? (d >= staticNodeRadius && d < hitRadius)
-            : (d < hitRadius);
+        // Keep the actual EQ node's inner hit circle reserved for EQ,
+        // even when DYNAMICS is only a few percent away from zero.
+        const bool hit =
+            d >= staticNodeRadius && d < hitRadius;
 
         if (hit && d < best)
         {
