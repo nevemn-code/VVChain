@@ -12,7 +12,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 .header{height:56px;border:1px solid #08090b;border-radius:7px;padding:8px 12px;background:linear-gradient(180deg,#343840,#181b20);display:flex;align-items:center;box-shadow:inset 0 1px #fff2}.logo{font-size:21px;font-weight:900;letter-spacing:.32em}.brandLine{display:flex;align-items:baseline;gap:12px}.lastModified{font:700 8px Consolas;color:#7f8893;letter-spacing:.04em;white-space:nowrap}.sub{font:8px Consolas;color:#828b96;margin-top:2px}.headerControls{margin-left:auto;display:flex;align-items:center;gap:8px}
 .leds{display:flex;gap:8px;margin-left:0}.ledBox{display:grid;grid-template-columns:21px auto;gap:3px;align-items:center;cursor:pointer}.led{width:19px;height:19px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 2px 4px #000}.led.on{background:radial-gradient(circle at 36% 30%,#fff 0%,var(--led) 22%,#25272b 78%,#101216 100%);box-shadow:0 0 10px var(--led),inset 0 1px #fff5}.ledLabel{font:7px Consolas;color:#a9b0b9}
 .rowTop{height:315px;margin-top:5px;display:block}.rowTop>.panel{display:none}.panel,.band{border:1px solid #08090b;border-radius:7px;background:linear-gradient(180deg,#292c32,#13161a);box-shadow:0 9px 18px #0009,inset 0 1px #fff1}.panelHead{height:29px;padding:6px 10px;border-bottom:1px solid #06070a;font-size:10px;font-weight:900;letter-spacing:.08em}.panelSub{font:7px Consolas;color:#7f8790;margin-top:1px}.eqShared{display:none}.graph{height:315px;border:1px solid #06070a;border-radius:7px;background:#111318;overflow:hidden;position:relative}.graph canvas{width:100%;height:100%;display:block}.graphHint{position:absolute;z-index:5;pointer-events:none;min-width:188px;padding:6px 9px;border:1px solid #fff9;border-radius:5px;background:#07090cf2;box-shadow:0 6px 18px #000b;color:#fff;font:700 9px Consolas;white-space:nowrap;text-align:center}
-.bandsFrame{height:500px;margin-top:6px;padding:7px;border:1px solid #07080a;border-radius:7px;background:linear-gradient(180deg,#20242a,#101216);box-shadow:0 10px 22px #0009}.bandGrid{height:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.band{position:relative;padding:7px;overflow:hidden}.band:after{content:"";position:absolute;inset:2px;border:1px solid var(--accent);opacity:.16;border-radius:5px;pointer-events:none}.bandHead{height:25px;display:flex;justify-content:space-between;align-items:center;color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.08em}.bandLed{position:absolute;right:7px;width:14px;height:14px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 1px 3px #000;z-index:3;padding:0}.bandLed.on{box-shadow:0 0 7px var(--led),inset 0 1px #fff5}.bandLed.ott{top:292px}.bandLed.type{top:372px}.bandLed.ott.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#facc15 25%,#25272b 78%,#101216 100%)}.bandLed.type.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#f472b6 25%,#25272b 78%,#101216 100%)}.bandHeadBtns{display:flex;align-items:center;gap:3px}.soloBtn{height:21px;padding:0 6px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.soloBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.advBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #555b63;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.band.bypassed{filter:grayscale(1)}.ottAdvBtn{position:absolute;left:7px;top:6px;height:21px;padding:0 7px;border-radius:4px;border:1px solid #5b4c1d;background:#17150f;color:#ffdf62;font:8px Consolas;z-index:4}.bandBody{height:calc(100% - 25px)}.deessZone{height:100%;display:grid;grid-template-columns:1fr;grid-template-rows:.8fr .8fr 1fr 1fr;gap:2px;padding:6px 5px}.bandLed.de{top:4px;right:7px;width:19px;height:19px}.bandLed.de.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#67d3aa 25%,#25272b 78%,#101216 100%);box-shadow:0 0 10px #67d3aa,inset 0 1px #fff5}.eqBody{height:calc(100% - 25px);padding:4px 2px;display:grid;grid-template-rows:80px 104px 80px 80px;gap:3px}.knobGrid{height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr;gap:3px}.dynSection{height:104px;border:1px solid #30343a;border-radius:5px;background:#0c0f13;padding:3px 4px}.dynHeader{height:16px;display:flex;align-items:center;justify-content:space-between;color:#fff;font:700 7.5px Consolas;letter-spacing:.08em}.dynHeader .msReadout{color:#9da7b1;font-weight:400}.dynModeRow{height:15px;display:grid;grid-template-columns:1fr 1fr;gap:3px;margin:1px 0}.dynModeBtn{height:14px;border:1px solid #444b55;border-radius:3px;background:#11151a;color:#cfd5dc;font:7px Consolas;font-weight:700}.dynModeBtn.on{background:#e8edf2;color:#090b0e}.dynControls{height:81px;display:grid;grid-template-columns:repeat(4,1fr);gap:3px}.dynControls .knob .dial{width:54px;height:54px}.dynControls .knob .dial:before{height:16px;transform-origin:50% 23px}.ottGrid,.bottomGrid{height:80px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.bottomGrid{grid-template-columns:repeat(2,1fr);padding:0 18%}.dynMuted{opacity:.45;filter:grayscale(1)}.knob{text-align:center;font:7.7px Consolas;color:#bcc3cb;min-width:0;position:relative}.modeSwitch{position:absolute;left:50%;top:-25px;transform:translateX(-50%);width:36px;height:12px;padding:0;display:flex;align-items:center;justify-content:space-around;border:1px solid #4b525b;border-radius:4px;background:#0b0d10;color:#aeb5bd;font:10px Consolas;font-weight:900;z-index:4}.modeSwitch i{position:absolute;top:2px;left:2px;width:14px;height:6px;border-radius:3px;background:#60a5fa;opacity:.85;transition:left .08s}.modeSwitch.ss i{left:18px}.modeSwitch span{position:relative;z-index:1}.modeSwitch.ss span:last-child,.modeSwitch:not(.ss) span:first-child{color:#fff}.dial{width:58px;height:58px;margin:0 auto 2px;border-radius:50%;border:2px solid #676c75;background:radial-gradient(circle at 34% 28%,#50545d,#2b2f35 58%,#15171b 100%);box-shadow:0 4px 9px #000c,inset 0 1px 2px #fff2;position:relative;touch-action:none;cursor:ns-resize}.dial:before{content:"";position:absolute;left:50%;top:4px;width:3px;height:18px;background:#fff;box-shadow:0 0 0 1px #0008;transform:translateX(-50%) rotate(var(--angle,-125deg));transform-origin:50% 25px;border-radius:2px}.dial{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 9px #000c,inset 0 1px 2px #fff2}.dial:after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;background:#eef2f7;transform:translate(-50%,-50%)}.knobTitle{height:13px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.knobValue{height:16px;line-height:14px;border:1px solid #050608;border-radius:3px;background:#07090b;color:#dce2e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8.8px}
+.bandsFrame{height:500px;margin-top:6px;padding:7px;border:1px solid #07080a;border-radius:7px;background:linear-gradient(180deg,#20242a,#101216);box-shadow:0 10px 22px #0009}.bandGrid{height:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.band{position:relative;padding:7px;overflow:hidden}.band:after{content:"";position:absolute;inset:2px;border:1px solid var(--accent);opacity:.16;border-radius:5px;pointer-events:none}.bandHead{height:25px;display:flex;justify-content:space-between;align-items:center;color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.08em}.bandLed{position:absolute;right:7px;width:14px;height:14px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 1px 3px #000;z-index:3;padding:0}.bandLed.on{box-shadow:0 0 7px var(--led),inset 0 1px #fff5}.bandLed.ott{top:292px}.bandLed.type{top:372px}.bandLed.ott.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#facc15 25%,#25272b 78%,#101216 100%)}.bandLed.type.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#f472b6 25%,#25272b 78%,#101216 100%)}.bandHeadBtns{display:flex;align-items:center;gap:3px}.soloBtn{height:21px;padding:0 6px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.soloBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.advBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #555b63;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.band.bypassed{filter:grayscale(1)}.ottAdvBtn{position:absolute;left:7px;top:6px;height:21px;padding:0 7px;border-radius:4px;border:1px solid #5b4c1d;background:#17150f;color:#ffdf62;font:8px Consolas;z-index:4}.bandBody{height:calc(100% - 25px)}.deessZone{height:100%;display:grid;grid-template-columns:1fr;grid-template-rows:.8fr .8fr 1fr 1fr;gap:2px;padding:6px 5px}.bandLed.de{top:4px;right:7px;width:19px;height:19px}.bandLed.de.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#67d3aa 25%,#25272b 78%,#101216 100%);box-shadow:0 0 10px #67d3aa,inset 0 1px #fff5}.eqBody{height:calc(100% - 25px);padding:4px 2px;display:grid;grid-template-rows:80px 104px 80px 80px;gap:3px}.knobGrid{height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr;gap:3px}.dynSection{height:104px;border:1px solid #30343a;border-radius:5px;background:#0c0f13;padding:3px 4px}.dynHeader{height:16px;display:flex;align-items:center;justify-content:space-between;color:#fff;font:700 7.5px Consolas;letter-spacing:.08em}.dynHeader .msReadout{color:#9da7b1;font-weight:400}.dynModeRow{height:15px;display:grid;grid-template-columns:1fr 1fr;gap:3px;margin:1px 0}.dynModeBtn{height:14px;border:1px solid #444b55;border-radius:3px;background:#11151a;color:#cfd5dc;font:7px Consolas;font-weight:700}.dynModeBtn.on{background:#e8edf2;color:#090b0e}.dynControls{height:81px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.dynControls .knob .dial{width:54px;height:54px}.dynControls .knob .dial:before{height:16px;transform-origin:50% 23px}.ottGrid,.bottomGrid{height:80px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.bottomGrid{grid-template-columns:repeat(2,1fr);padding:0 18%}.dynMuted{opacity:.45;filter:grayscale(1)}.knob{text-align:center;font:7.7px Consolas;color:#bcc3cb;min-width:0;position:relative}.modeSwitch{position:absolute;left:50%;top:-25px;transform:translateX(-50%);width:36px;height:12px;padding:0;display:flex;align-items:center;justify-content:space-around;border:1px solid #4b525b;border-radius:4px;background:#0b0d10;color:#aeb5bd;font:10px Consolas;font-weight:900;z-index:4}.modeSwitch i{position:absolute;top:2px;left:2px;width:14px;height:6px;border-radius:3px;background:#60a5fa;opacity:.85;transition:left .08s}.modeSwitch.ss i{left:18px}.modeSwitch span{position:relative;z-index:1}.modeSwitch.ss span:last-child,.modeSwitch:not(.ss) span:first-child{color:#fff}.dial{width:58px;height:58px;margin:0 auto 2px;border-radius:50%;border:2px solid #676c75;background:radial-gradient(circle at 34% 28%,#50545d,#2b2f35 58%,#15171b 100%);box-shadow:0 4px 9px #000c,inset 0 1px 2px #fff2;position:relative;touch-action:none;cursor:ns-resize}.dial:before{content:"";position:absolute;left:50%;top:4px;width:3px;height:18px;background:#fff;box-shadow:0 0 0 1px #0008;transform:translateX(-50%) rotate(var(--angle,-125deg));transform-origin:50% 25px;border-radius:2px}.dial{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 9px #000c,inset 0 1px 2px #fff2}.dial:after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;background:#eef2f7;transform:translate(-50%,-50%)}.knobTitle{height:13px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.knobValue{height:16px;line-height:14px;border:1px solid #050608;border-radius:3px;background:#07090b;color:#dce2e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8.8px}
 .advPopup{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,calc(100% - 40px));height:330px;border:1px solid #facc15cc;border-radius:10px;background:linear-gradient(180deg,#28231a,#101216);z-index:50;padding:8px 12px;box-shadow:0 18px 44px #000c,0 0 0 1px #0009}.advPopupHead{height:34px;display:flex;align-items:center;justify-content:space-between;color:#facc15;font:10px Consolas;font-weight:900}.advPopupClose{height:21px;padding:0 8px;border:1px solid #5c4e1f;border-radius:4px;background:#17150f;color:#ffdf62;font:8px Consolas}.advPopupGrid{height:276px;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:1fr 1fr;gap:2px}.advPopupGrid .dial{width:50px;height:50px}.advPopupGrid .dial:before{height:14px;transform-origin:50% 22px}.advPopupGrid .knobTitle{font-size:6.82px;height:11px}.advPopupGrid .knobValue{font-size:7.7px;height:14px;line-height:12px}.advPopupGrid .tiny{height:22px;padding:0 3px;font-size:6.5px;margin:auto}
 .footer{display:none}.masterBypass{height:27px;min-width:72px;padding:0 9px;border:1px solid #69717b;border-radius:4px;background:#20242a;color:#e9eef3;font:9px Consolas;font-weight:900}.masterBypass.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 12px #dfe7ef88}.app.globalBypass{filter:grayscale(1)}.leds{margin-left:8px}.note{display:none}select{height:27px;background:#0f1115;color:#dce2e8;border:1px solid #3b4047;border-radius:4px;font-size:8px}
 @media(max-width:1100px){.chain{display:none}.ledLabel{display:none}.dial{width:57px;height:57px}.footer{grid-template-columns:1fr 245px}}
@@ -26,7 +26,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span><span class="tiny" id="cursorTime">0:00.000</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">LAST MODIFIED 2026-09-22 22:08</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">GRAPH CONTROL PATCH · 2026-09-23</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -46,7 +46,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 <script>
 const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=null,workletNode=null,workletModuleUrl=null,playing=false;
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
-const state={masterBypass:false,solo:{band:-1,post:false},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:[35,35,35,35],colorBypass:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,threshold:[-24,-24,-24,-24],target:[3,3,2,2],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[false,false,false,false],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},ott:{bypass:false,bandBypass:[false,false,false,false],degree:[25,25,22,18],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[6,12,28,22],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:8000,intensity:3,offset:0},mix:{bypass:false,drywet:100,output:0}};
+const state={masterBypass:false,solo:{band:-1,post:false},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:[35,35,35,35],colorBypass:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[3,3,2,2],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[false,false,false,false],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},ott:{bypass:false,bandBypass:[false,false,false,false],degree:[25,25,22,18],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[6,12,28,22],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:8000,intensity:3,offset:0},mix:{bypass:false,drywet:100,output:0}};
 const defaults=structuredClone(state),knobRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 const WORKLET_SOURCE=`class VVChainWorklet extends AudioWorkletProcessor {\n  constructor(){\n    super();\n    this.ready=false; this.s=null;\n    this.N=512;\n    this.masterBlend=0;\n    this.soloBlend=0;\n    this._lastSoloBand=-9;\n    this._lastSoloPost=false;\n    this._meterBlocks=0;\n    this.ch=[this.makeCh(),this.makeCh()];\n    this.port.onmessage=e=>{\n      if(e.data&&e.data.type===\"params\"){\n        const next=e.data.state;\n        if(this.s&&(\n          Number(this.s.solo?.band??-1)!==Number(next.solo?.band??-1) ||\n          !!this.s.solo?.post!==!!next.solo?.post))\n          this.soloBlend=0;\n        this.s=next;\n        this.ready=true;\n      }\n    };\n  }\n  makeCh(){\n    const dynState=()=>({det:{z1:0,z2:0},eq:{z1:0,z2:0},env:-120});\n    return {\n      eq:Array.from({length:4},()=>({z1:0,z2:0})),\n      dynMid:Array.from({length:4},dynState),\n      dynSide:Array.from({length:4},dynState),\n      analogPrev:[0,0,0,0], analogDc:[0,0,0,0], analogPower:[0,0,0,0],\n      lp:[0,0,0], typeLp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,\n      lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0],\n      deHp:{z1:0,z2:0}, deHp2:{z1:0,z2:0}, deFast:0, deSlow:0, deGain:0, soloPre:[0,0,0], soloPost:[0,0,0]\n    };\n  }\n  clamp(v,a,b){return Math.max(a,Math.min(b,v))}\n  finite(v){return Number.isFinite(v)?v:0}\n  db2g(db){return Math.pow(10,db/20)}\n  g2db(g){return 20*Math.log10(Math.max(g,1e-9))}\n  tc(ms){return Math.exp(-1/(.001*Math.max(.1,ms)*sampleRate))}\n  biquad(x,c,z){const y=c[0]*x+z.z1;z.z1=c[1]*x-c[3]*y+z.z2;z.z2=c[2]*x-c[4]*y;return y}\n  peak(fs,f,q,g){\n    const A=Math.pow(10,g/40),w=2*Math.PI*this.clamp(f,10,fs*.45)/fs;\n    const a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w);\n    const b0=1+a*A,b1=-2*cc,b2=1-a*A,a0=1+a/A,a1=-2*cc,a2=1-a/A;\n    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]\n  }\n  bp(f,q=.707){\n    const w=2*Math.PI*this.clamp(f,10,sampleRate*.45)/sampleRate;\n    const sn=Math.sin(w),cc=Math.cos(w),a=sn/(2*Math.max(.1,q));\n    const b0=sn/2,b1=0,b2=-sn/2,a0=1+a,a1=-2*cc,a2=1-a;\n    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]\n  }\n  hp(f,q=.707){\n    const w=2*Math.PI*this.clamp(f,10,sampleRate*.45)/sampleRate;\n    const a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w);\n    const b0=(1+cc)/2,b1=-(1+cc),b2=(1+cc)/2;\n    const a0=1+a,a1=-2*cc,a2=1-a;\n    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]\n  }\n  dynamicStereo(l,r,stereo){
     const s=this.s,c=this.ch[0];
@@ -64,7 +64,8 @@ const WORKLET_SOURCE=`class VVChainWorklet extends AudioWorkletProcessor {\n  co
       const dynamicsSigned=this.clamp(Number(s.dyn.dynamics[b]??0),-100,100)/100;
       const dynamicsAmount=Math.abs(dynamicsSigned);
       const dynamicsDirection=dynamicsSigned>=0?1:-1;
-      const thr=this.clamp(Number(s.dyn.threshold[b]??-24),-60,0);
+      const dynAbs=Math.pow(Math.abs(dynamicsSigned),0.65);
+      const thr=this.clamp(-12+(dynamicsSigned<0?-12:12)*dynAbs,-60,0);
       const attack=this.clamp(Number(s.dyn.attack[b]||5),.1,200);
       const release=this.clamp(Number(s.dyn.release[b]||100),5,2000);
       const ac=this.tc(attack),rc=this.tc(release);
@@ -252,7 +253,6 @@ makeKnob(staticGrid,{label:"FREQ",get:()=>state.eq.freq[n],set:v=>state.eq.freq[
 makeKnob(staticGrid,{label:"GAIN",get:()=>state.eq.gain[n],set:v=>state.eq.gain[n]=v,min:-24,max:24,suffix:" dB",accent:cols[n],formatDigits:1});
 makeKnob(staticGrid,{label:"Q",get:()=>state.eq.q[n],set:v=>state.eq.q[n]=v,min:.1,max:18,accent:cols[n],formatDigits:2});
 
-makeKnob(dynControls,{label:"THRESH",get:()=>state.dyn.threshold[n],set:v=>state.dyn.threshold[n]=v,min:-60,max:0,suffix:" dB",accent:"#f8fafc",formatDigits:1});
 makeKnob(dynControls,{label:"DYNAMICS",get:()=>state.dyn.dynamics[n],set:v=>state.dyn.dynamics[n]=v,min:-100,max:100,suffix:" %",accent:"#f8fafc",formatDigits:0});
 makeKnob(dynControls,{label:"ATTACK",get:()=>state.dyn.attack[n],set:v=>state.dyn.attack[n]=v,min:.1,max:200,suffix:" ms",accent:"#f8fafc",formatDigits:1});
 makeKnob(dynControls,{label:"RELEASE",get:()=>state.dyn.release[n],set:v=>state.dyn.release[n]=v,min:5,max:2000,suffix:" ms",accent:"#f8fafc",formatDigits:0});
@@ -278,7 +278,7 @@ const ottAdvBtn=document.createElement("button");ottAdvBtn.className="ottAdvBtn"
 card.append(ottAdvBtn,ottLed,typeLed);
 
 const msReadout=card.querySelector("#msReadout"+n);
-const syncMsReadout=()=>{msReadout.textContent="TARGET "+fmt(state.dyn.target[n],1)+" dB · MID "+fmt(state.dyn.ms[n],0)+"% / SIDE "+fmt(100-state.dyn.ms[n],0)+"%"};
+const syncMsReadout=()=>{msReadout.textContent="TARGET "+fmt(dynamicEffectiveTargetGain(n),1)+" dB · AUTO THR "+fmt(dynamicThresholdFromDynamics(state.dyn.dynamics[n]),1)+" dB · MID "+fmt(state.dyn.ms[n],0)+"% / SIDE "+fmt(100-state.dyn.ms[n],0)+"%"};
 syncMsReadout();
 }
 
@@ -306,11 +306,16 @@ function dynamicTargetPoint(b,w,h){
   const target=dynamicEffectiveTargetGain(b);
   return {x:logX(state.eq.freq[b],w),y:h-(clamp(target,-18,18)+18)/36*h};
 }
+function dynamicThresholdFromDynamics(dynamics){
+  const d=clamp(Number(dynamics||0),-100,100);
+  const shape=Math.pow(Math.abs(d)*0.01,0.65);
+  return clamp(-12+(d<0?-12:12)*shape,-60,0);
+}
 function dynamicEffectiveTargetGain(b){
   const offset=clamp(state.eq.gain[b],-24,24);
   const target=clamp(state.dyn.target[b],-24,24);
-  const dynamics=clamp(Number(state.dyn.dynamics[b]??0),-100,100)/100;
-  return clamp(offset+(dynamics>=0?1:-1)*Math.abs(target-offset)*Math.abs(dynamics),-24,24);
+  const dynamics=clamp(Number(state.dyn.dynamics[b]??0),-100,100);
+  return clamp(offset+(dynamics<0?-1:1)*Math.abs(target-offset),-24,24);
 }
 function dynamicBandAtPointer(x,y,w,h){
   let best=22,band=-1;
@@ -321,8 +326,18 @@ function dynamicBandAtPointer(x,y,w,h){
   }
   return band;
 }
+function staticEqAtPointer(x,y,w,h){
+  let best=18,band=-1;
+  for(let b=0;b<4;b++){
+    const px=logX(state.eq.freq[b],w);
+    const py=h-(clamp(state.eq.gain[b],-18,18)+18)/36*h;
+    const d=Math.hypot(x-px,y-py);
+    if(d<best){best=d;band=b;}
+  }
+  return band;
+}
 function dynamicTargetAtPointer(x,y,w,h){
-  let best=14,band=-1;
+  let best=18,band=-1;
   for(let b=0;b<4;b++){
     const n=dynamicTargetPoint(b,w,h);
     const d=Math.hypot(x-n.x,y-n.y);
@@ -467,7 +482,7 @@ function drawEQ(){
       const live=state.eq.gain[b]+n.change;
       const dyn=Number(state.dyn.dynamics[b]||0);
       const dir=dyn>0?"EXPAND":dyn<0?"COMPRESS":"STATIC";
-      const label="B"+(b+1)+"  "+hz(state.eq.freq[b])+"  Q "+fmt(state.eq.q[b],2)+"  TARGET "+fmt(dynamicEffectiveTargetGain(b),1)+" dB  OFFSET "+fmt(state.eq.gain[b],1)+" dB  LIVE "+fmt(live,1)+" dB  DYN "+fmt(dyn,0)+"% "+dir+"  THR "+fmt(state.dyn.threshold[b],1)+" dB  "+(state.dyn.detectOnsets[b]?"ONSETS":"PEAK")+" / "+(state.dyn.triggerBelow[b]?"BELOW":"ABOVE");
+      const label="B"+(b+1)+"  "+hz(state.eq.freq[b])+"  Q "+fmt(state.eq.q[b],2)+"  TARGET "+fmt(dynamicEffectiveTargetGain(b),1)+" dB  OFFSET "+fmt(state.eq.gain[b],1)+" dB  LIVE "+fmt(live,1)+" dB  DYN "+fmt(dyn,0)+"% "+dir+"  AUTO THR "+fmt(dynamicThresholdFromDynamics(dyn),1)+" dB  "+(state.dyn.detectOnsets[b]?"ONSETS":"PEAK")+" / "+(state.dyn.triggerBelow[b]?"BELOW":"ABOVE");
       const lw=Math.min(530,w-12);
       let bx=clamp(n.x-lw/2,6,w-lw-6),by=Math.min(offsetY,t.y,n.y)-42;
       if(by<6)by=Math.max(offsetY,t.y,n.y)+18;
@@ -494,7 +509,7 @@ function drawEQ(){
   eqCtx.font="bold 8px Consolas";
   eqCtx.fillText("OXFORD-STYLE DYNAMIC EQ · OFFSET / TARGET / LIVE GAIN · RIGHT CLICK = M/S",12,h-8);
 }
-let expandedDynamicBand=-1,hoverDynamicBand=-1,drag=-1,dragXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dynFreqStartHz=0,dynFreqStartX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0;
+let expandedDynamicBand=-1,hoverDynamicBand=-1,dragMode=0,dragBand=-1,dragXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dynFreqStartHz=0,dynFreqStartX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0;
 function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRatio||1;eqCanvas.width=Math.max(1,Math.round(r.width*d));eqCanvas.height=Math.max(1,Math.round(r.height*d));eqCtx.setTransform(d,0,0,d,0,0);drawEQ();}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function showGraphHint(e,text){const r=eqCanvas.getBoundingClientRect();graphHint.textContent=text;graphHint.hidden=false;const pad=6,ox=12,oy=12,x=clamp(e.clientX-r.left+ox,pad,r.width-graphHint.offsetWidth-pad),y=clamp(e.clientY-r.top+oy,pad,r.height-graphHint.offsetHeight-pad);graphHint.style.left=x+"px";graphHint.style.top=y+"px";}
@@ -520,7 +535,7 @@ eqCanvas.addEventListener("pointerdown",e=>{
   if(expandedDynamicBand>=0){
     const p=dynamicPopupBounds(expandedDynamicBand,w,h);
     if(!(x>=p.x&&x<=p.x+p.w&&y>=p.y&&y<=p.y+p.h)){
-      expandedDynamicBand=-1;dragDynamicMsBand=-1;drawEQ();return;
+      expandedDynamicBand=-1;dragDynamicMsBand=-1;dragMode=0;drawEQ();return;
     }
   }
   if(e.button===2){
@@ -530,44 +545,82 @@ eqCanvas.addEventListener("pointerdown",e=>{
   if(expandedDynamicBand>=0){
     const p=dynamicPopupBounds(expandedDynamicBand,w,h),bar={x:p.x+12,y:p.y+50,w:p.w-24,h:11};
     if(x>=p.x&&x<=p.x+p.w&&y>=p.y&&y<=p.y+p.h){
-      if(e.button===0&&x>=bar.x&&x<=bar.x+bar.w&&y>=bar.y-8&&y<=bar.y+20){dragDynamicMsBand=expandedDynamicBand;eqCanvas.setPointerCapture(e.pointerId);state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);sendParams();drawEQ();}
+      if(e.button===0&&x>=bar.x&&x<=bar.x+bar.w&&y>=bar.y-8&&y<=bar.y+20){
+        dragDynamicMsBand=expandedDynamicBand;dragMode=3;
+        eqCanvas.setPointerCapture(e.pointerId);
+        state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);
+        sendParams();drawEQ();
+      }
       return;
     }
   }
+  if(e.button!==0)return;
+
+  // Static EQ node: direct XY editing of Frequency + Gain.
+  const staticBand=staticEqAtPointer(x,y,w,h);
+  if(staticBand>=0){
+    dragMode=1;dragBand=staticBand;dragXover=-1;dragDynamicTargetBand=-1;
+    dynFreqStartHz=state.eq.freq[staticBand];dynFreqStartX=x;
+    dynGainStartY=y;dynGainStartOffset=state.eq.gain[staticBand];
+    eqCanvas.setPointerCapture(e.pointerId);
+    showGraphHint(e,"EQ "+(staticBand+1)+"  "+hz(state.eq.freq[staticBand])+"  GAIN "+fmt(state.eq.gain[staticBand],1)+" dB");
+    return;
+  }
+
+  // Dynamic Target node: direct XY editing of Frequency + Dynamic Gain.
   const tb=dynamicTargetAtPointer(x,y,w,h);
-  if(e.button===0&&tb>=0){dragDynamicTargetBand=tb;drag=-1;dynGainStartY=y;dynGainStartTarget=state.dyn.target[tb];eqCanvas.setPointerCapture(e.pointerId);return;}
-  const band=dynamicBandAtPointer(x,y,w,h);
-  if(e.button===0&&band>=0){drag=band;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;dynFreqStartHz=state.eq.freq[band];dynFreqStartX=x;dynGainStartY=y;dynGainStartOffset=state.eq.gain[band];dynGainStartTarget=state.dyn.target[band];eqCanvas.setPointerCapture(e.pointerId);return;}
+  if(tb>=0){
+    dragMode=2;dragBand=tb;dragXover=-1;dragDynamicTargetBand=tb;
+    dynTargetStartFreq=state.eq.freq[tb];dynTargetStartX=x;
+    dynGainStartY=y;dynGainStartTarget=dynamicEffectiveTargetGain(tb);
+    eqCanvas.setPointerCapture(e.pointerId);
+    showGraphHint(e,"DYN GAIN "+(tb+1)+"  "+fmt(dynGainStartTarget,1)+" dB  "+hz(dynTargetStartFreq)+"  AUTO THR "+fmt(dynamicThresholdFromDynamics(state.dyn.dynamics[tb]),1)+" dB");
+    return;
+  }
+
+  // X1/X2/X3 crossover lines.
   const xo=state.ott.x.map(v=>logX(v,w));
-  for(let i=0;i<3;i++)if(Math.abs(xo[i]-x)<14){dragXover=i;eqCanvas.setPointerCapture(e.pointerId);return;}
+  for(let i=0;i<3;i++)if(Math.abs(xo[i]-x)<14){dragMode=4;dragXover=i;eqCanvas.setPointerCapture(e.pointerId);return;}
 });
 eqCanvas.addEventListener("pointermove",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,0,r.width),y=clamp(e.clientY-r.top,0,r.height),w=r.width,h=r.height;
-  hoverDynamicBand=dynamicBandAtPointer(x,y,w,h);
-  if(dragDynamicMsBand>=0){const p=dynamicPopupBounds(dragDynamicMsBand,w,h),bar={x:p.x+12,y:p.y+50,w:p.w-24,h:11};state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);sendParams();drawEQ();return;}
-  if(dragDynamicTargetBand>=0){state.dyn.target[dragDynamicTargetBand]=clamp(dynGainStartTarget-(y-dynGainStartY)/Math.max(1,h)*36,-24,24);sendParams();drawEQ();return;}
-  if(dragXover>=0){
+  hoverDynamicBand=dynamicTargetAtPointer(x,y,w,h);
+  if(dragDynamicMsBand>=0){
+    const p=dynamicPopupBounds(dragDynamicMsBand,w,h),bar={x:p.x+12,y:p.y+50,w:p.w-24,h:11};
+    state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);sendParams();drawEQ();return;
+  }
+  if(dragMode===1&&dragBand>=0){
+    const fine=e.shiftKey?0.1:1;
+    const startNorm=Math.pow(clamp((dynFreqStartHz-20)/(20000-20),0,1),1/5.02888112);
+    const norm=clamp(startNorm+(x-dynFreqStartX)/180*fine,0,1);
+    const hzv=20+(20000-20)*Math.pow(norm,5.02888112);
+    const deltaDb=-(y-dynGainStartY)/Math.max(1,h)*36*fine;
+    state.eq.freq[dragBand]=hzv;
+    state.eq.gain[dragBand]=clamp(dynGainStartOffset+deltaDb,-24,24);
+    sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
+  }
+  if(dragMode===2&&dragBand>=0){
+    const fine=e.shiftKey?0.1:1;
+    const startNorm=Math.pow(clamp((dynTargetStartFreq-20)/(20000-20),0,1),1/5.02888112);
+    const norm=clamp(startNorm+(x-dynTargetStartX)/180*fine,0,1);
+    const hzv=20+(20000-20)*Math.pow(norm,5.02888112);
+    const desiredGain=clamp(dynGainStartTarget-(y-dynGainStartY)/Math.max(1,h)*36*fine,-24,24);
+    const offset=clamp(state.eq.gain[dragBand],-24,24);
+    state.eq.freq[dragBand]=hzv;
+    state.dyn.target[dragBand]=clamp(offset+(state.dyn.dynamics[dragBand]<0?-1:1)*Math.abs(desiredGain-offset),-24,24);
+    sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
+  }
+  if(dragMode===4&&dragXover>=0){
     let f=invLog(x/w);
     if(dragXover===0)f=clamp(f,40,Math.min(1000,state.ott.x[1]-80));
     else if(dragXover===1)f=clamp(f,state.ott.x[0]+80,Math.min(5000,state.ott.x[2]-200));
     else f=clamp(f,state.ott.x[1]+200,18000);
     state.ott.x[dragXover]=f;sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
   }
-  if(drag<0){drawEQ();return;}
-  const fineScale=e.shiftKey?0.1:1;
-  const freqSkew=5.02888112;
-  const startNorm=Math.pow(clamp((dynFreqStartHz-20)/(20000-20),0,1),1/freqSkew);
-  const norm=clamp(startNorm+(x-dynFreqStartX)/180*fineScale,0,1);
-  const hzv=20+(20000-20)*Math.pow(norm,freqSkew);
-  const deltaDb=-(y-dynGainStartY)/Math.max(1,h)*36*fineScale;
-  state.eq.freq[drag]=hzv;
-  state.eq.gain[drag]=clamp(dynGainStartOffset+deltaDb,-24,24);
-  state.dyn.target[drag]=clamp(dynGainStartTarget+deltaDb,-24,24);
-  sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());
+  drawEQ();
 });
-eqCanvas.addEventListener("pointerup",()=>{drag=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;drawEQ();});
-eqCanvas.addEventListener("pointercancel",()=>{drag=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;drawEQ();});
-
+eqCanvas.addEventListener("pointerup",()=>{dragMode=0;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;hideGraphHint();drawEQ();});
+eqCanvas.addEventListener("pointercancel",()=>{dragMode=0;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;hideGraphHint();drawEQ();});
 function stopPlayback(){if(source){try{source.stop()}catch{}try{source.disconnect()}catch{}source=null}playing=false;$("#status").textContent="READY"}
 async function loadAudioFile(file){if(!file)return;try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();$("#status").textContent="DECODING…";audioBuffer=await audioCtx.decodeAudioData(await file.arrayBuffer());$("#fileName").textContent=file.name;$("#status").textContent="READY"}catch(e){$("#status").textContent="LOAD ERROR"}}
 async function startPlayback(){if(!audioBuffer){$("#status").textContent="先 LOAD AUDIO";return}await ensureAudioGraph();await audioCtx.resume();stopPlayback();source=audioCtx.createBufferSource();source.buffer=audioBuffer;source.loop=true;source.connect(workletNode);source.onended=()=>{if(playing){source=null;return}playing=false;$("#status").textContent="READY"};source.start();playing=true;$("#status").textContent="PLAYING · LOOP"}
