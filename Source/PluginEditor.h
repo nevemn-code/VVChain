@@ -35,6 +35,7 @@ private:
             // JUCE enables wheel interaction by default; make it explicit so
             // look-and-feel / host changes cannot silently disable it.
             setScrollWheelEnabled(true);
+            setMouseDragSensitivity(180);
         }
 
         void setWheelBehaviour(double step, bool logarithmic = false)
@@ -44,11 +45,23 @@ private:
             wheelRemainder = 0.0;
         }
 
+        void mouseDown(const juce::MouseEvent& e) override
+        {
+            fineDragging = e.mods.isShiftDown();
+            setMouseDragSensitivity(fineDragging ? 1800 : 180);
+            juce::Slider::mouseDown(e);
+        }
+
+        void mouseUp(const juce::MouseEvent& e) override
+        {
+            juce::Slider::mouseUp(e);
+            fineDragging = false;
+            setMouseDragSensitivity(180);
+        }
+
         void mouseWheelMove(const juce::MouseEvent& e,
                             const juce::MouseWheelDetails& wheel) override
         {
-            juce::ignoreUnused(e);
-
             if (!isEnabled() || !isScrollWheelEnabled()
                 || std::abs(wheel.deltaY) < 0.000001f)
                 return;
@@ -66,7 +79,16 @@ private:
 
             double next = getValue();
 
-            if (wheelLogarithmic)
+            if (e.mods.isShiftDown())
+            {
+                // Shift-wheel is always one host/APVTS parameter increment.
+                // This is the finest deterministic adjustment this control
+                // can make, regardless of the normal wheel step.
+                const double fineStep =
+                    std::max(0.000001, static_cast<double>(getInterval()));
+                next += static_cast<double>(ticks) * fineStep;
+            }
+            else if (wheelLogarithmic)
             {
                 // About one semitone per wheel tick: familiar studio-style
                 // frequency adjustment without huge jumps at the top end.
@@ -79,7 +101,6 @@ private:
             }
 
             next = juce::jlimit(getMinimum(), getMaximum(), next);
-
             setValue(next, juce::sendNotificationSync);
         }
 
@@ -87,6 +108,7 @@ private:
         double wheelStep = 1.0;
         double wheelRemainder = 0.0;
         bool wheelLogarithmic = false;
+        bool fineDragging = false;
     };
 
     class MetalLookAndFeel final : public juce::LookAndFeel_V4
