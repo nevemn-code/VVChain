@@ -93,6 +93,7 @@ def run():
         else:
             x = amp * np.linspace(-1.0, 1.0, n)
 
+        input_rms = float(np.sqrt(np.mean(x * x)))
         y = process_reference(x, drive, amount)
         expected = process_reference(x, drive, amount)
         max_exact_reference_error = max(
