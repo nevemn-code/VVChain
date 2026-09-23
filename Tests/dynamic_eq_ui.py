@@ -184,6 +184,10 @@ def test_eq_xy_drag_math():
     assert 'hoverXover' in head
     assert 'markerY=20' not in web
     assert 'quadraticCurveTo(x,h*.5-16' in web
+    assert 'controlId:"OTT_X1"' in web
+    assert 'controlId:"OTT_X2"' in web
+    assert 'controlId:"OTT_X3"' in web
+    assert 'controlId:"XOVER_OVERLAP"' in web
     assert 'hoverXover' in web
     assert 'GAIN / FREQ / Q' in cpp
     assert 'label:"GAIN"' in web and 'label:"FREQ"' in web
