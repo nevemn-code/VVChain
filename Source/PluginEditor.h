@@ -54,15 +54,10 @@ private:
             m_gainText = gainText;
             m_lastPos = mousePos;
 
+            // Fixed width avoids repeated font-metric work on every mouse move.
+            // The box is deliberately compact but wide enough for frequency + signed dB.
             if (textChanged || m_boxWidth <= 0)
-            {
-                const int wFreq =
-                    m_font.getStringWidth(m_freqText);
-                const int wGain =
-                    m_font.getStringWidth(m_gainText);
-                m_boxWidth = juce::jlimit(
-                    118, 190, juce::jmax(wFreq, wGain) + 18);
-            }
+                m_boxWidth = 150;
 
             constexpr int boxHeight = 36;
             int targetX = mousePos.x + 14;
