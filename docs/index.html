@@ -606,18 +606,24 @@ eqCanvas.addEventListener("pointermove",e=>{
   }
   if(dragMode===1&&dragBand>=0){
     const fine=e.shiftKey?0.1:1;
-    // Compensate for the exact grab point so the EQ node stays under the pointer.
+    // Convert the pointer back to the node's grabbed anchor point first.
+    // Comparing that corrected coordinate with the mouse-start X caused
+    // an artificial first-frame jump and made the node run ahead.
+    const nodeStartX=logX(dynFreqStartHz,w);
     const correctedX=x-dynFreqGrabOffsetX;
-    const rawDx=correctedX-dynFreqStartX,rawDy=y-dynGainStartY;
+    const rawDx=correctedX-nodeStartX,rawDy=y-dynGainStartY;
     if(eqDragAxis===0){
       if(Math.hypot(rawDx,rawDy)<6)return;
-      eqDragAxis=Math.abs(rawDx)>Math.abs(rawDy)?1:2; // 1=frequency, 2=gain
+      eqDragAxis=Math.abs(rawDx)>Math.abs(rawDy)?1:2;
     }
     const effectiveDx=eqDragAxis===1?rawDx:0;
     const effectiveDy=eqDragAxis===2?rawDy:0;
-    const startNorm=Math.pow(clamp((dynFreqStartHz-20)/(20000-20),0,1),1/5.02888112);
-    const norm=clamp(startNorm+effectiveDx/1350*fine,0,1);
-    const hzv=eqDragAxis===1?20+(20000-20)*Math.pow(norm,5.02888112):dynFreqStartHz;
+    // Match logX()/invLog() exactly so the graph node follows the cursor.
+    // 0.74 retains the requested slower feel without the previous overshoot.
+    const startNorm=Math.log(Math.max(20,dynFreqStartHz)/20)/Math.log(1000);
+    const followScale=0.74;
+    const norm=clamp(startNorm+(effectiveDx/Math.max(1,w))*followScale*fine,0,1);
+    const hzv=eqDragAxis===1?20*Math.pow(1000,norm):dynFreqStartHz;
     const deltaDb=-effectiveDy/Math.max(1,h)*36*fine;
     state.eq.freq[dragBand]=hzv;
     state.eq.gain[dragBand]=clamp(dynGainStartOffset+deltaDb,-24,24);

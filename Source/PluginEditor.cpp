@@ -2321,19 +2321,14 @@ void VVChainAudioProcessorEditor::mouseDrag(
         const float dragScale =
             event.mods.isShiftDown() ? 0.1f : 1.0f;
 
-        const float startNorm =
-            std::log(
-                juce::jlimit(20.f, 20000.f, graphFreqDragStartHz) / 20.f)
-            / std::log(1000.f);
-
-        // Latch the intended axis after the first few pixels. This
-        // completely prevents hand jitter during Gain drags from changing
-        // Frequency, while still allowing deliberate Frequency-only movement.
-        // Compensate for the exact grab point so the EQ node stays under the pointer.
+        // Convert the pointer back to the node's grabbed anchor point first.
+        // The old code subtracted the grab offset but then compared against
+        // the MOUSE start X, which introduced an artificial jump/overshoot.
+        const float nodeStartX =
+            graphFrequencyToX(graph, graphFreqDragStartHz);
         const float correctedPointerX =
             event.position.x - graphFreqDragGrabOffsetX;
-        const float rawDx =
-            correctedPointerX - graphFreqDragStartX;
+        const float rawDx = correctedPointerX - nodeStartX;
         const float rawDy =
             event.position.y - dynamicGainDragStartY;
         constexpr float axisLockPixels = 6.0f;
@@ -2356,15 +2351,23 @@ void VVChainAudioProcessorEditor::mouseDrag(
             graphEqDragAxis == GraphEqDragAxis::Gain
                 ? rawDy : 0.0f;
 
+        // Use the exact logarithmic X mapping used by the graph. The previous
+        // polynomial conversion did not match graphFrequencyToX(), so the node
+        // visually ran ahead of the cursor. 0.74 keeps the requested slower
+        // feel while preserving the correct cursor-to-node relationship.
+        const float startNorm =
+            logMap(graphFreqDragStartHz, 20.f, 20000.f);
+        constexpr float followScale = 0.74f;
         const float norm =
             juce::jlimit(
                 0.f, 1.f,
                 startNorm
-                    + effectiveDx / 1350.f * dragScale);
+                    + (effectiveDx / juce::jmax(1.f, graph.getWidth()))
+                        * followScale * dragScale);
 
         const float hz =
             graphEqDragAxis == GraphEqDragAxis::Frequency
-                ? 20.f * std::pow(1000.f, norm)
+                ? invLogMap(norm, 20.f, 20000.f)
                 : graphFreqDragStartHz;
 
         const float deltaDb =
