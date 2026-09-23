@@ -2149,16 +2149,13 @@ void VVChainAudioProcessorEditor::resized()
 
         placeKnob("DEESS_FREQ",
                   { deInnerX, startY,
-                    deInnerW, knobH });
+                    deInnerW, 170 });
         placeKnob("DEESS_INTENSITY",
-                  { deInnerX, startY + knobH + knobGap,
-                    deInnerW, knobH });
-        placeKnob("DEESS_AVERAGE_OFFSET",
-                  { deInnerX, startY + (knobH + knobGap) * 2,
-                    deInnerW, knobH });
+                  { deInnerX, startY + 176,
+                    deInnerW, 170 });
 
-        // Fourth DE-ESSER control is kept vertical; MIX / OUT live on right.
-        // The Average Offset remains a real DE-ESSER parameter for the UI.
+        // MIX / OUT are intentionally removed from the DE-ESSER column and
+        // live in the right-side global-BYPASS block below DELTA.
         if (deessBypassButton)
             deessBypassButton->setBounds(
                 monitorX + halfW / 2 - 31,
