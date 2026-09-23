@@ -169,8 +169,8 @@ def test_eq_xy_drag_math():
     assert 'dynamicRangeDb' in cpp
     assert 'dynamicOffsetDb' in cpp
     assert 'gainDeltaDb' in dsp
-    assert 'std::abs(juce::jlimit(-18.f, 18.f' in dsp
-    assert 'dynamicRangeDb' in web
+    assert 'const float dynamicRangeDb = 18.0f;' in dsp
+    assert 'const dynamicRangeDb=18;' in web
     assert 'const bool dynamicsEnabled = true;' in cpp
     assert 'const float markerY = graph.getBottom() - 18.f;' in cpp
     assert 'small cross marker at the bottom' in cpp
@@ -196,7 +196,7 @@ def test_dynamic_range_centered_500():
     rng = random.Random(20260923_500)
     for _ in range(500):
         static_db = rng.uniform(-18.0, 18.0)
-        dynamic_range_db = rng.uniform(-18.0, 18.0)
+        dynamic_range_db = 18.0
         dynamics_pct = rng.uniform(-100.0, 100.0)
         amount = abs(dynamics_pct) / 100.0
         direction = -1.0 if dynamics_pct < 0.0 else 1.0
@@ -210,6 +210,7 @@ def test_dynamic_range_centered_500():
         if abs(static_db + contribution) <= 36.0:
             assert abs(expected - (static_db + contribution)) < 1e-9
 
+    # The production model uses a fixed full span of ±18 dB from the EQ center.
     # Exact semantic example:
     # EQ +3 dB is the center; full dynamic span reaches +21 dB or -15 dB.
     assert dynamic_target(3.0, 18.0, 100.0) == 21.0
