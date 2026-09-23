@@ -1966,6 +1966,12 @@ void VVChainAudioProcessorEditor::drawGraphDragHint(
     if (!showGraphDragHint)
         return;
 
+    // EQ/DYNAMICS values are now rendered by FloatingValueBox next to the
+    // pointer. Keep the older graph-anchored drag hint only for X-over/other
+    // graph controls so the two hint systems never overlap.
+    if (graphHintBand >= 0)
+        return;
+
     const float paddingX = 7.0f;
     const float boxH = 30.0f;
     const float gap = 4.0f;
