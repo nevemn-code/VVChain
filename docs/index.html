@@ -26,7 +26,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span><span class="tiny" id="cursorTime">0:00.000</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">PLAYBACK WATCHDOG + GLOBAL BYPASS + CONTINUOUS XOVER + DEESSER VERTICAL + MIX/OUT · 2026-09-23 18:41</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">DSP PARAM BRIDGE + TRUE DELTA + BOTTOM QUADRATIC XOVER · 2026-09-23 18:51</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -149,8 +149,17 @@ async function ensureAudioGraph(){
   if(!workletNode){
     await audioCtx.audioWorklet.addModule(makeWorkletUrl());
     workletNode=new AudioWorkletNode(audioCtx,"vvchain-worklet",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});
-    workletNode.onprocessorerror=()=>switchToDirectAudioFallback();
+    workletFaulted=false;
+    workletNode.onprocessorerror=()=>{
+      workletFaulted=true;
+      switchToDirectAudioFallback();
+    };
     workletNode.port.onmessage=e=>{
+      if(e.data?.type==="ready"){
+        workletHeartbeatSeen=true;
+        if(playing)$("#status").textContent="PLAYING · LOOP";
+        return;
+      }
       if(e.data?.type==="dynMeters"){
         workletHeartbeatSeen=true;
         state.dyn.gainMid=Array.from(e.data.mid||[0,0,0,0]);
@@ -162,7 +171,23 @@ async function ensureAudioGraph(){
     workletNode.port.postMessage({type:"params",state});
   }
 }
-function sendParams(){if(workletNode&&!directFallback)workletNode.port.postMessage({type:"params",state})}
+let workletFaulted=false;
+function reconnectProcessingPath(){
+  if(!directFallback||workletFaulted||!workletNode||!source)return false;
+  try{
+    source.disconnect();
+    source.connect(workletNode);
+    directFallback=false;
+    if(playing)$("#status").textContent="PLAYING · LOOP";
+    workletNode.port.postMessage({type:"params",state});
+    return true;
+  }catch{return false}
+}
+function sendParams(){
+  if(!workletNode)return;
+  if(directFallback&&!workletFaulted&&!reconnectProcessingPath())return;
+  if(!directFallback)workletNode.port.postMessage({type:"params",state});
+}
 const masterBypass=$("#masterBypass"),syncMaster=()=>{
   masterBypass.classList.toggle("on",state.masterBypass);
   document.querySelector(".app").classList.toggle("globalBypass",state.masterBypass);
@@ -438,13 +463,12 @@ function drawEQ(){
     eqCtx.beginPath();eqCtx.moveTo(0,y);eqCtx.lineTo(w,y);eqCtx.stroke();
   }
 
-  // X1 / X2 / X3 crossover lines + bottom cross markers.
-  // Frequency stays draggable on the line; curvature/OVERLAP is wheel-only
-  // when the pointer is over the bottom cross marker.
+  // X1 / X2 / X3 crossover lines + bottom continuous quadratic markers.
+  // The old middle crossover curve is gone; each X-over has one continuous
+  // figure-eight path at the very bottom, with OVERLAP changing its size.
   for(let b=0;b<3;b++){
     const x=logX(state.ott.x[b],w);
     const ov=clamp((state.ott.overlap||[50,50,50])[b]||50,0,100);
-    const spread=16+ov*.52;
     const markerY=h-18;
     const labelY=h-34;
 
@@ -456,18 +480,17 @@ function drawEQ(){
     eqCtx.fillStyle="#ffe36a";eqCtx.font="bold 8px Consolas";eqCtx.textAlign="center";
     eqCtx.fillText("X"+(b+1)+" "+hz(state.ott.x[b]),x,labelY+11);
 
-    const bowWidth=5+ov*0.10;
-    const bowHeight=3+ov*0.055;
-    eqCtx.strokeStyle=hovered?"#fff3a8":"#ffe36acc";eqCtx.lineWidth=hovered?2:1.45;
+    const eightWidth=5+ov*0.10;
+    const eightHeight=2.8+ov*0.055;
+    eqCtx.strokeStyle=hovered?"#fff3a8":"#ffe36acc";
+    eqCtx.lineWidth=hovered?2:1.45;
     eqCtx.beginPath();
     eqCtx.moveTo(x,markerY);
-    eqCtx.bezierCurveTo(x-bowWidth*.38,markerY-bowHeight,x-bowWidth,markerY-bowHeight,x-bowWidth,markerY);
-    eqCtx.bezierCurveTo(x-bowWidth,markerY+bowHeight,x-bowWidth*.38,markerY+bowHeight,x,markerY);
-    eqCtx.bezierCurveTo(x+bowWidth*.38,markerY-bowHeight,x+bowWidth,markerY-bowHeight,x+bowWidth,markerY);
-    eqCtx.bezierCurveTo(x+bowWidth,markerY+bowHeight,x+bowWidth*.38,markerY+bowHeight,x,markerY);
+    eqCtx.quadraticCurveTo(x-eightWidth,markerY-eightHeight,x,markerY-2*eightHeight);
+    eqCtx.quadraticCurveTo(x+eightWidth,markerY-eightHeight,x,markerY);
+    eqCtx.quadraticCurveTo(x-eightWidth,markerY+eightHeight,x,markerY+2*eightHeight);
+    eqCtx.quadraticCurveTo(x+eightWidth,markerY+eightHeight,x,markerY);
     eqCtx.stroke();
-    eqCtx.fillStyle=hovered?"#fff8cc":"#facc15";
-    eqCtx.beginPath();eqCtx.arc(x,markerY,2.5,0,Math.PI*2);eqCtx.fill();
     eqCtx.textAlign="left";
   }
 
@@ -722,7 +745,7 @@ eqCanvas.addEventListener("pointerdown",e=>{
     return;
   }
 
-  // Bottom infinity marker = continuous shared OVERLAP control.
+  // Bottom figure-eight marker = continuous shared OVERLAP control.
   const xo=state.ott.x.map(v=>logX(v,w));
   const markerY=h-18;
   for(let i=0;i<3;i++){
@@ -814,6 +837,7 @@ async function startPlayback(){
   await audioCtx.resume();
   stopPlayback();
   directFallback=false;
+  workletFaulted=false;
   workletHeartbeatSeen=false;
   try{await ensureAudioGraph()}catch{
     source=audioCtx.createBufferSource();
@@ -829,7 +853,19 @@ async function startPlayback(){
   source.connect(directFallback?audioCtx.destination:workletNode);
   source.onended=()=>{if(playing){source=null;return}playing=false;$("#status").textContent="READY"};
   source.start();playing=true;$("#status").textContent="PLAYING · LOOP";
-  setTimeout(()=>{if(playing&&!workletHeartbeatSeen&&!directFallback)switchToDirectAudioFallback()},800);
+  // Give the worklet enough time to publish its ready heartbeat before any
+  // compatibility fallback. A transient startup delay must never disable DSP.
+  setTimeout(()=>{
+    if(playing&&!workletHeartbeatSeen&&!directFallback&&!workletFaulted){
+      $("#status").textContent="PLAYING · DSP STARTING";
+      try{workletNode?.port.postMessage({type:"params",state})}catch{}
+    }
+  },1200);
+  setTimeout(()=>{
+    if(playing&&!workletHeartbeatSeen&&!directFallback&&!workletFaulted){
+      switchToDirectAudioFallback();
+    }
+  },3500);
 }
 $("#audioFileInput").addEventListener("change",e=>loadAudioFile(e.target.files[0]));$("#playBtn").onclick=()=>startPlayback().catch(()=>$("#status").textContent="PLAY ERROR");$("#stopBtn").onclick=stopPlayback;$("#resetBtn").onclick=()=>location.reload();
 </script>
