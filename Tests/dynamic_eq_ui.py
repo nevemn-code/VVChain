@@ -546,8 +546,9 @@ def test_v103_ui_rules_50():
     assert "deessLocalBypassButton" in head
     assert 'DEESS_BYPASS", *deessLocalBypassButton' in cpp
 
-    assert "const rawDx=x-dynTargetStartX" in web
-    assert "const rawDx=x-dynTargetStartX,rawDy=y-dynDynamicsStartY;" in web
+    assert "const correctedX=clamp(x-dynFreqGrabOffsetX,0,w);" in web
+    assert "const rawDx=correctedX-logX(dynTargetStartFreq,w),rawDy=y-dynDynamicsStartY;" in web
+    assert "const hzv=invLog(correctedX/w);" in web
     assert "state.eq.freq[dragBand]=hzv" in web
     assert 'setParameter("EQ" + n + "_FREQ", hz);' in cpp
     assert 'setParameter("DYN_DYNAMICS" + n, dynamics);' in cpp
@@ -581,9 +582,9 @@ def test_v103_closed_10():
         assert 'this.peak(sampleRate,f,sq,sGain)' not in worklet
 
         # DYNAMICS Target XY mapping.
-        assert "const rawDx=x-dynTargetStartX" in web
-        assert "const rawDx=x-dynTargetStartX,rawDy=y-dynDynamicsStartY;" in web
-        assert "const norm=clamp(startNorm+(rawDx/Math.max(1,w))*0.74*fine,0,1)" in web
+        assert "const correctedX=clamp(x-dynFreqGrabOffsetX,0,w);" in web
+        assert "const rawDx=correctedX-logX(dynTargetStartFreq,w),rawDy=y-dynDynamicsStartY;" in web
+        assert "const hzv=invLog(correctedX/w);" in web
         assert "state.eq.freq[dragBand]=hzv" in web
         assert "state.dyn.dynamics[dragBand]=clamp" in web
 
