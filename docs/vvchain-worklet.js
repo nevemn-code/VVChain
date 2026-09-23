@@ -246,25 +246,35 @@ class VVChainWorklet extends AudioWorkletProcessor {
       y=original*(1-mix)+sum*mix;
     }
     if(!s.type.bypass){
-      const ti=y*this.db2g(s.type.input),attack=this.tc(s.type.attack),release=this.tc(s.type.release);
-      const a80=1-Math.exp(-2*Math.PI*80/sampleRate),a3k=1-Math.exp(-2*Math.PI*3000/sampleRate),a9k=1-Math.exp(-2*Math.PI*9000/sampleRate);
-      c.typeLp[0]+=a80*(ti-c.typeLp[0]);const b1=c.typeLp[0];
-      c.typeLp[1]+=a3k*(ti-c.typeLp[1]);const b3=ti-c.typeLp[1];
-      c.typeLp[2]+=a9k*(ti-c.typeLp[2]);const b4=ti-c.typeLp[2];
-      const bands=[b1,ti-b1-b3,b3,b4];let enhancement=0;
+      const ti=y*this.db2g(s.type.input);
+      const mix=this.clamp(Number(s.type.mix)/100,0,1);
+
+      // TAPE-A is intentionally stateless. Its attack/release parameters are
+      // retained for preset/UI compatibility but do not drive gain movement.
+      const b1=c.typeLp[0],b3=ti-c.typeLp[1],b4=ti-c.typeLp[2],b2=ti-b1-b3;
+      const bands=[b1,b2,b3,b4];
+      let enhancement=0;
+
       for(let b=0;b<4;b++){
         if(s.bandBypass?.[b]||s.type.bandBypass[b])continue;
-        const degree=this.clamp(Number(s.type.degree[b]||0),0,100);if(degree<=0)continue;
-        const mag=Math.abs(bands[b]),fastA=mag>c.typeFast[b]?attack:release;
-        c.typeFast[b]=fastA*c.typeFast[b]+(1-fastA)*mag;
-        const slowA=mag>c.typeSlow[b]?attack:release;
-        c.typeSlow[b]=slowA*c.typeSlow[b]+(1-slowA)*mag;
-        const levelDb=this.g2db(Math.max(c.typeSlow[b],1e-7)),depth=degree/100,threshold=-56+20*Math.sqrt(depth),ratio=1+15*Math.sqrt(depth),slope=1-1/Math.max(1,ratio),kneeStart=threshold-3,kneeEnd=threshold+3;
-        let target=0;if(levelDb<kneeStart)target=(threshold-levelDb)*slope;else if(levelDb<kneeEnd){const xk=kneeEnd-levelDb;target=slope/12*xk*xk;}
-        target=this.clamp(target*depth,0,9);const ga=target>c.typeDc[b]?attack:release;c.typeDc[b]=ga*c.typeDc[b]+(1-ga)*target;
-        const bandTrim=this.db2g(this.clamp(s.type.level[b],-6,6));enhancement+=bands[b]*(this.db2g(c.typeDc[b])*bandTrim-1);
+
+        const depth=this.clamp(Number(s.type.degree[b]||0)/100,0,1);
+        if(depth<=0)continue;
+
+        const rawDriveParam=1+1.5*depth;
+        const driveParam=Math.max(1,rawDriveParam);
+        let makeupDenominator=Math.tanh(driveParam);
+        makeupDenominator=Math.max(makeupDenominator,1e-6);
+        const staticMakeupMultiplier=1/makeupDenominator;
+        const driven=Math.tanh(bands[b]*driveParam)*staticMakeupMultiplier;
+
+        const bandTrim=this.db2g(this.clamp(Number(s.type.level[b]||0),-6,6));
+        const processed=driven*bandTrim;
+        // 0% is transparent; degree also controls the wet contribution.
+        enhancement+=(processed-bands[b])*depth;
       }
-      y=(ti+enhancement*this.clamp(s.type.mix/100,0,1))*this.db2g(this.clamp(s.type.output,-24,12));
+
+      y=(ti+enhancement*mix)*this.db2g(this.clamp(Number(s.type.output||0),-24,12));
     }
     return y;
   }
