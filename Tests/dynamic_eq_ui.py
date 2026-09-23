@@ -217,6 +217,8 @@ def test_eq_xy_drag_math():
     worklet = worklet_file.read_text(encoding="utf-8")
     assert 'registerProcessor("vvchain-worklet",VVChainWorklet)' in worklet
     assert 'yL=yL-l;' in worklet and 'yR=yR-r;' in worklet
+    assert 'if(s.delta){yL=yL-l;yR=yR-r;}' not in worklet
+    assert 'if(this.s.delta){yL=yL-l;yR=yR-r;}' in worklet
     assert 'dryL=L,dryR=R' not in worklet
     assert 'yL=yL-l;' in worklet and 'yR=yR-r;' in worklet
     assert 'type:"ready"' in worklet
