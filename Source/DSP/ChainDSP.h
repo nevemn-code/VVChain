@@ -305,11 +305,12 @@ private:
     std::array<BandDynamics, 4> ottDynamics {};
 
     // Four independent Type-A exciter bands.
-    // Fixed crossovers follow a practical 4-band exciter layout:
-    // ~20-200 Hz / 200-2 kHz / 2-7.8 kHz / 7.8-20 kHz.
-    Crossover2nd typeXover1 {};
-    Crossover2nd typeXover2 {};
-    Crossover2nd typeXover3 {};
+    // Type-A shares the exact same X1/X2/X3 crossover positions and
+    // OVERLAP/Q control as OTT so the four upper graph bands are the
+    // single source of truth for both processors.
+    Crossover4th typeXover1 {};
+    Crossover4th typeXover2 {};
+    Crossover4th typeXover3 {};
     std::array<std::array<float, 2>, 4> typeFastEnv {};
     std::array<std::array<float, 2>, 4> typeSlowEnv {};
     std::array<std::array<float, 2>, 4> typeDc {};
