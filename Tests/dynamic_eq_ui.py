@@ -155,8 +155,16 @@ def test_eq_xy_drag_math():
     assert 'state.bandBypass[b]' in web
     assert '.ottGrid .knob .dial,.bottomGrid .knob .dial' in web
     assert 'const target=dynamicTargetPoint(b,w,h)' in web
-    assert 'handleX=clamp(n.x+20,18,w-12)' in web
+    assert 'handleX=clamp(target.x+11,18,w-12)' in web
     assert 'Dedicated DYNAMICS arrow handle' in cpp
+    assert 'const bool dynamicsEnabled = true;' in cpp
+    assert 'const float markerY = graph.getY() + 20.f;' in cpp
+    assert 'hoverXover' in head
+    assert 'markerY=20' in web
+    assert 'hoverXover' in web
+    assert 'GAIN / FREQ / Q' in cpp
+    assert 'label:"GAIN"' in web and 'label:"FREQ"' in web
+    assert "button class='advBtn'>+ ADV" in web
     assert 'graphEqDragAxis == GraphEqDragAxis::Frequency' not in cpp
     assert 'eqDragAxis===1?rawDx:0' not in web
 
