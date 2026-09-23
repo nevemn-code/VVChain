@@ -18,6 +18,9 @@ float crossoverQFromOverlap(float overlap)
     return 0.90f - 0.35f * t;
 }
 
+    // Dynamic EQ threshold is intentionally not a stored parameter.
+    // DYNAMICS is the single macro that defines both depth and threshold.
+
 }
 
 void VVChainDSP::updateAnalogPeak(Biquad& filter, double fs, double f0, double gainDb, double q)
