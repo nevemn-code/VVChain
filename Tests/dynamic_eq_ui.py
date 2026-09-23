@@ -180,7 +180,8 @@ def test_eq_xy_drag_math():
     assert 'DYNAMIC EQ</span>' not in web
     assert 'msReadout' not in web
     assert 'ottGrid.children[0]?.appendChild(ottLed);typeKnob.appendChild(typeLed);' in web
-    assert 'r.getRight() - 3, r.getY() + 13, 16, 16' in cpp
+    assert 'r.getCentreX() - 7, r.getY() - 10, 14, 14' in cpp
+    assert 'r.getRight() - 14, r.getY() - 10, 14, 14' in cpp
     assert 'hoverXover' in head
     assert 'markerY=20' not in web
     assert 'quadraticCurveTo(x,h*.5-16' not in web
