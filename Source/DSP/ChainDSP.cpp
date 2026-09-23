@@ -263,7 +263,8 @@ float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
 void VVChainDSP::processChebyshevAnalog(
     juce::dsp::AudioBlock<float>& block,
     float drive,
-    float amount)
+    float amount,
+    float colourMultiplier)
 {
     if (amount <= 0.0f || drive <= 0.0f || block.getNumSamples() == 0)
         return;
@@ -271,6 +272,8 @@ void VVChainDSP::processChebyshevAnalog(
     const auto numSamples = block.getNumSamples();
     const float safeDrive = juce::jmax(0.0f, drive);
     const float safeAmount = juce::jlimit(0.0f, 1.0f, amount);
+    const float safeColourMultiplier =
+        juce::jlimit(1.0f, 1.6f, colourMultiplier);
 
     // One-channel scratch, preallocated in prepare(); no realtime allocation.
     jassert(analogTempBuffer.getNumChannels() >= 1);
@@ -346,7 +349,7 @@ void VVChainDSP::processChebyshevAnalog(
                 (tempPtr[i] * gainComp) - channelData[i];
 
             channelData[i] =
-                channelData[i] + (delta * safeAmount);
+                channelData[i] + (delta * safeAmount * safeColourMultiplier);
         }
     }
 }
@@ -965,116 +968,26 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     }
 
-    // ANALOG COLOR is an independent four-band module.
-    // It shares the exact same X1 / X2 / X3 / OVERLAP positions as OTT/TAPE-A.
-    bool analogActive = false;
+    // ANALOG COLOR baseline = Deploy VVChain Web Preview #443.
+    // Preserve #443 processing order / transfer function. X2 scales only
+    // the generated ANALOG COLOR delta for the selected band.
     for (size_t band = 0; band < 4; ++band)
     {
+        if (p.eqColorGlobalBypass || p.eqColorBypass[band])
+            continue;
+
+        const float amount =
+            juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
+        if (amount <= 0.000001f)
+            continue;
+
+        const float drive =
+            p.eqColorSolidState[band] ? 1.15f : 0.95f;
         const float x2Multiplier =
             p.eqColorX2[band] ? 1.6f : 1.0f;
-        const float amount =
-            juce::jlimit(0.f, 100.f, p.eqColor[band] * x2Multiplier) / 100.f;
-        if (!p.eqColorGlobalBypass
-            && !p.eqColorBypass[band]
-            && amount > 0.000001f)
-        {
-            analogActive = true;
-            break;
-        }
-    }
 
-    if (analogActive)
-    {
-        const float x1 = juce::jlimit(
-            80.f, 900.f, p.ottX1);
-        const float x2 = juce::jlimit(
-            x1 + 80.f, 5000.f, p.ottX2);
-        const float x3 = juce::jlimit(
-            x2 + 200.f, static_cast<float>(osSr * 0.42), p.ottX3);
-        const float crossoverQ =
-            crossoverQFromOverlap(p.ottXoverOverlap);
-
-        updateCrossover(analogXover1, osSr, x1, crossoverQ);
-        updateCrossover(analogXover2, osSr, x2, crossoverQ);
-        updateCrossover(analogXover3, osSr, x3, crossoverQ);
-
-        // Keep the post-EQ/Dynamics signal immutable while the four bands
-        // are processed independently.
-        for (int ch = 0; ch < osChannels; ++ch)
-        {
-            const auto* src =
-                osBlock.getChannelPointer(static_cast<size_t>(ch));
-            std::copy(src, src + osSamples,
-                      analogSourceBuffer.getWritePointer(ch));
-
-            for (auto& bandBuffer : analogBandBuffers)
-                bandBuffer.clear(ch, 0, osSamples);
-        }
-
-        // One crossover traversal per sample. This is important: recomputing
-        // the crossover separately for each band would advance its filter
-        // state four times and destroy the intended band alignment.
-        for (int sample = 0; sample < osSamples; ++sample)
-        {
-            for (int ch = 0; ch < osChannels; ++ch)
-            {
-                const bool right = ch == 1;
-                const float x =
-                    analogSourceBuffer.getSample(ch, sample);
-
-                const float low =
-                    analogXover1.low(x, right);
-                const float x1High =
-                    analogXover1.high(x, right);
-                const float lowMid =
-                    analogXover2.low(x1High, right);
-                const float x2High =
-                    analogXover2.high(x1High, right);
-                const float midHigh =
-                    analogXover3.low(x2High, right);
-                const float top =
-                    analogXover3.high(x2High, right);
-
-                analogBandBuffers[0].setSample(ch, sample, low);
-                analogBandBuffers[1].setSample(ch, sample, lowMid);
-                analogBandBuffers[2].setSample(ch, sample, midHigh);
-                analogBandBuffers[3].setSample(ch, sample, top);
-            }
-        }
-
-        for (size_t band = 0; band < 4; ++band)
-        {
-            if (p.eqColorGlobalBypass || p.eqColorBypass[band])
-                continue;
-
-            const float x2Multiplier =
-                p.eqColorX2[band] ? 1.6f : 1.0f;
-            const float amount =
-                juce::jlimit(0.f, 100.f, p.eqColor[band] * x2Multiplier) / 100.f;
-            if (amount <= 0.000001f)
-                continue;
-
-            const float drive =
-                p.eqColorSolidState[band] ? 1.15f : 0.95f;
-
-            juce::dsp::AudioBlock<float> bandBlock(analogBandBuffers[band]);
-            processChebyshevAnalog(bandBlock, drive, amount);
-        }
-
-        for (int ch = 0; ch < osChannels; ++ch)
-        {
-            auto* dst =
-                osBlock.getChannelPointer(static_cast<size_t>(ch));
-            for (int sample = 0; sample < osSamples; ++sample)
-            {
-                float reconstructed = 0.f;
-                for (size_t band = 0; band < 4; ++band)
-                    reconstructed +=
-                        analogBandBuffers[band].getSample(ch, sample);
-
-                dst[sample] = reconstructed;
-            }
-        }
+        processChebyshevAnalog(
+            osBlock, drive, amount, x2Multiplier);
     }
 
     eqOversampler.processSamplesDown(outputBlock);
