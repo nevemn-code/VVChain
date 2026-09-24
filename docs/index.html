@@ -515,7 +515,7 @@ function nextQFromWheel(q,deltaY,fine){
   const safe=Math.max(.1,Number(q)||.707);
   return fine
     ? clamp(safe+deltaY*.01,.1,18)
-    : clamp(safe*Math.exp((deltaY/100)*.025),.1,18);
+    : clamp(safe*Math.exp(-deltaY*.25),.1,18);
 }
 function tptBellMagnitudeDb(fs,f,q,g,hz){
   // UI-only frequency response evaluator. This mirrors the Native TPT Bell
