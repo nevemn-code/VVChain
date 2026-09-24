@@ -1192,8 +1192,8 @@ juce::Point<float> VVChainAudioProcessorEditor::dynamicTargetPoint(int band) con
 bool VVChainAudioProcessorEditor::pointNearDynamicNode(
     juce::Point<float> p, int& band) const
 {
-    constexpr float hitRadius = 18.0f;
-    constexpr float staticNodeRadius = 5.5f;
+    constexpr float hitRadius = 12.0f;
+    constexpr float staticNodeRadius = 7.0f;
 
     band = -1;
     float best = hitRadius;
@@ -1209,10 +1209,12 @@ bool VVChainAudioProcessorEditor::pointNearDynamicNode(
             juce::jlimit(-100.0f, 100.0f,
                          parameterValue("DYN_DYNAMICS" + juce::String(b + 1)));
 
-        // Keep the actual EQ node's inner hit circle reserved for EQ,
-        // even when DYNAMICS is only a few percent away from zero.
+        // At/near 0% Dynamics the EQ point owns the whole central area;
+        // Dynamics is then adjusted with the separate arrow handle.
         const bool hit =
-            d >= staticNodeRadius && d < hitRadius;
+            std::abs(dynamics) > 0.5f
+            && d >= staticNodeRadius
+            && d < hitRadius;
 
         if (hit && d < best)
         {
@@ -1740,7 +1742,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             g.setFont(
                 juce::FontOptions(8.3f).withStyle("Bold"));
             g.drawText(
-                "RIGHT CLICK + WHEEL = MID / SIDE",
+                "DRAG BAR = MID / SIDE",
                 (int)popup.getX() + 12,
                 (int)popup.getBottom() - 18,
                 (int)popup.getWidth() - 24, 12,
