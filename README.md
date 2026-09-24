@@ -100,6 +100,12 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.37
+
+- 修復 Web 浮框缺少 class 導致排到畫布下方遭裁切。
+- EQ / DYN EQ 維持三行頻率、GAIN、Q，112px 寬；Native / Web 浮框置於游標上方並避開邊界。
+- Q 滾輪先更新參數再顯示，游標停留期間保持讀值。
+
 ## v1.0.36
 
 - 依使用者提供的節點浮動框參考圖，改成 112px 的三行讀值：`EQ / DYN EQ + 頻率`、`GAIN`、`Q`。
@@ -259,3 +265,4 @@ VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測�
 - EQ FREQ 與 DE-ESS FREQ 拖曳靈敏度降低到接近 GAIN 手感；Web Preview 與 Native 同步。
 - TAPE-A 最大染色上限固定為 Band 1=50%、Band 2=60%、Band 3=70%、Band 4=90%，演算法本體不改。
 - 每段 ANALOG COLOR 新增 X2 開關；開啟後只將當前 COLOR 量乘以 1.6，並保留 100% 實際處理上限。
+

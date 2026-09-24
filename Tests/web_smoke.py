@@ -2,6 +2,7 @@
 from __future__ import annotations
 import re
 import subprocess
+from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -10,6 +11,21 @@ WORKLET = ROOT / "docs" / "vvchain-worklet.js"
 CMAKE = ROOT / "CMakeLists.txt"
 
 text = HTML.read_text(encoding="utf-8")
+
+# A tooltip can have correct text and CSS but still be clipped below the canvas
+# if its element never receives the positioning class.
+class HintParser(HTMLParser):
+    hints = []
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if attrs.get('id') == 'graphHint':
+            self.hints.append(attrs)
+
+hint_parser = HintParser()
+hint_parser.feed(text)
+assert len(hint_parser.hints) == 1
+assert 'graphHint' in hint_parser.hints[0].get('class', '').split(), 'floating hint is missing its positioning class'
+
 worklet = WORKLET.read_text(encoding="utf-8")
 cmake = CMAKE.read_text(encoding="utf-8")
 
