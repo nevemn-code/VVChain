@@ -3025,7 +3025,7 @@ void VVChainAudioProcessorEditor::mouseDown(
             graph, parameterValue("EQ" + n + "_GAIN"));
 
         if (event.mods.isLeftButtonDown()
-            && pos.getDistanceFrom({ x, y }) < 4.5f)
+            && pos.getDistanceFrom({ x, y }) < 7.0f)
         {
             dragOffsetBand = b;
             dragBand = -1;
