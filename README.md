@@ -27,7 +27,7 @@ INPUT
 ## DSP
 - Native De-Esser 使用固定 8192-sample PDC。
 - HP / CORNER 不參與聲音計算。
-- ANALOG COLOR 自 v1.0.15 起使用 unity-normalized smooth algebraic saturation：0% exact dry；奇對稱、無額外濾波相位；|x|=1 維持 unity；X2 仍只放大該段產生的 ANALOG delta ×1.6。
+- ANALOG COLOR 自 v1.0.16 起使用 unity-normalized smooth algebraic saturation + hard no-shrink guard：0% exact dry；奇對稱、無額外濾波相位；|x|=1 維持 unity；COLOR 增加不得讓 shaping domain 內 sample 絕對值縮小；X2 仍只放大該段產生的 ANALOG delta ×1.6。
 - Master BYPASS 保持固定 PDC，完全旁通時輸出延遲乾聲。
 - AAX 目標受 VVCHAIN_ENABLE_AAX 控制，需合法 AAX SDK / 開發環境。
 
@@ -74,7 +74,7 @@ https://nevemn-code.github.io/VVChain/
 ## GitHub 開發規則
 - 強制規則文件：`.github/VVCHAIN_RULES.md`
 - 任何 `docs/*.html` 修改，都必須同步更新頁面版本號；不使用日期／時間碼作為版本識別。
-- ANALOG 正式基準自 v1.0.15 起為 unity-normalized smooth algebraic saturation；TT/SS/X2 各段獨立，不得重新引入 V1/V2/V3 選擇頁。
+- ANALOG 正式基準自 v1.0.16 起為 unity-normalized smooth algebraic saturation + hard no-shrink guard；TT/SS/X2 各段獨立，不得重新引入 V1/V2/V3 選擇頁。
 
 ## Validation
 - Tests/reference_stress.py：DSP / 參數空間 deterministic regression，包含 500 組 TT/SS 與 1,200 組頻率／振幅染色掃描，共 3,685 組案例。
@@ -83,7 +83,7 @@ https://nevemn-code.github.io/VVChain/
 > Regression tests are not a substitute for final DAW pluginval or AAX certification.
   
 ### Analog Color / TT / SS
-Analog Color uses the v1.0.15 unity-normalized smooth algebraic transfer. Zero amount is exact dry, |x|=1 is normalized to unity, TT/SS use separate saturation depths, and X2 multiplies only the generated Analog Color delta by 1.6.
+Analog Color uses the v1.0.16 unity-normalized smooth algebraic transfer with a hard no-shrink guard. Zero amount is exact dry, |x|=1 is normalized to unity, TT/SS use separate saturation depths, and X2 multiplies only the generated Analog Color delta by 1.6.
 
 PSP's published ClassicQ documentation describes SIM as Class-A plus transformer simulation, with the Class-A stage before output level and the transformer followed by SAT; PSP does not publish the proprietary transfer curve. VVChain therefore uses that documented topology as a design reference rather than claiming a code-level clone. PSP describes its analog EQ/preamp coloration as gentle/subtle, and McQ describes SAT as a smooth overdrive stage.
 
@@ -99,6 +99,16 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 ## 版本規則
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
+
+## v1.0.16
+
+- 右鍵 + 滾輪與一般 EQ 滾輪共用同一個 Q 計算函式，方向與速度不再可能分岔。
+- PEAK / ONSETS 寬度固定 40 px，約為原長條的一半，精準置中於 DYNAMICS 旋鈕上方。
+- EQ 圖形垂直軸改為可逆非線性 mastering scale：±3 dB 最慢，3–6 dB、6–12 dB、12–18 dB 逐級加速；拖曳點與滑鼠 Y 座標完全一致。
+- DYNAMICS 上下箭頭由 +30 px 再右移至 +44 px，hit area 縮成 6×14 px；靜態 EQ 中心 9 px 範圍具有優先權，避免誤抓 Dynamic EQ。
+- 上方浮動框固定兩行，只顯示 EQ/DYN EQ GAIN，以及 FREQ + Q。
+- ANALOG 加入 hard no-shrink guard；在既有 unity normalization 上再保證 COLOR 增加不會把 sample 絕對值變小，0% exact dry，X2 delta 規則不變。
+- Native / Web Preview / Web Worklet / Regression / CI artifact 統一升至 v1.0.16。
 
 ## v1.0.15
 
