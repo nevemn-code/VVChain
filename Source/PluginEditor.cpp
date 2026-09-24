@@ -3083,20 +3083,27 @@ void VVChainAudioProcessorEditor::showEqTypeMenu(
 
     static const std::array<juce::String, 14> names
     {{
-        "Peak",
-        "Peak analog",
-        "Band-shelf A",
-        "Band-shelf B  ·  72 dB/oct",
-        "Low-shelf",
-        "High-shelf",
-        "Low-shelf  ·  resonant",
-        "High-shelf  ·  resonant",
-        "Low-slope",
-        "High-slope",
-        "Band-pass  ·  resonant",
-        "Notch  ·  resonant",
-        "Low-pass  ·  resonant  ·  72 dB/oct",
-        "High-pass  ·  resonant  ·  72 dB/oct"
+        "Parametric Bell",
+        "Matched Bell",
+        "Wide Plateau",
+        "Steep Plateau 72",
+        "Low Shelf",
+        "High Shelf",
+        "Low Shelf + Res",
+        "High Shelf + Res",
+        "Low Contour",
+        "High Contour",
+        "Focus Pass",
+        "Deep Reject",
+        "HF Roll-Off 72",
+        "LF Roll-Off 72"
+    }};
+
+    // Original VVChain presentation order.  Parameter IDs/types stay unchanged
+    // so old presets and host automation retain the same DSP meaning.
+    static constexpr std::array<int, 14> displayOrder
+    {{
+        0, 1, 4, 5, 6, 7, 8, 9, 2, 3, 10, 11, 13, 12
     }};
 
     const auto n = juce::String(band + 1);
@@ -3105,9 +3112,9 @@ void VVChainAudioProcessorEditor::showEqTypeMenu(
         juce::roundToInt(parameterValue("EQ" + n + "_TYPE")));
 
     juce::PopupMenu menu;
-    for (int type = 0; type < 14; ++type)
+    for (const int type : displayOrder)
     {
-        // Middle bands deliberately omit Low-pass / High-pass.
+        // Middle bands deliberately omit the two roll-off filters.
         if ((band == 1 || band == 2) && type >= 12)
             continue;
 
