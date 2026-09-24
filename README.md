@@ -100,7 +100,7 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
-## v1.0.26
+## v1.0.27
 
 - 上方 EQ 點的 Q 滾輪靈敏度提高為 v1.0.24 的 **3 倍**。
 - 一般 EQ 滾輪與右鍵 SOLO + 滾輪仍共用同一個連續 exponential Q 公式，不做離散段落或步進。
