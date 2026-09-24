@@ -803,15 +803,19 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 float midTriggerDb = midEnv;
                 float sideTriggerDb = sideEnv;
 
-                if (p.dynDetectOnsets[band])
+                const float onsetsBlend =
+                    juce::jlimit(0.f, 1.f, p.dynDetectOnsets[band] * 0.01f);
+                if (onsetsBlend > 0.f)
                 {
                     const float midRise =
                         juce::jmax(0.f, midDb - midSlow);
                     const float sideRise =
                         juce::jmax(0.f, sideDb - sideSlow);
 
-                    midTriggerDb += juce::jlimit(0.f, 12.f, midRise * 1.5f);
-                    sideTriggerDb += juce::jlimit(0.f, 12.f, sideRise * 1.5f);
+                    midTriggerDb += onsetsBlend
+                        * juce::jlimit(0.f, 12.f, midRise * 1.5f);
+                    sideTriggerDb += onsetsBlend
+                        * juce::jlimit(0.f, 12.f, sideRise * 1.5f);
                 }
 
                 const float midTargetActivation = activationFor(
