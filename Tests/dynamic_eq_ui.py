@@ -557,12 +557,21 @@ def test_v1014_detect_blend_and_right_click():
 
     # Native/Web graph gestures: plain right = solo+XY drag, right+wheel = Q.
     assert 'rightDragBand' in head
-    assert 'setParameter("SOLO_BAND", static_cast<float>(soloBand + 1))' in cpp
+    assert 'setParameter("EQ_POINT_SOLO", static_cast<float>(soloBand + 1))' in cpp
     assert 'rightDragBand >= 0 && event.mods.isRightButtonDown()' in cpp
     assert 'if (!event.mods.isRightButtonDown())' in cpp
-    assert 'dragMode=7;dragBand=band' in web
+    assert 'state.solo.pointBand=band;dragMode=7;dragBand=band' in web
     assert 'if(dragMode===7&&dragBand>=0)' in web
     assert 'if(!(e.buttons===2||e.button===2))return;' in web
+    assert 'setParameter("EQ_POINT_SOLO", 0.f)' in cpp
+    assert 'pointSoloBand' in dsp_h
+    assert 'updatePointSoloBandPass' in dsp
+    assert 'pointSoloPre.process' in dsp
+    assert 'pointSoloPost.process' in dsp
+    assert 'pointBand:-1' in web
+    assert 'pointBp(f,q=.707)' in worklet
+    assert 'pointSoloPre' in worklet and 'pointSoloPost' in worklet
+    assert 'state.solo.pointBand=-1;sendParams()' in web
 
     # M/S remains reachable only as Shift+right-click and no longer owns plain right.
     assert 'event.mods.isRightButtonDown() && event.mods.isShiftDown()' in cpp
