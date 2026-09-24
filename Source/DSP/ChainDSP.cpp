@@ -148,6 +148,10 @@ void VVChainDSP::updateEqFilter(EqFilter& filter, int type,
                                 int slopeIndex)
 {
     type = juce::jlimit(0, 13, type);
+    if (type == 3)
+        type = 2;
+    else if (type == 1 || type == 10 || type == 11)
+        type = 0;
     filter.beginType(type);
 
     const double safeF = juce::jlimit(20.0, fs * 0.45, f0);
@@ -1092,7 +1096,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 int eqType = juce::jlimit(0, 13, p.eqType[band]);
                 if (eqType == 3)
                     eqType = 2;
-                else if (eqType == 11)
+                else if (eqType == 1 || eqType == 10 || eqType == 11)
                     eqType = 0;
                 if ((band == 1 || band == 2) && eqType >= 12)
                     eqType = 0;
