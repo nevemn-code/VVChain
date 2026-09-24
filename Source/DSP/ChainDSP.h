@@ -331,9 +331,6 @@ private:
     juce::AudioBuffer<float> dynamicDetectorInput;
 
     // Reusable scratch for allocation-free four-band ANALOG.
-    juce::AudioBuffer<float> analogTempBuffer;
-    std::array<juce::AudioBuffer<float>, 4> analogBandBuffers;
-    juce::AudioBuffer<float> analogSourceBuffer;
     Crossover4th analogXover1 {};
     Crossover4th analogXover2 {};
     Crossover4th analogXover3 {};
