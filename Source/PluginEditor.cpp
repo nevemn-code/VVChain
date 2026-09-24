@@ -1410,6 +1410,8 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     for (int db = 18; db >= -18; db -= 3)
     {
         const float y = eqDbToY(graph, static_cast<float>(db));
+        if (db == 15 || db == -15)
+            continue;
         const auto label = (db > 0 ? "+" : "") + juce::String(db) + " dB";
         const int labelY = juce::jlimit(
             (int)graph.getY(),
@@ -3105,7 +3107,7 @@ void VVChainAudioProcessorEditor::mouseDown(
     // - frequency stays locked while Gain is dragged;
     // - Threshold is never edited independently.
     int staticPriorityBand = -1;
-    float staticPriorityDistance = 9.0f;
+    float staticPriorityDistance = 7.0f;
     for (int b = 0; b < 4; ++b)
     {
         const auto n = juce::String(b + 1);
@@ -3493,7 +3495,9 @@ void VVChainAudioProcessorEditor::mouseDrag(
     }
 
     // Dynamic Target node drag = XY control.
-    // Horizontal = Frequency; vertical = DYNAMICS.
+    // Horizontal = the same linked EQ Frequency parameter.
+    // Vertical = the same linked DYNAMICS parameter.
+    // The lower EQ FREQ + DYNAMICS knobs are refreshed immediately.
     if (dragBand >= 0)
     {
         const auto n = juce::String(dragBand + 1);

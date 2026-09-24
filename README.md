@@ -100,6 +100,13 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.40
+
+- EQ / DYN EQ 浮動說明框放大，字體同步放大，讀取 GAIN / FREQ / Q 更清楚。
+- EQ Graph 左側只移除 **+15 / -15 dB** 文字標籤；3 dB 網格線保留。
+- DYN EQ Target 點改為明確的 **XY 連動控制**：左右拖曳同步 EQ FREQ，上下拖曳同步 DYNAMICS；下方兩個控制即時跟隨。
+- Native JUCE 與 GitHub Pages Web Preview 維持相同的 Dynamic EQ XY 互動邏輯與命中範圍。
+
 ## v1.0.39
 
 - EQ Graph 垂直增益顯示固定為 **+18 ～ -18 dB** 全高度，不再繪製 ±18 以外的無效範圍。

@@ -91,9 +91,14 @@ assert cmake_version.group(1) == shown_version.group(1) == cache_version.group(1
 )
 assert not (ROOT / "docs" / "gyraf-copper.html").exists(), "obsolete Gyraf page must remain deleted"
 
-for assert "void VVChainAudioProcessorEditor::mouseDoubleClick" in source
+assert "void VVChainAudioProcessorEditor::mouseDoubleClick" in source
 assert 'resetParameter("EQ" + n + "_GAIN", 0.0f)' in source
 assert 'resetParameter("DYN_DYNAMICS" + n, resetDynamics)' in source
+assert "Horizontal = Frequency" in source or "Horizontal = the same linked EQ Frequency parameter." in source
+assert "const dbTicks=[18,15,12,9,6,3,0,-3,-6,-9,-12,-15,-18]" in text
+assert '[20,"20"],[30,"30"],[40,"40"],[50,"50"],[70,"70"],[100,"100"]' in text
+assert "if(db===15||db===-15)return;" in text
+assert ".graphHint{width:150px;min-width:150px;max-width:150px}" in text
 
 forbidden in [
     "analog-v1.html",
