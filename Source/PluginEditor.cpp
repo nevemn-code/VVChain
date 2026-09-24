@@ -2838,6 +2838,7 @@ void VVChainAudioProcessorEditor::mouseDown(
     // This check is intentionally before the graph bounds check so a click
     // anywhere else in the editor also closes the popup.
     if (expandedDynamicBand >= 0
+        && !event.mods.isRightButtonDown()
         && !dynamicMsPopupBounds(expandedDynamicBand).contains(pos))
     {
         expandedDynamicBand = -1;
