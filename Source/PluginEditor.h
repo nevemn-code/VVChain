@@ -189,6 +189,12 @@ private:
         bool isGraphControlActive() const noexcept { return graphControlActive; }
         bool isGraphControlMoving() const noexcept { return graphControlMoving; }
 
+        void refreshDisplayedText()
+        {
+            updateText();
+            repaint();
+        }
+
         void setDragSensitivity(int normalSensitivity, int fineSensitivity)
         {
             dragSensitivity = std::max(1, normalSensitivity);
@@ -369,6 +375,7 @@ private:
         int band = -1;
         int slot = -1;
         bool tapeDisplayDb = false;
+        bool slopeMode = false;
     };
 
     void addKnob(const juce::String& id, const juce::String& title,
