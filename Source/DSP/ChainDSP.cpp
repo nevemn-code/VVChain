@@ -926,7 +926,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     }
 
-    // ANALOG COLOR v1.0.15: keep the same processing order and controls,
+    // ANALOG COLOR v1.0.16: keep the same processing order and controls,
     // but use unity-normalized smooth algebraic saturation so increasing
     // ANALOG does not reduce full-scale level. X2 increases saturation depth.
     for (size_t band = 0; band < 4; ++band)
