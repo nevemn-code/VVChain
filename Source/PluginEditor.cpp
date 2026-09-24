@@ -1791,41 +1791,34 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         }
     }
 
-    // Right-click SOLO keeps the selected EQ region in full colour and
-    // linearly fades the rest of the graph into grey with distance.
+    // Right-click SOLO spotlight: keep the exact mouse position bright,
+    // then smoothly darken every other element in the upper graph.
     if (rightSoloBand >= 0
         && parameterValue("GRAPH_SOLO_ACTIVE") > 0.5f)
     {
-        const auto soloN = juce::String(rightSoloBand + 1);
-        const float centreX = graphFrequencyToX(
-            graph, parameterValue("EQ" + soloN + "_FREQ"));
-        constexpr float colourRadius = 70.0f;
+        const float cx = juce::jlimit(
+            graph.getX(), graph.getRight(), rightSoloPosition.x);
+        const float cy = juce::jlimit(
+            graph.getY(), graph.getBottom(), rightSoloPosition.y);
+        constexpr float spotlightRadius = 155.0f;
 
-        const float leftEdge = juce::jmax(graph.getX(), centreX - colourRadius);
-        if (leftEdge > graph.getX())
-        {
-            juce::ColourGradient fade(
-                juce::Colour(0xff777b80).withAlpha(0.72f),
-                graph.getX(), graph.getCentreY(),
-                juce::Colour(0xff777b80).withAlpha(0.0f),
-                leftEdge, graph.getCentreY(), false);
-            g.setGradientFill(fade);
-            g.fillRect(graph.getX(), graph.getY(),
-                       leftEdge - graph.getX(), graph.getHeight());
-        }
+        juce::ColourGradient spotlight(
+            juce::Colours::black.withAlpha(0.0f),
+            cx, cy,
+            juce::Colours::black.withAlpha(0.72f),
+            cx + spotlightRadius, cy,
+            true);
+        spotlight.addColour(0.22, juce::Colours::black.withAlpha(0.0f));
+        spotlight.addColour(0.52, juce::Colours::black.withAlpha(0.18f));
+        spotlight.addColour(0.76, juce::Colours::black.withAlpha(0.48f));
 
-        const float rightEdge = juce::jmin(graph.getRight(), centreX + colourRadius);
-        if (rightEdge < graph.getRight())
-        {
-            juce::ColourGradient fade(
-                juce::Colour(0xff777b80).withAlpha(0.0f),
-                rightEdge, graph.getCentreY(),
-                juce::Colour(0xff777b80).withAlpha(0.72f),
-                graph.getRight(), graph.getCentreY(), false);
-            g.setGradientFill(fade);
-            g.fillRect(rightEdge, graph.getY(),
-                       graph.getRight() - rightEdge, graph.getHeight());
-        }
+        g.setGradientFill(spotlight);
+        g.fillRoundedRectangle(graph, 8.0f);
+
+        // A faint halo makes the SOLO focus location immediately readable
+        // without covering the EQ / Dynamic node itself.
+        g.setColour(juce::Colours::white.withAlpha(0.16f));
+        g.drawEllipse(cx - 46.0f, cy - 46.0f, 92.0f, 92.0f, 1.2f);
     }
 
 
@@ -2966,6 +2959,7 @@ void VVChainAudioProcessorEditor::mouseDown(
         {
             const auto n = juce::String(band + 1);
             rightSoloBand = band;
+            rightSoloPosition = pos;
             expandedDynamicBand = -1;
             dragDynamicMsBand = -1;
             dragBand = -1;
@@ -3281,6 +3275,10 @@ void VVChainAudioProcessorEditor::mouseDrag(
 
     if (rightSoloBand >= 0 && event.mods.isRightButtonDown())
     {
+        rightSoloPosition = {
+            juce::jlimit(graph.getX(), graph.getRight(), event.position.x),
+            juce::jlimit(graph.getY(), graph.getBottom(), event.position.y)
+        };
         const auto n = juce::String(rightSoloBand + 1);
         const float x = juce::jlimit(graph.getX(), graph.getRight(), event.position.x);
         const float hz = graphXToFrequency(graph, x);
@@ -3630,6 +3628,10 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
 
         if (band >= 0)
         {
+            rightSoloPosition = {
+                juce::jlimit(graph.getX(), graph.getRight(), event.position.x),
+                juce::jlimit(graph.getY(), graph.getBottom(), event.position.y)
+            };
             const auto n = juce::String(band + 1);
             const float q = juce::jmax(0.1f, parameterValue("EQ" + n + "_Q"));
             const float nextQ =
