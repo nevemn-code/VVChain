@@ -100,6 +100,12 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.38
+
+- 上方 4 個 EQ GAIN 節點支援雙擊立即歸零到 0 dB，並同步下方對應的 GAIN 控制。
+- 上方 4 個 Dynamic EQ GAIN 節點支援雙擊立即歸零；由於 Dynamic EQ GAIN 是由靜態 EQ GAIN + DYNAMICS 形成，雙擊會同步調整下方 DYNAMICS，使 Dynamic Target 精確回到 0 dB。
+- Native JUCE 與 GitHub Pages Web Preview 同步加入相同的雙擊命中優先級、零點計算與下方控制刷新。
+
 ## v1.0.37
 
 - 修復 Web 浮框缺少 class 導致排到畫布下方遭裁切。

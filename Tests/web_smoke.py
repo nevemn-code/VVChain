@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 HTML = ROOT / "docs" / "index.html"
 WORKLET = ROOT / "docs" / "vvchain-worklet.js"
+SOURCE = ROOT / "Source" / "PluginEditor.cpp"
 CMAKE = ROOT / "CMakeLists.txt"
 
 text = HTML.read_text(encoding="utf-8")
@@ -27,6 +28,7 @@ assert len(hint_parser.hints) == 1
 assert 'graphHint' in hint_parser.hints[0].get('class', '').split(), 'floating hint is missing its positioning class'
 
 worklet = WORKLET.read_text(encoding="utf-8")
+source = SOURCE.read_text(encoding="utf-8")
 cmake = CMAKE.read_text(encoding="utf-8")
 
 match = re.search(r"<script(?:\s[^>]*)?>([\s\S]*)</script>", text, re.I)
@@ -59,6 +61,11 @@ required_html = [
     "MAXIMUM REDUCTION",
     "masterBypassLabel",
     "graphHintBandHtml",
+    "resetGraphGainAtDoubleClick",
+    'eqCanvas.addEventListener("dblclick",resetGraphGainAtDoubleClick)',
+    "knobRefreshers.forEach(fn=>fn())",
+    "state.eq.gain[staticBand]=0",
+    "state.dyn.dynamics[dynamicBand]=resetDynamics",
     "dynDetectBlend",
     "moduleMuteRefreshers",
     "globalCompositeOperation=\"saturation\"",
@@ -84,7 +91,11 @@ assert cmake_version.group(1) == shown_version.group(1) == cache_version.group(1
 )
 assert not (ROOT / "docs" / "gyraf-copper.html").exists(), "obsolete Gyraf page must remain deleted"
 
-for forbidden in [
+for assert "void VVChainAudioProcessorEditor::mouseDoubleClick" in source
+assert 'resetParameter("EQ" + n + "_GAIN", 0.0f)' in source
+assert 'resetParameter("DYN_DYNAMICS" + n, resetDynamics)' in source
+
+forbidden in [
     "analog-v1.html",
     "analog-v2.html",
     "analog-v3.html",

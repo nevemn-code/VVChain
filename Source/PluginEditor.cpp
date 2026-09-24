@@ -2744,6 +2744,113 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
     floatingValueBox.hideInstantly();
 }
 
+void VVChainAudioProcessorEditor::mouseDoubleClick(
+    const juce::MouseEvent& event)
+{
+    if (!event.mods.isLeftButtonDown())
+        return;
+
+    const auto graph = eqGraphBounds();
+    if (!graph.contains(event.position))
+        return;
+
+    auto resetParameter = [this](const juce::String& id, float value)
+    {
+        if (auto* parameter = audioProcessor.apvts.getParameter(id))
+        {
+            parameter->beginChangeGesture();
+            parameter->setValueNotifyingHost(parameter->convertTo0to1(value));
+            parameter->endChangeGesture();
+        }
+
+        // Keep the lower linked control visually in lockstep immediately.
+        if (auto* knob = findKnob(id))
+            knob->slider->setValue(value, juce::dontSendNotification);
+    };
+
+    constexpr float staticHitRadius = 8.0f;
+    int staticBand = -1;
+    float staticDistance = staticHitRadius;
+
+    // Static EQ GAIN node has priority when a double-click lands on it.
+    for (int b = 0; b < 4; ++b)
+    {
+        const auto n = juce::String(b + 1);
+        const float x = graphFrequencyToX(
+            graph, parameterValue("EQ" + n + "_FREQ"));
+        const float y = eqDbToY(
+            graph, parameterValue("EQ" + n + "_GAIN"));
+        const float distance = event.position.getDistanceFrom({ x, y });
+
+        if (distance <= staticDistance)
+        {
+            staticDistance = distance;
+            staticBand = b;
+        }
+    }
+
+    if (staticBand >= 0)
+    {
+        const auto n = juce::String(staticBand + 1);
+        resetParameter("EQ" + n + "_GAIN", 0.0f);
+        clearGraphControlState();
+        updateFloatingValueBoxAt(event.position);
+        repaint();
+        return;
+    }
+
+    constexpr float dynamicHitRadius = 13.0f;
+    int dynamicBand = -1;
+    float dynamicDistance = dynamicHitRadius;
+
+    // Dynamic EQ has no separate stored GAIN: its target is
+    // static EQ GAIN + DYNAMICS-derived offset. Double-click therefore
+    // sets the linked DYNAMICS value that makes the target exactly 0 dB.
+    for (int b = 0; b < 4; ++b)
+    {
+        const auto n = juce::String(b + 1);
+        const float dynamics =
+            juce::jlimit(-100.0f, 100.0f,
+                         parameterValue("DYN_DYNAMICS" + n));
+
+        // At 0% the target is coincident with the static EQ node.
+        if (std::abs(dynamics) <= 0.5f)
+            continue;
+
+        const float x = graphFrequencyToX(
+            graph, parameterValue("EQ" + n + "_FREQ"));
+        const float targetY = eqDbToY(
+            graph, dynamicEffectiveTargetGain(b));
+        const float distance = event.position.getDistanceFrom({ x, targetY });
+        const float staticY = eqDbToY(
+            graph, parameterValue("EQ" + n + "_GAIN"));
+
+        if (distance <= dynamicDistance
+            && event.position.getDistanceFrom({ x, staticY }) > staticHitRadius)
+        {
+            dynamicDistance = distance;
+            dynamicBand = b;
+        }
+    }
+
+    if (dynamicBand >= 0)
+    {
+        const auto n = juce::String(dynamicBand + 1);
+        const float staticGain = juce::jlimit(
+            -18.0f, 18.0f,
+            parameterValue("EQ" + n + "_GAIN"));
+        const float dynamicRangeDb = 18.0f;
+        const float resetDynamics = juce::jlimit(
+            -100.0f, 100.0f,
+            -staticGain / dynamicRangeDb * 100.0f);
+
+        resetParameter("DYN_DYNAMICS" + n, resetDynamics);
+        clearGraphControlState();
+        updateFloatingValueBoxAt(event.position);
+        repaint();
+    }
+}
+
 void VVChainAudioProcessorEditor::mouseMove(
     const juce::MouseEvent& event)
 {
