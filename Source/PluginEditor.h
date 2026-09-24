@@ -100,11 +100,11 @@ private:
                 m_boxWidth = 112;
 
             constexpr int boxHeight = 50;
-            int targetX = mousePos.x + 14;
+            int targetX = mousePos.x - m_boxWidth / 2;
             int targetY = mousePos.y - boxHeight - 14;
 
             if (targetX + m_boxWidth > parentBounds.getRight())
-                targetX = mousePos.x - m_boxWidth - 14;
+                targetX = parentBounds.getRight() - m_boxWidth - 4;
             if (targetX < parentBounds.getX())
                 targetX = parentBounds.getX() + 4;
 
