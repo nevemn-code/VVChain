@@ -22,8 +22,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
 
     // Every chain section has a real DSP bypass parameter.
     p.push_back(std::make_unique<juce::AudioParameterBool>("EQ_BYPASS", "EQ Bypass", false));
-    p.push_back(std::make_unique<juce::AudioParameterBool>("OTT_BYPASS", "OTT Bypass", false));
-    p.push_back(std::make_unique<juce::AudioParameterBool>("ATYPE_BYPASS", "Type-A Bypass", false));
+    p.push_back(std::make_unique<juce::AudioParameterBool>("UDMBC_BYPASS", "UDMBC Bypass", false));
+    p.push_back(std::make_unique<juce::AudioParameterBool>("TAPE_BYPASS", "TAPE Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("DEESS_BYPASS", "DeEsser Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("DELTA_MONITOR", "Delta Monitor", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("EQ_COLOR_GLOBAL_BYPASS", "Analog Color Global Bypass", false));
@@ -74,38 +74,38 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     }
     f("HF_CORNER", "EQ High-pass Corner", 40.f, 120.f, 70.f);
 
-    // Four-band OTT / PunkOTT-MB style controls.
-    f("OTT_INPUT", "OTT Input Gain", -24.f, 24.f, 0.f);
-    f("OTT_GATE", "OTT Gate", -90.f, 0.f, -80.f);
-    f("OTT_MIX", "OTT Mix", 0.f, 100.f, 25.f);
-    p.push_back(std::make_unique<juce::AudioParameterBool>("OTT_CLIPPER", "OTT Clipper", false));
-    f("OTT_OUTPUT", "OTT Output Gain", -24.f, 24.f, 0.f);
-    f("OTT_X1", "OTT Crossover 1", 80.f, 600.f, 90.f, 1.5f);
-    f("OTT_X2", "OTT Crossover 2", 750.f, 3000.f, 2500.f, 0.8f);
-    f("OTT_X3", "OTT Crossover 3", 6000.f, 12000.f, 7000.f, 0.65f);
+    // Four-band UDMBC / UDMBC style controls.
+    f("UDMBC_INPUT", "UDMBC Input Gain", -24.f, 24.f, 0.f);
+    f("UDMBC_GATE", "UDMBC Gate", -90.f, 0.f, -80.f);
+    f("UDMBC_MIX", "UDMBC Mix", 0.f, 100.f, 25.f);
+    p.push_back(std::make_unique<juce::AudioParameterBool>("UDMBC_CLIPPER", "UDMBC Clipper", false));
+    f("UDMBC_OUTPUT", "UDMBC Output Gain", -24.f, 24.f, 0.f);
+    f("UDMBC_X1", "UDMBC Crossover 1", 80.f, 600.f, 90.f, 1.5f);
+    f("UDMBC_X2", "UDMBC Crossover 2", 750.f, 3000.f, 2500.f, 0.8f);
+    f("UDMBC_X3", "UDMBC Crossover 3", 6000.f, 12000.f, 7000.f, 0.65f);
     f("XOVER_OVERLAP", "Shared Crossover Overlap", 0.f, 100.f, 50.f);
 
     for (int i = 0; i < 4; ++i)
     {
         const juce::String n = juce::String(i + 1);
         p.push_back(std::make_unique<juce::AudioParameterBool>(
-            "OTT_BAND_BYPASS" + n, "OTT Band " + n + " Bypass", false));
-        const float ottDegreeDefaults[4] = { 25.f, 25.f, 22.f, 18.f };
-        const float ottLifterMixDefaults[4] = { 70.f, 70.f, 60.f, 50.f };
-        f("OTT_DEGREE" + n, "OTT Band " + n + " Degree", 0.f, 100.f, ottDegreeDefaults[i]);
-        f("OTT_LIFT_T" + n, "OTT Band " + n + " Lifter Threshold", -80.f, 0.f, -35.f);
-        f("OTT_LIFT_A" + n, "OTT Band " + n + " Lifter Attack", 1.f, 500.f, 1.f, 0.35f);
-        f("OTT_LIFT_R" + n, "OTT Band " + n + " Lifter Release", 10.f, 2500.f, 80.f, 0.35f);
-        f("OTT_LIFT_M" + n, "OTT Band " + n + " Lifter Mix", 0.f, 100.f, ottLifterMixDefaults[i]);
-        f("OTT_COMP_T" + n, "OTT Band " + n + " Compressor Threshold", -40.f, 0.f, -24.f);
-        const float ottAttackDefaults[4] = { 15.f, 8.f, 3.f, 1.f };
-        f("OTT_COMP_A" + n, "OTT Band " + n + " Compressor Attack", 0.1f, 120.f, ottAttackDefaults[i], 0.35f);
-        f("OTT_COMP_R" + n, "OTT Band " + n + " Compressor Release", 10.f, 2500.f, 60.f, 0.35f);
-        f("OTT_COMP_M" + n, "OTT Band " + n + " Compressor Mix", 0.f, 100.f, 85.f);
-        f("OTT_LEVEL" + n, "OTT Band " + n + " Level", -24.f, 12.f, 0.f);
+            "UDMBC_BAND_BYPASS" + n, "UDMBC Band " + n + " Bypass", false));
+        const float udmbcDegreeDefaults[4] = { 25.f, 25.f, 22.f, 18.f };
+        const float udmbcLifterMixDefaults[4] = { 70.f, 70.f, 60.f, 50.f };
+        f("UDMBC_DEGREE" + n, "UDMBC Band " + n + " Degree", 0.f, 100.f, udmbcDegreeDefaults[i]);
+        f("UDMBC_LIFT_T" + n, "UDMBC Band " + n + " Lifter Threshold", -80.f, 0.f, -35.f);
+        f("UDMBC_LIFT_A" + n, "UDMBC Band " + n + " Lifter Attack", 1.f, 500.f, 1.f, 0.35f);
+        f("UDMBC_LIFT_R" + n, "UDMBC Band " + n + " Lifter Release", 10.f, 2500.f, 80.f, 0.35f);
+        f("UDMBC_LIFT_M" + n, "UDMBC Band " + n + " Lifter Mix", 0.f, 100.f, udmbcLifterMixDefaults[i]);
+        f("UDMBC_COMP_T" + n, "UDMBC Band " + n + " Compressor Threshold", -40.f, 0.f, -24.f);
+        const float udmbcAttackDefaults[4] = { 15.f, 8.f, 3.f, 1.f };
+        f("UDMBC_COMP_A" + n, "UDMBC Band " + n + " Compressor Attack", 0.1f, 120.f, udmbcAttackDefaults[i], 0.35f);
+        f("UDMBC_COMP_R" + n, "UDMBC Band " + n + " Compressor Release", 10.f, 2500.f, 60.f, 0.35f);
+        f("UDMBC_COMP_M" + n, "UDMBC Band " + n + " Compressor Mix", 0.f, 100.f, 85.f);
+        f("UDMBC_LEVEL" + n, "UDMBC Band " + n + " Level", -24.f, 12.f, 0.f);
     }
 
-    // Four-band Type-A style dynamic enhancer.
+    // Four-band TAPE style dynamic enhancer.
     for (int i = 0; i < 4; ++i)
     {
         const juce::String n = juce::String(i + 1);
@@ -113,16 +113,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         const float levels[4] = { 0.f, 0.f, 1.f, 1.f };
         const float maxDegrees[4] = { 50.f, 60.f, 70.f, 90.f };
         p.push_back(std::make_unique<juce::AudioParameterBool>(
-            "ATYPE_BAND_BYPASS" + n, "Type-A Band " + n + " Bypass", false));
-        f("ATYPE_DEGREE" + n, "Type-A Band " + n + " Degree",
+            "TAPE_BAND_BYPASS" + n, "TAPE Band " + n + " Bypass", false));
+        f("TAPE_DEGREE" + n, "TAPE Band " + n + " Degree",
           0.f, maxDegrees[i], defaults[i]);
-        f("ATYPE_LEVEL" + n, "Type-A Band " + n + " Level", -6.f, 6.f, levels[i]);
+        f("TAPE_LEVEL" + n, "TAPE Band " + n + " Level", -6.f, 6.f, levels[i]);
     }
-    f("ATYPE_ATTACK", "Type-A Attack", 1.f, 100.f, 1.f, 0.35f);
-    f("ATYPE_RELEASE", "Type-A Release", 20.f, 500.f, 20.f, 0.35f);
-    f("ATYPE_INPUT", "Type-A Input Gain", -24.f, 24.f, 0.f);
-    f("ATYPE_MIX", "Type-A Mix", 0.f, 100.f, 100.f);
-    f("ATYPE_OUTPUT", "Type-A Output Gain", -24.f, 24.f, 0.f);
+    f("TAPE_ATTACK", "TAPE Attack", 1.f, 100.f, 1.f, 0.35f);
+    f("TAPE_RELEASE", "TAPE Release", 20.f, 500.f, 20.f, 0.35f);
+    f("TAPE_INPUT", "TAPE Input Gain", -24.f, 24.f, 0.f);
+    f("TAPE_MIX", "TAPE Mix", 0.f, 100.f, 100.f);
+    f("TAPE_OUTPUT", "TAPE Output Gain", -24.f, 24.f, 0.f);
 
     p.push_back(std::make_unique<juce::AudioParameterChoice>(
         "SOLO_BAND", "Solo Band",
@@ -191,8 +191,8 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     p.eqBypass = value("EQ_BYPASS") > 0.5f;
     p.masterBypass = value("MASTER_BYPASS") > 0.5f;
-    p.ottBypass = value("OTT_BYPASS") > 0.5f;
-    p.atypeBypass = value("ATYPE_BYPASS") > 0.5f;
+    p.udmbcBypass = value("UDMBC_BYPASS") > 0.5f;
+    p.tapeBypass = value("TAPE_BYPASS") > 0.5f;
     p.deessBypass = value("DEESS_BYPASS") > 0.5f;
     p.mixBypass = value("MIX_BYPASS") > 0.5f;
     p.eqColorGlobalBypass = value("EQ_COLOR_GLOBAL_BYPASS") > 0.5f;
@@ -217,40 +217,40 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.eqColorX2[(size_t)i] =
             value("EQ_COLOR_X2" + n) > 0.5f;
 
-        p.ottBandBypass[(size_t)i] = value("OTT_BAND_BYPASS" + n) > 0.5f;
-        p.ottDegree[(size_t)i] = value("OTT_DEGREE" + n);
-        p.ottLifterThreshold[(size_t)i] = value("OTT_LIFT_T" + n);
-        p.ottLifterAttack[(size_t)i] = value("OTT_LIFT_A" + n);
-        p.ottLifterRelease[(size_t)i] = value("OTT_LIFT_R" + n);
-        p.ottLifterMix[(size_t)i] = value("OTT_LIFT_M" + n);
+        p.udmbcBandBypass[(size_t)i] = value("UDMBC_BAND_BYPASS" + n) > 0.5f;
+        p.udmbcDegree[(size_t)i] = value("UDMBC_DEGREE" + n);
+        p.udmbcLifterThreshold[(size_t)i] = value("UDMBC_LIFT_T" + n);
+        p.udmbcLifterAttack[(size_t)i] = value("UDMBC_LIFT_A" + n);
+        p.udmbcLifterRelease[(size_t)i] = value("UDMBC_LIFT_R" + n);
+        p.udmbcLifterMix[(size_t)i] = value("UDMBC_LIFT_M" + n);
 
-        p.ottCompThreshold[(size_t)i] = value("OTT_COMP_T" + n);
-        p.ottCompAttack[(size_t)i] = value("OTT_COMP_A" + n);
-        p.ottCompRelease[(size_t)i] = value("OTT_COMP_R" + n);
-        p.ottCompMix[(size_t)i] = value("OTT_COMP_M" + n);
-        p.ottBandLevelDb[(size_t)i] = value("OTT_LEVEL" + n);
+        p.udmbcCompThreshold[(size_t)i] = value("UDMBC_COMP_T" + n);
+        p.udmbcCompAttack[(size_t)i] = value("UDMBC_COMP_A" + n);
+        p.udmbcCompRelease[(size_t)i] = value("UDMBC_COMP_R" + n);
+        p.udmbcCompMix[(size_t)i] = value("UDMBC_COMP_M" + n);
+        p.udmbcBandLevelDb[(size_t)i] = value("UDMBC_LEVEL" + n);
 
-        p.atypeBandBypass[(size_t)i] = value("ATYPE_BAND_BYPASS" + n) > 0.5f;
-        p.atypeDegree[(size_t)i] = value("ATYPE_DEGREE" + n);
-        p.atypeBandLevelDb[(size_t)i] = value("ATYPE_LEVEL" + n);
+        p.tapeBandBypass[(size_t)i] = value("TAPE_BAND_BYPASS" + n) > 0.5f;
+        p.tapeDegree[(size_t)i] = value("TAPE_DEGREE" + n);
+        p.tapeBandLevelDb[(size_t)i] = value("TAPE_LEVEL" + n);
     }
 
 
-    p.ottInputGainDb = value("OTT_INPUT");
-    p.ottGateThresholdDb = value("OTT_GATE");
-    p.ottMix = value("OTT_MIX");
-    p.ottX1 = value("OTT_X1");
-    p.ottX2 = value("OTT_X2");
-    p.ottX3 = value("OTT_X3");
-    p.ottXoverOverlap = value("XOVER_OVERLAP");
-    p.ottOutputGainDb = value("OTT_OUTPUT");
-    p.ottClipper = value("OTT_CLIPPER") > 0.5f;
+    p.udmbcInputGainDb = value("UDMBC_INPUT");
+    p.udmbcGateThresholdDb = value("UDMBC_GATE");
+    p.udmbcMix = value("UDMBC_MIX");
+    p.udmbcX1 = value("UDMBC_X1");
+    p.udmbcX2 = value("UDMBC_X2");
+    p.udmbcX3 = value("UDMBC_X3");
+    p.udmbcXoverOverlap = value("XOVER_OVERLAP");
+    p.udmbcOutputGainDb = value("UDMBC_OUTPUT");
+    p.udmbcClipper = value("UDMBC_CLIPPER") > 0.5f;
 
-    p.atypeAttackMs = value("ATYPE_ATTACK");
-    p.atypeReleaseMs = value("ATYPE_RELEASE");
-    p.atypeInputGainDb = value("ATYPE_INPUT");
-    p.atypeMix = value("ATYPE_MIX");
-    p.atypeOutputGainDb = value("ATYPE_OUTPUT");
+    p.tapeAttackMs = value("TAPE_ATTACK");
+    p.tapeReleaseMs = value("TAPE_RELEASE");
+    p.tapeInputGainDb = value("TAPE_INPUT");
+    p.tapeMix = value("TAPE_MIX");
+    p.tapeOutputGainDb = value("TAPE_OUTPUT");
 
     p.soloBand = static_cast<int>(juce::roundToInt(value("SOLO_BAND"))) - 1;
     p.soloPost = value("SOLO_MODE") > 0.5f;

@@ -315,18 +315,18 @@ class VVChainWorklet extends AudioWorkletProcessor {
         y=this.analog(y,amount,!!s.eq.mode[b],c,b,x2);
       }
     }
-    if(!s.ott.bypass){
-      const original=y,inputGain=this.db2g(this.clamp(s.ott.input,-24,24)),xs=s.ott.x,z=original*inputGain;
+    if(!s.udmbc.bypass){
+      const original=y,inputGain=this.db2g(this.clamp(s.udmbc.input,-24,24)),xs=s.udmbc.x,z=original*inputGain;
       c.lp[0]+=(1-Math.exp(-2*Math.PI*xs[0]/sampleRate))*(z-c.lp[0]);const h0=z-c.lp[0];
       c.lp[1]+=(1-Math.exp(-2*Math.PI*xs[1]/sampleRate))*(h0-c.lp[1]);const h1=h0-c.lp[1];
       c.lp[2]+=(1-Math.exp(-2*Math.PI*xs[2]/sampleRate))*(h1-c.lp[2]);
       const bands=[c.lp[0],c.lp[1],c.lp[2],h1-c.lp[2]];
       for(let b=0;b<4;b++){
-        if(s.bandBypass?.[b]||s.ott.bandBypass[b])continue;
-        const degree=this.clamp(Number(s.ott.degree[b]||0),0,100);
+        if(s.bandBypass?.[b]||s.udmbc.bandBypass[b])continue;
+        const degree=this.clamp(Number(s.udmbc.degree[b]||0),0,100);
         if(degree<=1e-4)continue;
         let v=bands[b];
-        const gateDb=this.g2db(Math.abs(v)+1e-9),gt=s.ott.gate,knee=9,slope=5;
+        const gateDb=this.g2db(Math.abs(v)+1e-9),gt=s.udmbc.gate,knee=9,slope=5;
         const kneeStart=gt-knee/2,kneeEnd=gt+knee/2;let gateTarget=0;
         if(gateDb<kneeStart)gateTarget=(gateDb-gt)*slope;
         else if(gateDb<kneeEnd){const t=this.clamp((gateDb-kneeStart)/knee,0,1);gateTarget=(gateDb-gt)*slope*(1-t)*(1-t);}
@@ -334,38 +334,38 @@ class VVChainWorklet extends AudioWorkletProcessor {
         c.gateBand[b]=.99*c.gateBand[b]+.01*gateTarget;
         v*=.9*this.db2g(c.gateBand[b])+.1;
         const depth=degree/100,downRatio=1+depth*((b===3?100:66.7)-1),upRatio=1+depth*3;
-        const downDb=this.g2db(Math.abs(v)+1e-9),downThr=s.ott.compT[b],downSlope=1-1/downRatio;
+        const downDb=this.g2db(Math.abs(v)+1e-9),downThr=s.udmbc.compT[b],downSlope=1-1/downRatio;
         const downTarget=downDb>downThr?(downDb-downThr)*downSlope:0;
-        const bandBaseAttackMs=Math.max(.1,Math.min(120,Number(s.ott.compA[b]||0))),k=Math.max(0,(120-bandBaseAttackMs)/.49);
+        const bandBaseAttackMs=Math.max(.1,Math.min(120,Number(s.udmbc.compA[b]||0))),k=Math.max(0,(120-bandBaseAttackMs)/.49);
         const dynamicAttackMs=bandBaseAttackMs+k*(depth*depth),minAttackLimit=b===0?15:(b===1?8:1),finalAttackMs=Math.max(minAttackLimit,dynamicAttackMs);
-        const baseReleaseMs=Math.max(10,Math.min(2500,Number(s.ott.compR[b]||0))),finalReleaseMs=Math.max(20,baseReleaseMs+depth*100);
+        const baseReleaseMs=Math.max(10,Math.min(2500,Number(s.udmbc.compR[b]||0))),finalReleaseMs=Math.max(20,baseReleaseMs+depth*100);
         const attackCoef=Math.exp(-1000/(finalAttackMs*sampleRate)),releaseCoef=Math.exp(-1000/(finalReleaseMs*sampleRate));
         const dr=releaseCoef;c.comp[b]=c.comp[b]*(downTarget>c.comp[b]?attackCoef:dr)+(1-(downTarget>c.comp[b]?attackCoef:dr))*downTarget;
-        const downMix=this.clamp(s.ott.compM[b]/100,0,1);v*=this.db2g(-c.comp[b]*downMix)+(1-downMix);
-        const upDb=this.g2db(Math.abs(v)+1e-9),upThr=s.ott.liftT[b],upSlope=1-1/upRatio,upTarget=upDb<upThr?(upThr-upDb)*upSlope:0;
-        const ua=this.tc(s.ott.liftA[b]),ur=this.tc(s.ott.liftR[b]),upGain=this.db2g(Math.min(12,Math.max(0,upTarget)));
+        const downMix=this.clamp(s.udmbc.compM[b]/100,0,1);v*=this.db2g(-c.comp[b]*downMix)+(1-downMix);
+        const upDb=this.g2db(Math.abs(v)+1e-9),upThr=s.udmbc.liftT[b],upSlope=1-1/upRatio,upTarget=upDb<upThr?(upThr-upDb)*upSlope:0;
+        const ua=this.tc(s.udmbc.liftA[b]),ur=this.tc(s.udmbc.liftR[b]),upGain=this.db2g(Math.min(12,Math.max(0,upTarget)));
         c.lift[b]=c.lift[b]*(upGain>1?ua:ur)+(1-(upGain>1?ua:ur))*upGain;
-        const upMix=this.clamp(s.ott.liftM[b]/100,0,1);v*=c.lift[b]*upMix+(1-upMix);
-        v*=this.db2g(this.clamp(s.ott.level[b],-24,12));bands[b]=v;
+        const upMix=this.clamp(s.udmbc.liftM[b]/100,0,1);v*=c.lift[b]*upMix+(1-upMix);
+        v*=this.db2g(this.clamp(s.udmbc.level[b],-24,12));bands[b]=v;
       }
       let sum=bands[0]+bands[1]+bands[2]+bands[3];
-      if(s.ott.clip)sum=Math.tanh(sum*1.7);
-      sum*=this.db2g(this.clamp(s.ott.output,-24,24));
+      if(s.udmbc.clip)sum=Math.tanh(sum*1.7);
+      sum*=this.db2g(this.clamp(s.udmbc.output,-24,24));
       const ceilingDb=-.8,inputDb=this.g2db(Math.max(Math.abs(sum),1e-9)),targetRed=inputDb>ceilingDb?-(inputDb-ceilingDb):0;
       const la=this.tc(.05),lr=this.tc(85),lc=targetRed<c.lim?la:lr;
       c.lim=lc*c.lim+(1-lc)*targetRed;sum*=this.db2g(c.lim);
-      const mix=this.clamp(s.ott.mix/100,0,1);
+      const mix=this.clamp(s.udmbc.mix/100,0,1);
       y=original*(1-mix)+sum*mix;
     }
     if(!s.type.bypass){
       const ti=y*this.db2g(s.type.input);
       const mix=this.clamp(Number(s.type.mix)/100,0,1);
 
-      // TAPE-A is intentionally stateless. Attack / Release and envelope
+      // TAPE COLOR is intentionally stateless. Attack / Release and envelope
       // state are retained only for preset compatibility, not gain movement.
       // These three crossover LP states are signal-splitting state, not dynamic gain state.
-      // TYPE-A follows the same X1/X2/X3 split as OTT.
-      const xs=s.ott.x;
+      // TAPE follows the same X1/X2/X3 split as UDMBC.
+      const xs=s.udmbc.x;
       const bands=this.zoneBands(ti,c,"typeLp",xs);
 
       const driveParams=[0,0,0,0];
@@ -420,7 +420,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       hp:this.hp(deFreq,.70710678118)
     };
     const mix=this.clamp((this.s.mix.bypass?100:this.s.mix.drywet)/100,0,1),og=this.db2g(this.clamp(this.s.mix.output,-24,12));
-    const soloBand=Number(this.s.solo?.band??-1),graphSolo=!!this.s.solo?.graphActive,soloEnabled=graphSolo||(soloBand>=0&&soloBand<4),xs=this.s.ott.x;
+    const soloBand=Number(this.s.solo?.band??-1),graphSolo=!!this.s.solo?.graphActive,soloEnabled=graphSolo||(soloBand>=0&&soloBand<4),xs=this.s.udmbc.x;
     for(let n=0;n<out[0].length;n++){
       const l=L[n]||0,r=R[n]||0;
       const dyn=this.dynamicStereo(l,r,stereo);

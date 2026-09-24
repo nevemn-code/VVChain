@@ -12,7 +12,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 .header{height:56px;border:1px solid #08090b;border-radius:7px;padding:8px 12px;background:linear-gradient(180deg,#343840,#181b20);display:flex;align-items:center;box-shadow:inset 0 1px #fff2}.logo{font-size:21px;font-weight:900;letter-spacing:.32em}.brandLine{display:flex;align-items:baseline;gap:12px}.lastModified{font:700 8px Consolas;color:#7f8893;letter-spacing:.04em;white-space:nowrap}.sub{font:8px Consolas;color:#828b96;margin-top:2px}.headerControls{margin-left:auto;display:flex;align-items:center;gap:8px}
 .leds{display:flex;gap:8px;margin-left:0}.ledBox{display:grid;grid-template-columns:21px auto;gap:3px;align-items:center;cursor:pointer}.led{width:19px;height:19px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 2px 4px #000}.led.on{background:radial-gradient(circle at 36% 30%,#fff 0%,var(--led) 22%,#25272b 78%,#101216 100%);box-shadow:0 0 10px var(--led),inset 0 1px #fff5}.ledLabel{font:7px Consolas;color:#a9b0b9}
 .rowTop{height:315px;margin-top:5px;display:block}.rowTop>.panel{display:none}.panel,.band{border:1px solid #08090b;border-radius:7px;background:linear-gradient(180deg,#292c32,#13161a);box-shadow:0 9px 18px #0009,inset 0 1px #fff1}.panelHead{height:29px;padding:6px 10px;border-bottom:1px solid #06070a;font-size:10px;font-weight:900;letter-spacing:.08em}.panelSub{font:7px Consolas;color:#7f8790;margin-top:1px}.eqShared{display:none}.graph{height:315px;border:1px solid #06070a;border-radius:7px;background:#111318;overflow:hidden;position:relative}.graph canvas{width:100%;height:100%;display:block}.graphHint .active{font-weight:900;color:#fff}.graphHint .muted{font-weight:400;color:#9aa2ac}.graphHint{position:absolute;z-index:5;pointer-events:none;padding:8px 10px;border:1px solid #fff9;border-radius:6px;background:#07090cf2;box-shadow:0 7px 20px #000b;color:#fff;font:700 10px/15px Consolas;white-space:normal;text-align:left}
-.bandsFrame{height:500px;margin-top:6px;padding:7px;border:1px solid #07080a;border-radius:7px;background:linear-gradient(180deg,#20242a,#101216);box-shadow:0 10px 22px #0009}.bandGrid{height:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) .5fr .5fr;gap:7px}.band{position:relative;padding:7px;overflow:hidden}.band:after{content:"";position:absolute;inset:2px;border:1px solid var(--accent);opacity:.16;border-radius:5px;pointer-events:none}.bandHead{height:25px;display:flex;justify-content:space-between;align-items:center;color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.08em}.bandLed{position:absolute;right:7px;width:14px;height:14px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 1px 3px #000;z-index:3;padding:0}.bandLed.on{box-shadow:0 0 7px var(--led),inset 0 1px #fff5}.bandLed.ott{top:-9px;right:-3px}.bandLed.type{top:-9px;right:-3px}.bandLed.ott.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#facc15 25%,#25272b 78%,#101216 100%)}.bandLed.type.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#f472b6 25%,#25272b 78%,#101216 100%)}.bandHeadBtns{display:flex;align-items:center;gap:3px}.soloBtn{height:21px;padding:0 6px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.soloBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.advBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #555b63;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.band.bypassed{filter:grayscale(1)}.knob.graphActive .dial{box-shadow:0 0 0 2px #fff,0 0 11px #fff8,inset 0 1px 2px #fff2}.knob.graphMoving .dial{animation:vvGraphPulse .36s steps(2,end) infinite}@keyframes vvGraphPulse{0%,100%{box-shadow:0 0 0 2px #fff,0 0 12px #fff9,inset 0 1px 2px #fff2}50%{box-shadow:0 0 0 1px #fff4,0 0 4px #fff3,inset 0 1px 2px #fff2}}.ottAdvBtn{position:absolute;left:7px;top:6px;height:21px;padding:0 7px;border-radius:4px;border:1px solid #5b4c1d;background:#17150f;color:#ffdf62;font:8px Consolas;z-index:4}.bandBody{height:calc(100% - 25px)}.deessZone{height:100%;display:grid;grid-template-columns:1fr;grid-template-rows:repeat(3,1fr);gap:6px;padding:12px 6px 8px}.bandLed.de{top:4px;right:7px;width:19px;height:19px}.bandLed.de.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#67d3aa 25%,#25272b 78%,#101216 100%);box-shadow:0 0 10px #67d3aa,inset 0 1px #fff5}.eqBody{height:calc(100% - 25px);padding:11px 2px 0;display:grid;grid-template-rows:84px 110px 105px 128px;gap:5px}.knobGrid{height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr;gap:3px}.dynSection{height:110px;border:1px solid #30343a;border-radius:5px;background:#0c0f13;padding:8px 4px 2px;position:relative}.dynModeRow{height:15px;display:block;position:relative;margin:1px 0}.dynModeBtn{height:14px;border:1px solid #444b55;border-radius:3px;background:#11151a;color:#cfd5dc;font:7px Consolas;font-weight:700}.dynModeRow .triggerBtn{position:absolute;right:0;top:0;width:32%}.dynDetectBlend{position:absolute;left:16.667%;top:-4px;transform:translateX(-50%);width:60px;height:12px;border:1px solid #444b55;border-radius:4px;background:linear-gradient(to right,#60a5fa 0 var(--mix,50%),#11151a var(--mix,50%) 100%);overflow:hidden;color:#fff;font:5.8px Consolas;font-weight:800;display:flex;align-items:center;justify-content:space-between;padding:0 3px}.dynDetectBlend input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:.01;cursor:ew-resize}.dynDetectBlend span{pointer-events:none;z-index:1;text-shadow:0 1px 2px #000}.dynModeBtn.on{background:#e8edf2;color:#090b0e}.dynControls{height:81px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.staticGrid .knob .dial{width:50px;height:50px}.staticGrid .knob .dial:before{height:14px;transform-origin:50% 21px}.dynControls .knob .dial{width:50px;height:50px}.dynControls .knob .dial:before{height:14px;transform-origin:50% 21px}.ottGrid,.bottomGrid{height:100%;display:grid;position:relative;grid-template-columns:repeat(3,1fr);gap:3px}.ottGrid .knob .dial,.bottomGrid .knob .dial{width:47px;height:47px}.ottGrid .knob .dial:before,.bottomGrid .knob .dial:before{height:13px;transform-origin:50% 20px}.knobTitle{height:12px}.knobValue{height:14px;line-height:12px}.bottomGrid{grid-template-columns:repeat(2,1fr);padding:0 18%}.dynMuted{opacity:.45;filter:grayscale(1)}.moduleMuted{opacity:.42;filter:grayscale(1)}.knobMuted{opacity:.42;filter:grayscale(1)}.knobMuted .modeSwitch,.modeSwitch.muted{opacity:.42;filter:grayscale(1)}.deessMuted .bandHead{color:#747b84}.deessMuted .bandBody{opacity:.42;filter:grayscale(1)}.deessMuted .bandLed.de{opacity:.42;filter:grayscale(1)}.deessLocal{top:auto;right:7px;width:19px;height:19px}.graphAxis{fill:#aab0ba}.knob{text-align:center;font:7.7px Consolas;color:#bcc3cb;min-width:0;position:relative}.modeSwitch{position:absolute;left:50%;top:-25px;transform:translateX(-50%);width:36px;height:12px;padding:0;display:flex;align-items:center;justify-content:space-around;border:1px solid #4b525b;border-radius:4px;background:#0b0d10;color:#aeb5bd;font:10px Consolas;font-weight:900;z-index:4}.deEssModeDial{overflow:visible}.deEssModeTick{position:absolute;z-index:6;transform:translate(-50%,-50%);pointer-events:none;color:var(--accent);font:7px Consolas;font-weight:900;text-shadow:0 1px 2px #000}.analogX2Btn{position:absolute;left:2px;top:-12px;width:22px;height:12px;padding:0;border:1px solid #4b525b;border-radius:4px;background:#0b0d10;color:#7f8790;font:7px Consolas;font-weight:900;z-index:5}.analogX2Btn.on{color:#fff;border-color:#60a5fa;background:#193047;box-shadow:0 0 7px #60a5fa88}.modeSwitch i{position:absolute;top:2px;left:2px;width:14px;height:6px;border-radius:3px;background:#60a5fa;opacity:.85;transition:left .08s}.modeSwitch.ss i{left:18px}.modeSwitch span{position:relative;z-index:1}.modeSwitch.ss span:last-child,.modeSwitch:not(.ss) span:first-child{color:#fff}.dial{width:58px;height:58px;margin:0 auto 2px;border-radius:50%;border:2px solid #676c75;background:radial-gradient(circle at 34% 28%,#50545d,#2b2f35 58%,#15171b 100%);box-shadow:0 4px 9px #000c,inset 0 1px 2px #fff2;position:relative;touch-action:none;cursor:ns-resize}.dial:before{content:"";position:absolute;left:50%;top:4px;width:3px;height:18px;background:#fff;box-shadow:0 0 0 1px #0008;transform:translateX(-50%) rotate(var(--angle,-125deg));transform-origin:50% 25px;border-radius:2px}.dial{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 9px #000c,inset 0 1px 2px #fff2}.dial:after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;background:#eef2f7;transform:translate(-50%,-50%)}.knobTitle{height:13px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.knobValue{height:16px;line-height:14px;border:1px solid #050608;border-radius:3px;background:#07090b;color:#dce2e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8.8px}
+.bandsFrame{height:500px;margin-top:6px;padding:7px;border:1px solid #07080a;border-radius:7px;background:linear-gradient(180deg,#20242a,#101216);box-shadow:0 10px 22px #0009}.bandGrid{height:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) .5fr .5fr;gap:7px}.band{position:relative;padding:7px;overflow:hidden}.band:after{content:"";position:absolute;inset:2px;border:1px solid var(--accent);opacity:.16;border-radius:5px;pointer-events:none}.bandHead{height:25px;display:flex;justify-content:space-between;align-items:center;color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.08em}.bandLed{position:absolute;right:7px;width:14px;height:14px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 1px 3px #000;z-index:3;padding:0}.bandLed.on{box-shadow:0 0 7px var(--led),inset 0 1px #fff5}.bandLed.udmbc{top:-9px;right:-3px}.bandLed.type{top:-9px;right:-3px}.bandLed.udmbc.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#facc15 25%,#25272b 78%,#101216 100%)}.bandLed.type.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#f472b6 25%,#25272b 78%,#101216 100%)}.bandHeadBtns{display:flex;align-items:center;gap:3px}.soloBtn{height:21px;padding:0 6px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.soloBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.advBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #555b63;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.band.bypassed{filter:grayscale(1)}.knob.graphActive .dial{box-shadow:0 0 0 2px #fff,0 0 11px #fff8,inset 0 1px 2px #fff2}.knob.graphMoving .dial{animation:vvGraphPulse .36s steps(2,end) infinite}@keyframes vvGraphPulse{0%,100%{box-shadow:0 0 0 2px #fff,0 0 12px #fff9,inset 0 1px 2px #fff2}50%{box-shadow:0 0 0 1px #fff4,0 0 4px #fff3,inset 0 1px 2px #fff2}}.udmbcAdvBtn{position:absolute;left:7px;top:6px;height:21px;padding:0 7px;border-radius:4px;border:1px solid #5b4c1d;background:#17150f;color:#ffdf62;font:8px Consolas;z-index:4}.bandBody{height:calc(100% - 25px)}.deessZone{height:100%;display:grid;grid-template-columns:1fr;grid-template-rows:repeat(3,1fr);gap:6px;padding:12px 6px 8px}.bandLed.de{top:4px;right:7px;width:19px;height:19px}.bandLed.de.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#67d3aa 25%,#25272b 78%,#101216 100%);box-shadow:0 0 10px #67d3aa,inset 0 1px #fff5}.eqBody{height:calc(100% - 25px);padding:11px 2px 0;display:grid;grid-template-rows:84px 110px 105px 128px;gap:5px}.knobGrid{height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr;gap:3px}.dynSection{height:110px;border:1px solid #30343a;border-radius:5px;background:#0c0f13;padding:8px 4px 2px;position:relative}.dynModeRow{height:15px;display:block;position:relative;margin:1px 0}.dynModeBtn{height:14px;border:1px solid #444b55;border-radius:3px;background:#11151a;color:#cfd5dc;font:7px Consolas;font-weight:700}.dynModeRow .triggerBtn{position:absolute;right:0;top:0;width:32%}.dynDetectBlend{position:absolute;left:16.667%;top:-4px;transform:translateX(-50%);width:60px;height:12px;border:1px solid #444b55;border-radius:4px;background:linear-gradient(to right,#60a5fa 0 var(--mix,50%),#11151a var(--mix,50%) 100%);overflow:hidden;color:#fff;font:5.8px Consolas;font-weight:800;display:flex;align-items:center;justify-content:space-between;padding:0 3px}.dynDetectBlend input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:.01;cursor:ew-resize}.dynDetectBlend span{pointer-events:none;z-index:1;text-shadow:0 1px 2px #000}.dynModeBtn.on{background:#e8edf2;color:#090b0e}.dynControls{height:81px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.staticGrid .knob .dial{width:50px;height:50px}.staticGrid .knob .dial:before{height:14px;transform-origin:50% 21px}.dynControls .knob .dial{width:50px;height:50px}.dynControls .knob .dial:before{height:14px;transform-origin:50% 21px}.udmbcGrid,.bottomGrid{height:100%;display:grid;position:relative;grid-template-columns:repeat(3,1fr);gap:3px}.udmbcGrid .knob .dial,.bottomGrid .knob .dial{width:47px;height:47px}.udmbcGrid .knob .dial:before,.bottomGrid .knob .dial:before{height:13px;transform-origin:50% 20px}.knobTitle{height:12px}.knobValue{height:14px;line-height:12px}.bottomGrid{grid-template-columns:repeat(2,1fr);padding:0 18%}.dynMuted{opacity:.45;filter:grayscale(1)}.moduleMuted{opacity:.42;filter:grayscale(1)}.knobMuted{opacity:.42;filter:grayscale(1)}.knobMuted .modeSwitch,.modeSwitch.muted{opacity:.42;filter:grayscale(1)}.deessMuted .bandHead{color:#747b84}.deessMuted .bandBody{opacity:.42;filter:grayscale(1)}.deessMuted .bandLed.de{opacity:.42;filter:grayscale(1)}.deessLocal{top:auto;right:7px;width:19px;height:19px}.graphAxis{fill:#aab0ba}.knob{text-align:center;font:7.7px Consolas;color:#bcc3cb;min-width:0;position:relative}.modeSwitch{position:absolute;left:50%;top:-25px;transform:translateX(-50%);width:36px;height:12px;padding:0;display:flex;align-items:center;justify-content:space-around;border:1px solid #4b525b;border-radius:4px;background:#0b0d10;color:#aeb5bd;font:10px Consolas;font-weight:900;z-index:4}.deEssModeDial{overflow:visible}.deEssModeTick{position:absolute;z-index:6;transform:translate(-50%,-50%);pointer-events:none;color:var(--accent);font:7px Consolas;font-weight:900;text-shadow:0 1px 2px #000}.analogX2Btn{position:absolute;left:2px;top:-12px;width:22px;height:12px;padding:0;border:1px solid #4b525b;border-radius:4px;background:#0b0d10;color:#7f8790;font:7px Consolas;font-weight:900;z-index:5}.analogX2Btn.on{color:#fff;border-color:#60a5fa;background:#193047;box-shadow:0 0 7px #60a5fa88}.modeSwitch i{position:absolute;top:2px;left:2px;width:14px;height:6px;border-radius:3px;background:#60a5fa;opacity:.85;transition:left .08s}.modeSwitch.ss i{left:18px}.modeSwitch span{position:relative;z-index:1}.modeSwitch.ss span:last-child,.modeSwitch:not(.ss) span:first-child{color:#fff}.dial{width:58px;height:58px;margin:0 auto 2px;border-radius:50%;border:2px solid #676c75;background:radial-gradient(circle at 34% 28%,#50545d,#2b2f35 58%,#15171b 100%);box-shadow:0 4px 9px #000c,inset 0 1px 2px #fff2;position:relative;touch-action:none;cursor:ns-resize}.dial:before{content:"";position:absolute;left:50%;top:4px;width:3px;height:18px;background:#fff;box-shadow:0 0 0 1px #0008;transform:translateX(-50%) rotate(var(--angle,-125deg));transform-origin:50% 25px;border-radius:2px}.dial{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 9px #000c,inset 0 1px 2px #fff2}.dial:after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;background:#eef2f7;transform:translate(-50%,-50%)}.knobTitle{height:13px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.knobValue{height:16px;line-height:14px;border:1px solid #050608;border-radius:3px;background:#07090b;color:#dce2e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8.8px}
 .advPopup{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,calc(100% - 40px));height:330px;border:1px solid #facc15cc;border-radius:10px;background:linear-gradient(180deg,#28231a,#101216);z-index:50;padding:8px 12px;box-shadow:0 18px 44px #000c,0 0 0 1px #0009}.advPopupHead{height:34px;display:flex;align-items:center;justify-content:space-between;color:#facc15;font:10px Consolas;font-weight:900}.advPopupClose{height:21px;padding:0 8px;border:1px solid #5c4e1f;border-radius:4px;background:#17150f;color:#ffdf62;font:8px Consolas}.advPopupGrid{height:276px;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:1fr 1fr;gap:2px}.advPopupGrid .dial{width:50px;height:50px}.advPopupGrid .dial:before{height:14px;transform-origin:50% 22px}.advPopupGrid .knobTitle{font-size:6.82px;height:11px}.advPopupGrid .knobValue{font-size:7.7px;height:14px;line-height:12px}.advPopupGrid .tiny{height:22px;padding:0 3px;font-size:6.5px;margin:auto}
 .footer{display:none}.masterBypass{height:27px;min-width:72px;padding:0 9px;border:1px solid #69717b;border-radius:4px;background:#20242a;color:#e9eef3;font:9px Consolas;font-weight:900}.masterBypass.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 12px #dfe7ef88}.app.globalBypass{filter:grayscale(1)}.app.audioDragOver{outline:2px solid #38bdf8;outline-offset:-3px;box-shadow:0 0 18px #38bdf855,0 18px 50px #000}.leds{margin-left:8px}.deessMonitor{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:22px 8px 8px;gap:7px}.masterBypassLabel{font:900 9px Consolas;color:#e5e7eb;letter-spacing:.08em;text-align:center}.monitorKnobRow{width:100%;height:224px;display:grid;grid-template-columns:1fr;grid-template-rows:1fr 1fr;gap:4px}.deessPower{width:72px;height:72px;border-radius:50%;border:2px solid #50565f;background:radial-gradient(circle at 35% 28%,#454a52,#171a1f 68%,#0b0d10 100%);color:#8b929a;font-size:28px;font-weight:800;line-height:1;box-shadow:0 7px 12px #000b,inset 0 1px 2px #fff2;cursor:pointer}.deessPower.on{border-color:#e5e7eb;color:#fff;box-shadow:0 0 18px #e5e7eb77,0 7px 12px #000b,inset 0 1px 2px #fff3}.deltaBtn{width:100%;height:30px;border:1px solid #555b63;border-radius:5px;background:#12161b;color:#dfe5eb;font:800 9px Consolas}.deltaBtn.on{border-color:#fff;background:#e6edf2;color:#090b0e;box-shadow:0 0 9px #fff6}.monitorHint{font:7px Consolas;color:#7e8791;text-align:center;line-height:1.4}.note{display:none}select{height:27px;background:#0f1115;color:#dce2e8;border:1px solid #3b4047;border-radius:4px;font-size:8px}
 @media(max-width:1100px){.chain{display:none}.ledLabel{display:none}.dial{width:57px;height:57px}.footer{grid-template-columns:1fr 245px}}
@@ -48,7 +48,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     </div>
   </div>
   <div class="advPopup" id="advPopup" hidden>
-    <div class="advPopupHead"><span id="advPopupTitle">OTT ADVANCED</span><button class="advPopupClose" id="advPopupClose">CLOSE</button></div>
+    <div class="advPopupHead"><span id="advPopupTitle">UDMBC ADVANCED</span><button class="advPopupClose" id="advPopupClose">CLOSE</button></div>
     <div class="advPopupGrid" id="advPopupGrid"></div>
   </div>
   <div class="rowTop">
@@ -60,7 +60,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 <script>
 const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=null,workletNode=null,workletModuleUrl=null,playing=false,directFallback=false,workletHeartbeatSeen=false;
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
-const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive:false,graphFreq:1000,graphQ:.707},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:[35,35,35,35],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[50,50,50,50],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},ott:{bypass:false,bandBypass:[false,false,false,false],degree:[25,25,22,18],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[6,12,28,22],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:7500,threshold:-6,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
+const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive:false,graphFreq:1000,graphQ:.707},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:[35,35,35,35],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[50,50,50,50],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},udmbc:{bypass:false,bandBypass:[false,false,false,false],degree:[25,25,22,18],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[6,12,28,22],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:7500,threshold:-6,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
 const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.43
 function makeWorkletUrl(){
@@ -208,9 +208,9 @@ function bypassGlobalLed(label,get,set,accent){
   sync();
 }
 bypassLed("EQ",state.eq,"#38bdf8");
-bypassLed("OTT",state.ott,"#facc15");
+bypassLed("UDMBC",state.udmbc,"#facc15");
 bypassGlobalLed("ANALOG",()=>state.eq.globalBypass,v=>state.eq.globalBypass=v,"#60a5fa");
-bypassLed("TAPE-A",state.type,"#f472b6");
+bypassLed("TAPE COLOR",state.type,"#f472b6");
 bypassLed("DE-ESS",state.de,"#67d3aa");
 syncDeessLeds();
 const soloMode=$("#soloMode");
@@ -253,7 +253,7 @@ function makeKnob(parent,cfg){
     set(next);
     if(cfg.afterSet)cfg.afterSet(next);
     render();
-    if(label==="OTT %"||label==="MAXIMUM REDUCTION")knobRefreshers.forEach(fn=>fn());
+    if(label==="UDMBC %"||label==="MAXIMUM REDUCTION")knobRefreshers.forEach(fn=>fn());
     if(label==="MAXIMUM REDUCTION")document.querySelectorAll(".deessZone").forEach(z=>z.closest(".band")?.classList.toggle("deessMuted",state.de.threshold<=0.0001));
     sendParams();drawEQ()
   };
@@ -330,22 +330,22 @@ function setGraphControls(ids,moving=false){
 }
 function clearGraphControls(){document.querySelectorAll(".knob.graphActive").forEach(el=>el.classList.remove("graphActive","graphMoving"))}
 const cols=["#ef4444","#facc15","#3b82f6","#22c55e"],bg=$("#bandGrid");
-function hz(v){return v>=1000?fmt(v/1000,2)+" kHz":fmt(v,0)+" Hz"}function graphFrequencyText(v){return fmt(v,0)+" Hz"}function tape(v){return "+"+fmt(v*.06,1)+" dB"}function effectiveCompAttackMs(b){const amount=clamp(Number(state.ott.degree[b]||0)/100,0,1);const base=Math.max(.1,Math.min(120,Number(state.ott.compA[b]||0)));const k=Math.max(0,(120-base)/.49);return Math.max(b===0?15:(b===1?8:1),base+k*(amount*amount))}function effectiveCompReleaseMs(b){const amount=clamp(Number(state.ott.degree[b]||0)/100,0,1);const base=Math.max(10,Math.min(2500,Number(state.ott.compR[b]||0)));return Math.max(20,base+amount*100)}
+function hz(v){return v>=1000?fmt(v/1000,2)+" kHz":fmt(v,0)+" Hz"}function graphFrequencyText(v){return fmt(v,0)+" Hz"}function tape(v){return "+"+fmt(v*.06,1)+" dB"}function effectiveCompAttackMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(.1,Math.min(120,Number(state.udmbc.compA[b]||0)));const k=Math.max(0,(120-base)/.49);return Math.max(b===0?15:(b===1?8:1),base+k*(amount*amount))}function effectiveCompReleaseMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(10,Math.min(2500,Number(state.udmbc.compR[b]||0)));return Math.max(20,base+amount*100)}
 for(let b=0;b<4;b++){
 const n=b,card=document.createElement("div");
 card.className="band";card.style.setProperty("--accent",cols[n]);
-card.innerHTML="<div class='bandHead'><span>BAND "+(n+1)+"</span><span class='bandHeadBtns'><button class='advBtn'>+ ADV</button><button class='soloBtn'>SOLO</button><button class='bypassBtn'>BYPASS</button></span></div><div class='bandBody eqBody'><div class='knobGrid staticGrid'></div><div class='dynSection'><div class='dynModeRow'><div class='dynDetectBlend'><span>PEAK</span><input class='detectBlend' type='range' min='0' max='100' step='0.1'><span>ONSETS</span></div><button class='dynModeBtn triggerBtn'>ABOVE</button></div><div class='dynControls'></div></div><div class='knobGrid ottGrid'></div><div class='knobGrid bottomGrid'></div></div>";
+card.innerHTML="<div class='bandHead'><span>BAND "+(n+1)+"</span><span class='bandHeadBtns'><button class='advBtn'>+ ADV</button><button class='soloBtn'>SOLO</button><button class='bypassBtn'>BYPASS</button></span></div><div class='bandBody eqBody'><div class='knobGrid staticGrid'></div><div class='dynSection'><div class='dynModeRow'><div class='dynDetectBlend'><span>PEAK</span><input class='detectBlend' type='range' min='0' max='100' step='0.1'><span>ONSETS</span></div><button class='dynModeBtn triggerBtn'>ABOVE</button></div><div class='dynControls'></div></div><div class='knobGrid udmbcGrid'></div><div class='knobGrid bottomGrid'></div></div>";
 bg.appendChild(card);
 const bypassBtn=card.querySelector(".bypassBtn");
 const syncBandBypass=()=>{const on=!!state.bandBypass[n];card.classList.toggle("bypassed",on);bypassBtn.classList.toggle("on",on)};
 bypassBtn.onclick=()=>{state.bandBypass[n]=!state.bandBypass[n];syncBandBypass();sendParams();drawEQ()};syncBandBypass();
 
-const staticGrid=card.querySelector(".staticGrid"),dynControls=card.querySelector(".dynControls"),ottGrid=card.querySelector(".ottGrid"),bottomGrid=card.querySelector(".bottomGrid"),dynSection=card.querySelector(".dynSection");
+const staticGrid=card.querySelector(".staticGrid"),dynControls=card.querySelector(".dynControls"),udmbcGrid=card.querySelector(".udmbcGrid"),bottomGrid=card.querySelector(".bottomGrid"),dynSection=card.querySelector(".dynSection");
 const syncModuleMute=()=>{
   const eqMuted=!!state.eq.bypass;
   staticGrid.classList.toggle("moduleMuted",eqMuted);
   dynSection.classList.toggle("moduleMuted",eqMuted);
-  ottGrid.classList.toggle("moduleMuted",!!state.ott.bypass||!!state.ott.bandBypass[n]||Number(state.ott.degree[n]||0)<=0.0001);
+  udmbcGrid.classList.toggle("moduleMuted",!!state.udmbc.bypass||!!state.udmbc.bandBypass[n]||Number(state.udmbc.degree[n]||0)<=0.0001);
 };
 moduleMuteRefreshers.push(syncModuleMute);
 const soloBtn=card.querySelector(".soloBtn");
@@ -374,16 +374,16 @@ detectBlendWrap.addEventListener("wheel",e=>{e.preventDefault();const units=clam
 triggerBtn.onclick=()=>{state.dyn.triggerBelow[n]=!state.dyn.triggerBelow[n];syncDynMode();sendParams();drawEQ()};
 syncDynMode();
 
-makeKnob(ottGrid,{label:"OTT %",get:()=>state.ott.degree[n],set:v=>state.ott.degree[n]=v,min:0,max:100,suffix:" %",accent:"#facc15",mutedWhen:()=>state.ott.bypass||state.ott.bandBypass[n]||state.ott.degree[n]<=0.0001,afterSet:v=>{state.ott.bandBypass[n]=v<=0.0001;syncOttBandLed?.();syncModuleMute()}});
-makeKnob(ottGrid,{label:"ATTACK",get:()=>state.ott.compA[n],set:v=>state.ott.compA[n]=v,min:.1,max:120,suffix:" ms",accent:"#facc15",formatDigits:1,formatValue:()=>fmt(effectiveCompAttackMs(n),1)+" ms",mutedWhen:()=>state.ott.bypass||state.ott.bandBypass[n]||state.ott.degree[n]<=0.0001});
-makeKnob(ottGrid,{label:"RELEASE",get:()=>state.ott.compR[n],set:v=>state.ott.compR[n]=v,min:10,max:2500,suffix:" ms",accent:"#facc15",formatDigits:0,formatValue:()=>fmt(effectiveCompReleaseMs(n),0)+" ms",mutedWhen:()=>state.ott.bypass||state.ott.bandBypass[n]||state.ott.degree[n]<=0.0001});
+makeKnob(udmbcGrid,{label:"UDMBC %",get:()=>state.udmbc.degree[n],set:v=>state.udmbc.degree[n]=v,min:0,max:100,suffix:" %",accent:"#facc15",mutedWhen:()=>state.udmbc.bypass||state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001,afterSet:v=>{state.udmbc.bandBypass[n]=v<=0.0001;syncOttBandLed?.();syncModuleMute()}});
+makeKnob(udmbcGrid,{label:"ATTACK",get:()=>state.udmbc.compA[n],set:v=>state.udmbc.compA[n]=v,min:.1,max:120,suffix:" ms",accent:"#facc15",formatDigits:1,formatValue:()=>fmt(effectiveCompAttackMs(n),1)+" ms",mutedWhen:()=>state.udmbc.bypass||state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001});
+makeKnob(udmbcGrid,{label:"RELEASE",get:()=>state.udmbc.compR[n],set:v=>state.udmbc.compR[n]=v,min:10,max:2500,suffix:" ms",accent:"#facc15",formatDigits:0,formatValue:()=>fmt(effectiveCompReleaseMs(n),0)+" ms",mutedWhen:()=>state.udmbc.bypass||state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001});
 
 // ANALOG COLOR v1.0.16 unity-normalized smooth saturation.
 const analogKnob=makeKnob(bottomGrid,{label:"ANALOG COLOR",get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:60,suffix:" %",accent:"#60a5fa",mutedWhen:()=>state.eq.globalBypass||state.eq.colorBypass[n]||state.eq.color[n]<=0.0001});
 analogKnob.classList.add("analogKnob");
 let syncTapeLed=()=>{};
 const typeMax=[50,60,70,90][n];
-const typeKnob=makeKnob(bottomGrid,{label:"TAPE-A +",get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:typeMax,accent:cols[n],formatValue:tape,mutedWhen:()=>state.type.bypass||state.type.bandBypass[n]||state.type.degree[n]<=0.0001,afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed();knobRefreshers.forEach(fn=>fn())}});
+const typeKnob=makeKnob(bottomGrid,{label:"TAPE COLOR +",get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:typeMax,accent:cols[n],formatValue:tape,mutedWhen:()=>state.type.bypass||state.type.bandBypass[n]||state.type.degree[n]<=0.0001,afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed();knobRefreshers.forEach(fn=>fn())}});
 const mode=document.createElement("button");mode.className="modeSwitch";mode.title="TT = Tube Saturation；SS = Solid-State Saturation";mode.innerHTML="<span>TT</span><i></i><span>SS</span>";
 const syncMode=()=>{mode.classList.toggle("ss",!!state.eq.mode[n]);mode.classList.toggle("muted",state.eq.color[n]<=0.0001)};mode.onclick=()=>{state.eq.mode[n]=!state.eq.mode[n];syncMode();sendParams();drawEQ()};syncMode();analogKnob.appendChild(mode);
 const x2=document.createElement("button");x2.className="analogX2Btn";x2.textContent="X2";x2.title="ANALOG COLOR X2：0–60% 的 ANALOG COLOR delta × 2";
@@ -391,14 +391,14 @@ const syncX2=()=>x2.classList.toggle("on",!!state.eq.colorX2[n]);
 x2.onclick=()=>{state.eq.colorX2[n]=!state.eq.colorX2[n];syncX2();sendParams();drawEQ()};syncX2();
 analogKnob.appendChild(x2);syncModuleMute();
 
-const ottLed=document.createElement("button");ottLed.className="bandLed ott";ottLed.style.setProperty("--led","#facc15");ottLed.title="BAND "+(n+1)+" OTT：亮=啟用；按下=BYPASS";
-const syncOttBandLed=()=>ottLed.classList.toggle("on",!state.ott.bandBypass[n]);
-ottLed.onclick=()=>{state.ott.bandBypass[n]=!state.ott.bandBypass[n];syncOttBandLed();knobRefreshers.forEach(fn=>fn());syncModuleMute();sendParams()};syncOttBandLed();
-const typeLed=document.createElement("button");typeLed.className="bandLed type";typeLed.style.setProperty("--led","#f472b6");typeLed.title="BAND "+(n+1)+" TYPE-A：亮=啟用；按下=BYPASS";
+const udmbcLed=document.createElement("button");udmbcLed.className="bandLed udmbc";udmbcLed.style.setProperty("--led","#facc15");udmbcLed.title="BAND "+(n+1)+" UDMBC：亮=啟用；按下=BYPASS";
+const syncOttBandLed=()=>udmbcLed.classList.toggle("on",!state.udmbc.bandBypass[n]);
+udmbcLed.onclick=()=>{state.udmbc.bandBypass[n]=!state.udmbc.bandBypass[n];syncOttBandLed();knobRefreshers.forEach(fn=>fn());syncModuleMute();sendParams()};syncOttBandLed();
+const typeLed=document.createElement("button");typeLed.className="bandLed type";typeLed.style.setProperty("--led","#f472b6");typeLed.title="BAND "+(n+1)+" TAPE：亮=啟用；按下=BYPASS";
 syncTapeLed=()=>typeLed.classList.toggle("on",!state.type.bandBypass[n]);
 typeLed.onclick=()=>{state.type.bandBypass[n]=!state.type.bandBypass[n];syncTapeLed();knobRefreshers.forEach(fn=>fn());sendParams()};syncTapeLed();
-const advBtn=card.querySelector(".advBtn");advBtn.title="OTT ADVANCED · BAND "+(n+1);advBtn.onclick=()=>openAdvanced(n);
- ottGrid.children[0]?.appendChild(ottLed);typeKnob.appendChild(typeLed);
+const advBtn=card.querySelector(".advBtn");advBtn.title="UDMBC ADVANCED · BAND "+(n+1);advBtn.onclick=()=>openAdvanced(n);
+ udmbcGrid.children[0]?.appendChild(udmbcLed);typeKnob.appendChild(typeLed);
 
 
 }
@@ -441,8 +441,8 @@ deltaBtn.onclick=()=>{state.delta=!state.delta;syncMonitor();sendParams()};
 makeKnob(monitorKnobs,{label:"MIX",controlId:"DRY_WET",get:()=>state.mix.drywet,set:v=>state.mix.drywet=v,min:0,max:100,suffix:" %",accent:"#38bdf8",formatDigits:0});
 makeKnob(monitorKnobs,{label:"OUT",controlId:"OUTPUT_LEVEL",get:()=>state.mix.output,set:v=>state.mix.output=v,min:-24,max:12,suffix:" dB",accent:"#9ed85c",formatDigits:1});
 syncMonitor();
-function buildAdvanced(b){const grid=$("#advPopupGrid");grid.innerHTML="";const mk=(label,key,min,max,suffix,d=1)=>({label,get:()=>state.ott[key][b],set:v=>state.ott[key][b]=v,min,max,suffix,accent:"#facc15",formatDigits:d,formatValue:key==="compA"?()=>fmt(effectiveCompAttackMs(b),1)+" ms":key==="compR"?()=>fmt(effectiveCompReleaseMs(b),0)+" ms":undefined});[mk("LIFT THRESH","liftT",-80,0," dB"),mk("LIFT ATT","liftA",1,500," ms"),mk("LIFT REL","liftR",10,2500," ms",0),mk("LIFT MIX","liftM",0,100," %"),mk("COMP THRESH","compT",-24,0," dB"),mk("COMP ATT","compA",0.1,120," ms",1),mk("COMP REL","compR",10,2500," ms",0),mk("COMP MIX","compM",0,100," %"),mk("BAND LEVEL","level",-24,12," dB"),{label:"XOVER 1",controlId:"OTT_X1",get:()=>state.ott.x[0],set:v=>state.ott.x[0]=v,min:80,max:600,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"XOVER 2",controlId:"OTT_X2",get:()=>state.ott.x[1],set:v=>state.ott.x[1]=v,min:750,max:3000,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"XOVER 3",controlId:"OTT_X3",get:()=>state.ott.x[2],set:v=>state.ott.x[2]=v,min:6000,max:12000,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"OVERLAP",controlId:"XOVER_OVERLAP",get:()=>state.ott.overlap[0],set:v=>{for(let i=0;i<3;i++)state.ott.overlap[i]=v},min:0,max:100,suffix:" %",formatDigits:0,accent:"#facc15"},{label:"INPUT",controlId:"OTT_INPUT",get:()=>state.ott.input,set:v=>state.ott.input=v,min:-24,max:24,suffix:" dB",accent:"#facc15"},{label:"GATE",controlId:"OTT_GATE",get:()=>state.ott.gate,set:v=>state.ott.gate=v,min:-90,max:0,suffix:" dB",accent:"#facc15"},{label:"MASTER",get:()=>state.ott.mix,set:v=>state.ott.mix=v,min:0,max:100,suffix:" %",accent:"#facc15"},{label:"OUTPUT",get:()=>state.ott.output,set:v=>state.ott.output=v,min:-24,max:24,suffix:" dB",accent:"#facc15"}].forEach(c=>makeKnob(grid,c));const clip=document.createElement("button");clip.className="tiny";clip.textContent=state.ott.clip?"CLIP ON":"CLIP OFF";clip.onclick=()=>{state.ott.clip=!state.ott.clip;clip.textContent=state.ott.clip?"CLIP ON":"CLIP OFF";sendParams()};grid.appendChild(clip)}
-function openAdvanced(b){const popup=$("#advPopup");if(b<0){popup.hidden=true;return}buildAdvanced(b);popup.hidden=false;$("#advPopupTitle").textContent="OTT ADVANCED · BAND "+(b+1)}
+function buildAdvanced(b){const grid=$("#advPopupGrid");grid.innerHTML="";const mk=(label,key,min,max,suffix,d=1)=>({label,get:()=>state.udmbc[key][b],set:v=>state.udmbc[key][b]=v,min,max,suffix,accent:"#facc15",formatDigits:d,formatValue:key==="compA"?()=>fmt(effectiveCompAttackMs(b),1)+" ms":key==="compR"?()=>fmt(effectiveCompReleaseMs(b),0)+" ms":undefined});[mk("LIFT THRESH","liftT",-80,0," dB"),mk("LIFT ATT","liftA",1,500," ms"),mk("LIFT REL","liftR",10,2500," ms",0),mk("LIFT MIX","liftM",0,100," %"),mk("COMP THRESH","compT",-24,0," dB"),mk("COMP ATT","compA",0.1,120," ms",1),mk("COMP REL","compR",10,2500," ms",0),mk("COMP MIX","compM",0,100," %"),mk("BAND LEVEL","level",-24,12," dB"),{label:"XOVER 1",controlId:"UDMBC_X1",get:()=>state.udmbc.x[0],set:v=>state.udmbc.x[0]=v,min:80,max:600,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"XOVER 2",controlId:"UDMBC_X2",get:()=>state.udmbc.x[1],set:v=>state.udmbc.x[1]=v,min:750,max:3000,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"XOVER 3",controlId:"UDMBC_X3",get:()=>state.udmbc.x[2],set:v=>state.udmbc.x[2]=v,min:6000,max:12000,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"OVERLAP",controlId:"XOVER_OVERLAP",get:()=>state.udmbc.overlap[0],set:v=>{for(let i=0;i<3;i++)state.udmbc.overlap[i]=v},min:0,max:100,suffix:" %",formatDigits:0,accent:"#facc15"},{label:"INPUT",controlId:"UDMBC_INPUT",get:()=>state.udmbc.input,set:v=>state.udmbc.input=v,min:-24,max:24,suffix:" dB",accent:"#facc15"},{label:"GATE",controlId:"UDMBC_GATE",get:()=>state.udmbc.gate,set:v=>state.udmbc.gate=v,min:-90,max:0,suffix:" dB",accent:"#facc15"},{label:"MASTER",get:()=>state.udmbc.mix,set:v=>state.udmbc.mix=v,min:0,max:100,suffix:" %",accent:"#facc15"},{label:"OUTPUT",get:()=>state.udmbc.output,set:v=>state.udmbc.output=v,min:-24,max:24,suffix:" dB",accent:"#facc15"}].forEach(c=>makeKnob(grid,c));const clip=document.createElement("button");clip.className="tiny";clip.textContent=state.udmbc.clip?"CLIP ON":"CLIP OFF";clip.onclick=()=>{state.udmbc.clip=!state.udmbc.clip;clip.textContent=state.udmbc.clip?"CLIP ON":"CLIP OFF";sendParams()};grid.appendChild(clip)}
+function openAdvanced(b){const popup=$("#advPopup");if(b<0){popup.hidden=true;return}buildAdvanced(b);popup.hidden=false;$("#advPopupTitle").textContent="UDMBC ADVANCED · BAND "+(b+1)}
 document.addEventListener("pointerdown",e=>{const popup=$("#advPopup");if(!popup.hidden&&!popup.contains(e.target)&&!e.target.closest(".advBtn"))openAdvanced(-1)});
 
 function dynamicNodePoint(b,w,h){
@@ -619,8 +619,8 @@ function drawEQ(){
   // The old middle crossover curve is gone; each X-over has one continuous
   // figure-eight path at the very bottom, with OVERLAP changing its size.
   for(let b=0;b<3;b++){
-    const x=logX(state.ott.x[b],w);
-    const ov=clamp((state.ott.overlap||[50,50,50])[b]||50,0,100);
+    const x=logX(state.udmbc.x[b],w);
+    const ov=clamp((state.udmbc.overlap||[50,50,50])[b]||50,0,100);
     const markerY=h-18;
     const labelY=h-34;
 
@@ -630,7 +630,7 @@ function drawEQ(){
     const hovered=hoverXover===b;
     eqCtx.fillStyle="#000c";eqCtx.fillRect(x-48,labelY,96,15);
     eqCtx.fillStyle="#ffe36a";eqCtx.font="bold 8px Consolas";eqCtx.textAlign="center";
-    eqCtx.fillText("X"+(b+1)+" "+hz(state.ott.x[b]),x,labelY+11);
+    eqCtx.fillText("X"+(b+1)+" "+hz(state.udmbc.x[b]),x,labelY+11);
 
     const eightWidth=5+ov*0.10;
     const eightHeight=2.8+ov*0.055;
@@ -780,8 +780,8 @@ function drawEQ(){
   // Mirror each lower BAND BYPASS state in the upper frequency zone.
   for(let b=0;b<4;b++){
     if(!state.bandBypass[b])continue;
-    const leftX=b===0?0:logX(state.ott.x[b-1],w);
-    const rightX=b===3?w:logX(state.ott.x[b],w);
+    const leftX=b===0?0:logX(state.udmbc.x[b-1],w);
+    const rightX=b===3?w:logX(state.udmbc.x[b],w);
     eqCtx.fillStyle="#5b6066aa";
     eqCtx.fillRect(leftX,0,Math.max(0,rightX-leftX),h);
   }
@@ -853,7 +853,7 @@ function graphHoverTarget(x,y,w,h){
 eqCanvas.addEventListener("mousemove",e=>{
   if(dragMode===1||dragMode===2||dragMode===5||dragMode===7)return;
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
-  const xo=state.ott.x.map(v=>logX(v,w));hoverXover=-1;
+  const xo=state.udmbc.x.map(v=>logX(v,w));hoverXover=-1;
   for(let i=0;i<3;i++)if(Math.hypot(xo[i]-x,h-18-y)<=10){hoverXover=i;break;}
   const hit=graphHoverTarget(x,y,w,h);
   hoverDynamicBand=hit.band;
@@ -884,12 +884,12 @@ eqCanvas.addEventListener("wheel",e=>{
     }
   }
   // Crossover curvature / OVERLAP is controlled ONLY by the bottom infinity marker.
-  const xo=state.ott.x.map(v=>logX(v,w));let xb=10,xi=-1;
+  const xo=state.udmbc.x.map(v=>logX(v,w));let xb=10,xi=-1;
   const markerY=h-18;
   for(let i=0;i<3;i++){const dd=Math.hypot(xo[i]-x,markerY-y);if(dd<xb){xb=dd;xi=i;}}
   if(xi>=0){
     e.preventDefault();
-    const ov=state.ott.overlap??[50,50,50];
+    const ov=state.udmbc.overlap??[50,50,50];
     const next=clamp((ov[xi]??50)-e.deltaY*.50,0,100);
     ov[0]=ov[1]=ov[2]=next;
     setGraphControls(["XOVER_OVERLAP"],false);
@@ -1048,7 +1048,7 @@ eqCanvas.addEventListener("pointerdown",e=>{
   }
 
   // Bottom figure-eight marker = continuous shared OVERLAP control.
-  const xo=state.ott.x.map(v=>logX(v,w));
+  const xo=state.udmbc.x.map(v=>logX(v,w));
   const markerY=h-18;
   for(let i=0;i<3;i++){
     if(Math.hypot(xo[i]-x,markerY-y)<14){
@@ -1056,7 +1056,7 @@ eqCanvas.addEventListener("pointerdown",e=>{
       dragOverlapXover=i;
       dragXover=-1;
       overlapDragStartY=y;
-      overlapDragStartValue=Number(state.ott.overlap?.[i]??50);
+      overlapDragStartValue=Number(state.udmbc.overlap?.[i]??50);
       setGraphControls(["XOVER_OVERLAP"],false);
       eqCanvas.setPointerCapture(e.pointerId);
       showGraphHint(e,"X"+(i+1)+"  OVERLAP "+fmt(overlapDragStartValue,1)+"%");
@@ -1065,7 +1065,7 @@ eqCanvas.addEventListener("pointerdown",e=>{
   }
 
   // X1/X2/X3 crossover lines.
-  for(let i=0;i<3;i++)if(Math.abs(xo[i]-x)<14){dragMode=4;dragXover=i;setGraphControls(["OTT_X"+(i+1)],false);eqCanvas.setPointerCapture(e.pointerId);return;}
+  for(let i=0;i<3;i++)if(Math.abs(xo[i]-x)<14){dragMode=4;dragXover=i;setGraphControls(["UDMBC_X"+(i+1)],false);eqCanvas.setPointerCapture(e.pointerId);return;}
 });
 eqCanvas.addEventListener("pointermove",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,0,r.width),y=clamp(e.clientY-r.top,0,r.height),w=r.width,h=r.height;
@@ -1113,16 +1113,16 @@ eqCanvas.addEventListener("pointermove",e=>{
   if(dragMode===6&&dragOverlapXover>=0){
     const fine=e.shiftKey?0.1:1;
     const next=clamp(overlapDragStartValue-(y-overlapDragStartY)/Math.max(1,h)*200*fine,0,100);
-    state.ott.overlap[0]=state.ott.overlap[1]=state.ott.overlap[2]=next;
+    state.udmbc.overlap[0]=state.udmbc.overlap[1]=state.udmbc.overlap[2]=next;
     setGraphControls(["XOVER_OVERLAP"],true);
     sendParams();drawEQ();return;
   }
   if(dragMode===4&&dragXover>=0){
     let f=invLog(x/w);
-    if(dragXover===0)f=clamp(f,40,Math.min(1000,state.ott.x[1]-80));
-    else if(dragXover===1)f=clamp(f,state.ott.x[0]+80,Math.min(5000,state.ott.x[2]-200));
-    else f=clamp(f,state.ott.x[1]+200,18000);
-    state.ott.x[dragXover]=f;setGraphControls(["OTT_X"+(dragXover+1)],true);sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
+    if(dragXover===0)f=clamp(f,40,Math.min(1000,state.udmbc.x[1]-80));
+    else if(dragXover===1)f=clamp(f,state.udmbc.x[0]+80,Math.min(5000,state.udmbc.x[2]-200));
+    else f=clamp(f,state.udmbc.x[1]+200,18000);
+    state.udmbc.x[dragXover]=f;setGraphControls(["UDMBC_X"+(dragXover+1)],true);sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
   }
   drawEQ();
 });

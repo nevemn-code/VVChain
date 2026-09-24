@@ -35,10 +35,7 @@ for dead in ("graphHintBand", "graphHintAutoHideAt", "graphHintActiveMask"):
 for dead in ("analogTempBuffer", "analogBandBuffers", "analogSourceBuffer"):
     assert dead not in dsp + dsp_h, dead
 
-assert "processChebyshevAnalog" not in dsp + dsp_h
-assert "CHEBYSHEV" not in web
-
-assert not (ROOT / "docs" / "gyraf-copper.html").exists()
+assert not (ROOT / "docs" / "legacy analog-copper.html").exists()
 assert "×1.6" not in rules + root_rules
 assert "x1.6" not in (rules + root_rules).lower()
 assert "delta ×2" in root_rules

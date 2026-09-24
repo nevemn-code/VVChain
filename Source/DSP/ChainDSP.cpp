@@ -391,14 +391,14 @@ void VVChainDSP::reset()
     lastSoloBand = -2;
     lastSoloPost = false;
 
-    ottXover1.reset();
-    ottXover2.reset();
-    ottXover3.reset();
-    ottPhase2_B1.reset();
-    ottPhase3_B1.reset();
-    ottPhase3_B2.reset();
+    udmbcXover1.reset();
+    udmbcXover2.reset();
+    udmbcXover3.reset();
+    udmbcPhase2_B1.reset();
+    udmbcPhase3_B1.reset();
+    udmbcPhase3_B2.reset();
 
-    for (auto& b : ottDynamics)
+    for (auto& b : udmbcDynamics)
     {
         b.gateEnvDb = { 0.f, 0.f };
         b.lifterEnv = { 1.f, 1.f };
@@ -586,7 +586,7 @@ float VVChainDSP::applyGate(float input, float& envDb, float thresholdDb,
 
     // A gate must never create positive gain. The previous knee formula
     // accidentally turned the gate into an expander/booster around the
-    // threshold, which could make OTT jump by many dB on quiet material.
+    // threshold, which could make UDMBC jump by many dB on quiet material.
     float targetGainDb = 0.f;
     if (inputDb < kneeStart)
     {
@@ -948,41 +948,41 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 }
 void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    // Four independent OTT bands. Each band has its own detector state and
+    // Four independent UDMBC bands. Each band has its own detector state and
     // runs downward compression first, then upward compression, followed by
     // per-band makeup. The gate is also applied after the crossover so it
     // cannot make one frequency band modulate another.
-    const float x1 = juce::jlimit(80.f, 900.f, p.ottX1);
-    const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.ottX2);
-    const float x3 = juce::jlimit(x2 + 200.f, static_cast<float>(sr * 0.42), p.ottX3);
+    const float x1 = juce::jlimit(80.f, 900.f, p.udmbcX1);
+    const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.udmbcX2);
+    const float x3 = juce::jlimit(x2 + 200.f, static_cast<float>(sr * 0.42), p.udmbcX3);
 
-    const float xoverQ = crossoverQFromOverlap(p.ottXoverOverlap);
+    const float xoverQ = crossoverQFromOverlap(p.udmbcXoverOverlap);
 
-    updateCrossover(ottXover1, sr, x1, xoverQ);
-    updateCrossover(ottXover2, sr, x2, xoverQ);
-    updateCrossover(ottXover3, sr, x3, xoverQ);
+    updateCrossover(udmbcXover1, sr, x1, xoverQ);
+    updateCrossover(udmbcXover2, sr, x2, xoverQ);
+    updateCrossover(udmbcXover3, sr, x3, xoverQ);
 
     // Equalize the number of crossover sections traversed by each branch.
     // B1: X1 -> add all-pass X2 + X3. B2: X1+X2 -> add all-pass X3.
-    updateCrossover(ottPhase2_B1, sr, x2, xoverQ);
-    updateCrossover(ottPhase3_B1, sr, x3, xoverQ);
-    updateCrossover(ottPhase3_B2, sr, x3, xoverQ);
+    updateCrossover(udmbcPhase2_B1, sr, x2, xoverQ);
+    updateCrossover(udmbcPhase3_B1, sr, x3, xoverQ);
+    updateCrossover(udmbcPhase3_B2, sr, x3, xoverQ);
 
     const float inputGain =
-        dbToGain(juce::jlimit(-24.f, 24.f, p.ottInputGainDb));
+        dbToGain(juce::jlimit(-24.f, 24.f, p.udmbcInputGainDb));
     const float globalMix =
-        juce::jlimit(0.f, 1.f, p.ottMix / 100.f);
+        juce::jlimit(0.f, 1.f, p.udmbcMix / 100.f);
     const float outputGain =
-        dbToGain(juce::jlimit(-24.f, 24.f, p.ottOutputGainDb));
+        dbToGain(juce::jlimit(-24.f, 24.f, p.udmbcOutputGainDb));
 
     float amountSum = 0.0f;
     int amountCount = 0;
     for (int band = 0; band < 4; ++band)
     {
-        if (p.ottBandBypass[(size_t) band])
+        if (p.udmbcBandBypass[(size_t) band])
             continue;
         amountSum += juce::jlimit(
-            0.0f, 100.0f, p.ottDegree[(size_t) band]) / 100.0f;
+            0.0f, 100.0f, p.udmbcDegree[(size_t) band]) / 100.0f;
         ++amountCount;
     }
 
@@ -1002,33 +1002,33 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
             const float original = data[n];
             const float x = original * inputGain;
 
-            float low = ottXover1.low(x, right);
-            const float x1High = ottXover1.high(x, right);
-            float lowMid = ottXover2.low(x1High, right);
-            const float x2High = ottXover2.high(x1High, right);
-            const float midHigh = ottXover3.low(x2High, right);
-            const float top = ottXover3.high(x2High, right);
+            float low = udmbcXover1.low(x, right);
+            const float x1High = udmbcXover1.high(x, right);
+            float lowMid = udmbcXover2.low(x1High, right);
+            const float x2High = udmbcXover2.high(x1High, right);
+            const float midHigh = udmbcXover3.low(x2High, right);
+            const float top = udmbcXover3.high(x2High, right);
 
             // LP4 + HP4 compensation restores the phase path for skipped
             // crossovers without adding host/plugin latency.
-            low = ottPhase2_B1.allPass(low, right);
-            low = ottPhase3_B1.allPass(low, right);
-            lowMid = ottPhase3_B2.allPass(lowMid, right);
+            low = udmbcPhase2_B1.allPass(low, right);
+            low = udmbcPhase3_B1.allPass(low, right);
+            lowMid = udmbcPhase3_B2.allPass(lowMid, right);
 
             float bands[4] = { low, lowMid, midHigh, top };
 
             for (int band = 0; band < 4; ++band)
             {
-                if (p.ottBandBypass[(size_t) band])
+                if (p.udmbcBandBypass[(size_t) band])
                     continue;
 
                 const float degree =
-                    juce::jlimit(0.f, 100.f, p.ottDegree[(size_t) band]);
+                    juce::jlimit(0.f, 100.f, p.udmbcDegree[(size_t) band]);
 
                 if (degree <= 0.0001f)
                     continue;
 
-                auto& state = ottDynamics[(size_t) band];
+                auto& state = udmbcDynamics[(size_t) band];
                 float& gateEnv = state.gateEnvDb[(size_t) ch];
                 float& lifterEnv = state.lifterEnv[(size_t) ch];
                 float& compEnv = state.compEnvDb[(size_t) ch];
@@ -1036,14 +1036,14 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 // The existing GATE control is now independent per frequency band.
                 float v = applyGate(
                     bands[band], gateEnv,
-                    p.ottGateThresholdDb, sr);
+                    p.udmbcGateThresholdDb, sr);
 
                 // Degree=0 means true unity ratio. Degree=100 reaches the
-                // OTT-style maximum ratios while preserving the user's
+                // UDMBC-style maximum ratios while preserving the user's
                 // existing per-band controls.
                 const float depth = degree / 100.f;
 
-                // Classic OTT-style scaling: upward reaches 4:1.
+                // Classic UDMBC-style scaling: upward reaches 4:1.
                 // Downward is intentionally much stronger, matching the
                 // documented Ableton/Xfer family character. The top band
                 // uses the slightly harder target.
@@ -1054,12 +1054,12 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     1.f + depth * (kLifterRatio - 1.f);
 
                 const float compMix =
-                    juce::jlimit(0.f, 100.f, p.ottCompMix[(size_t) band]);
+                    juce::jlimit(0.f, 100.f, p.udmbcCompMix[(size_t) band]);
                 const float lifterMix =
-                    juce::jlimit(0.f, 100.f, p.ottLifterMix[(size_t) band]);
+                    juce::jlimit(0.f, 100.f, p.udmbcLifterMix[(size_t) band]);
 
-                // Standard OTT order: downward first, upward second.
-                // The user's Attack is automatically lengthened as OTT Amount
+                // Standard UDMBC order: downward first, upward second.
+                // The user's Attack is automatically lengthened as UDMBC Amount
                 // (degree) rises, reducing high-depth click / transient tearing.
                 const float amount = depth;
 
@@ -1067,7 +1067,7 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 // Defaults are Low=15ms, LowMid=8ms, HighMid=3ms, High=1ms.
                 const float baseAttackMs =
                     juce::jlimit(0.1f, 120.0f,
-                                 p.ottCompAttack[(size_t) band]);
+                                 p.udmbcCompAttack[(size_t) band]);
 
                 // Amount^2 curve: Amount=70% maps exactly to 120ms.
                 const float targetLimitMs = 120.0f;
@@ -1086,7 +1086,7 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
                 const float baseReleaseMs =
                     juce::jlimit(10.0f, 2500.0f,
-                                 p.ottCompRelease[(size_t) band]);
+                                 p.udmbcCompRelease[(size_t) band]);
                 const float dynamicReleaseMs =
                     baseReleaseMs + (amount * 100.0f);
                 const float finalReleaseMs =
@@ -1100,7 +1100,7 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                              / (finalReleaseMs * static_cast<float>(sr)));
 
                 // Each stage has its own RMS detector state for this band/channel.
-                float downReleaseMs = p.ottCompRelease[(size_t) band];
+                float downReleaseMs = p.udmbcCompRelease[(size_t) band];
                 const float downDb = rmsDetectPDR(
                     v,
                     state.downRmsPower[(size_t) ch],
@@ -1114,48 +1114,48 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
                 v = applyCompressorFromDetectorDb(
                     v, downDb, compEnv,
-                    p.ottCompThreshold[(size_t) band],
+                    p.udmbcCompThreshold[(size_t) band],
                     finalAttackMs,
                     finalReleaseMs,
                     compMix, sr, downRatio,
                     attackCoef,
                     releaseCoef);
 
-                float upReleaseMs = p.ottLifterRelease[(size_t) band];
+                float upReleaseMs = p.udmbcLifterRelease[(size_t) band];
                 const float upDb = rmsDetectPDR(
                     v,
                     state.upRmsPower[(size_t) ch],
                     state.upSlowRmsPower[(size_t) ch],
-                    p.ottLifterAttack[(size_t) band],
-                    p.ottLifterRelease[(size_t) band],
+                    p.udmbcLifterAttack[(size_t) band],
+                    p.udmbcLifterRelease[(size_t) band],
                     sr,
                     upReleaseMs);
 
                 const float liftThreshold =
-                    juce::jmax(p.ottLifterThreshold[(size_t) band], -48.f);
+                    juce::jmax(p.udmbcLifterThreshold[(size_t) band], -48.f);
 
                 v = applyLifterFromDetectorDb(
                     v, upDb, lifterEnv,
                     liftThreshold,
-                    p.ottLifterAttack[(size_t) band],
+                    p.udmbcLifterAttack[(size_t) band],
                     upReleaseMs,
                     lifterMix, sr, upRatio);
 
                 v *= dbToGain(
                     juce::jlimit(-24.f, 12.f,
-                        p.ottBandLevelDb[(size_t) band]));
+                        p.udmbcBandLevelDb[(size_t) band]));
 
                 bands[band] = v;
             }
 
             float wet = bands[0] + bands[1] + bands[2] + bands[3];
 
-            if (p.ottClipper)
+            if (p.udmbcClipper)
                 wet = std::tanh(wet * 1.7f);
 
             wet *= outputGain;
 
-            // Do not clip the OTT reconstruction here. The final true-peak
+            // Do not clip the UDMBC reconstruction here. The final true-peak
             // lookahead limiter operates on the complete mixed programme.
             data[n] =
                 (original + globalMix * (wet - original))
@@ -1166,21 +1166,21 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
 void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    // TAPE-A startup fix: stateless normalized tanh. Attack / Release and
+    // TAPE COLOR startup fix: stateless normalized tanh. Attack / Release and
     // envelope states are intentionally removed from the gain path.
     const float inputGain =
-        dbToGain(juce::jlimit(-24.f, 24.f, p.atypeInputGainDb));
+        dbToGain(juce::jlimit(-24.f, 24.f, p.tapeInputGainDb));
     const float outputGain =
-        dbToGain(juce::jlimit(-24.f, 24.f, p.atypeOutputGainDb));
+        dbToGain(juce::jlimit(-24.f, 24.f, p.tapeOutputGainDb));
     const float mix =
-        juce::jlimit(0.f, 1.f, p.atypeMix / 100.f);
+        juce::jlimit(0.f, 1.f, p.tapeMix / 100.f);
 
-    // TYPE-A uses the same shared graph crossovers as OTT.
-    const float x1 = juce::jlimit(40.f, 1000.f, p.ottX1);
-    const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.ottX2);
+    // TAPE uses the same shared graph crossovers as UDMBC.
+    const float x1 = juce::jlimit(40.f, 1000.f, p.udmbcX1);
+    const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.udmbcX2);
     const float x3 = juce::jlimit(
-        x2 + 200.f, static_cast<float>(sr * 0.42), p.ottX3);
-    const float crossoverQ = crossoverQFromOverlap(p.ottXoverOverlap);
+        x2 + 200.f, static_cast<float>(sr * 0.42), p.udmbcX3);
+    const float crossoverQ = crossoverQFromOverlap(p.udmbcXoverOverlap);
 
     updateCrossover(typeXover1, sr, x1, crossoverQ);
     updateCrossover(typeXover2, sr, x2, crossoverQ);
@@ -1196,7 +1196,7 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
     for (size_t band = 0; band < 4; ++band)
     {
         const float limitedDegree =
-            juce::jlimit(0.f, kTypeAMaxDegree[band], p.atypeDegree[band]);
+            juce::jlimit(0.f, kTypeAMaxDegree[band], p.tapeDegree[band]);
         const float depth =
             juce::jlimit(0.f, 1.f, limitedDegree / 100.f);
         const float rawDriveParam = 1.0f + 1.5f * depth;
@@ -1208,7 +1208,7 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
         staticMakeupMultiplier[band] = 1.0f / makeupDenominator;
 
         bandTrim[band] = dbToGain(juce::jlimit(
-            -6.f, 6.f, p.atypeBandLevelDb[band]));
+            -6.f, 6.f, p.tapeBandLevelDb[band]));
     }
 
     for (int ch = 0; ch < channels; ++ch)
@@ -1221,7 +1221,7 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
             const float x = original * inputGain;
             const bool right = ch == 1;
 
-            // Exactly the same 4-band reconstruction used by OTT:
+            // Exactly the same 4-band reconstruction used by UDMBC:
             // LP(X1), BP(X1..X2), BP(X2..X3), HP(X3).
             const float low =
                 typeXover1.low(x, right);
@@ -1244,11 +1244,11 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
 
             for (size_t band = 0; band < 4; ++band)
             {
-                if (p.atypeBandBypass[band])
+                if (p.tapeBandBypass[band])
                     continue;
 
                 const float limitedDegree =
-                    juce::jlimit(0.f, kTypeAMaxDegree[band], p.atypeDegree[band]);
+                    juce::jlimit(0.f, kTypeAMaxDegree[band], p.tapeDegree[band]);
                 const float depth =
                     juce::jlimit(0.f, 1.f, limitedDegree / 100.f);
                 if (depth <= 0.f)
@@ -1627,9 +1627,9 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     applyEq(buffer, p);
     alignDryBuffer(numSamples);
 
-    if (!p.ottBypass)
+    if (!p.udmbcBypass)
         applyOtt(buffer, p);
-    if (!p.atypeBypass)
+    if (!p.tapeBypass)
         applyAType(buffer, p);
 
     processDeEsser(buffer, p);
@@ -1654,15 +1654,15 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     }
 
     const float soloX1 =
-        juce::jlimit(40.f, 1000.f, p.ottX1);
+        juce::jlimit(40.f, 1000.f, p.udmbcX1);
     const float soloX2 =
-        juce::jlimit(soloX1 + 80.f, 5000.f, p.ottX2);
+        juce::jlimit(soloX1 + 80.f, 5000.f, p.udmbcX2);
     const float soloX3 =
         juce::jlimit(soloX2 + 200.f,
                      static_cast<float>(sr * 0.42),
-                     p.ottX3);
+                     p.udmbcX3);
     const float soloQ = crossoverQFromOverlap(
-        p.ottXoverOverlap);
+        p.udmbcXoverOverlap);
 
     updateCrossover(
         soloPreXover1, sr, soloX1, soloQ);

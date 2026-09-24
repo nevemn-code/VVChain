@@ -5,7 +5,7 @@ Signal flow:
 INPUT
 → 4-band Parametric / Dynamic EQ + per-band Analog Color
 → 4-band UDMBC
-→ 4-band TAPE-A
+→ 4-band TAPE COLOR
 → split-band De-Esser
 → dry/wet
 → output level
@@ -28,7 +28,7 @@ Each EQ band has an independent Analog Color amount, TT/SS mode, bypass and X2.
 - 0 = exact dry.
 - Core transfer: unity-normalized smooth algebraic saturation based on `x / (1 + alpha*x^2)^(1/4)`.
 - A hard no-shrink guard prevents the shaping domain from reducing sample magnitude.
-- X2 doubles only the generated Analog delta; it does not multiply EQ / UDMBC / TAPE-A / De-Esser / Mix / Out.
+- X2 doubles only the generated Analog delta; it does not multiply EQ / UDMBC / TAPE COLOR / De-Esser / Mix / Out.
 - The current Analog core is stateless and adds no filter phase rotation.
 
 ## De-Esser

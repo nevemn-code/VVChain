@@ -440,7 +440,7 @@ private:
     std::unique_ptr<juce::ToggleButton> deltaMonitorButton;
     std::unique_ptr<BoolAttachment> deltaMonitorAttachment;
     std::array<std::unique_ptr<juce::TextButton>, 4> advancedButtons;
-    std::array<std::unique_ptr<juce::ToggleButton>, 4> ottBandBypassButtons;
+    std::array<std::unique_ptr<juce::ToggleButton>, 4> udmbcBandBypassButtons;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> analogModeButtons;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> analogX2Buttons;
     std::array<std::unique_ptr<BoolAttachment>, 4> analogX2Attachments;
@@ -452,13 +452,13 @@ private:
     std::array<std::unique_ptr<Attachment>, 4> dynDetectAttachments;
     std::array<std::unique_ptr<BoolAttachment>, 4> dynTriggerAttachments;
     std::unique_ptr<juce::ToggleButton> soloModeButton;
-    std::array<std::unique_ptr<juce::ToggleButton>, 4> atypeBandBypassButtons;
-    std::array<std::unique_ptr<BoolAttachment>, 4> ottBandBypassAttachments;
+    std::array<std::unique_ptr<juce::ToggleButton>, 4> tapeBandBypassButtons;
+    std::array<std::unique_ptr<BoolAttachment>, 4> udmbcBandBypassAttachments;
     std::array<std::unique_ptr<BoolAttachment>, 4> analogModeAttachments;
-    std::array<std::unique_ptr<BoolAttachment>, 4> atypeBandBypassAttachments;
+    std::array<std::unique_ptr<BoolAttachment>, 4> tapeBandBypassAttachments;
 
-    std::unique_ptr<juce::ToggleButton> ottClipper;
-    std::unique_ptr<BoolAttachment> ottClipperAttachment;
+    std::unique_ptr<juce::ToggleButton> udmbcClipper;
+    std::unique_ptr<BoolAttachment> udmbcClipperAttachment;
     std::unique_ptr<juce::TextButton> closeAdvanced;
 
     int expandedBand = -1;

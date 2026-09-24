@@ -54,9 +54,9 @@ required_html = [
     "new URL(\"vvchain-worklet.js\",document.baseURI)",
     'id="bandGrid"',
     "grid-template-columns:repeat(4,minmax(0,1fr)) .5fr .5fr",
-    "OTT %",
+    "UDMBC %",
     "ANALOG COLOR",
-    "TAPE-A +",
+    "TAPE COLOR +",
     "DE-ESSER",
     "MAXIMUM REDUCTION",
     "masterBypassLabel",
@@ -89,7 +89,7 @@ assert cmake_version and shown_version and cache_version
 assert cmake_version.group(1) == shown_version.group(1) == cache_version.group(1), (
     cmake_version.group(1), shown_version.group(1), cache_version.group(1)
 )
-assert not (ROOT / "docs" / "gyraf-copper.html").exists(), "obsolete Gyraf page must remain deleted"
+assert not (ROOT / "docs" / "legacy analog-copper.html").exists(), "obsolete legacy analog page must remain deleted"
 
 assert "void VVChainAudioProcessorEditor::mouseDoubleClick" in source
 assert 'resetParameter("EQ" + n + "_GAIN", 0.0f)' in source

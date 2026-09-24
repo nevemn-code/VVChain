@@ -34,7 +34,7 @@ Manual `full_validation=true` is reserved for expensive checks:
 - Four Parametric / Dynamic EQ bands.
 - Shared X1 / X2 / X3 crossover boundaries.
 - Four independent UDMBC bands and bypass states.
-- Four TAPE-A bands sharing the crossover ranges.
+- Four TAPE COLOR bands sharing the crossover ranges.
 - Four independent Analog Color bands, 0–60 processing range, TT/SS, bypass and X2 delta ×2.
 - De-Esser 6–18 kHz, 0–8 dB maximum reduction, four response modes.
 - Compact two-line EQ / DYN EQ graph readout.

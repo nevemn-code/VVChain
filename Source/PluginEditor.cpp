@@ -408,13 +408,13 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
     const std::array<juce::String, 5> bypassIds
     {
-        "EQ_BYPASS", "OTT_BYPASS", "EQ_COLOR_GLOBAL_BYPASS",
-        "ATYPE_BYPASS", "DEESS_BYPASS"
+        "EQ_BYPASS", "UDMBC_BYPASS", "EQ_COLOR_GLOBAL_BYPASS",
+        "TAPE_BYPASS", "DEESS_BYPASS"
     };
 
     const std::array<juce::String, 5> bypassLabels
     {
-        "EQ", "OTT", "ANALOG", "TAPE-A", "DE-ESS"
+        "EQ", "UDMBC", "ANALOG", "TAPE COLOR", "DE-ESS"
     };
 
     const std::array<juce::Colour, 5> bypassColours
@@ -602,62 +602,62 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         };
         addAndMakeVisible(*soloButtons[(size_t) b]);
 
-        // Main screen intentionally keeps only the three OTT performance knobs.
-        addKnob("OTT_DEGREE" + n, "OTT %", 0, 100, .1,
-                parameterValue("OTT_DEGREE" + n), " %", b, 3, juce::Colour(0xfffacc15));
-        addKnob("OTT_COMP_A" + n, "ATTACK", .1, 250, .1,
-                parameterValue("OTT_COMP_A" + n), " ms", b, 4, juce::Colour(0xfffacc15));
-        addKnob("OTT_COMP_R" + n, "RELEASE", 10, 2500, 1,
-                parameterValue("OTT_COMP_R" + n), " ms", b, 5, juce::Colour(0xfffacc15));
+        // Main screen intentionally keeps only the three UDMBC performance knobs.
+        addKnob("UDMBC_DEGREE" + n, "UDMBC %", 0, 100, .1,
+                parameterValue("UDMBC_DEGREE" + n), " %", b, 3, juce::Colour(0xfffacc15));
+        addKnob("UDMBC_COMP_A" + n, "ATTACK", .1, 250, .1,
+                parameterValue("UDMBC_COMP_A" + n), " ms", b, 4, juce::Colour(0xfffacc15));
+        addKnob("UDMBC_COMP_R" + n, "RELEASE", 10, 2500, 1,
+                parameterValue("UDMBC_COMP_R" + n), " ms", b, 5, juce::Colour(0xfffacc15));
 
-        addKnob("ATYPE_DEGREE" + n, "TAPE-A +", 0, 100, .1,
-                parameterValue("ATYPE_DEGREE" + n), "", b, 7, c, true);
+        addKnob("TAPE_DEGREE" + n, "TAPE COLOR +", 0, 100, .1,
+                parameterValue("TAPE_DEGREE" + n), "", b, 7, c, true);
 
         // Independent per-band bypass LEDs. False = active/lit; true = bypass/dim.
-        ottBandBypassButtons[(size_t) b] = std::make_unique<juce::ToggleButton>();
-        ottBandBypassButtons[(size_t) b]->setLookAndFeel(&metalLook);
-        ottBandBypassButtons[(size_t) b]->setButtonText("");
-        ottBandBypassButtons[(size_t) b]->setColour(
+        udmbcBandBypassButtons[(size_t) b] = std::make_unique<juce::ToggleButton>();
+        udmbcBandBypassButtons[(size_t) b]->setLookAndFeel(&metalLook);
+        udmbcBandBypassButtons[(size_t) b]->setButtonText("");
+        udmbcBandBypassButtons[(size_t) b]->setColour(
             juce::ToggleButton::tickColourId, juce::Colour(0xfffacc15));
-        ottBandBypassButtons[(size_t) b]->setTooltip(
-            "BAND " + n + " OTT：亮 = 啟用；按下 = BYPASS");
-        ottBandBypassAttachments[(size_t) b] =
+        udmbcBandBypassButtons[(size_t) b]->setTooltip(
+            "BAND " + n + " UDMBC：亮 = 啟用；按下 = BYPASS");
+        udmbcBandBypassAttachments[(size_t) b] =
             std::make_unique<BoolAttachment>(
-                audioProcessor.apvts, "OTT_BAND_BYPASS" + n,
-                *ottBandBypassButtons[(size_t) b]);
-        addAndMakeVisible(*ottBandBypassButtons[(size_t) b]);
+                audioProcessor.apvts, "UDMBC_BAND_BYPASS" + n,
+                *udmbcBandBypassButtons[(size_t) b]);
+        addAndMakeVisible(*udmbcBandBypassButtons[(size_t) b]);
 
-        atypeBandBypassButtons[(size_t) b] = std::make_unique<juce::ToggleButton>();
-        atypeBandBypassButtons[(size_t) b]->setLookAndFeel(&metalLook);
-        atypeBandBypassButtons[(size_t) b]->setButtonText("");
-        atypeBandBypassButtons[(size_t) b]->setColour(
+        tapeBandBypassButtons[(size_t) b] = std::make_unique<juce::ToggleButton>();
+        tapeBandBypassButtons[(size_t) b]->setLookAndFeel(&metalLook);
+        tapeBandBypassButtons[(size_t) b]->setButtonText("");
+        tapeBandBypassButtons[(size_t) b]->setColour(
             juce::ToggleButton::tickColourId, juce::Colour(0xfff472b6));
-        atypeBandBypassButtons[(size_t) b]->setTooltip(
-            "BAND " + n + " TYPE-A：亮 = 啟用；按下 = BYPASS");
-        atypeBandBypassAttachments[(size_t) b] =
+        tapeBandBypassButtons[(size_t) b]->setTooltip(
+            "BAND " + n + " TAPE：亮 = 啟用；按下 = BYPASS");
+        tapeBandBypassAttachments[(size_t) b] =
             std::make_unique<BoolAttachment>(
-                audioProcessor.apvts, "ATYPE_BAND_BYPASS" + n,
-                *atypeBandBypassButtons[(size_t) b]);
-        addAndMakeVisible(*atypeBandBypassButtons[(size_t) b]);
+                audioProcessor.apvts, "TAPE_BAND_BYPASS" + n,
+                *tapeBandBypassButtons[(size_t) b]);
+        addAndMakeVisible(*tapeBandBypassButtons[(size_t) b]);
 
-        // Seven band-specific OTT advanced controls. The defaults remain in DSP.
-        addKnob("OTT_LIFT_T" + n, "LIFT THRESH", -80, 0, .1,
-                parameterValue("OTT_LIFT_T" + n), " dB", b, 20, c);
-        addKnob("OTT_LIFT_A" + n, "LIFT ATT", 1, 500, .1,
-                parameterValue("OTT_LIFT_A" + n), " ms", b, 21, c);
-        addKnob("OTT_LIFT_R" + n, "LIFT REL", 10, 2500, 1,
-                parameterValue("OTT_LIFT_R" + n), " ms", b, 22, c);
-        addKnob("OTT_LIFT_M" + n, "LIFT MIX", 0, 100, .1,
-                parameterValue("OTT_LIFT_M" + n), " %", b, 23, c);
-        addKnob("OTT_COMP_T" + n, "COMP THRESH", -24, 0, .1,
-                parameterValue("OTT_COMP_T" + n), " dB", b, 24, c);
-        addKnob("OTT_COMP_M" + n, "COMP MIX", 0, 100, .1,
-                parameterValue("OTT_COMP_M" + n), " %", b, 25, c);
-        addKnob("OTT_LEVEL" + n, "BAND LEVEL", -24, 12, .1,
-                parameterValue("OTT_LEVEL" + n), " dB", b, 26, c);
+        // Seven band-specific UDMBC advanced controls. The defaults remain in DSP.
+        addKnob("UDMBC_LIFT_T" + n, "LIFT THRESH", -80, 0, .1,
+                parameterValue("UDMBC_LIFT_T" + n), " dB", b, 20, c);
+        addKnob("UDMBC_LIFT_A" + n, "LIFT ATT", 1, 500, .1,
+                parameterValue("UDMBC_LIFT_A" + n), " ms", b, 21, c);
+        addKnob("UDMBC_LIFT_R" + n, "LIFT REL", 10, 2500, 1,
+                parameterValue("UDMBC_LIFT_R" + n), " ms", b, 22, c);
+        addKnob("UDMBC_LIFT_M" + n, "LIFT MIX", 0, 100, .1,
+                parameterValue("UDMBC_LIFT_M" + n), " %", b, 23, c);
+        addKnob("UDMBC_COMP_T" + n, "COMP THRESH", -24, 0, .1,
+                parameterValue("UDMBC_COMP_T" + n), " dB", b, 24, c);
+        addKnob("UDMBC_COMP_M" + n, "COMP MIX", 0, 100, .1,
+                parameterValue("UDMBC_COMP_M" + n), " %", b, 25, c);
+        addKnob("UDMBC_LEVEL" + n, "BAND LEVEL", -24, 12, .1,
+                parameterValue("UDMBC_LEVEL" + n), " dB", b, 26, c);
 
         advancedButtons[(size_t) b] = std::make_unique<juce::TextButton>("+ ADV");
-        advancedButtons[(size_t) b]->setTooltip("開啟 BAND " + n + " 的 OTT ADVANCED");
+        advancedButtons[(size_t) b]->setTooltip("開啟 BAND " + n + " 的 UDMBC ADVANCED");
         advancedButtons[(size_t) b]->onClick = [this, b]
         {
             setExpandedBand(expandedBand == b ? -1 : b);
@@ -726,31 +726,31 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         audioProcessor.apvts, "DELTA_MONITOR", *deltaMonitorButton);
     addAndMakeVisible(*deltaMonitorButton);
 
-    // Shared OTT advanced controls appear inside the currently expanded BAND.
-    addKnob("OTT_X1", "XOVER 1", 80, 600, 1,
-            parameterValue("OTT_X1"), " Hz", -1, 30, juce::Colour(0xfffacc15));
-    addKnob("OTT_X2", "XOVER 2", 750, 3000, 1,
-            parameterValue("OTT_X2"), " Hz", -1, 31, juce::Colour(0xfffacc15));
-    addKnob("OTT_X3", "XOVER 3", 6000, 12000, 1,
-            parameterValue("OTT_X3"), " Hz", -1, 32, juce::Colour(0xfffacc15));
+    // Shared UDMBC advanced controls appear inside the currently expanded BAND.
+    addKnob("UDMBC_X1", "XOVER 1", 80, 600, 1,
+            parameterValue("UDMBC_X1"), " Hz", -1, 30, juce::Colour(0xfffacc15));
+    addKnob("UDMBC_X2", "XOVER 2", 750, 3000, 1,
+            parameterValue("UDMBC_X2"), " Hz", -1, 31, juce::Colour(0xfffacc15));
+    addKnob("UDMBC_X3", "XOVER 3", 6000, 12000, 1,
+            parameterValue("UDMBC_X3"), " Hz", -1, 32, juce::Colour(0xfffacc15));
     addKnob("XOVER_OVERLAP", "OVERLAP", 0, 100, 1,
             parameterValue("XOVER_OVERLAP"), " %", -1, 33, juce::Colour(0xfffacc15));
-    addKnob("OTT_INPUT", "INPUT", -24, 24, .1,
-            parameterValue("OTT_INPUT"), " dB", -1, 33, juce::Colour(0xfffacc15));
-    addKnob("OTT_GATE", "GATE", -90, 0, .1,
-            parameterValue("OTT_GATE"), " dB", -1, 34, juce::Colour(0xfffacc15));
-    addKnob("OTT_MIX", "MASTER MIX", 0, 100, .1,
-            parameterValue("OTT_MIX"), " %", -1, 35, juce::Colour(0xfffacc15));
-    addKnob("OTT_OUTPUT", "OUTPUT", -24, 24, .1,
-            parameterValue("OTT_OUTPUT"), " dB", -1, 36, juce::Colour(0xfffacc15));
+    addKnob("UDMBC_INPUT", "INPUT", -24, 24, .1,
+            parameterValue("UDMBC_INPUT"), " dB", -1, 33, juce::Colour(0xfffacc15));
+    addKnob("UDMBC_GATE", "GATE", -90, 0, .1,
+            parameterValue("UDMBC_GATE"), " dB", -1, 34, juce::Colour(0xfffacc15));
+    addKnob("UDMBC_MIX", "MASTER MIX", 0, 100, .1,
+            parameterValue("UDMBC_MIX"), " %", -1, 35, juce::Colour(0xfffacc15));
+    addKnob("UDMBC_OUTPUT", "OUTPUT", -24, 24, .1,
+            parameterValue("UDMBC_OUTPUT"), " dB", -1, 36, juce::Colour(0xfffacc15));
 
-    ottClipper = std::make_unique<juce::ToggleButton>("CLIPPER");
-    ottClipper->setLookAndFeel(&metalLook);
-    ottClipper->setColour(juce::ToggleButton::tickColourId, juce::Colour(0xfffacc15));
-    ottClipper->setTooltip("OTT Clipper");
-    addAndMakeVisible(*ottClipper);
-    ottClipperAttachment = std::make_unique<BoolAttachment>(
-        audioProcessor.apvts, "OTT_CLIPPER", *ottClipper);
+    udmbcClipper = std::make_unique<juce::ToggleButton>("CLIPPER");
+    udmbcClipper->setLookAndFeel(&metalLook);
+    udmbcClipper->setColour(juce::ToggleButton::tickColourId, juce::Colour(0xfffacc15));
+    udmbcClipper->setTooltip("UDMBC Clipper");
+    addAndMakeVisible(*udmbcClipper);
+    udmbcClipperAttachment = std::make_unique<BoolAttachment>(
+        audioProcessor.apvts, "UDMBC_CLIPPER", *udmbcClipper);
 
     closeAdvanced = std::make_unique<juce::TextButton>("CLOSE");
     closeAdvanced->setButtonText("CLOSE");
@@ -806,9 +806,9 @@ VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
     if (deltaMonitorButton) deltaMonitorButton->setLookAndFeel(nullptr);
     deltaMonitorAttachment.reset();
 
-    for (auto& b : ottBandBypassButtons)
+    for (auto& b : udmbcBandBypassButtons)
         if (b) b->setLookAndFeel(nullptr);
-    for (auto& b : atypeBandBypassButtons)
+    for (auto& b : tapeBandBypassButtons)
         if (b) b->setLookAndFeel(nullptr);
 
     for (auto& b : analogModeButtons)
@@ -831,21 +831,21 @@ VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
     for (auto& a : dynTriggerAttachments)
         a.reset();
 
-    for (auto& a : ottBandBypassAttachments)
+    for (auto& a : udmbcBandBypassAttachments)
         a.reset();
 
     for (auto& a : analogModeAttachments)
         a.reset();
-    for (auto& a : atypeBandBypassAttachments)
+    for (auto& a : tapeBandBypassAttachments)
         a.reset();
 
     if (advancedButtons.size() > 0)
         for (auto& b : advancedButtons)
             if (b) b->setLookAndFeel(nullptr);
 
-    if (ottClipper)
-        ottClipper->setLookAndFeel(nullptr);
-    ottClipperAttachment.reset();
+    if (udmbcClipper)
+        udmbcClipper->setLookAndFeel(nullptr);
+    udmbcClipperAttachment.reset();
     closeAdvanced.reset();
 
     stopTimer();
@@ -875,13 +875,13 @@ void VVChainAudioProcessorEditor::addKnob(
     k.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 68, 17);
     k.slider->setScrollWheelEnabled(true);
     k.slider->setRange(min, max, step);
-    if (id.endsWith("_FREQ") || id.startsWith("OTT_X"))
+    if (id.endsWith("_FREQ") || id.startsWith("UDMBC_X"))
         k.slider->setSkewFactorFromMidPoint(632.f);
 
     if (auto* wheelSlider = dynamic_cast<WheelSlider*>(k.slider.get()))
     {
         const bool logarithmic =
-            id.endsWith("_FREQ") || id.startsWith("OTT_X");
+            id.endsWith("_FREQ") || id.startsWith("UDMBC_X");
 
         if (id.endsWith("_FREQ"))
             wheelSlider->setDragSensitivity(900, 9000);
@@ -899,7 +899,7 @@ void VVChainAudioProcessorEditor::addKnob(
 
         if (id.contains("GAIN") || id.contains("LEVEL")
             || id.contains("THRESH") || id.endsWith("_OUTPUT")
-            || id == "OUTPUT_LEVEL" || id == "ATYPE_LEVEL")
+            || id == "OUTPUT_LEVEL" || id == "TAPE_LEVEL")
             wheelStep = 0.5;
         else if (id.endsWith("_Q"))
             wheelStep = 0.02;
@@ -950,7 +950,7 @@ void VVChainAudioProcessorEditor::addKnob(
 
     // Value=0 means the corresponding processing band/module is bypassed.
     // Any value above 0 immediately re-enables it.
-    if (id.startsWith("OTT_DEGREE") && k.band >= 0)
+    if (id.startsWith("UDMBC_DEGREE") && k.band >= 0)
     {
         const int band = k.band;
         auto* slider = k.slider.get();
@@ -959,7 +959,7 @@ void VVChainAudioProcessorEditor::addKnob(
             const float target =
                 slider->getValue() <= 0.0001 ? 1.0f : 0.0f;
             const auto bypassId =
-                "OTT_BAND_BYPASS" + juce::String(band + 1);
+                "UDMBC_BAND_BYPASS" + juce::String(band + 1);
             if (auto* parameter = audioProcessor.apvts.getParameter(bypassId))
             {
                 if (std::abs(parameter->getValue() - target) > 1.0e-6f)
@@ -967,7 +967,7 @@ void VVChainAudioProcessorEditor::addKnob(
             }
         };
     }
-    else if (id.startsWith("ATYPE_DEGREE") && k.band >= 0)
+    else if (id.startsWith("TAPE_DEGREE") && k.band >= 0)
     {
         const int band = k.band;
         auto* slider = k.slider.get();
@@ -976,7 +976,7 @@ void VVChainAudioProcessorEditor::addKnob(
             const float target =
                 slider->getValue() <= 0.0001 ? 1.0f : 0.0f;
             const auto bypassId =
-                "ATYPE_BAND_BYPASS" + juce::String(band + 1);
+                "TAPE_BAND_BYPASS" + juce::String(band + 1);
             if (auto* parameter = audioProcessor.apvts.getParameter(bypassId))
             {
                 if (std::abs(parameter->getValue() - target) > 1.0e-6f)
@@ -1064,9 +1064,9 @@ float VVChainAudioProcessorEditor::graphXToFrequency(
 
 float VVChainAudioProcessorEditor::constrainXoverFrequency(int index, float hz) const
 {
-    const float x1 = parameterValue("OTT_X1");
-    const float x2 = parameterValue("OTT_X2");
-    const float x3 = parameterValue("OTT_X3");
+    const float x1 = parameterValue("UDMBC_X1");
+    const float x2 = parameterValue("UDMBC_X2");
+    const float x3 = parameterValue("UDMBC_X3");
     const double sampleRate = audioProcessor.getSampleRate();
     const float upper = sampleRate > 0.0
         ? juce::jmin(18000.f, static_cast<float>(sampleRate * 0.42))
@@ -1297,9 +1297,9 @@ void VVChainAudioProcessorEditor::drawEqGraph(
 
     const float xovers[3]
     {
-        graphFrequencyToX(graph, parameterValue("OTT_X1")),
-        graphFrequencyToX(graph, parameterValue("OTT_X2")),
-        graphFrequencyToX(graph, parameterValue("OTT_X3"))
+        graphFrequencyToX(graph, parameterValue("UDMBC_X1")),
+        graphFrequencyToX(graph, parameterValue("UDMBC_X2")),
+        graphFrequencyToX(graph, parameterValue("UDMBC_X3"))
     };
 
     const float overlap = juce::jlimit(
@@ -1337,7 +1337,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     {
         const float x = xovers[i];
         const float hz = parameterValue(
-            i == 0 ? "OTT_X1" : i == 1 ? "OTT_X2" : "OTT_X3");
+            i == 0 ? "UDMBC_X1" : i == 1 ? "UDMBC_X2" : "UDMBC_X3");
 
         g.setColour(
             uiColour(juce::Colour(0xffffd84d)).withAlpha(.92f));
@@ -1840,7 +1840,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     for (int band = 0; band < 4; ++band)
     {
         const bool bypassed =
-            parameterValue("OTT_BAND_BYPASS" + juce::String(band + 1)) > 0.5f;
+            parameterValue("UDMBC_BAND_BYPASS" + juce::String(band + 1)) > 0.5f;
         if (!bypassed)
             continue;
 
@@ -1978,12 +1978,12 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
         masterBypassButton->setColour(
             juce::ToggleButton::tickColourId, uiColour(juce::Colour(0xffdfe7ef)));
 
-    for (auto& b : ottBandBypassButtons)
+    for (auto& b : udmbcBandBypassButtons)
         if (b)
             b->setColour(juce::ToggleButton::tickColourId,
                          uiColour(juce::Colour(0xfffacc15)));
 
-    for (auto& b : atypeBandBypassButtons)
+    for (auto& b : tapeBandBypassButtons)
         if (b)
             b->setColour(juce::ToggleButton::tickColourId,
                          uiColour(juce::Colour(0xfff472b6)));
@@ -2021,8 +2021,8 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
                 uiColour(juce::Colour(0xffc0c5cb)));
         }
 
-    if (ottClipper)
-        ottClipper->setColour(
+    if (udmbcClipper)
+        udmbcClipper->setColour(
             juce::ToggleButton::tickColourId, uiColour(juce::Colour(0xfffacc15)));
 
     repaint();
@@ -2113,18 +2113,18 @@ void VVChainAudioProcessorEditor::timerCallback()
         const auto n = juce::String(b + 1);
         const bool eqMuted =
             parameterValue("EQ_BYPASS") > 0.5f;
-        const bool ottMuted =
-            parameterValue("OTT_BYPASS") > 0.5f
-            || parameterValue("OTT_BAND_BYPASS" + n) > 0.5f
-            || parameterValue("OTT_DEGREE" + n) <= 0.0001f;
+        const bool udmbcMuted =
+            parameterValue("UDMBC_BYPASS") > 0.5f
+            || parameterValue("UDMBC_BAND_BYPASS" + n) > 0.5f
+            || parameterValue("UDMBC_DEGREE" + n) <= 0.0001f;
         const bool analogMuted =
             parameterValue("EQ_COLOR_GLOBAL_BYPASS") > 0.5f
             || parameterValue("EQ_COLOR_BYPASS" + n) > 0.5f
             || parameterValue("EQ_COLOR" + n) <= 0.0001f;
         const bool tapeMuted =
-            parameterValue("ATYPE_BYPASS") > 0.5f
-            || parameterValue("ATYPE_BAND_BYPASS" + n) > 0.5f
-            || parameterValue("ATYPE_DEGREE" + n) <= 0.0001f;
+            parameterValue("TAPE_BYPASS") > 0.5f
+            || parameterValue("TAPE_BAND_BYPASS" + n) > 0.5f
+            || parameterValue("TAPE_DEGREE" + n) <= 0.0001f;
         const auto setKnobAlpha = [this](const juce::String& id, bool muted)
         {
             if (auto* knob = findKnob(id))
@@ -2144,11 +2144,11 @@ void VVChainAudioProcessorEditor::timerCallback()
             dynDetectSliders[(size_t)b]->setAlpha(eqMuted ? 0.42f : 1.0f);
         if (dynTriggerButtons[(size_t)b])
             dynTriggerButtons[(size_t)b]->setAlpha(eqMuted ? 0.42f : 1.0f);
-        setKnobAlpha("OTT_DEGREE" + n, ottMuted);
-        setKnobAlpha("OTT_COMP_A" + n, ottMuted);
-        setKnobAlpha("OTT_COMP_R" + n, ottMuted);
+        setKnobAlpha("UDMBC_DEGREE" + n, udmbcMuted);
+        setKnobAlpha("UDMBC_COMP_A" + n, udmbcMuted);
+        setKnobAlpha("UDMBC_COMP_R" + n, udmbcMuted);
         setKnobAlpha("EQ_COLOR_B" + n, analogMuted);
-        setKnobAlpha("ATYPE_DEGREE" + n, tapeMuted);
+        setKnobAlpha("TAPE_DEGREE" + n, tapeMuted);
         if (analogModeButtons[(size_t)b])
             analogModeButtons[(size_t)b]->setAlpha(
                 analogMuted ? 0.42f : 1.0f);
@@ -2244,11 +2244,11 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(juce::Colour(0xff8b949f));
     g.setFont(juce::FontOptions(8.f));
-    g.drawText("4-BAND DYNAMIC EQ · OTT · ANALOG · TAPE-A · DE-ESSER", 20, 37, 430, 13,
+    g.drawText("4-BAND DYNAMIC EQ · UDMBC · ANALOG · TAPE COLOR · DE-ESSER", 20, 37, 430, 13,
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.43 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS THRESHOLD",
+    g.drawText("VVCHAIN v1.0.43 · TAPE SHARED XOVER + ANALOG 4-BAND + DEESS THRESHOLD",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2268,7 +2268,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                  { (float) x, (float) cardY, (float) cardW, (float) cardH },
                  uiColour(kBandColours[(size_t) b]),
                  "BAND " + juce::String(b + 1),
-                 "OTT · ANALOG · TAPE-A");
+                 "UDMBC · ANALOG · TAPE COLOR");
     }
 
     {
@@ -2288,7 +2288,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                  "GLOBAL BYPASS · DELTA · MIX / OUT");
     }
 
-    // Floating OTT Advanced popup: it overlays the controls and never changes band height.
+    // Floating UDMBC Advanced popup: it overlays the controls and never changes band height.
     if (expandedBand >= 0)
     {
         const float popupW = juce::jmin(900.f, (float) getWidth() - 40.f);
@@ -2310,7 +2310,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
         g.setColour(juce::Colours::white);
         g.setFont(juce::FontOptions(12.f).withStyle("Bold"));
-        g.drawText("OTT ADVANCED · BAND " + juce::String(expandedBand + 1),
+        g.drawText("UDMBC ADVANCED · BAND " + juce::String(expandedBand + 1),
                    (int) popupX + 14, (int) popupY + 9, 330, 18,
                    juce::Justification::left);
 
@@ -2363,8 +2363,8 @@ void VVChainAudioProcessorEditor::setExpandedBand(int band)
         }
     }
 
-    if (ottClipper)
-        ottClipper->setVisible(expandedBand >= 0);
+    if (udmbcClipper)
+        udmbcClipper->setVisible(expandedBand >= 0);
     if (closeAdvanced)
         closeAdvanced->setVisible(expandedBand >= 0);
 
@@ -2469,14 +2469,14 @@ void VVChainAudioProcessorEditor::resized()
                     ? "BELOW" : "ABOVE");
         }
 
-        // ROW 4 — OTT
-        placeKnob("OTT_DEGREE" + n, cell(3, 0));
-        placeKnob("OTT_COMP_A" + n, cell(3, 1));
-        placeKnob("OTT_COMP_R" + n, cell(3, 2));
+        // ROW 4 — UDMBC
+        placeKnob("UDMBC_DEGREE" + n, cell(3, 0));
+        placeKnob("UDMBC_COMP_A" + n, cell(3, 1));
+        placeKnob("UDMBC_COMP_R" + n, cell(3, 2));
 
-        // ROW 5 — colour / Type-A
+        // ROW 5 — colour / TAPE
         placeKnob("EQ_COLOR_B" + n, cell(4, 0));
-        placeKnob("ATYPE_DEGREE" + n, cell(4, 1));
+        placeKnob("TAPE_DEGREE" + n, cell(4, 1));
 
         if (analogModeButtons[(size_t) b])
             analogModeButtons[(size_t) b]->setBounds(
@@ -2484,11 +2484,11 @@ void VVChainAudioProcessorEditor::resized()
                 cell(4, 2).getY() + 5,
                 36, 12);
 
-        if (ottBandBypassButtons[(size_t) b])
-            if (auto* knob = findKnob("OTT_DEGREE" + n))
+        if (udmbcBandBypassButtons[(size_t) b])
+            if (auto* knob = findKnob("UDMBC_DEGREE" + n))
             {
                 const auto r = knob->slider->getBounds();
-                ottBandBypassButtons[(size_t) b]->setBounds(
+                udmbcBandBypassButtons[(size_t) b]->setBounds(
                     r.getCentreX() - 7, r.getY() - 10, 14, 14);
             }
 
@@ -2508,11 +2508,11 @@ void VVChainAudioProcessorEditor::resized()
                     r.getRight() - 12, r.getY() - 6, 12, 12);
             }
 
-        if (atypeBandBypassButtons[(size_t) b])
-            if (auto* knob = findKnob("ATYPE_DEGREE" + n))
+        if (tapeBandBypassButtons[(size_t) b])
+            if (auto* knob = findKnob("TAPE_DEGREE" + n))
             {
                 const auto r = knob->slider->getBounds();
-                atypeBandBypassButtons[(size_t) b]->setBounds(
+                tapeBandBypassButtons[(size_t) b]->setBounds(
                     r.getRight() - 14, r.getY() - 10, 14, 14);
             }
     }
@@ -2601,13 +2601,13 @@ void VVChainAudioProcessorEditor::resized()
         const auto n = juce::String(expandedBand + 1);
         const std::array<juce::String, 7> bandAdv
         {{
-            "OTT_LIFT_T", "OTT_LIFT_A", "OTT_LIFT_R", "OTT_LIFT_M",
-            "OTT_COMP_T", "OTT_COMP_M", "OTT_LEVEL"
+            "UDMBC_LIFT_T", "UDMBC_LIFT_A", "UDMBC_LIFT_R", "UDMBC_LIFT_M",
+            "UDMBC_COMP_T", "UDMBC_COMP_M", "UDMBC_LEVEL"
         }};
         const std::array<juce::String, 8> sharedAdv
         {{
-            "OTT_X1", "OTT_X2", "OTT_X3", "XOVER_OVERLAP",
-            "OTT_INPUT", "OTT_GATE", "OTT_MIX", "OTT_OUTPUT"
+            "UDMBC_X1", "UDMBC_X2", "UDMBC_X3", "XOVER_OVERLAP",
+            "UDMBC_INPUT", "UDMBC_GATE", "UDMBC_MIX", "UDMBC_OUTPUT"
         }};
 
         for (int i = 0; i < 7; ++i)
@@ -2615,8 +2615,8 @@ void VVChainAudioProcessorEditor::resized()
         for (int i = 0; i < 8; ++i)
             placeKnob(sharedAdv[(size_t)i], p(i + 8));
 
-        if (ottClipper)
-            ottClipper->setBounds(innerX, popupY + popupH - 34, 82, 24);
+        if (udmbcClipper)
+            udmbcClipper->setBounds(innerX, popupY + popupH - 34, 82, 24);
     }
 
     repaint();
@@ -2880,9 +2880,9 @@ void VVChainAudioProcessorEditor::mouseMove(
     const float markerY = graph.getBottom() - 18.f;
     const float xovers[3]
     {
-        graphFrequencyToX(graph, parameterValue("OTT_X1")),
-        graphFrequencyToX(graph, parameterValue("OTT_X2")),
-        graphFrequencyToX(graph, parameterValue("OTT_X3"))
+        graphFrequencyToX(graph, parameterValue("UDMBC_X1")),
+        graphFrequencyToX(graph, parameterValue("UDMBC_X2")),
+        graphFrequencyToX(graph, parameterValue("UDMBC_X3"))
     };
     for (int i = 0; i < 3; ++i)
     {
@@ -3197,11 +3197,11 @@ void VVChainAudioProcessorEditor::mouseDown(
     const float xovers[3]
     {
         graphFrequencyToX(
-            graph, parameterValue("OTT_X1")),
+            graph, parameterValue("UDMBC_X1")),
         graphFrequencyToX(
-            graph, parameterValue("OTT_X2")),
+            graph, parameterValue("UDMBC_X2")),
         graphFrequencyToX(
-            graph, parameterValue("OTT_X3"))
+            graph, parameterValue("UDMBC_X3"))
     };
 
     const float markerY = graph.getBottom() - 18.f;
@@ -3254,9 +3254,9 @@ void VVChainAudioProcessorEditor::mouseDown(
         dragBand = -1;
 
         const auto xoverId =
-            dragXover == 0 ? "OTT_X1"
-            : dragXover == 1 ? "OTT_X2"
-                             : "OTT_X3";
+            dragXover == 0 ? "UDMBC_X1"
+            : dragXover == 1 ? "UDMBC_X2"
+                             : "UDMBC_X3";
         if (auto* parameter = audioProcessor.apvts.getParameter(xoverId))
             parameter->beginChangeGesture();
 
@@ -3267,9 +3267,9 @@ void VVChainAudioProcessorEditor::mouseDown(
         graphDragHintPosition = pos;
 
         const auto hz = parameterValue(
-            dragXover == 0 ? "OTT_X1"
-            : dragXover == 1 ? "OTT_X2"
-                             : "OTT_X3");
+            dragXover == 0 ? "UDMBC_X1"
+            : dragXover == 1 ? "UDMBC_X2"
+                             : "UDMBC_X3");
 
         graphDragHint =
             "X" + juce::String(dragXover + 1)
@@ -3438,9 +3438,9 @@ void VVChainAudioProcessorEditor::mouseDrag(
     if (dragXover >= 0)
     {
         const auto xoverId =
-            dragXover == 0 ? "OTT_X1"
-            : dragXover == 1 ? "OTT_X2"
-                              : "OTT_X3";
+            dragXover == 0 ? "UDMBC_X1"
+            : dragXover == 1 ? "UDMBC_X2"
+                              : "UDMBC_X3";
 
         const float startX =
             graphFrequencyToX(
@@ -3576,9 +3576,9 @@ void VVChainAudioProcessorEditor::mouseUp(
     if (dragXover >= 0)
     {
         const auto xoverId =
-            dragXover == 0 ? "OTT_X1"
-            : dragXover == 1 ? "OTT_X2"
-                             : "OTT_X3";
+            dragXover == 0 ? "UDMBC_X1"
+            : dragXover == 1 ? "UDMBC_X2"
+                             : "UDMBC_X3";
         if (auto* parameter = audioProcessor.apvts.getParameter(xoverId))
             parameter->endChangeGesture();
     }
@@ -3667,9 +3667,9 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
         float bestMarker = 10.f;
         const float xovers[3]
         {
-            graphFrequencyToX(graph, parameterValue("OTT_X1")),
-            graphFrequencyToX(graph, parameterValue("OTT_X2")),
-            graphFrequencyToX(graph, parameterValue("OTT_X3"))
+            graphFrequencyToX(graph, parameterValue("UDMBC_X1")),
+            graphFrequencyToX(graph, parameterValue("UDMBC_X2")),
+            graphFrequencyToX(graph, parameterValue("UDMBC_X3"))
         };
         for (int i = 0; i < 3; ++i)
         {

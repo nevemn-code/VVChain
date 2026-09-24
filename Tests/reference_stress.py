@@ -112,7 +112,7 @@ def run_stress_test(iterations=5):
 
     print(
         f"PASS DSP reference stress: {max(1, iterations)} iterations; "
-        "Analog odd/no-shrink/dry, TAPE-A normalized unity, "
+        "Analog odd/no-shrink/dry, TAPE COLOR normalized unity, "
         "continuous Q and envelope coefficient checks"
     )
 

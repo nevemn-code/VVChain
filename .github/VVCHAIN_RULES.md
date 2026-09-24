@@ -12,7 +12,7 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 
 例如：
 
-`[v1.0.0] DSP: update OTT smoothing`
+`[v1.0.0] DSP: update UDMBC smoothing`
 
 版本號只代表程式版本，不代表日期或電腦時間。
 
@@ -45,20 +45,20 @@ ANALOG COLOR 正式基準自 **v1.0.16** 起為 unity-normalized smooth algebrai
 - shaping domain 限制在 -1..+1；超出範圍不得因 ANALOG 額外衰減。
 - hard no-shrink guard 必須保證 COLOR 增加時，shaping domain 內每個 sample 的絕對值不得低於未染色值；0% 仍須 exact dry。
 - 每個頻段仍保留獨立 COLOR、TT/SS、BYPASS、X2。
-- **X2 仍只能把該頻段由 ANALOG COLOR 產生的 delta ×2；不得乘到 EQ、OTT、TAPE-A、DE-ESSER、MIX、OUT 或其他頻段。**
+- **X2 仍只能把該頻段由 ANALOG COLOR 產生的 delta ×2；不得乘到 EQ、UDMBC、TAPE COLOR、DE-ESSER、MIX、OUT 或其他頻段。**
 - 不再建立或保留 V1 / V2 / V3 Analog 選擇頁、切換頁或版本導覽。
 - 修改 ANALOG 後必須完成 500-case regression matrix，並檢查 0% transparency、TT/SS 差異、odd symmetry、X2 delta isolation、finite output 與 no-shrink 邊界。
 
-## OTT 規則
+## UDMBC 規則
 
-- OTT 四頻段必須維持獨立的頻段 / 聲道狀態。
+- UDMBC 四頻段必須維持獨立的頻段 / 聲道狀態。
 - `currentEnv` 與 `currentGain` 必須放在 class state，不得在 process 迴圈內每次重新初始化。
 - Low 頻段 Attack 最低 8 ms、Release 最低 20 ms。
 - Low-Mid Attack 最低 3 ms。
 - High-Mid / High Attack 最低 0.5 ms。
 - 所有頻段 Release 最低 5 ms。
 - Gain 必須使用固定 5 ms 二次平滑以抑制 Click / zipper / transient tearing。
-- 修改 OTT 後必須確認 build、50 次 DSP stress test 與相關 regression test。
+- 修改 UDMBC 後必須確認 build、50 次 DSP stress test 與相關 regression test。
 
 ## 發版前檢查
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.37 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.37 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared TAPE/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -425,10 +425,10 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "Math.tanh(bands[b]*driveParams[b])*makeup[b]" in worklet_tape
     assert "c.typeFast[b]" not in worklet_tape
     assert "c.typeSlow[b]" not in worklet_tape
-    assert "const xs=s.ott.x;" in worklet_tape
+    assert "const xs=s.udmbc.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.37" in web
-    assert "VVCHAIN v1.0.37" in editor
+    assert "VVCHAIN v1.0.44" in web
+    assert "VVCHAIN v1.0.44" in editor
     assert "LAST " not in editor
 
     # ANALOG v1.0.16 uses unity-normalized smooth algebraic saturation.
@@ -474,10 +474,10 @@ def test_v103_ui_rules_50():
     # 50 combinations across all four bands and the zero/non-zero gates.
     cases = []
     for band in range(4):
-        for ott_zero in (True, False):
+        for udmbc_zero in (True, False):
             for analog_zero in (True, False):
                 for tape_zero in (True, False):
-                    cases.append((band, ott_zero, analog_zero, tape_zero))
+                    cases.append((band, udmbc_zero, analog_zero, tape_zero))
     assert len(cases) == 32
 
     # Add boundary permutations to reach exactly 50 deterministic cases.
@@ -497,7 +497,7 @@ def test_v103_ui_rules_50():
     assert ".knobMuted" in web
     assert ".knobMuted .modeSwitch" in web
     assert ".deessMuted" in web
-    assert 'mutedWhen:()=>state.ott.bypass||state.ott.bandBypass[n]||state.ott.degree[n]<=0.0001' in web
+    assert 'mutedWhen:()=>state.udmbc.bypass||state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001' in web
     assert 'mutedWhen:()=>state.eq.globalBypass||state.eq.colorBypass[n]||state.eq.color[n]<=0.0001' in web
     assert 'mutedWhen:()=>state.type.bypass||state.type.bandBypass[n]||state.type.degree[n]<=0.0001' in web
     assert 'mutedWhen:()=>state.de.bypass||state.de.intensity<=0.0001' in web
@@ -520,8 +520,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.37" in web
-    assert "VVCHAIN v1.0.37" in cpp
+    assert "VVCHAIN v1.0.44" in web
+    assert "VVCHAIN v1.0.44" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -563,7 +563,7 @@ def test_v103_closed_10():
         assert "20 kHz" in web and "20 kHz" in cpp
 
         # Conditional grey-state rules.
-        assert "OTT_DEGREE" + "" in cpp
+        assert "UDMBC_DEGREE" + "" in cpp
         assert ".knobMuted" in web
         assert ".deessMuted" in web
 
@@ -604,7 +604,7 @@ def test_v107_ui_controls():
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
     assert ' | ' not in hint_block
 
-    # TYPE-A upper limits are 50/60/70/90 while tanh processing remains unchanged.
+    # TAPE upper limits are 50/60/70/90 while tanh processing remains unchanged.
     assert 'const float maxDegrees[4] = { 50.f, 60.f, 70.f, 90.f };' in proc
     assert 'constexpr float kTypeAMaxDegree[4] = { 50.f, 60.f, 70.f, 90.f };' in dsp
     assert '[50,60,70,90]' in web
@@ -628,13 +628,13 @@ def test_v1018_interaction_visual_sync():
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
 
     # Local LED bypass, zero-value mute and upper module bypass all feed the same grey state.
-    assert 'parameterValue("OTT_BYPASS") > 0.5f' in cpp
-    assert 'parameterValue("OTT_BAND_BYPASS" + n) > 0.5f' in cpp
-    assert 'parameterValue("ATYPE_BYPASS") > 0.5f' in cpp
-    assert 'parameterValue("ATYPE_BAND_BYPASS" + n) > 0.5f' in cpp
+    assert 'parameterValue("UDMBC_BYPASS") > 0.5f' in cpp
+    assert 'parameterValue("UDMBC_BAND_BYPASS" + n) > 0.5f' in cpp
+    assert 'parameterValue("TAPE_BYPASS") > 0.5f' in cpp
+    assert 'parameterValue("TAPE_BAND_BYPASS" + n) > 0.5f' in cpp
     assert 'parameterValue("DEESS_BYPASS") > 0.5f' in cpp
     assert 'moduleMuteRefreshers' in web
-    assert 'state.ott.bypass||state.ott.bandBypass[n]' in web
+    assert 'state.udmbc.bypass||state.udmbc.bandBypass[n]' in web
     assert 'state.type.bypass||state.type.bandBypass[n]' in web
     assert 'state.de.bypass||state.de.intensity<=0.0001' in web
     assert '.moduleMuted{opacity:.42;filter:grayscale(1)}' in web

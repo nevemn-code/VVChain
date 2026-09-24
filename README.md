@@ -5,8 +5,8 @@
 ## Signal Flow
 INPUT
 → 4-Band Parametric EQ + per-band Analog Color
-→ 4-Band OTT
-→ 4-Band TAPE-A
+→ 4-Band UDMBC
+→ 4-Band TAPE COLOR
 → Two-Edge Split-Band De-Esser
 → MIX
 → OUT
@@ -15,10 +15,10 @@ INPUT
 ## Main UI
 - 上方顯示 EQ response 與 Shared X-Over，不再使用即時 FFT analyzer。
 - 3 條可拖曳 Shared X-Over 線，分成 4 個頻段；線上滾輪調整 OVERLAP。
-- BAND 1–4：FREQ / GAIN / Q / ANALOG COLOR / OTT % / ATTACK / RELEASE / TAPE-A +。
+- BAND 1–4：FREQ / GAIN / Q / ANALOG COLOR / UDMBC % / ATTACK / RELEASE / TAPE COLOR +。
 - 每個頻段的 ANALOG COLOR 完全獨立；使用者範圍 0–60%，0% = exact dry；X2 只把目前 ANALOG delta 放大為 ×2。
 - ANALOG COLOR 上方有 TT / SS 撥桿：TT = Tube Saturation；SS = Solid-State Saturation。
-- 各 BAND 的 OTT / TAPE-A BYPASS 小燈固定位於對應旋鈕右上方；亮 = 啟用，暗 = BYPASS。
+- 各 BAND 的 UDMBC / TAPE COLOR BYPASS 小燈固定位於對應旋鈕右上方；亮 = 啟用，暗 = BYPASS。
 - DE-ESSER 框內四顆旋鈕垂直排列：DE-ESS FREQ / MAXIMUM REDUCTION / MIX / OUT。
 - MAXIMUM REDUCTION 範圍 0–8 dB，預設 0 dB；DE-ESSER 預設不改變聲音。
 - Master BYPASS 位於右上角，為全鏈旁通；啟用時 UI 灰階化。
@@ -48,15 +48,20 @@ https://nevemn-code.github.io/VVChain/
 
 ## 版本日誌
 
+### v1.0.44
+- 清理未使用的第三方參考殘留檔案與文字。
+- 統一將舊版第三方風格名稱改為中性專案名稱；僅變更命名與文件，不變更 DSP 運算。
+
+
 ### v1.0.1｜穩定基準版
 - 已確認 Web 播放音訊處理鏈、參數控制、DELTA 與 Bypass 正常。
 - 此版本作為後續 UI 修改的基準，不回改其已驗證的音訊處理鏈。
 
-### v1.0.4｜TAPE-A 啟動瞬間爆音修正
-- TAPE-A 改為無狀態正規化 tanh 核心：不再用 Attack / Release / envelope state 決定增益，避免第一顆聲音因狀態初始化而突然放大。
+### v1.0.4｜TAPE COLOR 啟動瞬間爆音修正
+- TAPE COLOR 改為無狀態正規化 tanh 核心：不再用 Attack / Release / envelope state 決定增益，避免第一顆聲音因狀態初始化而突然放大。
 - Drive 在參數區塊預先計算；以 tanh(drive) 作為 Makeup 分母，讓 |input|=1 的基準點維持 |output|=1。
-- Native JUCE 與 GitHub Pages AudioWorklet 同步採同一套 4-band、stateless、normalized transfer；原有 Attack / Release 參數保留作為 preset/UI 相容，不再參與 TAPE-A 增益核心。
-- 同時修正 TAPE-A 四段 crossover 重建方式為 LP1 / (LP2-LP1) / (LP3-LP2) / HP3，避免各頻段重疊累加造成額外電平。
+- Native JUCE 與 GitHub Pages AudioWorklet 同步採同一套 4-band、stateless、normalized transfer；原有 Attack / Release 參數保留作為 preset/UI 相容，不再參與 TAPE COLOR 增益核心。
+- 同時修正 TAPE COLOR 四段 crossover 重建方式為 LP1 / (LP2-LP1) / (LP3-LP2) / HP3，避免各頻段重疊累加造成額外電平。
 - 此正規化保證的是 |input|≤1 的 0 dBFS 基準；內部超過 1.0 的 peak 仍由後級固定延遲 True-Peak Limiter 處理。
 ### v1.0.3｜Dynamic EQ / Graph 操作修正
 - 修正 DYNAMICS 與該頻段靜態 GAIN 重複計算造成的高增益／爆音問題；Native 與 Web 都限制動態總 GAIN 在安全範圍。
@@ -68,7 +73,7 @@ https://nevemn-code.github.io/VVChain/
 - 上方 EQ Graph 補回 dB 正負刻度與頻率刻度。
 - 上方 DYNAMICS Target 點支援上下調整 DYNAMICS、左右同步移動 EQ 頻率；下方 DYNAMICS 與之同步。
 - DE-ESSER 在 MAXIMUM REDUCTION 右上方增加獨立 BYPASS 控制，與原 DE-ESSER BYPASS 同一參數。
-- OTT = 0、ANALOG COLOR = 0、TAPE-A + = 0、DE-ESSER MAXIMUM REDUCTION = 0 的灰階規則已加入。
+- UDMBC = 0、ANALOG COLOR = 0、TAPE COLOR + = 0、DE-ESSER MAXIMUM REDUCTION = 0 的灰階規則已加入。
 - 第 4～7 項為可獨立撤回的視覺規則，保留後續回改空間。
 
 ## GitHub 開發規則
@@ -84,8 +89,6 @@ https://nevemn-code.github.io/VVChain/
   
 ### Analog Color / TT / SS
 Analog Color uses the v1.0.16 unity-normalized smooth algebraic transfer with a hard no-shrink guard. Zero amount is exact dry, |x|=1 is normalized to unity, TT/SS use separate saturation depths, and The user control is capped at 60%, and X2 multiplies only the generated Analog Color delta by 2.
-
-PSP's published ClassicQ documentation describes SIM as Class-A plus transformer simulation, with the Class-A stage before output level and the transformer followed by SAT; PSP does not publish the proprietary transfer curve. VVChain therefore uses that documented topology as a design reference rather than claiming a code-level clone. PSP describes its analog EQ/preamp coloration as gentle/subtle, and McQ describes SAT as a smooth overdrive stage.
 
 
 ## 開發同步規則（重要）
@@ -160,14 +163,14 @@ VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測�
 ## v1.0.30
 
 - 第二輪專案除錯：Native EQ / DYN 不再維護舊 `graphHintBand / graphHintAutoHideAt` 狀態；舊 graph hint 只保留給 XOVER 拖曳，EQ / DYN 一律走兩行浮動框。
-- `reference_stress.py` 移除永遠會 PASS 的 `tone - tone` 假 null test，改成 Analog odd/no-shrink/dry、TAPE-A unity、Q 連續性與 envelope coefficient 的真實數學檢查。
+- `reference_stress.py` 移除永遠會 PASS 的 `tone - tone` 假 null test，改成 Analog odd/no-shrink/dry、TAPE COLOR unity、Q 連續性與 envelope coefficient 的真實數學檢查。
 - Full Validation 移除 SciPy 依賴，只安裝 NumPy，縮短重型驗證準備時間。
 - Fast Gate 新增 whole-project static audit，連跑 10 次檢查版本同步、Worklet cache、死碼、規則、CI cache 與部署設定。
-- Analog 核心舊函式名稱 `processChebyshevAnalog` 改為 `processAnalogColor`；Web 標籤同步移除 CHEBYSHEV，DSP 公式完全不變。
+- Analog 核心舊函式名稱 Analog core legacy naming was removed; Web label standardized to ANALOG COLOR; DSP formula unchanged.
 
 ## v1.0.29
 
-- 專案第一輪除錯／清理：移除未使用 Analog scratch buffers、舊 Gyraf prototype、永遠無法執行的舊橫向 graph hint renderer 與假的 CMake echo test。
+- 專案第一輪除錯／清理：移除未使用 Analog scratch buffers、舊 Analog prototype、永遠無法執行的舊橫向 graph hint renderer 與假的 CMake echo test。
 - 修正 Web 顯示版本已更新、但 AudioWorklet cache query 仍停在 v1.0.18 的問題；現在 CMake / Web / Worklet cache 版本會互相驗證。
 - `PROJECT_RULES.md` 改為只指向 `.github/VVCHAIN_RULES.md`，避免兩套規則互相衝突。
 - main push 不再重跑 PR Fast Gate；Pages 與 Windows VST3 獨立執行。
@@ -204,7 +207,7 @@ VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測�
 - ANALOG COLOR 使用者範圍由 0–100% 改為 0–60%；DSP 仍以百分比 /100 轉成 amount，因此 60% 對應原演算法 0.60 強度。
 - ANALOG X2 改成真正將目前產生的 Analog delta ×2；不改原始乾聲。
 - PEAK ↔ ONSETS 寬度 40 px → 60 px；拖曳改為相對式慢速 0.3×，並加入慢速滾輪控制。
-- OTT %、TAPE-A +、DE-ESSER 的局部 LED BYPASS 與 0 值灰階連動；右上五個模組 BYPASS 也同步灰階其對應元件。
+- UDMBC %、TAPE COLOR +、DE-ESSER 的局部 LED BYPASS 與 0 值灰階連動；右上五個模組 BYPASS 也同步灰階其對應元件。
 - 下區塊最右側主 BYPASS 文字改為置中在圓形主 BYPASS 按鈕正上方。
 - 上方浮動值框固定兩行：EQ 或 DYN EQ 的 GAIN；第二行只顯示 FREQ + Q，依實際 hover 目標切換。
 - 右鍵 SOLO EQ 點時，SOLO 中心保持原彩色，往左右頻率距離增加時線性淡入灰階。
@@ -290,6 +293,6 @@ VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測�
 - DE-ESS MODE 改為四段離散旋鈕，10–14 點鐘方向顯示 I／II／III／IV。
 - 上方浮動數值框縮小，只顯示 EQ 或 DYN EQ 的 GAIN、FREQ、Q。
 - EQ FREQ 與 DE-ESS FREQ 拖曳靈敏度降低到接近 GAIN 手感；Web Preview 與 Native 同步。
-- TAPE-A 最大染色上限固定為 Band 1=50%、Band 2=60%、Band 3=70%、Band 4=90%，演算法本體不改。
+- TAPE COLOR 最大染色上限固定為 Band 1=50%、Band 2=60%、Band 3=70%、Band 4=90%，演算法本體不改。
 - 每段 ANALOG COLOR 新增 X2 開關；開啟後只將當前 COLOR 量乘以 1.6，並保留 100% 實際處理上限。
 

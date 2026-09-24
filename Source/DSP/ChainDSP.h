@@ -13,8 +13,8 @@ public:
     {
         bool eqBypass = false;
         bool masterBypass = false;
-        bool ottBypass = false;
-        bool atypeBypass = false;
+        bool udmbcBypass = false;
+        bool tapeBypass = false;
         bool deessBypass = false;
         bool deltaMonitor = false;
         bool mixBypass = false;
@@ -46,37 +46,37 @@ public:
         // false = TT (Tube Saturation), true = SS (Solid-State Saturation)
         std::array<bool, 4> eqColorSolidState { false, false, false, false };
 
-        // Four-band OTT / PunkOTT-MB style chain.
-        std::array<bool, 4> ottBandBypass { false, false, false, false };
-        std::array<float, 4> ottDegree { 35.f, 35.f, 30.f, 25.f };
-        std::array<float, 4> ottLifterThreshold { -45.f, -45.f, -45.f, -45.f };
-        std::array<float, 4> ottLifterAttack { 1.f, 1.f, 1.f, 1.f };
-        std::array<float, 4> ottLifterRelease { 50.f, 50.f, 50.f, 50.f };
-        std::array<float, 4> ottLifterMix { 100.f, 100.f, 100.f, 100.f };
-        std::array<float, 4> ottCompThreshold { -18.f, -18.f, -18.f, -18.f };
-        std::array<float, 4> ottCompAttack { 15.f, 8.f, 3.f, 1.f };
-        std::array<float, 4> ottCompRelease { 50.f, 50.f, 50.f, 50.f };
-        std::array<float, 4> ottCompMix { 100.f, 100.f, 100.f, 100.f };
-        std::array<float, 4> ottBandLevelDb { 0.f, 0.f, 0.f, 0.f };
-        float ottX1 = 120.f;
-        float ottX2 = 1000.f;
-        float ottX3 = 7000.f;
-        float ottXoverOverlap = 50.f;
-        float ottInputGainDb = 0.f;
-        float ottGateThresholdDb = -80.f;
-        float ottMix = 25.f;
-        bool ottClipper = false;
-        float ottOutputGainDb = 0.f;
+        // Four-band UDMBC / UDMBC style chain.
+        std::array<bool, 4> udmbcBandBypass { false, false, false, false };
+        std::array<float, 4> udmbcDegree { 35.f, 35.f, 30.f, 25.f };
+        std::array<float, 4> udmbcLifterThreshold { -45.f, -45.f, -45.f, -45.f };
+        std::array<float, 4> udmbcLifterAttack { 1.f, 1.f, 1.f, 1.f };
+        std::array<float, 4> udmbcLifterRelease { 50.f, 50.f, 50.f, 50.f };
+        std::array<float, 4> udmbcLifterMix { 100.f, 100.f, 100.f, 100.f };
+        std::array<float, 4> udmbcCompThreshold { -18.f, -18.f, -18.f, -18.f };
+        std::array<float, 4> udmbcCompAttack { 15.f, 8.f, 3.f, 1.f };
+        std::array<float, 4> udmbcCompRelease { 50.f, 50.f, 50.f, 50.f };
+        std::array<float, 4> udmbcCompMix { 100.f, 100.f, 100.f, 100.f };
+        std::array<float, 4> udmbcBandLevelDb { 0.f, 0.f, 0.f, 0.f };
+        float udmbcX1 = 120.f;
+        float udmbcX2 = 1000.f;
+        float udmbcX3 = 7000.f;
+        float udmbcXoverOverlap = 50.f;
+        float udmbcInputGainDb = 0.f;
+        float udmbcGateThresholdDb = -80.f;
+        float udmbcMix = 25.f;
+        bool udmbcClipper = false;
+        float udmbcOutputGainDb = 0.f;
 
-        // Four-band Type-A / Dolby-A-style dynamic enhancer.
-        std::array<bool, 4> atypeBandBypass { false, false, false, false };
-        std::array<float, 4> atypeDegree { 0.f, 20.f, 70.f, 55.f };
-        std::array<float, 4> atypeBandLevelDb { 0.f, 0.f, 1.f, 1.f };
-        float atypeAttackMs = 10.f;
-        float atypeReleaseMs = 120.f;
-        float atypeMix = 100.f;
-        float atypeInputGainDb = 0.f;
-        float atypeOutputGainDb = 0.f;
+        // Four-band TAPE / multi-band enhancer dynamic enhancer.
+        std::array<bool, 4> tapeBandBypass { false, false, false, false };
+        std::array<float, 4> tapeDegree { 0.f, 20.f, 70.f, 55.f };
+        std::array<float, 4> tapeBandLevelDb { 0.f, 0.f, 1.f, 1.f };
+        float tapeAttackMs = 10.f;
+        float tapeReleaseMs = 120.f;
+        float tapeMix = 100.f;
+        float tapeInputGainDb = 0.f;
+        float tapeOutputGainDb = 0.f;
 
         // Hybrid mastering DeEsser controls.
         // Frequency selects the LR4 split point; threshold is the relative-HF
@@ -222,7 +222,7 @@ private:
 
     struct BandDynamics
     {
-        // Independent state for each OTT band / channel.
+        // Independent state for each UDMBC band / channel.
         // Gate, upward and downward envelopes never share detector state.
         std::array<float, 2> gateEnvDb { 0.f, 0.f };
         std::array<float, 2> lifterEnv { 1.f, 1.f };
@@ -337,21 +337,21 @@ private:
     Crossover4th analogXover1 {};
     Crossover4th analogXover2 {};
     Crossover4th analogXover3 {};
-    Crossover4th ottXover1 {};
-    Crossover4th ottXover2 {};
-    Crossover4th ottXover3 {};
+    Crossover4th udmbcXover1 {};
+    Crossover4th udmbcXover2 {};
+    Crossover4th udmbcXover3 {};
 
-    // Phase-alignment dummy crossovers for the unequal-depth OTT branches:
+    // Phase-alignment dummy crossovers for the unequal-depth UDMBC branches:
     // Band 1 skips X2/X3; Band 2 skips X3.
-    Crossover4th ottPhase2_B1 {};
-    Crossover4th ottPhase3_B1 {};
-    Crossover4th ottPhase3_B2 {};
+    Crossover4th udmbcPhase2_B1 {};
+    Crossover4th udmbcPhase3_B1 {};
+    Crossover4th udmbcPhase3_B2 {};
 
-    std::array<BandDynamics, 4> ottDynamics {};
+    std::array<BandDynamics, 4> udmbcDynamics {};
 
-    // Four independent Type-A exciter bands.
-    // Type-A shares the exact same X1/X2/X3 crossover positions and
-    // OVERLAP/Q control as OTT so the four upper graph bands are the
+    // Four independent TAPE exciter bands.
+    // TAPE shares the exact same X1/X2/X3 crossover positions and
+    // OVERLAP/Q control as UDMBC so the four upper graph bands are the
     // single source of truth for both processors.
     Crossover4th typeXover1 {};
     Crossover4th typeXover2 {};

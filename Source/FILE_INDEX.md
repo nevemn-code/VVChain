@@ -4,4 +4,4 @@
 - `PluginEditor.h`：Native UI 類別、knob / attachment / LED / TT-SS 控制結構。
 - `PluginProcessor.cpp`：AudioProcessor、APVTS、processBlock、PDC、DSP 串接。
 - `PluginProcessor.h`：AudioProcessor 宣告與 DSP 成員。
-- `DSP/`：EQ / OTT / TAPE-A / De-Esser 的 native DSP。
+- `DSP/`：EQ / UDMBC / TAPE COLOR / De-Esser 的 native DSP。
