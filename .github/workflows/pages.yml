@@ -37,7 +37,8 @@ jobs:
           grep -q 'id="bandGrid"' docs/index.html
           grep -q 'for(let b=0;b<4;b++){' docs/index.html
           grep -q 'DE-ESSER' docs/index.html
-          grep -q 'ANALOG #443' docs/index.html
+          grep -q 'ANALOG COLOR' docs/index.html
+          grep -q 'unity-normalized smooth saturation' docs/index.html
           echo "Web Preview structure: PASS"
 
       - name: Validate Web Preview JavaScript
