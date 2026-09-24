@@ -1,52 +1,54 @@
 # VVChain Test Plan
 
-## Deterministic regression matrix
+## Default Fast Gate
 
-| Stage | Cases | Validation |
-|---|---:|---|
-| Planning / parameter-space | 280 | Parameter ranges and crossover ordering |
-| Boundary / debug continuity | 500 | 8192-sample stream continuity and finite values |
-| All-feature mapping | 180 | EQ / OTT / TAPE-A / De-Esser / Mix controls remain finite |
-| Transient | 155 | Impulse and transient handling |
-| Full-chain | 220 | 44.1 / 48 / 88.2 / 96 / 192 kHz and 16–1024 sample blocks |
-| Independent band bypass | 50 | OTT and TAPE-A per-band bypass independence |
-| Analog color unity | 50 | Small-signal unity across 0–100% color |
-| TT / SS saturation | 500 | 500 deterministic mode/amount sweeps |
-| Type-A exciter | 50 | Four-band dynamic harmonic model |
-| OTT four-band | 500 | Ratio, detector and gate behavior |
-| **Total** | **2,485** | |
+Runs on pull requests and is intentionally lightweight:
 
-## v1.0.9 TPT Bell EQ checks
+- Source ↔ Web Preview synchronization rule.
+- Version-only rule.
+- Web AudioWorklet JavaScript syntax.
+- Web smoke regression.
+- Dynamic EQ / UI / interaction regression.
+- Current Web visible version ↔ Worklet cache version parity.
 
-- 50 deterministic transfer-function cases against an independent double-precision RBJ reference.
-- Each static case checks magnitude error, phase error, centre-frequency gain and exact 0 dB identity.
-- 50 deterministic per-sample modulation stress cases across 44.1 / 48 / 96 kHz at 4x EQ processing rate.
-- Reject NaN / Inf and excessive internal state growth.
-## Architecture-specific checks
+The Fast Gate must not install the full Linux audio/X11 toolchain or rebuild Native VST3.
 
-- Four OTT bands with independent degree and bypass.
-- Three Shared X-Over frequencies.
-- TAPE-A follows the same Shared X-Over.
-- Each EQ band has its own Analog Color amount.
-- Each EQ band has TT / SS mode selection.
-- De-Esser Maximum Reduction is 0–8 dB with 0 dB default.
-- Visual FFT analyzer is intentionally absent from the current Native editor.
-- De-Esser may use internal FFT processing when the effect is enabled.
-- Master BYPASS must reach DSP and output the fixed-PDC delayed dry path.
+## Main push
 
-## Host validation
+- GitHub Pages deploys independently from `docs/`.
+- Windows builds only the `VVChain_VST3` target.
+- The PR Fast Gate is not repeated after merge.
+- The Windows build reuses a stable incremental JUCE/MSVC build cache and does not copy the plugin into the runner's local plugin folder.
 
-Still required before release:
+## Manual Full Validation
 
-- JUCE/CMake build
+Manual `full_validation=true` is reserved for expensive checks:
+
+- Linux VST3/DSP build.
+- Analog 500-case matrix.
+- DSP stress test.
+- Additional host/pluginval checks when available.
+
+## Current architecture checks
+
+- Four Parametric / Dynamic EQ bands.
+- Shared X1 / X2 / X3 crossover boundaries.
+- Four independent UDMBC bands and bypass states.
+- Four TAPE-A bands sharing the crossover ranges.
+- Four independent Analog Color bands, 0–60 processing range, TT/SS, bypass and X2 delta ×2.
+- De-Esser 6–18 kHz, 0–8 dB maximum reduction, four response modes.
+- Compact two-line EQ / DYN EQ graph readout.
+- Master bypass / dry path latency alignment.
+
+## Host validation before public release
+
+Still required when preparing a distributable release:
+
 - pluginval
-- REAPER / Cubase / Pro Tools
-- mono and stereo
-- 44.1 / 48 / 88.2 / 96 / 192 kHz
-- small and large blocks
-- automation
-- state save/restore
-- bypass and wet/dry checks
-- denormal / NaN / infinity checks
-- preset recall
-- AAX SDK build and signing
+- target DAWs
+- mono / stereo
+- sample-rate and block-size changes
+- automation and state recall
+- bypass / dry-wet / Delta
+- NaN / infinity / denormal behavior
+- AAX SDK build/signing when AAX is enabled
