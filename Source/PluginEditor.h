@@ -478,8 +478,6 @@ private:
     bool showGraphDragHint = false;
     juce::String graphDragHint;
     juce::Point<float> graphDragHintPosition {};
-    int graphHintBand = -1;
-    juce::uint32 graphHintAutoHideAt = 0;
 
     // Graph gestures are deliberately separated:
     // Static EQ node = latched single-axis control (frequency OR gain)
