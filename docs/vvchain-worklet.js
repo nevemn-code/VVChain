@@ -141,6 +141,8 @@ class VVChainWorklet extends AudioWorkletProcessor {
   }
   eqFilter(x,z,type,f,q,gainDb,slopeIndex=5){
     type=this.clamp(Math.round(Number(type)||0),0,13);
+    if(type===3)type=2;
+    else if(type===1||type===10||type===11)type=0;
     this.resetEqFilter(z,type);
     const sf=this.clamp(Number(f)||1000,20,sampleRate*.45);
     const qq=this.clamp(Number(q)||.707,.1,18);
@@ -208,7 +210,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const baseQ=this.clamp(Number(s.eq.q[b]||.707),.1,18);
       let eqType=this.clamp(Math.round(Number(s.eq.type?.[b]||0)),0,13);
       if(eqType===3)eqType=2;
-      else if(eqType===11)eqType=0;
+      else if(eqType===1||eqType===10||eqType===11)eqType=0;
       if((b===1||b===2)&&eqType>=12)eqType=0;
       const detectorQ=eqType>=12?.70710678:baseQ;
       const offset=this.clamp(Number(s.eq.gain[b]||0),-18,18);
