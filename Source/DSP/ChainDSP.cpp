@@ -287,17 +287,18 @@ void VVChainDSP::processChebyshevAnalog(
         for (size_t i = 0; i < numSamples; ++i)
         {
             const double x = static_cast<double>(channelData[i]);
+            const double u = juce::jlimit(-1.0, 1.0, x);
             const double denominator =
-                std::sqrt(std::sqrt(1.0 + alpha * x * x));
+                std::sqrt(std::sqrt(1.0 + alpha * u * u));
             const double saturated =
-                (x / denominator) * unityNorm;
+                (u / denominator) * unityNorm;
 
-            // Keep the original dry fundamental as the reference and add only
-            // the normalized nonlinear delta. X2 retains its established role:
-            // only the generated ANALOG delta is multiplied by 1.6.
+            // The shaping domain is exactly the documented -1..+1 range.
+            // Outside it the delta naturally becomes zero at the clamp edge,
+            // so oversampled/intermediate peaks are never attenuated.
             channelData[i] =
                 static_cast<float>(
-                    x + (saturated - x)
+                    x + (saturated - u)
                         * static_cast<double>(safeColourMultiplier));
         }
     }
