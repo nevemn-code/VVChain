@@ -808,7 +808,7 @@ VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
         if (b) b->setLookAndFeel(nullptr);
     for (auto& b : soloButtons)
         if (b) b->setLookAndFeel(nullptr);
-    for (auto& b : dynDetectButtons)
+    for (auto& b : dynDetectSliders)
         if (b) b->setLookAndFeel(nullptr);
     for (auto& b : dynTriggerButtons)
         if (b) b->setLookAndFeel(nullptr);
@@ -2054,10 +2054,10 @@ void VVChainAudioProcessorEditor::timerCallback()
     for (int b = 0; b < 4; ++b)
     {
         const auto n = juce::String(b + 1);
-        if (dynDetectButtons[(size_t) b])
-            dynDetectButtons[(size_t) b]->setButtonText(
-                parameterValue("DYN_DETECT_ONSETS" + n) > 0.5f
-                    ? "ONSETS" : "PEAK");
+        if (dynDetectSliders[(size_t) b])
+            dynDetectSliders[(size_t) b]->setValue(
+                parameterValue("DYN_DETECT_ONSETS" + n),
+                juce::dontSendNotification);
         if (dynTriggerButtons[(size_t) b])
             dynTriggerButtons[(size_t) b]->setButtonText(
                 parameterValue("DYN_TRIGGER_BELOW" + n) > 0.5f
