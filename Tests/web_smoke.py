@@ -7,9 +7,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 HTML = ROOT / "docs" / "index.html"
 WORKLET = ROOT / "docs" / "vvchain-worklet.js"
+CMAKE = ROOT / "CMakeLists.txt"
 
 text = HTML.read_text(encoding="utf-8")
 worklet = WORKLET.read_text(encoding="utf-8")
+cmake = CMAKE.read_text(encoding="utf-8")
 
 match = re.search(r"<script(?:\s[^>]*)?>([\s\S]*)</script>", text, re.I)
 assert match, "missing main inline script"
@@ -56,6 +58,15 @@ required_worklet = [
 ]
 for token in required_worklet:
     assert token in worklet, token
+
+cmake_version = re.search(r"project\(VVChain VERSION (\d+\.\d+\.\d+)", cmake)
+shown_version = re.search(r"VVCHAIN v(\d+\.\d+\.\d+)", text)
+cache_version = re.search(r'vvchain-worklet\.js",document\.baseURI\)\.href\+"\?v=(\d+\.\d+\.\d+)"', text)
+assert cmake_version and shown_version and cache_version
+assert cmake_version.group(1) == shown_version.group(1) == cache_version.group(1), (
+    cmake_version.group(1), shown_version.group(1), cache_version.group(1)
+)
+assert not (ROOT / "docs" / "gyraf-copper.html").exists(), "obsolete Gyraf page must remain deleted"
 
 for forbidden in [
     "analog-v1.html",
