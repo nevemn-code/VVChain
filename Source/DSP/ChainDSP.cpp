@@ -1090,6 +1090,10 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 // Update every sample. The detector gain movement is already
                 // attack/release smoothed, eliminating the old 4-sample zipper.
                 int eqType = juce::jlimit(0, 13, p.eqType[band]);
+                if (eqType == 3)
+                    eqType = 2;
+                else if (eqType == 11)
+                    eqType = 0;
                 if ((band == 1 || band == 2) && eqType >= 12)
                     eqType = 0;
 
