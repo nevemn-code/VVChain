@@ -41,20 +41,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         p.push_back(std::make_unique<juce::AudioParameterChoice>(
             "EQ" + n + "_TYPE", "EQ " + n + " Filter Type",
             juce::StringArray {
-                "Peak",
-                "Peak analog",
-                "Band-shelf A",
-                "Band-shelf B (72 dB/oct)",
-                "Low-shelf",
-                "High-shelf",
-                "Low-shelf (resonant)",
-                "High-shelf (resonant)",
-                "Low-slope",
-                "High-slope",
-                "Band-pass (resonant)",
-                "Notch (resonant)",
-                "Low-pass (resonant, 72 dB/oct)",
-                "High-pass (resonant, 72 dB/oct)"
+                "Parametric Bell",
+                "Matched Bell",
+                "Wide Plateau",
+                "Steep Plateau 72",
+                "Low Shelf",
+                "High Shelf",
+                "Low Shelf + Res",
+                "High Shelf + Res",
+                "Low Contour",
+                "High Contour",
+                "Focus Pass",
+                "Deep Reject",
+                "HF Roll-Off 72",
+                "LF Roll-Off 72"
             }, 0));
 
         const float dynTargetDefaults[4] = { 18.f, 18.f, 18.f, 18.f };
