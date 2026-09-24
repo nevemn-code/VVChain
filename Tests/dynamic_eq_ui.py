@@ -142,8 +142,8 @@ def source_assertions():
     assert 'if(dynamics<=.5)continue;' in web
     assert 'x + 44.f' in cpp
     assert 't.x+44' in web or 'target.x+44' in web
-    assert 'constexpr int detectW = 40' in cpp
-    assert 'width:40px' in web
+    assert 'constexpr int detectW = 60' in cpp
+    assert 'width:60px' in web
     assert 'Compact two-line FloatingValueBox is the only EQ/Dynamic EQ hover readout.' in cpp
     assert 'Compact two-line graphHint is the only EQ/Dynamic EQ hover readout.' in web
     assert 'nextQFromWheel(q,e.deltaY,e.shiftKey)' in web
