@@ -129,6 +129,30 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
     float sliderStart,
     juce::Slider::SliderStyle style, juce::Slider& slider)
 {
+    if (slider.getComponentID() == "DYN_DETECT_BLEND")
+    {
+        juce::ignoreUnused(sliderAsymmetry, sliderStart, style);
+        auto r = juce::Rectangle<float>((float)x, (float)y, (float)width, (float)height).reduced(1.0f);
+        const float t = juce::jlimit(0.0f, 1.0f, sliderPosProportional);
+        const auto blue = juce::Colour(0xff3b82f6);
+        g.setColour(juce::Colour(0xff090b0e));
+        g.fillRoundedRectangle(r, 4.0f);
+        g.setColour(juce::Colour(0xff343941));
+        g.drawRoundedRectangle(r, 4.0f, 1.0f);
+        auto fill = r.reduced(2.0f);
+        fill.setWidth(fill.getWidth() * t);
+        g.setColour(blue.withAlpha(0.34f));
+        g.fillRoundedRectangle(fill, 3.0f);
+        const float thumbX = r.getX() + r.getWidth() * t;
+        g.setColour(blue.withAlpha(0.96f));
+        g.drawLine(thumbX, r.getY() + 2.0f, thumbX, r.getBottom() - 2.0f, 2.0f);
+        g.setFont(juce::FontOptions(7.0f).withStyle("Bold"));
+        g.setColour(juce::Colour(0xffedf1f5));
+        g.drawText("PEAK", r.withWidth(r.getWidth() * 0.5f).toNearestInt(), juce::Justification::centred);
+        g.drawText("ONSETS", r.withX(r.getCentreX()).withWidth(r.getWidth() * 0.5f).toNearestInt(), juce::Justification::centred);
+        return;
+    }
+
     if (slider.getComponentID() == "DEESS_MODE_SWITCH")
     {
         juce::ignoreUnused(sliderPosProportional, sliderAsymmetry,
@@ -458,30 +482,23 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addKnob("DYN_RELEASE" + n, "RELEASE", 5, 2000, 1,
                 parameterValue("DYN_RELEASE" + n), " ms", b, 10, c);
 
-        dynDetectButtons[(size_t) b] =
-            std::make_unique<juce::ToggleButton>("PEAK");
-        dynDetectButtons[(size_t) b]->setComponentID("DYN_MODE");
-        dynDetectButtons[(size_t) b]->setLookAndFeel(&metalLook);
-        dynDetectButtons[(size_t) b]->setColour(
-            juce::ToggleButton::tickColourId, c);
-        dynDetectButtons[(size_t) b]->setTooltip(
-            "DETECT：PEAK / ONSETS");
-        dynDetectButtons[(size_t) b]->onClick = [this, b]
-        {
-            if (auto* parameter = audioProcessor.apvts.getParameter(
-                    "DYN_DETECT_ONSETS" + juce::String(b + 1)))
-                parameter->setValueNotifyingHost(
-                    parameter->convertTo0to1(
-                        dynDetectButtons[(size_t)b]->getToggleState()
-                            ? 1.f : 0.f));
-            repaint();
-        };
+        dynDetectSliders[(size_t) b] =
+            std::make_unique<juce::Slider>();
+        dynDetectSliders[(size_t) b]->setComponentID("DYN_DETECT_BLEND");
+        dynDetectSliders[(size_t) b]->setLookAndFeel(&metalLook);
+        dynDetectSliders[(size_t) b]->setSliderStyle(juce::Slider::LinearHorizontal);
+        dynDetectSliders[(size_t) b]->setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        dynDetectSliders[(size_t) b]->setRange(0.0, 100.0, 0.1);
+        dynDetectSliders[(size_t) b]->setValue(parameterValue("DYN_DETECT_ONSETS" + n),
+                                                juce::dontSendNotification);
+        dynDetectSliders[(size_t) b]->setTooltip(
+            "DETECT：0% = PEAK；100% = ONSETS；50% = 兩者各半");
         dynDetectAttachments[(size_t) b] =
-            std::make_unique<BoolAttachment>(
+            std::make_unique<Attachment>(
                 audioProcessor.apvts,
                 "DYN_DETECT_ONSETS" + n,
-                *dynDetectButtons[(size_t) b]);
-        addAndMakeVisible(*dynDetectButtons[(size_t) b]);
+                *dynDetectSliders[(size_t) b]);
+        addAndMakeVisible(*dynDetectSliders[(size_t) b]);
 
         dynTriggerButtons[(size_t) b] =
             std::make_unique<juce::ToggleButton>("ABOVE");
@@ -2254,7 +2271,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.13 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
+    g.drawText("VVCHAIN v1.0.14 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2456,19 +2473,16 @@ void VVChainAudioProcessorEditor::resized()
         const int modeY = innerTop + rowH * 2 + 7;
         const int halfW = (innerW - 8) / 2;
 
-        if (dynDetectButtons[(size_t) b])
+        if (dynDetectSliders[(size_t) b])
         {
-            dynDetectButtons[(size_t) b]->setBounds(
-                innerX, modeY, halfW, 26);
-            dynDetectButtons[(size_t) b]->setButtonText(
-                parameterValue("DYN_DETECT_ONSETS" + n) > 0.5f
-                    ? "ONSETS" : "PEAK");
+            dynDetectSliders[(size_t) b]->setBounds(
+                innerX, modeY + 3, halfW + 14, 20);
         }
 
         if (dynTriggerButtons[(size_t) b])
         {
             dynTriggerButtons[(size_t) b]->setBounds(
-                innerX + halfW + 8, modeY, halfW, 26);
+                innerX + halfW + 22, modeY + 1, halfW - 14, 24);
             dynTriggerButtons[(size_t) b]->setButtonText(
                 parameterValue("DYN_TRIGGER_BELOW" + n) > 0.5f
                     ? "BELOW" : "ABOVE");
@@ -2847,8 +2861,48 @@ void VVChainAudioProcessorEditor::mouseDown(
 
     int band = -1;
 
-    // Right-click is reserved for the M/S popup.
-    if (event.mods.isRightButtonDown())
+    // v1.0.14: plain right-click auditions the selected EQ point/band.
+    // Holding the right button while dragging keeps SOLO active and maps
+    // X -> frequency, Y -> gain with the same absolute graph coordinates.
+    if (event.mods.isRightButtonDown() && !event.mods.isShiftDown())
+    {
+        int soloBand = -1;
+        float best = 18.0f;
+        for (int b = 0; b < 4; ++b)
+        {
+            const auto n = juce::String(b + 1);
+            const juce::Point<float> eqPoint {
+                graphFrequencyToX(graph, parameterValue("EQ" + n + "_FREQ")),
+                eqDbToY(graph, parameterValue("EQ" + n + "_GAIN"))
+            };
+            const auto dynPoint = dynamicTargetPoint(b);
+            const float deq = pos.getDistanceFrom(eqPoint);
+            const float ddyn = pos.getDistanceFrom(dynPoint);
+            const float d = juce::jmin(deq, ddyn);
+            if (d < best) { best = d; soloBand = b; }
+        }
+
+        if (soloBand >= 0)
+        {
+            rightDragBand = soloBand;
+            const auto n = juce::String(soloBand + 1);
+            setParameter("SOLO_BAND", static_cast<float>(soloBand + 1));
+            if (auto* p = audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
+                p->beginChangeGesture();
+            if (auto* p = audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
+                p->beginChangeGesture();
+            juce::StringArray ids; ids.add("EQ" + n + "_FREQ"); ids.add("EQ" + n + "_GAIN");
+            setGraphControlState(ids, false);
+            showGraphDragHint = true;
+            graphHintBand = soloBand;
+            graphHintActiveMask = 1 | 2;
+            repaint();
+            return;
+        }
+    }
+
+    // Shift + right-click keeps the existing M/S popup.
+    if (event.mods.isRightButtonDown() && event.mods.isShiftDown())
     {
         // Context hit-test is intentionally wider than the left-drag Dynamic
         // ring, so M/S still opens from the central node at 0% Dynamics.
@@ -2866,7 +2920,7 @@ void VVChainAudioProcessorEditor::mouseDown(
         }
     }
 
-    if (event.mods.isRightButtonDown()
+    if (event.mods.isRightButtonDown() && event.mods.isShiftDown()
         && band >= 0)
     {
         expandedDynamicBand = band;
@@ -3161,6 +3215,26 @@ void VVChainAudioProcessorEditor::mouseDrag(
 {
     const auto graph = eqGraphBounds();
 
+    if (rightDragBand >= 0 && event.mods.isRightButtonDown())
+    {
+        const auto n = juce::String(rightDragBand + 1);
+        const float correctedX = juce::jlimit(graph.getX(), graph.getRight(), event.position.x);
+        const float hz = graphXToFrequency(graph, correctedX);
+        const float gain = juce::jlimit(-18.f, 18.f,
+            18.f - (event.position.y - graph.getY()) / juce::jmax(1.f, graph.getHeight()) * 36.f);
+        setGraphControlMoving(true);
+        setParameter("EQ" + n + "_FREQ", hz);
+        setParameter("EQ" + n + "_GAIN", gain);
+        if (auto* k = findKnob("EQ" + n + "_FREQ")) k->slider->setValue(hz, juce::dontSendNotification);
+        if (auto* k = findKnob("EQ" + n + "_GAIN")) k->slider->setValue(gain, juce::dontSendNotification);
+        graphDragHintPosition = event.position;
+        graphHintBand = rightDragBand;
+        graphHintActiveMask = 1 | 2;
+        showGraphDragHint = true;
+        repaint();
+        return;
+    }
+
     // Dedicated DYNAMICS arrow handle = Y-only.
     // Up = +DYNAMICS, down = -DYNAMICS. Same sensitivity as the existing
     // Dynamic graph drag; Shift provides the same fine 0.1x adjustment.
@@ -3394,6 +3468,14 @@ void VVChainAudioProcessorEditor::mouseDrag(
 void VVChainAudioProcessorEditor::mouseUp(
     const juce::MouseEvent&)
 {
+    if (rightDragBand >= 0)
+    {
+        const auto n = juce::String(rightDragBand + 1);
+        if (auto* p = audioProcessor.apvts.getParameter("EQ" + n + "_FREQ")) p->endChangeGesture();
+        if (auto* p = audioProcessor.apvts.getParameter("EQ" + n + "_GAIN")) p->endChangeGesture();
+        rightDragBand = -1;
+    }
+
     if (dragDynamicHandleBand >= 0)
     {
         const auto n = juce::String(dragDynamicHandleBand + 1);
@@ -3475,36 +3557,7 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
         || std::abs(wheel.deltaY) < 0.0001f)
         return;
 
-    // Right-button + wheel = M/S. Shift makes it the minimum 0.01 step.
-    if (event.mods.isRightButtonDown())
-    {
-        int band = hoverDynamicBand;
-
-        if (band < 0)
-            pointNearDynamicNode(
-                event.position, band);
-
-        if (band >= 0)
-        {
-            const auto id =
-                "DYN_MS"
-                + juce::String(band + 1);
-
-            const float step =
-                event.mods.isShiftDown() ? 0.01f : 4.0f;
-            const float next =
-                juce::jlimit(
-                    0.f, 100.f,
-                    parameterValue(id)
-                        + wheel.deltaY * step);
-
-            setParameter(id, next);
-            expandedDynamicBand = band;
-            repaint();
-            return;
-        }
-    }
-
+    // v1.0.14: right-button + wheel is reserved for EQ Q.
     // Crossover curvature / OVERLAP is controlled ONLY by the
     // small cross marker at the bottom of each X1/X2/X3 line.
     {
@@ -3539,6 +3592,9 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
             return;
         }
     }
+
+    if (!event.mods.isRightButtonDown())
+        return;
 
     // Wheel on either the static EQ point or the DYNAMICS target point
     // adjusts the same shared Q parameter.
