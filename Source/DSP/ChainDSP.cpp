@@ -358,6 +358,8 @@ void VVChainDSP::reset()
     analogAlpha = { 0.0, 0.0, 0.0, 0.0 };
     analogAlphaInitialized = { false, false, false, false };
 
+    bandProcessingHighPass.reset();
+
     analogXover1.reset();
     analogXover2.reset();
     analogXover3.reset();
@@ -869,6 +871,30 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             // Analog Color is routed after EQ/Dynamics gating below so EQ_BYPASS
             // does not silently bypass the independently selectable ANALOG module.
         }
+    }
+
+    // Shared BAND 1 floor: one zero-sample-latency 30 Hz / 12 dB/oct
+    // Butterworth HPF for ANALOG -> UDMBC -> TAPE. EQ/Dynamics remain upstream.
+    // Keeping this filter singular prevents the three processors from accumulating
+    // different low-frequency phase rotations. Master BYPASS still crossfades to
+    // the latency-aligned dry path, and this IIR adds no samples to reported PDC.
+    constexpr double kBandProcessingLowCutHz = 30.0;
+    constexpr double kButterworthQ = 0.7071067811865476;
+    updateHighPass(
+        bandProcessingHighPass,
+        osSr,
+        kBandProcessingLowCutHz,
+        kButterworthQ);
+
+    for (int ch = 0; ch < osChannels && ch < 2; ++ch)
+    {
+        auto* data =
+            osBlock.getChannelPointer(static_cast<size_t>(ch));
+        const bool right = ch == 1;
+
+        for (int sample = 0; sample < osSamples; ++sample)
+            data[sample] =
+                bandProcessingHighPass.process(data[sample], right);
     }
 
     // ANALOG COLOR v1.0.46: true four-band routing.
