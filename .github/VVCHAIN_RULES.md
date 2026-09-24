@@ -108,9 +108,9 @@ ANALOG COLOR 正式基準自 **v1.0.16** 起為 unity-normalized smooth algebrai
 
 ### Fast Deploy 規則（v1.0.23 起，最高優先）
 - 一般 PR 的 Fast Gate 與 GitHub Pages 必須以 **3 分鐘內完成工作執行** 為目標；main push 不重跑已在 PR 通過的 Fast Gate。
-- Fast Gate 只保留會直接阻止錯版上線的必要項目：Native/Web 同步規則、版本規則、Web/Worklet JavaScript syntax、Web smoke、UI/互動 regression。
+- Fast Gate 只保留會直接阻止錯版上線的必要項目：Native/Web 同步規則、版本規則、Web/Worklet JavaScript syntax、Web smoke、whole-project static audit ×10、UI/互動 regression。
 - 一般 PR **不得**再安裝整套 Linux audio/X11 開發套件，也不得每次重新跑 Linux VST3 全編譯、numpy/scipy 安裝、500-case ANALOG matrix 或 DSP stress。
-- 完整 Linux Native build、500-case ANALOG matrix、5 次 DSP stress 移至 `workflow_dispatch -> full_validation=true`，需要深度驗證時才執行。
+- 完整 Linux Native build、500-case ANALOG matrix、5 次 DSP stress 移至 `workflow_dispatch -> full_validation=true`；DSP stress 不得使用永遠自我抵銷的假 null test，且避免非必要 SciPy 依賴。
 - Windows VST3 正式 artifact 只在 **main push / 手動 workflow** 建置；PR 階段不重複做 Windows Release build。
 - Windows VST3 必須使用穩定、可重用的 incremental build cache；cache key 不得使用每次都變動的 `run_id`。正式建置只建 `VVChain_VST3` target，CI 不做本機 plugin copy。
 - GitHub Pages 必須獨立於重型 Native CI，使用 docs-only sparse checkout + 最少必要 syntax/structure 驗證，不能等待 VST3 build 才部署。
