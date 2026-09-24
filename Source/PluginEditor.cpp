@@ -2240,7 +2240,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.31 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
+    g.drawText("VVCHAIN v1.0.34 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2654,111 +2654,75 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
         return;
     }
 
-    int bestBand = -1;
-    enum class HoverTarget { None, Static, Live, Dynamic, Handle };
-    HoverTarget bestTarget = HoverTarget::None;
-    float bestDistance = 22.0f;
+    // v1.0.34: explicit hit priority.
+    // 1) Static EQ point always wins when the pointer is actually on it.
+    // 2) Only the Dynamic target or its dedicated arrow can produce DYN EQ.
+    // The live gain marker is visual only and never steals the value box.
+    constexpr float staticHitRadius = 9.0f;
+    constexpr float dynamicHitRadius = 12.0f;
+    constexpr float handleHitX = 6.0f;
+    constexpr float handleHitY = 10.0f;
 
     for (int b = 0; b < 4; ++b)
     {
         const auto n = juce::String(b + 1);
-        const float frequency =
-            parameterValue("EQ" + n + "_FREQ");
-        const float offsetGain =
-            parameterValue("EQ" + n + "_GAIN");
-        const float dynamics =
-            parameterValue("DYN_DYNAMICS" + n);
+        const float frequency = parameterValue("EQ" + n + "_FREQ");
+        const float offsetGain = parameterValue("EQ" + n + "_GAIN");
+        const float x = graphFrequencyToX(graph, frequency);
+        const float y = eqDbToY(graph, offsetGain);
 
-        const float x =
-            graphFrequencyToX(graph, frequency);
-        const float staticY =
-            eqDbToY(graph, offsetGain);
-
-        const float staticDistance =
-            position.getDistanceFrom({ x, staticY });
-
-        if (staticDistance < bestDistance)
+        if (position.getDistanceFrom({ x, y }) <= staticHitRadius)
         {
-            bestDistance = staticDistance;
-            bestBand = b;
-            bestTarget = HoverTarget::Static;
-        }
-
-        const float liveGain =
-            offsetGain + dynamicAverageGainChangeDb(b);
-        const float liveY =
-            eqDbToY(graph, liveGain);
-        const float liveDistance =
-            position.getDistanceFrom({ x, liveY });
-
-        if (liveDistance < bestDistance)
-        {
-            bestDistance = liveDistance;
-            bestBand = b;
-            bestTarget = HoverTarget::Live;
-        }
-
-        const float dynamicTarget =
-            dynamicEffectiveTargetGain(b);
-        const float targetY =
-            eqDbToY(graph, dynamicTarget);
-        const float targetDistance =
-            position.getDistanceFrom({ x, targetY });
-
-        if (std::abs(dynamics) > 0.01f
-            && targetDistance < bestDistance)
-        {
-            bestDistance = targetDistance;
-            bestBand = b;
-            bestTarget = HoverTarget::Dynamic;
-        }
-
-        const float handleX =
-            juce::jlimit(graph.getX() + 18.f,
-                         graph.getRight() - 12.f,
-                         x + 44.f);
-        const float handleDistance =
-            position.getDistanceFrom({ handleX, targetY });
-
-        if (std::abs(dynamics) > 0.01f
-            && handleDistance < bestDistance)
-        {
-            bestDistance = handleDistance;
-            bestBand = b;
-            bestTarget = HoverTarget::Handle;
+            showFloatingValueBoxForBand(
+                b, false, offsetGain, position);
+            return;
         }
     }
 
-    if (bestBand < 0 || bestTarget == HoverTarget::None)
+    int bestBand = -1;
+    float bestDistance = dynamicHitRadius;
+
+    for (int b = 0; b < 4; ++b)
     {
-        floatingValueBox.hideInstantly();
+        const auto n = juce::String(b + 1);
+        const float dynamics = parameterValue("DYN_DYNAMICS" + n);
+        const float frequency = parameterValue("EQ" + n + "_FREQ");
+        const float x = graphFrequencyToX(graph, frequency);
+        const float targetGain = dynamicEffectiveTargetGain(b);
+        const float targetY = eqDbToY(graph, targetGain);
+
+        // At 0% the Dynamic target sits on the Static EQ point, so the
+        // target itself is intentionally disabled; the arrow remains available.
+        if (std::abs(dynamics) > 0.01f)
+        {
+            const float d = position.getDistanceFrom({ x, targetY });
+            if (d < bestDistance)
+            {
+                bestDistance = d;
+                bestBand = b;
+            }
+        }
+
+        const float handleX = juce::jlimit(
+            graph.getX() + 18.f, graph.getRight() - 12.f, x + 44.f);
+        if (std::abs(position.x - handleX) <= handleHitX
+            && std::abs(position.y - targetY) <= handleHitY)
+        {
+            showFloatingValueBoxForBand(
+                b, true, targetGain, position);
+            return;
+        }
+    }
+
+    if (bestBand >= 0)
+    {
+        showFloatingValueBoxForBand(
+            bestBand, true, dynamicEffectiveTargetGain(bestBand), position);
         return;
     }
 
-    const auto n = juce::String(bestBand + 1);
-    const float frequency =
-        parameterValue("EQ" + n + "_FREQ");
-    const float offsetGain =
-        parameterValue("EQ" + n + "_GAIN");
-    const float dynamics =
-        parameterValue("DYN_DYNAMICS" + n);
-
-    float displayedGain = offsetGain;
-    if (bestTarget == HoverTarget::Live)
-        displayedGain += dynamicAverageGainChangeDb(bestBand);
-    else if (bestTarget == HoverTarget::Dynamic
-             || bestTarget == HoverTarget::Handle)
-        displayedGain = dynamicEffectiveTargetGain(bestBand);
-
-    const bool dynamicReadout =
-        bestTarget == HoverTarget::Live
-        || bestTarget == HoverTarget::Dynamic
-        || bestTarget == HoverTarget::Handle;
-
-    showFloatingValueBoxForBand(
-        bestBand, dynamicReadout, displayedGain, position);
+    floatingValueBox.hideInstantly();
 }
-
 
 void VVChainAudioProcessorEditor::mouseMove(
     const juce::MouseEvent& event)

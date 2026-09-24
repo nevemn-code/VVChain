@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.31 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.34 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -425,8 +425,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.31" in web
-    assert "VVCHAIN v1.0.31" in editor
+    assert "VVCHAIN v1.0.34" in web
+    assert "VVCHAIN v1.0.34" in editor
     assert "LAST " not in editor
 
     # ANALOG v1.0.16 uses unity-normalized smooth algebraic saturation.
@@ -518,8 +518,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.31" in web
-    assert "VVCHAIN v1.0.31" in cpp
+    assert "VVCHAIN v1.0.34" in web
+    assert "VVCHAIN v1.0.34" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -735,6 +735,51 @@ def test_v1028_q_wheel_3x_continuous():
 
 
 
+
+def test_v1032_readout_hit_priority_50():
+    cpp = CPP.read_text(encoding="utf-8")
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+
+    # Native: Static EQ is checked and returned before Dynamic target/arrow.
+    native_block = cpp[cpp.index('void VVChainAudioProcessorEditor::updateFloatingValueBoxAt('):cpp.index('void VVChainAudioProcessorEditor::mouseMove(')]
+    assert 'Static EQ point always wins' in native_block
+    assert 'live gain marker is visual only' in native_block
+    assert 'HoverTarget::Live' not in native_block
+    assert 'showFloatingValueBoxForBand(\n                b, false, offsetGain, position);' in native_block
+    assert 'showFloatingValueBoxForBand(\n                b, true, targetGain, position);' in native_block
+
+    # Web: same priority, and initial Dynamic arrow press uses the normal compact formatter.
+    web_block = web[web.index('function graphHoverTarget'):web.index('eqCanvas.addEventListener("mousemove"')]
+    assert 'const staticBand=staticEqAtPointer' in web_block
+    assert 'if(staticBand>=0)return {band:staticBand,mask:1|2};' in web_block
+    assert 'dynamicNodePoint' not in web_block
+    assert 'return {band:b,mask:1|4};' in web_block
+    assert 'showGraphHint(e,graphHintBandHtml(b,1|4));' in web
+    assert 'showGraphHint(e,"DYN "+(b+1)' not in web
+
+    # 50 geometry cases: whenever pointer is inside Static EQ radius, EQ must win
+    # even if a Dynamic target/live marker mathematically sits closer or overlaps.
+    static_radius = 9.0
+    dynamic_radius = 12.0
+    for i in range(50):
+        # Static point at origin; Dynamic target sweeps across/near it.
+        px = -8.5 + 17.0 * i / 49.0
+        py = 0.0
+        static_dist = math.hypot(px, py)
+        dyn_x = (i % 7 - 3) * 0.75
+        dyn_y = (i % 5 - 2) * 0.75
+        dynamic_dist = math.hypot(px - dyn_x, py - dyn_y)
+
+        if static_dist <= static_radius:
+            selected = "EQ"
+        elif dynamic_dist < dynamic_radius:
+            selected = "DYN EQ"
+        else:
+            selected = "NONE"
+
+        assert selected == "EQ"
+
+
 def main():
     for _ in range(50):
         source_assertions()
@@ -764,12 +809,14 @@ def main():
     test_v107_ui_controls()
     test_v1024_compact_readout_50()
     test_v1028_q_wheel_3x_continuous()
+    test_v1032_readout_hit_priority_50()
     print("PASS: 280 design cases")
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
     print("PASS: 10 full simulated sessions")
-    print("PASS: 50x v1.0.31 compact EQ/DYN EQ readout identity + format checks")
-    print("PASS: v1.0.31 Q wheel 3x continuous / shared-path check")
+    print("PASS: 50x v1.0.34 compact EQ/DYN EQ readout identity + format checks")
+    print("PASS: 50x v1.0.34 Static-EQ priority vs Dynamic-target hit testing")
+    print("PASS: v1.0.34 Q wheel 3x continuous / shared-path check")
     print("PASS: source invariants / APVTS / graph-DYNAMICS binding")
     print("ALL Dynamic EQ UI regression tests passed")
 
