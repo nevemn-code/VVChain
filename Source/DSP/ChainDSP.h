@@ -86,6 +86,7 @@ public:
         float deessMode = 2.f;
 
         int soloBand = -1;
+        int pointSoloBand = -1;
         bool soloPost = false;
 
         float dryWet = 100.f;
@@ -243,6 +244,8 @@ private:
                                   double gainDb, double q);
     static void updateDynamicDetector(Biquad& filter, double fs, double f0,
                                       double q);
+    static void updatePointSoloBandPass(Biquad& filter, double fs, double f0,
+                                        double q);
     static void updateAnalogHighPass(Biquad& filter, double fs, double f0, double q);
     static void updateLowPass(Biquad& filter, double fs, double f0, double q);
     static void updateHighPass(Biquad& filter, double fs, double f0, double q);
@@ -379,6 +382,9 @@ private:
 
     Crossover4th soloPreXover1 {}, soloPreXover2 {}, soloPreXover3 {};
     Crossover4th soloPostXover1 {}, soloPostXover2 {}, soloPostXover3 {};
+    Biquad pointSoloPre {}, pointSoloPost {};
+    float pointSoloBlend = 0.f;
+    int lastPointSoloBand = -2;
     float soloBlend = 0.f;
     int lastSoloBand = -2;
     bool lastSoloPost = false;
