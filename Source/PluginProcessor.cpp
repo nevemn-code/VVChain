@@ -38,6 +38,24 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         f("EQ" + n + "_FREQ", "EQ " + n + " Frequency", 20.f, 20000.f, defaults[i], 0.25f);
         f("EQ" + n + "_GAIN", "EQ " + n + " Gain", -18.f, 18.f, 0.f);
         f("EQ" + n + "_Q", "EQ " + n + " Q", 0.10f, 18.f, 0.707f, 0.35f);
+        p.push_back(std::make_unique<juce::AudioParameterChoice>(
+            "EQ" + n + "_TYPE", "EQ " + n + " Filter Type",
+            juce::StringArray {
+                "Peak",
+                "Peak analog",
+                "Band-shelf A",
+                "Band-shelf B (72 dB/oct)",
+                "Low-shelf",
+                "High-shelf",
+                "Low-shelf (resonant)",
+                "High-shelf (resonant)",
+                "Low-slope",
+                "High-slope",
+                "Band-pass (resonant)",
+                "Notch (resonant)",
+                "Low-pass (resonant, 72 dB/oct)",
+                "High-pass (resonant, 72 dB/oct)"
+            }, 0));
 
         const float dynTargetDefaults[4] = { 18.f, 18.f, 18.f, 18.f };
         const float dynDynamicsDefaults[4] = { 0.f, 0.f, 0.f, 0.f };
@@ -203,6 +221,12 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.freq[(size_t)i] = value("EQ" + n + "_FREQ");
         p.gain[(size_t)i] = value("EQ" + n + "_GAIN");
         p.q[(size_t)i] = value("EQ" + n + "_Q");
+        p.eqType[(size_t)i] = juce::jlimit(
+            0, 13,
+            juce::roundToInt(value("EQ" + n + "_TYPE")));
+        // Bands 2/3 intentionally do not expose LP/HP cut modes.
+        if ((i == 1 || i == 2) && p.eqType[(size_t)i] >= 12)
+            p.eqType[(size_t)i] = 0;
         p.dynTarget[(size_t)i] = value("DYN_TARGET" + n);
         p.dynDynamics[(size_t)i] = value("DYN_DYNAMICS" + n);
         p.dynAttack[(size_t)i] = value("DYN_ATTACK" + n);
