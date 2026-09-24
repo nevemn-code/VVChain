@@ -1,39 +1,15 @@
-# VVChain 開發規則
+# VVChain 專案規則入口
 
-## 0. 版本識別
-所有專案版本統一使用 `vMAJOR.MINOR.PATCH`。禁止要求或同步使用者電腦時間；專案規則、Commit、Web Preview 不使用時間碼作為版本識別。
+VVChain 的唯一正式開發規則位於：
 
+`.github/VVCHAIN_RULES.md`
 
-## 1. JUCE / Web Preview 雙版本同步
-任何功能、UI、操作邏輯、參數、DSP 或互動修改，只要該功能存在於 Web Preview，就必須同步修改兩套實作：
+本檔不再複製另一份規則，避免兩份文件長期分岔。
 
-- JUCE Plugin：`Source/`
-- GitHub Pages Web Preview：`docs/index.html`
-
-不可只修改其中一邊就視為完成。
-
-## 2. 每次改版的同步檢查
-完成修改後，必須至少確認：
-
-- 參數名稱、範圍、預設值一致
-- 滑鼠拖曳方向與操作方式一致
-- Frequency / Gain / Dynamics 等控制的事件路由一致
-- 數值計算與曲線邏輯一致
-- UI 顯示與即時數值同步
-- BYPASS / RESET / 模式切換等互動一致
-- 若是 DSP / 模擬 DSP 功能，兩邊的核心公式與映射一致
-
-## 3. GitHub Pages 部署
-Web Preview 由 `main` 分支的 `docs/` 部署。涉及 Web Preview 的修改必須進入 `main`，並確認 Pages workflow 已被觸發。
-ANALOG COLOR 的唯一正式基準為 Deploy VVChain Web Preview #443；V1/V2/V3 舊版頁面不再保留。
-
-## 5. 完成條件
-除非明確指定功能只存在於 JUCE 或 Web Preview，否則：
-
-**「Plugin 已修改」不等於完成；必須「Plugin + Web Preview 同步修改並完成測試」才算完成。**
-
-
-## 4. ANALOG #443 基準
-- Native 與 Web 均以 Deploy VVChain Web Preview #443（847729bb72900b8f4a573d69efe7e763ea393eee）為 ANALOG COLOR 基準。
-- X2 僅放大該段 ANALOG COLOR 產生的染色 delta ×1.6，不得影響其他 DSP 模組或其他頻段。
-- ANALOG 修改需通過 500-case regression + 50-case X2 isolation / cursor mapping 驗證。
+目前必要原則：
+- 每一批 GitHub 修改都遞增 PATCH 版本。
+- Native VST3 與 Web Preview / AudioWorklet 的共同功能必須同步。
+- ANALOG COLOR 正式基準為 v1.0.16 之後的 unity-normalized smooth algebraic saturation + hard no-shrink guard。
+- ANALOG COLOR 使用者處理範圍為 0–60%；X2 只把 Analog delta ×2，不影響其他模組。
+- 一般 PR 使用 Fast Gate；重型 Native / DSP 驗證改為手動 Full Validation。
+- Web Pages 從 `main/docs` 獨立快速部署，不等待 Windows VST3 建置。
