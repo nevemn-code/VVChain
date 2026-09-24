@@ -69,7 +69,7 @@ const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive
 const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.48
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.48"+"-hpf30-eqtypes-oct-dynui";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.48"+"-hpf30-eqtypes-oct-dynui-rm2";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -352,7 +352,14 @@ function setGraphControls(ids,moving=false){
 function clearGraphControls(){document.querySelectorAll(".knob.graphActive").forEach(el=>el.classList.remove("graphActive","graphMoving"))}
 const cols=["#ef4444","#facc15","#3b82f6","#22c55e"],bg=$("#bandGrid");
 function hz(v){return v>=1000?fmt(v/1000,2)+" kHz":fmt(v,0)+" Hz"}function graphFrequencyText(v){return fmt(v,0)+" Hz"}function tape(v,max){return fmt(clamp(v/Math.max(1,max),0,1)*10,1)}
-function isRollOffType(b){return Number(state.eq.type?.[b]||0)>=12}
+function normalizedEqType(b){
+  let t=clamp(Math.round(Number(state.eq.type?.[b]||0)),0,13);
+  if(t===3)t=2;
+  else if(t===11)t=0;
+  if((b===1||b===2)&&t>=12)t=0;
+  return t;
+}
+function isRollOffType(b){return normalizedEqType(b)>=12}
 function slopeDbPerOct(b){return (clamp(Math.round(Number(state.eq.slope?.[b]??5)),0,5)+1)*12}function effectiveCompAttackMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(.1,Math.min(120,Number(state.udmbc.compA[b]||0)));const k=Math.max(0,(120-base)/.49);return Math.max(b===0?15:(b===1?8:1),base+k*(amount*amount))}function effectiveCompReleaseMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(10,Math.min(2500,Number(state.udmbc.compR[b]||0)));return Math.max(20,base+amount*100)}
 for(let b=0;b<4;b++){
 const n=b,card=document.createElement("div");
@@ -651,8 +658,7 @@ function filterShapeDb(type,f,q,gain,hz){
   return -10*Math.log10(1+Math.pow(1/ratio,exp));
 }
 function gainShapeDb(b,hz,gain){
-  let type=clamp(Math.round(Number(state.eq.type?.[b]||0)),0,13);
-  if((b===1||b===2)&&type>=12)type=0;
+  const type=normalizedEqType(b);
   return filterShapeDb(type,state.eq.freq[b],state.eq.q[b],gain,hz,state.eq.slope?.[b]??5);
 }
 function dynamicPopupBounds(b,w,h){
@@ -960,7 +966,7 @@ const EQ_FILTER_TYPES=[
   ["HF Roll-Off","#fbbf24"],
   ["LF Roll-Off","#fbbf24"]
 ];
-const EQ_FILTER_ORDER=[0,1,4,5,6,7,8,9,2,3,10,11,13,12];
+const EQ_FILTER_ORDER=[0,1,4,5,6,7,8,9,2,10,13,12];
 const eqTypeMenu=$("#eqTypeMenu");
 function eqTypeIcon(type){
   const p=[
@@ -986,12 +992,17 @@ function eqTypeIcon(type){
 function closeEqTypeMenu(){eqTypeMenu.hidden=true;eqTypeMenu.innerHTML="";}
 function openEqTypeMenu(b,clientX,clientY){
   if(b<0||b>3)return;
+  const normalized=normalizedEqType(b);
+  if(Number(state.eq.type?.[b]||0)!==normalized){
+    state.eq.type[b]=normalized;
+    sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());
+  }
   eqTypeMenu.innerHTML="";
   EQ_FILTER_ORDER.forEach(type=>{
     if((b===1||b===2)&&type>=12)return;
     const item=EQ_FILTER_TYPES[type];
     const btn=document.createElement("button");
-    btn.className="eqTypeItem"+(Number(state.eq.type?.[b]||0)===type?" on":"");
+    btn.className="eqTypeItem"+(normalizedEqType(b)===type?" on":"");
     btn.style.setProperty("--shape",item[1]);
     btn.innerHTML=eqTypeIcon(type)+'<span>'+item[0]+'</span>';
     btn.onclick=e=>{
