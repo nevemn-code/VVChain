@@ -165,6 +165,13 @@ void VVChainDSP::updateDynamicDetector(Biquad& filter, double fs, double f0, dou
         a1 * invA0, a2 * invA0);
 }
 
+void VVChainDSP::updatePointSoloBandPass(Biquad& filter, double fs, double f0, double q)
+{
+    // Same constant-peak band-pass topology as the Dynamic EQ detector.
+    // This is an audition filter only; it does not alter normal EQ processing.
+    updateDynamicDetector(filter, fs, f0, q);
+}
+
 void VVChainDSP::updateAnalogHighPass(Biquad& filter, double fs, double f0, double q)
 {
     const double safeF = juce::jlimit(10.0, fs * 0.45, f0);
@@ -380,6 +387,9 @@ void VVChainDSP::reset()
         v.store(0.f, std::memory_order_relaxed);
     soloPreXover1.reset(); soloPreXover2.reset(); soloPreXover3.reset();
     soloPostXover1.reset(); soloPostXover2.reset(); soloPostXover3.reset();
+    pointSoloPre.reset(); pointSoloPost.reset();
+    pointSoloBlend = 0.f;
+    lastPointSoloBand = -2;
     soloBlend = 0.f;
     lastSoloBand = -2;
     lastSoloPost = false;
@@ -1515,8 +1525,31 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     updateCrossover(
         soloPostXover3, sr, soloX3, soloQ);
 
+    const bool pointSoloEnabled =
+        p.pointSoloBand >= 0 && p.pointSoloBand < 4;
     const bool soloEnabled =
-        p.soloBand >= 0 && p.soloBand < 4;
+        !pointSoloEnabled && p.soloBand >= 0 && p.soloBand < 4;
+
+    if (pointSoloEnabled)
+    {
+        const int band = juce::jlimit(0, 3, p.pointSoloBand);
+        if (band != lastPointSoloBand)
+        {
+            pointSoloPre.reset();
+            pointSoloPost.reset();
+            pointSoloBlend = 0.f;
+            lastPointSoloBand = band;
+        }
+
+        updatePointSoloBandPass(
+            pointSoloPre, sr,
+            juce::jlimit(20.f, static_cast<float>(sr * 0.45), p.freq[(size_t)band]),
+            juce::jlimit(0.1f, 18.f, p.q[(size_t)band]));
+        updatePointSoloBandPass(
+            pointSoloPost, sr,
+            juce::jlimit(20.f, static_cast<float>(sr * 0.45), p.freq[(size_t)band]),
+            juce::jlimit(0.1f, 18.f, p.q[(size_t)band]));
+    }
 
     if (p.soloBand != lastSoloBand
         || p.soloPost != lastSoloPost)
@@ -1592,6 +1625,33 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
             wet[n] =
                 wet[n] * (1.f - soloBlend)
                 + solo * soloBlend;
+        }
+    }
+
+    // Momentary right-click EQ-point audition.  This listens to a true
+    // band-pass centred at the selected EQ FREQ using the selected EQ Q.
+    // It is independent from the persistent card-level crossover BAND SOLO.
+    for (int n = 0; n < numSamples; ++n)
+    {
+        const float targetPointSolo = pointSoloEnabled ? 1.f : 0.f;
+        if (pointSoloBlend < targetPointSolo)
+            pointSoloBlend = std::min(targetPointSolo, pointSoloBlend + 1.f / 32.f);
+        else if (pointSoloBlend > targetPointSolo)
+            pointSoloBlend = std::max(targetPointSolo, pointSoloBlend - 1.f / 32.f);
+
+        if (pointSoloBlend <= 0.f)
+            continue;
+
+        for (int ch = 0; ch < nCh; ++ch)
+        {
+            auto* wet = buffer.getWritePointer(ch);
+            const bool right = ch == 1;
+            const float pre = pointSoloPre.process(
+                alignedDryBuffer.getSample(ch, n), right);
+            const float post = pointSoloPost.process(wet[n], right);
+            const float audition = p.soloPost ? post : pre;
+            wet[n] = wet[n] * (1.f - pointSoloBlend)
+                   + audition * pointSoloBlend;
         }
     }
 
