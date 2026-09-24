@@ -130,7 +130,7 @@ def source_assertions():
     assert 'setParameter("GRAPH_SOLO_ACTIVE", 0.f);' in cpp
     assert 'dragMode===7' in web
     assert 'state.solo.graphActive=true' in web
-    assert '?v=1.0.15' in web
+    assert '?v=1.0.16' in web
     assert 'eqYToDb(' in cpp and 'eqYToDb(' in head
     assert 'qFromWheel(' in cpp and 'qFromWheel(' in head
     assert 'function yToDb(' in web
@@ -149,6 +149,11 @@ def source_assertions():
     assert cpp.count('qFromWheel(q, wheel.deltaY, event.mods.isShiftDown())') == 2
     assert 'staticPriorityBand < 0' in cpp
     assert 'const staticBand=staticEqAtPointer' in web
+    assert '.graphHint{width:112px' in web
+    assert 'm_boxWidth = 112' in head
+    hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
+    assert 'TARGET' not in hint_block and 'OFFSET' not in hint_block and 'AUTO THR' not in hint_block
+    assert 'protectedSaturated' in dsp
 
 
 def test_v1016_gain_scale_10():
