@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.13 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.14 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -102,6 +102,17 @@ def source_assertions():
     assert "showGraphHint(e,graphHintBandHtml(dragBand,1|4))" in web
     assert "showGraphHint(e,graphHintBandHtml(dragDynamicHandleBand,4))" in web
     assert "showGraphHint(e,graphHintBandHtml(band,8))" in web
+    assert 'f("DYN_DETECT_ONSETS" + n, "Dynamic EQ " + n + " Peak Onsets Blend",' in proc
+    assert '0.f, 100.f, 50.f' in proc
+    assert 'std::array<float, 4> dynDetectOnsets' in (ROOT / "Source" / "DSP" / "ChainDSP.h").read_text(encoding="utf-8")
+    assert 'const float onsetMix' in dsp
+    assert 'DYN_DETECT_BLEND' in cpp
+    assert 'GRAPH_SOLO_ACTIVE' in proc and 'GRAPH_SOLO_FREQ' in proc and 'GRAPH_SOLO_Q' in proc
+    assert 'rightSoloBand' in cpp
+    assert 'setParameter("GRAPH_SOLO_ACTIVE", 1.f);' in cpp
+    assert 'setParameter("GRAPH_SOLO_ACTIVE", 0.f);' in cpp
+    assert 'dragMode===7' in web
+    assert 'state.solo.graphActive=true' in web
 
 def test_280_design_cases():
     # 280 deterministic absolute-cursor combinations:
@@ -343,8 +354,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.13" in web
-    assert "VVCHAIN v1.0.13" in editor
+    assert "VVCHAIN v1.0.14" in web
+    assert "VVCHAIN v1.0.14" in editor
     assert "LAST " not in editor
 
     # ANALOG is now locked to Deploy VVChain Web Preview #443.
@@ -434,8 +445,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.13" in web
-    assert "VVCHAIN v1.0.13" in cpp
+    assert "VVCHAIN v1.0.14" in web
+    assert "VVCHAIN v1.0.14" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
