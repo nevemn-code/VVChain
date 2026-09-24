@@ -69,7 +69,7 @@ const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive
 const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.48
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.48"+"-hpf30-eqtypes-oct-dynui-rm2-proportion";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.48"+"-hpf30-eqtypes-oct-dynui-rm4";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -355,7 +355,7 @@ function hz(v){return v>=1000?fmt(v/1000,2)+" kHz":fmt(v,0)+" Hz"}function graph
 function normalizedEqType(b){
   let t=clamp(Math.round(Number(state.eq.type?.[b]||0)),0,13);
   if(t===3)t=2;
-  else if(t===11)t=0;
+  else if(t===1||t===10||t===11)t=0;
   if((b===1||b===2)&&t>=12)t=0;
   return t;
 }
@@ -966,7 +966,7 @@ const EQ_FILTER_TYPES=[
   ["HF Roll-Off","#fbbf24"],
   ["LF Roll-Off","#fbbf24"]
 ];
-const EQ_FILTER_ORDER=[0,1,4,5,6,7,8,9,2,10,13,12];
+const EQ_FILTER_ORDER=[0,4,5,6,7,8,9,2,13,12];
 const eqTypeMenu=$("#eqTypeMenu");
 function eqTypeIcon(type){
   const p=[
