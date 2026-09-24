@@ -42,6 +42,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       dynMid:Array.from({length:4},dynState),
       dynSide:Array.from({length:4},dynState),
       analogAd:Array.from({length:4},()=>({prevX:0,hasPrev:false})),
+      bandProcessingHp:{z1:0,z2:0},
       analogLp:[0,0,0], lp:[0,0,0], typeLp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,
       lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0],
       deLp:{z1:0,z2:0}, deLp2:{z1:0,z2:0}, deHp:{z1:0,z2:0}, deHp2:{z1:0,z2:0}, deBroad:0, deHfFast:0, deHfSlow:0, deGain:0, soloPre:[0,0,0], soloPost:[0,0,0], graphSoloPre:{z1:0,z2:0}, graphSoloPost:{z1:0,z2:0}
@@ -318,7 +319,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     lp[2]+=a3*(h1-lp[2]); const h2=h1-lp[2];
     return [lp[0],lp[1],lp[2],h2];
   }
-  sample(x,ch,analogAlpha){
+  sample(x,ch,analogAlpha,bandProcessingHpCoef){
     const s=this.s,c=this.ch[ch];let y=x;
     if(!s.eq.bypass){
       for(let b=0;b<4;b++){
@@ -326,6 +327,12 @@ class VVChainWorklet extends AudioWorkletProcessor {
         y=this.tptBell(y,c.eq[b],sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]);
       }
     }
+    // One shared BAND-processing low cut: 30 Hz, 12 dB/oct Butterworth.
+    // It runs once after EQ/Dynamics and before ANALOG -> UDMBC -> TAPE.
+    // This is an IIR filter, so it adds phase rotation near 30 Hz but zero samples
+    // of latency; no separate per-module HPFs are used.
+    y=this.biquad(y,bandProcessingHpCoef,c.bandProcessingHp);
+
     // ANALOG COLOR v1.0.48: true four-band routing.
     // Shared X1/X2/X3 positions define four bands before independent COLOR/ADAA.
     const analogBands=this.zoneBands(y,c,"analogLp",s.udmbc.x);
@@ -452,6 +459,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const soloBand=Number(this.s.solo?.band??-1),graphSolo=!!this.s.solo?.graphActive,soloEnabled=graphSolo||(soloBand>=0&&soloBand<4),xs=this.s.udmbc.x;
     const analogSmoothingCoeff=Math.exp(-1/(0.001*0.25*sampleRate));
     const analogAlpha=this.analogAlpha;
+    const bandProcessingHpCoef=this.hp(30,.7071067811865476);
 
     for(let b=0;b<4;b++){
       const active=!this.s.eq.globalBypass&&!this.s.eq.colorBypass[b]&&Number(this.s.eq.color[b]||0)>1e-6;
@@ -485,8 +493,8 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const l=L[n]||0,r=R[n]||0;
       const dyn=this.dynamicStereo(l,r,stereo);
       const deOut=this.deessStereo(
-        this.sample(dyn[0],0,analogAlpha),
-        this.sample(dyn[1],1,analogAlpha),
+        this.sample(dyn[0],0,analogAlpha,bandProcessingHpCoef),
+        this.sample(dyn[1],1,analogAlpha,bandProcessingHpCoef),
         stereo,
         deCoef
       );
