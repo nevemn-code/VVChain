@@ -149,7 +149,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
         g.setColour(blue.withAlpha(.62f));
         g.fillRoundedRectangle(fill, 3.0f);
 
-        g.setFont(juce::FontOptions(7.0f).withStyle("Bold"));
+        g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
         g.setColour(juce::Colours::white.withAlpha(.94f));
         g.drawText("PEAK", r.removeFromLeft(r.getWidth() * 0.5f).toNearestInt(),
                    juce::Justification::centred);
@@ -256,7 +256,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
         g.setColour(accent.withAlpha(on ? .82f : .38f));
         g.drawRoundedRectangle(r, 5.0f, on ? 1.1f : 1.0f);
         g.setColour(juce::Colour(0xffe8edf2));
-        g.setFont(juce::FontOptions(7.2f).withStyle("Bold"));
+        g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
         g.drawText(button.getButtonText(),
                    r.toNearestInt().reduced(3, 1),
                    juce::Justification::centred);
@@ -491,7 +491,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         detectBlendSlider->setTextBoxStyle(
             juce::Slider::NoTextBox, false, 0, 0);
         detectBlendSlider->setSliderSnapsToMousePosition(false);
-        detectBlendSlider->setDragSensitivity(133, 1330);
+        detectBlendSlider->setVerticalValueDrag(true, 133.0);
         detectBlendSlider->setWheelBehaviour(0.5, false);
         dynDetectSliders[(size_t) b] = std::move(detectBlendSlider);
         dynDetectSliders[(size_t) b]->setComponentID("DYN_DETECT_BLEND");
@@ -501,7 +501,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
             parameterValue("DYN_DETECT_ONSETS" + n),
             juce::dontSendNotification);
         dynDetectSliders[(size_t) b]->setTooltip(
-            "PEAK ↔ ONSETS detector blend；50% = equal blend");
+            "PEAK ↔ ONSETS detector blend；上下拖曳：上 = PEAK / 左，下 = ONSETS / 右；50% = equal blend");
         dynDetectAttachments[(size_t) b] =
             std::make_unique<Attachment>(
                 audioProcessor.apvts,
@@ -2711,16 +2711,20 @@ void VVChainAudioProcessorEditor::resized()
         const int rowH = 70;
         const int knobH = 62;
 
+        constexpr int dynamicSectionShiftY = 14;
         constexpr int lowerSectionShiftY = 8;
         const auto cell = [&](int row, int col)
         {
-            // From the UDMBC performance row downward, move the complete
-            // control group (knobs, labels, values and attached buttons)
-            // slightly lower while keeping EQ / Dynamics untouched.
-            const int lowerShift = row >= 3 ? lowerSectionShiftY : 0;
+            // The taller PEAK/ONSETS + ABOVE row needs real vertical space.
+            // Everything below the static EQ row moves down together.
+            const int dynamicShift =
+                row >= 1 ? dynamicSectionShiftY : 0;
+            const int lowerShift =
+                row >= 3 ? lowerSectionShiftY : 0;
             return juce::Rectangle<int>(
                 innerX + col * (cellW + cellGap),
-                innerTop + row * rowH + lowerShift,
+                innerTop + row * rowH
+                    + dynamicShift + lowerShift,
                 cellW, knobH);
         };
 
@@ -2736,24 +2740,21 @@ void VVChainAudioProcessorEditor::resized()
         placeKnob("DYN_ATTACK" + n,   cell(1, 1));
         placeKnob("DYN_RELEASE" + n,  cell(1, 2));
 
-        // ROW 3 — detection mode buttons only; no knobs underneath them.
-        const int modeY = innerTop + rowH * 2 + 7;
+        // Dynamic detector mode row: same 21 px height as + ADV.
+        // It sits immediately above the three Dynamic knobs.
         const int halfW = (innerW - 8) / 2;
+        const int modeY = cell(1, 0).getY() - 21;
 
         if (dynDetectSliders[(size_t) b])
         {
-            constexpr int detectW = 60;
-            const int dynamicsCentreX = cell(1, 0).getCentreX();
             dynDetectSliders[(size_t) b]->setBounds(
-                dynamicsCentreX - detectW / 2,
-                cell(1, 0).getY() - 12,
-                detectW, 12);
+                innerX, modeY, halfW, 21);
         }
 
         if (dynTriggerButtons[(size_t) b])
         {
             dynTriggerButtons[(size_t) b]->setBounds(
-                innerX + halfW + 8, modeY, halfW, 26);
+                innerX + halfW + 8, modeY, halfW, 21);
             dynTriggerButtons[(size_t) b]->setButtonText(
                 parameterValue("DYN_TRIGGER_BELOW" + n) > 0.5f
                     ? "BELOW" : "ABOVE");
