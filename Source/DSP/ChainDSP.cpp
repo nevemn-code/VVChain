@@ -890,9 +890,9 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                         (leftIn - rightIn) * invSqrt2;
 
                     currentMid =
-                        dynMidEq[band].process(currentMid, false);
+                        dynMidEq[band].process(currentMid);
                     currentSide =
-                        dynSideEq[band].process(currentSide, false);
+                        dynSideEq[band].process(currentSide);
 
                     left[sample] =
                         (currentMid + currentSide) * invSqrt2;
@@ -902,7 +902,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 else
                 {
                     left[sample] =
-                        dynMidEq[band].process(leftIn, false);
+                        dynMidEq[band].process(leftIn);
                 }
             }
 
