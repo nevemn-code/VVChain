@@ -316,7 +316,7 @@ function makeKnob(parent,cfg){
     else next+=ticks*wheelStep;
     apply(next)
   },{passive:false});
-  d.addEventListener("dblclick",()=>apply(def));
+  d.addEventListener("dblclick",()=>apply(cfg.doubleClickValue??def));
   render();return w
 }
 function setGraphControls(ids,moving=false){
@@ -356,7 +356,7 @@ makeKnob(staticGrid,{label:"GAIN",controlId:"EQ"+(n+1)+"_GAIN",get:()=>state.eq.
 makeKnob(staticGrid,{label:"FREQ",controlId:"EQ"+(n+1)+"_FREQ",get:()=>state.eq.freq[n],set:v=>state.eq.freq[n]=v,min:20,max:20000,suffix:" Hz",accent:cols[n],formatDigits:0,sensitivity:.20});
 makeKnob(staticGrid,{label:"Q",controlId:"EQ"+(n+1)+"_Q",get:()=>state.eq.q[n],set:v=>state.eq.q[n]=v,min:.1,max:18,accent:cols[n],formatDigits:2,sensitivity:.80,wheelStep:.016});
 
-makeKnob(dynControls,{label:"DYNAMICS",controlId:"DYN_DYNAMICS"+(n+1),get:()=>state.dyn.dynamics[n],set:v=>state.dyn.dynamics[n]=v,min:-100,max:100,suffix:" %",accent:"#f8fafc",formatDigits:0,sensitivity:.70,wheelStep:.70});
+makeKnob(dynControls,{label:"DYNAMICS",controlId:"DYN_DYNAMICS"+(n+1),get:()=>state.dyn.dynamics[n],set:v=>state.dyn.dynamics[n]=v,min:-100,max:100,suffix:" %",accent:"#f8fafc",formatDigits:0,sensitivity:.70,wheelStep:.70,doubleClickValue:0});
 makeKnob(dynControls,{label:"ATTACK",get:()=>state.dyn.attack[n],set:v=>state.dyn.attack[n]=v,min:.1,max:200,suffix:" ms",accent:"#f8fafc",formatDigits:1});
 makeKnob(dynControls,{label:"RELEASE",get:()=>state.dyn.release[n],set:v=>state.dyn.release[n]=v,min:5,max:2000,suffix:" ms",accent:"#f8fafc",formatDigits:0});
 const detectBlend=card.querySelector(".detectBlend"),detectBlendWrap=card.querySelector(".dynDetectBlend"),triggerBtn=card.querySelector(".triggerBtn");
@@ -496,9 +496,10 @@ function dynamicBandAtPointer(x,y,w,h){
     const points=[
       [n.x,n.y],
       [n.x,dbToY(state.eq.gain[b],h)],
-      [t.x,t.y],
-      [handleX,handleY]
+      [t.x,t.y]
     ];
+    if(Math.abs(Number(state.dyn.dynamics[b]||0))<=.5)
+      points.push([handleX,handleY]);
     for(const [px,py] of points){
       const d=Math.hypot(x-px,y-py);
       if(d<best){best=d;band=b;}
@@ -744,16 +745,18 @@ function drawEQ(){
     // Live gain.
     eqCtx.fillStyle="#fff";
     eqCtx.beginPath();eqCtx.arc(n.x,n.y,6,0,Math.PI*2);eqCtx.fill();
-    // Dedicated DYNAMICS drag handle follows the DYNAMICS point.
-    // DYNAMICS arrow handle is always visible. At 0% it sits beside the EQ node;
-    // when DYNAMICS moves, it follows the effective target point vertically.
+    // The arrow is only the "pull Dynamic out" affordance while
+    // DYNAMICS is at 0 and the Dynamic target is still on the EQ point.
+    // Once pulled out, the Dynamic target circle itself is the drag control.
     const target=dynamicTargetPoint(b,w,h);
     const handleX=clamp(target.x+44,18,w-12),handleY=target.y;
-    eqCtx.strokeStyle=(hoverDynamicBand===b?c:"#f8fafc")+"ee";eqCtx.lineWidth=1.4;
-    eqCtx.beginPath();eqCtx.moveTo(handleX,handleY-8);eqCtx.lineTo(handleX,handleY+8);eqCtx.stroke();
-    eqCtx.lineWidth=1.6;
-    eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY-4);eqCtx.lineTo(handleX,handleY-8);eqCtx.lineTo(handleX+4,handleY-4);eqCtx.stroke();
-    eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY+4);eqCtx.lineTo(handleX,handleY+8);eqCtx.lineTo(handleX+4,handleY+4);eqCtx.stroke();
+    if(Math.abs(Number(state.dyn.dynamics[b]||0))<=.5){
+      eqCtx.strokeStyle=(hoverDynamicBand===b?c:"#f8fafc")+"ee";eqCtx.lineWidth=1.4;
+      eqCtx.beginPath();eqCtx.moveTo(handleX,handleY-8);eqCtx.lineTo(handleX,handleY+8);eqCtx.stroke();
+      eqCtx.lineWidth=1.6;
+      eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY-4);eqCtx.lineTo(handleX,handleY-8);eqCtx.lineTo(handleX+4,handleY-4);eqCtx.stroke();
+      eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY+4);eqCtx.lineTo(handleX,handleY+8);eqCtx.lineTo(handleX+4,handleY+4);eqCtx.stroke();
+    }
 
     const mid=clamp(Math.abs(+state.dyn.gainMid[b]||0),0,18)/18;
     const side=clamp(Math.abs(+state.dyn.gainSide[b]||0),0,18)/18;
@@ -884,7 +887,8 @@ function graphHoverTarget(x,y,w,h){
     const target=dynamicTargetPoint(b,w,h);
     const handleX=clamp(target.x+44,18,w-12),handleY=target.y;
 
-    if(Math.abs(x-handleX)<=6&&Math.abs(y-handleY)<=10)
+    if(Math.abs(dyn)<=.5
+      && Math.abs(x-handleX)<=6&&Math.abs(y-handleY)<=10)
       return {band:b,mask:1|4};
 
     if(Math.abs(dyn)>.5){
@@ -985,8 +989,8 @@ function resetGraphGainAtDoubleClick(e){
     return;
   }
 
-  // Dynamic EQ GAIN is the effective target, derived from static GAIN + DYNAMICS.
-  // Double-click sets the linked DYNAMICS value needed for an exact 0 dB target.
+  // Dynamic EQ target is derived from static GAIN + DYNAMICS.
+  // Double-click means DYNAMICS = 0, so it rejoins the CURRENT EQ GAIN point.
   let dynamicBand=-1,bestDynamic=13;
   for(let b=0;b<4;b++){
     const dynamics=Math.abs(Number(state.dyn.dynamics[b]||0));
@@ -1003,9 +1007,7 @@ function resetGraphGainAtDoubleClick(e){
   }
 
   if(dynamicBand>=0){
-    const staticGain=clamp(Number(state.eq.gain[dynamicBand]||0),-18,18);
-    const resetDynamics=clamp(-staticGain/18*100,-100,100);
-    state.dyn.dynamics[dynamicBand]=resetDynamics;
+    state.dyn.dynamics[dynamicBand]=0;
     knobRefreshers.forEach(fn=>fn());
     setGraphControls(["DYN_DYNAMICS"+(dynamicBand+1)],false);
     sendParams();drawEQ();
@@ -1051,7 +1053,7 @@ eqCanvas.addEventListener("pointerdown",e=>{
     const dyn=Number(state.dyn.dynamics[b]||0);
     const target=dynamicTargetPoint(b,w,h);
     const handleX=clamp(target.x+44,18,w-12),handleY=target.y;
-    if(Math.abs(x-handleX)<=3&&Math.abs(y-handleY)<=7){
+    if(Math.abs(dyn)<=.5&&Math.abs(x-handleX)<=3&&Math.abs(y-handleY)<=7){
       dragMode=5;dragDynamicHandleBand=b;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;
       setGraphControls(["DYN_DYNAMICS"+(b+1)],false);
       dynHandleStartY=y;dynHandleStartValue=dyn;
