@@ -79,10 +79,10 @@ public:
         float atypeOutputGainDb = 0.f;
 
         // Hybrid mastering DeEsser controls.
-        // Frequency selects the LR4 split point; intensity is the maximum
-        // reduction in dB; mode selects the tuned response profile.
+        // Frequency selects the LR4 split point; threshold is the relative-HF
+        // trigger value in dB. Lower threshold = more sensitive detection.
         float deessReferenceHz = 7500.f;
-        float deessIntensity = 4.f;
+        float deessThresholdDb = -6.f;
         float deessAverageOffset = 0.f;
         float deessMode = 2.f;
 
