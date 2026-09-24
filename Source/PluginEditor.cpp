@@ -3677,6 +3677,9 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
             showGraphDragHint = true;
             graphDragHintPosition = event.position;
             graphDragHint = "SOLO Q  " + juce::String(nextQ, 2);
+            showFloatingValueBoxForBand(
+                band, false, parameterValue("EQ" + n + "_GAIN"),
+                event.position);
             repaint();
             return;
         }
@@ -3720,6 +3723,7 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
     // Wheel on either the static EQ point or the DYNAMICS target point
     // adjusts the same shared Q parameter.
     int band = -1;
+    bool dynamicWheelReadout = false;
     float bestDistance = 13.0f;
 
     for (int b = 0; b < 4; ++b)
@@ -3736,6 +3740,7 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
         {
             bestDistance = eqDistance;
             band = b;
+            dynamicWheelReadout = false;
         }
 
         const float dynamics =
@@ -3751,6 +3756,7 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
             {
                 bestDistance = dynDistance;
                 band = b;
+                dynamicWheelReadout = true;
             }
         }
     }
@@ -3788,5 +3794,12 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
             nextQ,
             juce::dontSendNotification);
 
+    showFloatingValueBoxForBand(
+        band,
+        dynamicWheelReadout,
+        dynamicWheelReadout
+            ? dynamicEffectiveTargetGain(band)
+            : parameterValue("EQ" + n + "_GAIN"),
+        event.position);
     repaint();
 }
