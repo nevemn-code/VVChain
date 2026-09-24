@@ -1459,19 +1459,21 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
         hfPower *= invChannels;
         broadPower *= invChannels;
 
-        const float linkedHf =
-            std::sqrt(juce::jmax(0.0f, hfPower));
-        const float linkedBroad =
-            std::sqrt(juce::jmax(0.0f, broadPower));
-
         float targetGR = 0.0f;
 
-        if (linkedBroad > detectorFloor
-            && linkedHf > 1.0e-5f)
+        const float detectorFloorPower =
+            detectorFloor * detectorFloor;
+
+        if (broadPower > detectorFloorPower
+            && hfPower > 1.0e-10f)
         {
+            // Power-ratio form of HF/Broadband detection. One sqrt() per
+            // sample replaces the two square-roots previously needed for
+            // separate linked amplitudes.
             const float relativeHf =
-                linkedHf
-                / juce::jmax(linkedBroad, 1.0e-6f);
+                std::sqrt(
+                    hfPower
+                    / juce::jmax(broadPower, 1.0e-12f));
 
             const float kneeWidth =
                 juce::jmax(0.02f, preset.knee);
