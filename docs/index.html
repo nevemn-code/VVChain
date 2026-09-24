@@ -70,7 +70,7 @@ const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive
 const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.48
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.48"+"-hpf30-eqtypes-oct-dynui-rm4-invert-selected";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.48"+"-hpf30-eqtypes-oct-dynui-rm4-invert-selected-rms";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -365,7 +365,7 @@ function slopeDbPerOct(b){return (clamp(Math.round(Number(state.eq.slope?.[b]??5
 for(let b=0;b<4;b++){
 const n=b,card=document.createElement("div");
 card.className="band";card.style.setProperty("--accent",cols[n]);
-card.innerHTML="<div class='bandHead'><span>BAND "+(n+1)+"</span><span class='bandHeadBtns'><button class='advBtn'>+ ADV</button><button class='soloBtn'>SOLO</button><button class='bypassBtn'>BYPASS</button></span></div><div class='bandBody eqBody'><div class='knobGrid staticGrid'></div><div class='dynSection'><div class='dynModeRow'><div class='dynDetectBlend'><span>PEAK</span><input class='detectBlend' type='range' min='0' max='100' step='0.1'><span>ONSETS</span></div><button class='dynModeBtn triggerBtn'>ABOVE</button></div><div class='dynControls'></div></div><div class='knobGrid udmbcGrid'></div><div class='knobGrid bottomGrid'></div></div>";
+card.innerHTML="<div class='bandHead'><span>BAND "+(n+1)+"</span><span class='bandHeadBtns'><button class='advBtn'>+ ADV</button><button class='soloBtn'>SOLO</button><button class='bypassBtn'>BYPASS</button></span></div><div class='bandBody eqBody'><div class='knobGrid staticGrid'></div><div class='dynSection'><div class='dynModeRow'><div class='dynDetectBlend'><span>PEAK</span><input class='detectBlend' type='range' min='0' max='100' step='0.1'><span>RMS</span></div><button class='dynModeBtn triggerBtn'>ABOVE</button></div><div class='dynControls'></div></div><div class='knobGrid udmbcGrid'></div><div class='knobGrid bottomGrid'></div></div>";
 bg.appendChild(card);
 const bypassBtn=card.querySelector(".bypassBtn");
 const syncBandBypass=()=>{const on=!!state.bandBypass[n];card.classList.toggle("bypassed",on);bypassBtn.classList.toggle("on",on)};
