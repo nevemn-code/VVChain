@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.11 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.12 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -343,8 +343,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.11" in web
-    assert "VVCHAIN v1.0.11" in editor
+    assert "VVCHAIN v1.0.12" in web
+    assert "VVCHAIN v1.0.12" in editor
     assert "LAST " not in editor
 
     # ANALOG is now locked to Deploy VVChain Web Preview #443.
@@ -434,8 +434,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.11" in web
-    assert "VVCHAIN v1.0.11" in cpp
+    assert "VVCHAIN v1.0.12" in web
+    assert "VVCHAIN v1.0.12" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -453,6 +453,9 @@ def test_v103_closed_10():
         assert 'sDynamicGain=sGain-offset' in worklet
         assert 'mid=this.tptBell(mid,md.eq,sampleRate,f,baseQ,mDynamicGain);' in worklet
         assert 'side=this.tptBell(side,sd.eq,sampleRate,f,baseQ,sDynamicGain);' in worklet
+        assert 'eq:{g:0,k:1,a1:1,a2:0,a3:0,m1:0,ic1:0,ic2:0}' in worklet
+        assert 'z.ic1=Number.isFinite(z.ic1)?z.ic1:0;' in worklet
+        assert 'z.ic2=Number.isFinite(z.ic2)?z.ic2:0;' in worklet
         assert 'this.peak(sampleRate,f,mq,mDynamicGain)' not in worklet
         assert 'this.peak(sampleRate,f,sq,sDynamicGain)' not in worklet
         assert 'this.peak(sampleRate,f,mq,mGain)' not in worklet

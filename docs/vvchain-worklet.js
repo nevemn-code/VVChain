@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.11
+// VVChain Web AudioWorklet DSP module · v1.0.12
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -32,7 +32,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     };
   }
   makeCh(){
-    const dynState=()=>({det:{z1:0,z2:0},eq:{z1:0,z2:0},env:-120});
+    const dynState=()=>({det:{z1:0,z2:0},eq:{g:0,k:1,a1:1,a2:0,a3:0,m1:0,ic1:0,ic2:0},env:-120});
     return {
       eq:Array.from({length:4},()=>({g:0,k:1,a1:1,a2:0,a3:0,m1:0,ic1:0,ic2:0})),
       dynMid:Array.from({length:4},dynState),
@@ -53,6 +53,10 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const safeF=this.clamp(Number(f),20,fs*.45);
     const safeQ=this.clamp(Number(q),.1,18);
     const safeGain=this.clamp(Number(gainDb),-18,18);
+    // Defensive state initialization: Dynamic Bell state must always remain finite,
+    // including snapshots created by older Web versions.
+    z.ic1=Number.isFinite(z.ic1)?z.ic1:0;
+    z.ic2=Number.isFinite(z.ic2)?z.ic2:0;
     const A=Math.pow(10,safeGain/40);
     const g=Math.tan(Math.PI*safeF/fs);
     const k=1/(safeQ*A);
