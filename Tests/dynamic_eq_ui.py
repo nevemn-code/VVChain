@@ -495,7 +495,7 @@ def test_v103_ui_rules_50():
     assert 'DEESS_BYPASS", *deessLocalBypassButton' in cpp
 
     assert "const hzv=invLog(clamp(x,0,w)/w);" in web
-    assert "const targetGain=clamp(18-(y/Math.max(1,h))*36,-18,18);" in web
+    assert "const targetGain=yToDb(y,h);" in web
     assert "state.eq.freq[dragBand]=hzv" in web
     assert "state.eq.freq[dragBand]=hzv" in web
     assert 'setParameter("EQ" + n + "_FREQ", hz);' in cpp
@@ -539,7 +539,7 @@ def test_v103_closed_10():
 
         # DYNAMICS Target XY mapping.
         assert "const hzv=invLog(clamp(x,0,w)/w);" in web
-        assert "const targetGain=clamp(18-(y/Math.max(1,h))*36,-18,18);" in web
+        assert "const targetGain=yToDb(y,h);" in web
         assert "state.eq.freq[dragBand]=hzv" in web
         assert "state.dyn.dynamics[dragBand]=clamp" in web
 
