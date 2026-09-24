@@ -422,7 +422,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "v1.0.16 smooth zero-phase algebraic saturation" in cpp
     assert "unityNorm" in cpp and "unityNorm" in worklet
     assert "const double u = juce::jlimit(-1.0, 1.0, x);" in cpp
-    assert "return x+(saturated-u)*this.clamp(x2,1,1.6)" in worklet
+    assert "protectedSaturated" in worklet
+    assert "return x+(protectedSaturated-u)*this.clamp(x2,1,1.6)" in worklet
     assert "colorX2" in web
     assert "p.eqColorX2[band] ? 1.6f : 1.0f" in cpp
 
