@@ -320,10 +320,6 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     const int maxBlock = juce::jmax(1, samplesPerBlock);
     dryBuffer.setSize(channels, maxBlock, false, true, true);
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
-    analogTempBuffer.setSize(1, maxBlock * 4, false, true, true);
-    analogSourceBuffer.setSize(channels, maxBlock * 4, false, true, true);
-    for (auto& bandBuffer : analogBandBuffers)
-        bandBuffer.setSize(channels, maxBlock * 4, false, true, true);
     dynamicDetectorInput.setSize(channels, maxBlock * 4, false, true, true);
 
     eqOversampler.reset();
@@ -452,7 +448,6 @@ void VVChainDSP::reset()
     dryBuffer.clear();
     alignedDryBuffer.clear();
     dynamicDetectorInput.clear();
-    analogTempBuffer.clear();
 }
 
 float VVChainDSP::rmsDetectPDR(float input,
