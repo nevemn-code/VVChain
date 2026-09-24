@@ -926,7 +926,9 @@ void VVChainAudioProcessorEditor::addKnob(
 
         wheelSlider->setWheelBehaviour(wheelStep, logarithmic);
     }
-    k.slider->setDoubleClickReturnValue(true, defaultValue);
+    k.slider->setDoubleClickReturnValue(
+        true,
+        id.startsWith("DYN_DYNAMICS") ? 0.0 : defaultValue);
     k.slider->setColour(juce::Slider::rotarySliderFillColourId, accent);
     k.slider->setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colour(0xff08090b));
     k.slider->setNumDecimalPlacesToDisplay(
@@ -1652,16 +1654,18 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.fillEllipse(
             x - 6.f, liveY - 6.f, 12.f, 12.f);
 
-        // Dedicated DYNAMICS drag handle follows the DYNAMICS target point.
-        // It is always visible, including the default 0% state.
-        const bool dynamicsEnabled = true;
+        // Dedicated DYNAMICS arrow exists only while the Dynamic target
+        // is still coincident with the EQ point (DYNAMICS ~= 0). Once the
+        // target is pulled out, the target circle itself becomes the control.
+        const bool showDynamicsArrow =
+            std::abs(parameterValue("DYN_DYNAMICS" + n)) <= 0.5f;
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
                          x + 44.f);
         const float handleY = targetY;
 
-        if (dynamicsEnabled)
+        if (showDynamicsArrow)
         {
             g.setColour(c.withAlpha(.92f));
             g.drawLine(handleX, handleY - 8.f,
@@ -2813,7 +2817,8 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
 
         const float handleX = juce::jlimit(
             graph.getX() + 18.f, graph.getRight() - 12.f, x + 44.f);
-        if (std::abs(position.x - handleX) <= handleHitX
+        if (std::abs(dynamics) <= 0.5f
+            && std::abs(position.x - handleX) <= handleHitX
             && std::abs(position.y - targetY) <= handleHitY)
         {
             showFloatingValueBoxForBand(
@@ -2892,8 +2897,9 @@ void VVChainAudioProcessorEditor::mouseDoubleClick(
     float dynamicDistance = dynamicHitRadius;
 
     // Dynamic EQ has no separate stored GAIN: its target is
-    // static EQ GAIN + DYNAMICS-derived offset. Double-click therefore
-    // sets the linked DYNAMICS value that makes the target exactly 0 dB.
+    // static EQ GAIN + DYNAMICS-derived offset. Double-click means
+    // DYNAMICS = 0, so the Dynamic target rejoins the CURRENT static EQ GAIN
+    // position rather than returning to absolute 0 dB.
     for (int b = 0; b < 4; ++b)
     {
         const auto n = juce::String(b + 1);
@@ -2924,15 +2930,7 @@ void VVChainAudioProcessorEditor::mouseDoubleClick(
     if (dynamicBand >= 0)
     {
         const auto n = juce::String(dynamicBand + 1);
-        const float staticGain = juce::jlimit(
-            -18.0f, 18.0f,
-            parameterValue("EQ" + n + "_GAIN"));
-        const float dynamicRangeDb = 18.0f;
-        const float resetDynamics = juce::jlimit(
-            -100.0f, 100.0f,
-            -staticGain / dynamicRangeDb * 100.0f);
-
-        resetParameter("DYN_DYNAMICS" + n, resetDynamics);
+        resetParameter("DYN_DYNAMICS" + n, 0.0f);
         clearGraphControlState();
         updateFloatingValueBoxAt(event.position);
         repaint();
@@ -3140,7 +3138,9 @@ void VVChainAudioProcessorEditor::mouseDown(
             juce::Rectangle<float>(handleX - 3.f, targetY - 7.f,
                                    6.f, 14.f);
 
-        if (event.mods.isLeftButtonDown() && handleRect.contains(pos))
+        if (event.mods.isLeftButtonDown()
+            && std::abs(dynamicsValue) <= 0.5f
+            && handleRect.contains(pos))
         {
             dragDynamicHandleBand = b;
             dragBand = -1;
