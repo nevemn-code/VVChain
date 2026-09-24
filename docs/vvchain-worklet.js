@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.42
+// VVChain Web AudioWorklet DSP module · v1.0.43
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -198,27 +198,25 @@ class VVChainWorklet extends AudioWorkletProcessor {
   }
   deessStereo(l,r,stereo,coef){
     const st=this.s.de;
-    if(st.bypass||Number(st.intensity||0)<=0){
+    if(st.bypass){
       this.deessLinkedGain=0;
       this.ch[0].deGain=0; this.ch[1].deGain=0;
       return[l,r];
     }
 
     const modes=[
-      {attack:2.5,release:120,threshold:.22,knee:.12,maxReduction:5.5},
-      {attack:1.5,release:70,threshold:.20,knee:.10,maxReduction:7.0},
-      {attack:.9,release:45,threshold:.18,knee:.08,maxReduction:8.0},
-      {attack:.6,release:30,threshold:.17,knee:.07,maxReduction:8.0}
+      {attack:2.5,release:120,knee:2.0},
+      {attack:1.5,release:70,knee:1.75},
+      {attack:.9,release:45,knee:1.5},
+      {attack:.6,release:30,knee:1.25}
     ];
     const mode=Math.max(0,Math.min(3,Math.round(Number(st.mode||2))-1));
     const preset=modes[mode];
-    const maxReduction=Math.min(preset.maxReduction,Math.max(0,Number(st.intensity||0)));
-    if(maxReduction<=1e-4){
-      this.deessLinkedGain=0;
-      return[l,r];
-    }
-
-    const threshold=this.clamp(preset.threshold+Number(st.offset||0),.05,.60);
+    const maxReduction=8;
+    const thresholdDb=this.clamp(
+      Number(st.threshold??-6)+Number(st.offset||0),
+      -36,0
+    );
     const broadAttack=this.tc(12), broadRelease=this.tc(180);
     const hfFastAttack=this.tc(preset.attack), hfFastRelease=this.tc(preset.release);
     const hfSlowAttack=this.tc(8), hfSlowRelease=this.tc(Math.max(60,preset.release*1.5));
@@ -260,8 +258,12 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const floorPower=detectorFloor*detectorFloor;
     if(broadPower>floorPower&&hfPower>1e-10){
       const relativeHf=Math.sqrt(hfPower/Math.max(broadPower,1e-12));
-      const kneeWidth=Math.max(.02,preset.knee);
-      const kneeT=this.clamp((relativeHf-threshold)/kneeWidth,0,1);
+      const relativeHfDb=this.g2db(relativeHf);
+      const kneeWidthDb=Math.max(.25,preset.knee);
+      const kneeT=this.clamp(
+        (relativeHfDb-thresholdDb)/kneeWidthDb,
+        0,1
+      );
       const trigger=kneeT*kneeT*(3-2*kneeT);
       targetGR=-maxReduction*trigger;
     }
