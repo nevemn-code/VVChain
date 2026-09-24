@@ -677,7 +677,7 @@ function drawEQ(){
       const live=state.eq.gain[b]+n.change;
       const dyn=Number(state.dyn.dynamics[b]||0);
       const dir=dyn>0?"EXPAND":dyn<0?"COMPRESS":"STATIC";
-      const label="B"+(b+1)+"  "+hz(state.eq.freq[b])+"  Q "+fmt(state.eq.q[b],2)+"  TARGET "+fmt(dynamicEffectiveTargetGain(b),1)+" dB  OFFSET "+fmt(state.eq.gain[b],1)+" dB  LIVE "+fmt(live,1)+" dB  DYN "+fmt(dyn,0)+"% "+dir+"  AUTO THR "+fmt(dynamicThresholdFromDynamics(dyn),1)+" dB  "+(state.dyn.detectOnsets[b]?"ONSETS":"PEAK")+" / "+(state.dyn.triggerBelow[b]?"BELOW":"ABOVE");
+      const label="B"+(b+1)+"  "+hz(state.eq.freq[b])+"  Q "+fmt(state.eq.q[b],2)+"  TARGET "+fmt(dynamicEffectiveTargetGain(b),1)+" dB  OFFSET "+fmt(state.eq.gain[b],1)+" dB  LIVE "+fmt(live,1)+" dB  DYN "+fmt(dyn,0)+"% "+dir+"  AUTO THR "+fmt(dynamicThresholdFromDynamics(dyn),1)+" dB  "+"  DET "+fmt(100-Number(state.dyn.detectOnsets[b]??50),0)+"% PEAK / "+fmt(Number(state.dyn.detectOnsets[b]??50),0)+"% ONSETS / "+(state.dyn.triggerBelow[b]?"BELOW":"ABOVE");
       const lw=Math.min(530,w-12);
       let bx=clamp(n.x-lw/2,6,w-lw-6),by=Math.min(offsetY,t.y,n.y)-42;
       if(by<6)by=Math.max(offsetY,t.y,n.y)+18;
@@ -824,7 +824,7 @@ eqCanvas.addEventListener("wheel",e=>{
 },{passive:false});
 eqCanvas.addEventListener("pointerdown",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
-  if(expandedDynamicBand>=0){
+  if(expandedDynamicBand>=0&&e.button!==2){
     const p=dynamicPopupBounds(expandedDynamicBand,w,h);
     if(!(x>=p.x&&x<=p.x+p.w&&y>=p.y&&y<=p.y+p.h)){
       expandedDynamicBand=-1;dragDynamicMsBand=-1;dragMode=0;drawEQ();return;
