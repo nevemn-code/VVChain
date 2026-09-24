@@ -255,7 +255,7 @@ float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
     return std::exp(-1.0f / (0.001f * std::max(ms, 0.1f) * static_cast<float>(sampleRate)));
 }
 
-void VVChainDSP::processChebyshevAnalog(
+void VVChainDSP::processAnalogColor(
     juce::dsp::AudioBlock<float>& block,
     float drive,
     float amount,
@@ -939,7 +939,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         const float x2Multiplier =
             p.eqColorX2[band] ? 2.0f : 1.0f;
 
-        processChebyshevAnalog(
+        processAnalogColor(
             osBlock, drive, amount, x2Multiplier);
     }
 
