@@ -287,13 +287,13 @@ void VVChainDSP::updateEqFilter(EqFilter& filter, int type,
         return;
     }
 
-    if (type == 1) // Peak analog
+    if (type == 1) // Matched Bell
     {
         updateAnalogPeak(filter.stages[0], fs, safeF, safeGain, safeQ);
         return;
     }
 
-    if (type == 2 || type == 3) // Band-shelf A / B
+    if (type == 2 || type == 3) // Wide / Steep Plateau
     {
         const double bandwidthOct =
             juce::jlimit(0.20, 4.0, 1.40 / std::sqrt(safeQ));
@@ -349,26 +349,26 @@ void VVChainDSP::updateEqFilter(EqFilter& filter, int type,
         return;
     }
 
-    if (type == 8 || type == 9) // Gentle low/high slope
+    if (type == 8 || type == 9) // Gentle low/high contour
     {
         rbjShelf(filter.stages[0], type == 9, safeF, safeGain, 0.28);
         return;
     }
 
-    if (type == 10) // resonant Band-pass
+    if (type == 10) // Focus Pass
     {
         bandPass(filter.stages[0], safeF, safeQ);
         filter.outputGain = linearGain;
         return;
     }
 
-    if (type == 11) // resonant Notch
+    if (type == 11) // Deep Reject
     {
         notch(filter.stages[0], safeF, safeQ);
         return;
     }
 
-    // Resonant 72 dB/oct Low-pass / High-pass.
+    // 72 dB/oct HF / LF roll-off.
     constexpr double butterQ[6] =
     {
         0.5043144803, 0.5411961001, 0.6302362070,
