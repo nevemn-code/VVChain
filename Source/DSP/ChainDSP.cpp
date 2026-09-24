@@ -141,6 +141,259 @@ void VVChainDSP::updateDynamicPeak(TPTBell& filter, double fs, double f0,
     filter.a3 = g * filter.a2;
     filter.m1 = k * (A * A - 1.0);
 }
+
+void VVChainDSP::updateEqFilter(EqFilter& filter, int type,
+                                double fs, double f0,
+                                double gainDb, double q)
+{
+    type = juce::jlimit(0, 13, type);
+    filter.beginType(type);
+
+    const double safeF = juce::jlimit(20.0, fs * 0.45, f0);
+    const double safeQ = juce::jlimit(0.10, 18.0, q);
+    const double safeGain = juce::jlimit(-18.0, 18.0, gainDb);
+    const double linearGain = std::pow(10.0, safeGain / 20.0);
+
+    filter.useTptPeak = false;
+    filter.parallelBandShelf = false;
+    filter.parallelMix = 0.0;
+    filter.outputGain = 1.0;
+    filter.stageCount = 1;
+
+    auto identity = [](Biquad& b)
+    {
+        b.updateCoefficients(1.0, 0.0, 0.0, 0.0, 0.0);
+    };
+
+    auto rbjPeak = [fs](Biquad& b, double f, double gain, double qv)
+    {
+        const double sf = juce::jlimit(20.0, fs * 0.45, f);
+        const double qq = juce::jlimit(0.10, 18.0, qv);
+        const double A = std::pow(10.0, gain / 40.0);
+        const double w = juce::MathConstants<double>::twoPi * sf / fs;
+        const double sn = std::sin(w);
+        const double cs = std::cos(w);
+        const double alpha = sn / (2.0 * qq);
+        const double a0 = 1.0 + alpha / A;
+        b.updateCoefficients(
+            (1.0 + alpha * A) / a0,
+            (-2.0 * cs) / a0,
+            (1.0 - alpha * A) / a0,
+            (-2.0 * cs) / a0,
+            (1.0 - alpha / A) / a0);
+    };
+
+    auto rbjShelf = [fs](Biquad& b, bool high, double f,
+                         double gain, double slope)
+    {
+        const double sf = juce::jlimit(20.0, fs * 0.45, f);
+        const double A = std::pow(10.0, gain / 40.0);
+        const double w = juce::MathConstants<double>::twoPi * sf / fs;
+        const double sn = std::sin(w);
+        const double cs = std::cos(w);
+        const double S = juce::jlimit(0.10, 1.0, slope);
+        const double rootA = std::sqrt(A);
+        const double term =
+            juce::jmax(0.0, (A + 1.0 / A) * (1.0 / S - 1.0) + 2.0);
+        const double alpha = 0.5 * sn * std::sqrt(term);
+        const double beta = 2.0 * rootA * alpha;
+
+        double b0, b1, b2, a0, a1, a2;
+        if (!high)
+        {
+            b0 = A * ((A + 1.0) - (A - 1.0) * cs + beta);
+            b1 = 2.0 * A * ((A - 1.0) - (A + 1.0) * cs);
+            b2 = A * ((A + 1.0) - (A - 1.0) * cs - beta);
+            a0 = (A + 1.0) + (A - 1.0) * cs + beta;
+            a1 = -2.0 * ((A - 1.0) + (A + 1.0) * cs);
+            a2 = (A + 1.0) + (A - 1.0) * cs - beta;
+        }
+        else
+        {
+            b0 = A * ((A + 1.0) + (A - 1.0) * cs + beta);
+            b1 = -2.0 * A * ((A - 1.0) + (A + 1.0) * cs);
+            b2 = A * ((A + 1.0) + (A - 1.0) * cs - beta);
+            a0 = (A + 1.0) - (A - 1.0) * cs + beta;
+            a1 = 2.0 * ((A - 1.0) - (A + 1.0) * cs);
+            a2 = (A + 1.0) - (A - 1.0) * cs - beta;
+        }
+
+        const double inv = 1.0 / juce::jmax(1.0e-12, a0);
+        b.updateCoefficients(
+            b0 * inv, b1 * inv, b2 * inv,
+            a1 * inv, a2 * inv);
+    };
+
+    auto bandPass = [fs](Biquad& b, double f, double qv)
+    {
+        const double sf = juce::jlimit(20.0, fs * 0.45, f);
+        const double qq = juce::jlimit(0.10, 18.0, qv);
+        const double w = juce::MathConstants<double>::twoPi * sf / fs;
+        const double sn = std::sin(w);
+        const double cs = std::cos(w);
+        const double alpha = sn / (2.0 * qq);
+        const double a0 = 1.0 + alpha;
+        b.updateCoefficients(
+            alpha / a0, 0.0, -alpha / a0,
+            (-2.0 * cs) / a0, (1.0 - alpha) / a0);
+    };
+
+    auto notch = [fs](Biquad& b, double f, double qv)
+    {
+        const double sf = juce::jlimit(20.0, fs * 0.45, f);
+        const double qq = juce::jlimit(0.10, 18.0, qv);
+        const double w = juce::MathConstants<double>::twoPi * sf / fs;
+        const double sn = std::sin(w);
+        const double cs = std::cos(w);
+        const double alpha = sn / (2.0 * qq);
+        const double a0 = 1.0 + alpha;
+        b.updateCoefficients(
+            1.0 / a0, (-2.0 * cs) / a0, 1.0 / a0,
+            (-2.0 * cs) / a0, (1.0 - alpha) / a0);
+    };
+
+    auto lowPass = [fs](Biquad& b, double f, double qv)
+    {
+        const double sf = juce::jlimit(20.0, fs * 0.45, f);
+        const double qq = juce::jlimit(0.10, 18.0, qv);
+        const double K = std::tan(juce::MathConstants<double>::pi * sf / fs);
+        const double K2 = K * K;
+        const double a0 = 1.0 + K / qq + K2;
+        b.updateCoefficients(
+            K2 / a0, 2.0 * K2 / a0, K2 / a0,
+            2.0 * (K2 - 1.0) / a0,
+            (1.0 - K / qq + K2) / a0);
+    };
+
+    auto highPass = [fs](Biquad& b, double f, double qv)
+    {
+        const double sf = juce::jlimit(20.0, fs * 0.45, f);
+        const double qq = juce::jlimit(0.10, 18.0, qv);
+        const double K = std::tan(juce::MathConstants<double>::pi * sf / fs);
+        const double K2 = K * K;
+        const double a0 = 1.0 + K / qq + K2;
+        b.updateCoefficients(
+            1.0 / a0, -2.0 / a0, 1.0 / a0,
+            2.0 * (K2 - 1.0) / a0,
+            (1.0 - K / qq + K2) / a0);
+    };
+
+    // Peak keeps the current TPT/Simper path exactly.
+    if (type == 0)
+    {
+        filter.useTptPeak = true;
+        filter.stageCount = 0;
+        updateDynamicPeak(filter.peak, fs, safeF, safeGain, safeQ);
+        return;
+    }
+
+    if (type == 1) // Peak analog
+    {
+        updateAnalogPeak(filter.stages[0], fs, safeF, safeGain, safeQ);
+        return;
+    }
+
+    if (type == 2 || type == 3) // Band-shelf A / B
+    {
+        const double bandwidthOct =
+            juce::jlimit(0.20, 4.0, 1.40 / std::sqrt(safeQ));
+        const double ratio = std::pow(2.0, bandwidthOct * 0.5);
+        const double lo = juce::jlimit(20.0, fs * 0.44, safeF / ratio);
+        const double hi = juce::jlimit(lo * 1.02, fs * 0.45, safeF * ratio);
+        filter.parallelBandShelf = true;
+        filter.parallelMix = linearGain - 1.0;
+
+        if (type == 2)
+        {
+            filter.stageCount = 2;
+            const double edgeQ = juce::jlimit(0.45, 2.5, safeQ);
+            highPass(filter.stages[0], lo, edgeQ);
+            lowPass(filter.stages[1], hi, edgeQ);
+        }
+        else
+        {
+            // 12th-order HP + 12th-order LP = 72 dB/oct on both sides.
+            constexpr double butterQ[6] =
+            {
+                0.5043144803, 0.5411961001, 0.6302362070,
+                0.8213398159, 1.3065629649, 3.8306487878
+            };
+            filter.stageCount = 12;
+            const double resonanceScale =
+                juce::jlimit(0.35, 2.5, safeQ / 0.7071067811865476);
+            for (int i = 0; i < 6; ++i)
+            {
+                const double rq = juce::jlimit(
+                    0.25, 12.0, butterQ[i] * resonanceScale);
+                highPass(filter.stages[(size_t)i], lo, rq);
+                lowPass(filter.stages[(size_t)(6 + i)], hi, rq);
+            }
+        }
+        return;
+    }
+
+    if (type == 4 || type == 5) // Low / High shelf
+    {
+        rbjShelf(filter.stages[0], type == 5, safeF, safeGain, 1.0);
+        return;
+    }
+
+    if (type == 6 || type == 7) // Resonant shelf
+    {
+        filter.stageCount = 2;
+        rbjShelf(filter.stages[0], type == 7, safeF, safeGain, 1.0);
+        const double resonanceGain =
+            (safeGain >= 0.0 ? 1.0 : -1.0)
+            * juce::jmin(6.0, std::abs(safeGain) * 0.35);
+        rbjPeak(filter.stages[1], safeF, resonanceGain, safeQ);
+        return;
+    }
+
+    if (type == 8 || type == 9) // Gentle low/high slope
+    {
+        rbjShelf(filter.stages[0], type == 9, safeF, safeGain, 0.28);
+        return;
+    }
+
+    if (type == 10) // resonant Band-pass
+    {
+        bandPass(filter.stages[0], safeF, safeQ);
+        filter.outputGain = linearGain;
+        return;
+    }
+
+    if (type == 11) // resonant Notch
+    {
+        notch(filter.stages[0], safeF, safeQ);
+        return;
+    }
+
+    // Resonant 72 dB/oct Low-pass / High-pass.
+    constexpr double butterQ[6] =
+    {
+        0.5043144803, 0.5411961001, 0.6302362070,
+        0.8213398159, 1.3065629649, 3.8306487878
+    };
+    filter.stageCount = 6;
+    const double resonanceScale =
+        juce::jlimit(0.35, 2.5, safeQ / 0.7071067811865476);
+
+    for (int i = 0; i < 6; ++i)
+    {
+        const double rq = juce::jlimit(
+            0.25, 12.0, butterQ[i] * resonanceScale);
+        if (type == 12)
+            lowPass(filter.stages[(size_t)i], safeF, rq);
+        else
+            highPass(filter.stages[(size_t)i], safeF, rq);
+    }
+
+    // Clear unused coefficients defensively so old states cannot leak if the
+    // stage count later increases after an automation jump.
+    for (int i = filter.stageCount; i < 12; ++i)
+        identity(filter.stages[(size_t)i]);
+}
+
 void VVChainDSP::updateDynamicDetector(Biquad& filter, double fs, double f0, double q)
 {
     // Constant-peak-gain band-pass detector: approximately unity at the
@@ -833,10 +1086,16 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
                 // Update every sample. The detector gain movement is already
                 // attack/release smoothed, eliminating the old 4-sample zipper.
-                updateDynamicPeak(
-                    dynMidEq[band], osSr, frequency, safeMidTotalGain, midQ);
-                updateDynamicPeak(
-                    dynSideEq[band], osSr, frequency, safeSideTotalGain, sideQ);
+                int eqType = juce::jlimit(0, 13, p.eqType[band]);
+                if ((band == 1 || band == 2) && eqType >= 12)
+                    eqType = 0;
+
+                updateEqFilter(
+                    dynMidEq[band], eqType,
+                    osSr, frequency, safeMidTotalGain, midQ);
+                updateEqFilter(
+                    dynSideEq[band], eqType,
+                    osSr, frequency, safeSideTotalGain, sideQ);
 
                 auto* left = osBlock.getChannelPointer(0);
                 const float leftIn = left[sample];
