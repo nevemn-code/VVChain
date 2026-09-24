@@ -1,14 +1,14 @@
-name: VVChain CI/CD
+name: VVChain Fast CI/CD
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
+    branches: [ "main" ]
+  push:
     branches: [ "main" ]
   workflow_dispatch:
     inputs:
-      full_stress:
-        description: "Run the 5-iteration stress test"
+      full_validation:
+        description: "Run full native build + 500-case Analog + 5x DSP stress"
         required: false
         default: false
         type: boolean
@@ -18,45 +18,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_and_test:
-    runs-on: ubuntu-24.04
+  fast_checks:
+    name: Fast Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
     - name: Checkout
       uses: actions/checkout@v7
       with:
         fetch-depth: 0
 
-    - name: Restore build/compiler caches
-      uses: actions/cache@v6
-      with:
-        path: |
-          build
-          ~/.ccache
-          ~/.cache/pip
-        key: vvchain-linux-${{ hashFiles('CMakeLists.txt', 'Source/**/*.cpp', 'Source/**/*.h') }}
-        restore-keys: |
-          vvchain-linux-
-
-    - name: Setup CMake, Ninja and ccache
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake ninja-build ccache libasound2-dev libjack-jackd2-dev \
-          libcurl4-openssl-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev \
-          libx11-dev libxi-dev libxcomposite-dev libxcursor-dev libxext-dev \
-          libxinerama-dev libxrandr-dev libxrender-dev
-
-    - name: Setup Python
-      uses: actions/setup-python@v7
-      with:
-        python-version: "3.11"
-
-    - name: Enforce Plugin / Web Preview sync
+    - name: Plugin / Web sync + version rules
       shell: bash
       run: |
         set -euo pipefail
-        if [ "${{ github.event_name }}" = "push" ] \
-          && [ -n "${{ github.event.before }}" ] \
-          && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+        if [ "${{ github.event_name }}" = "push" ]           && [ -n "${{ github.event.before }}" ]           && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
           changed="$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")"
         elif [ "${{ github.event_name }}" = "pull_request" ]; then
           changed="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}")"
@@ -68,81 +44,61 @@ jobs:
 
         source_changed=false
         web_changed=false
-
         while IFS= read -r file; do
           [ -n "$file" ] || continue
           case "$file" in
             Source/*) source_changed=true ;;
-            docs/index.html) web_changed=true ;;
+            docs/index.html|docs/vvchain-worklet.js) web_changed=true ;;
           esac
         done <<< "$changed"
 
         if [ "$source_changed" = true ] && [ "$web_changed" != true ]; then
-          echo "ERROR: Source/ was changed without docs/index.html."
-          echo "VVChain requires JUCE Plugin and GitHub Pages Web Preview changes to stay synchronized."
+          echo "ERROR: Source/ changed without Web Preview sync."
           exit 1
         fi
 
-        echo "Plugin/Web Preview sync rule: PASS"
-
-    - name: Configure CMake (Fast CI / VST3 only)
-      run: |
-        cmake -B build -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DVVCHAIN_BUILD_STANDALONE=OFF \
-          -DVVCHAIN_ENABLE_AAX=OFF \
-          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-          -DCMAKE_CXX_FLAGS="-O3 -ffast-math -mavx2 -D JUCE_WEB_BROWSER=0 -D JUCE_USE_CURL=0 -D JUCE_HEADLESS_PLUGIN_CLIENT=1"
-
-    - name: Reject ambiguous JUCE StringArray initializer syntax
-      shell: bash
-      run: |
-        set -euo pipefail
         if grep -RInE 'juce::StringArray[[:space:]]*\(\s*\{' Source; then
-          echo "ERROR: use explicit juce::StringArray construction instead of brace initializer syntax."
+          echo "ERROR: ambiguous JUCE StringArray brace initializer."
           exit 1
         fi
-        echo "JUCE StringArray syntax check: PASS"
 
-    - name: Enforce version-only project rule
+        if grep -RInE 'LAST[[:space:]]+[0-9]{4}-[0-9]{2}-[0-9]{2}|202[0-9]-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}' Source docs Tests README.md; then
+          echo "ERROR: timestamp identifiers are not allowed."
+          exit 1
+        fi
+
+        grep -RIn 'VVCHAIN v1\.' Source docs README.md Tests/dynamic_eq_ui.py >/dev/null
+        echo "Fast static gate: PASS"
+
+    - name: JavaScript syntax
       shell: bash
       run: |
-        set -euo pipefail
-        if grep -RInE 'LAST[[:space:]]+[0-9]{4}-[0-9]{2}-[0-9]{2}|202[0-9]-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}' Source docs Tests README.md; then
-          echo "ERROR: VVChain uses version numbers only; date/timestamp identifiers are not allowed."
-          exit 1
-        fi
-        grep -RIn 'VVCHAIN v1\.' Source docs README.md Tests/dynamic_eq_ui.py >/dev/null
-        echo "Version-only project rule: PASS"
+        node --check docs/vvchain-worklet.js
+        python3 Tests/web_smoke.py
 
-    - name: Check Web AudioWorklet JavaScript syntax
-      shell: bash
-      run: node --check docs/vvchain-worklet.js
-    - name: Build VST3/DSP
-      run: cmake --build build --config Release --parallel
-
-    - name: Install Python test dependencies
-      run: python -m pip install --upgrade numpy scipy
-
-    - name: Dynamic EQ UI/control regression matrix
-      run: python Tests/dynamic_eq_ui.py
-
-    - name: Run fast DSP stress test
-      run: python Tests/reference_stress.py --iterations 5
-
-    - name: Run ANALOG no-shrink regression matrix
-      run: python Tests/analog_matrix.py
+    - name: UI / interaction regression
+      run: python3 Tests/dynamic_eq_ui.py
 
   windows_vst3:
     name: Windows VST3 Release
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: windows-2025-vs2026
+    timeout-minutes: 8
     steps:
     - name: Checkout
       uses: actions/checkout@v7
       with:
-        fetch-depth: 0
+        fetch-depth: 1
 
-    - name: Configure CMake (VS 2026 x64)
+    - name: Restore incremental VST3 build
+      uses: actions/cache@v6
+      with:
+        path: build-vst3
+        key: vvchain-win-vst3-${{ github.run_id }}
+        restore-keys: |
+          vvchain-win-vst3-
+
+    - name: Configure CMake
       shell: pwsh
       run: |
         cmake -S . -B build-vst3 `
@@ -151,35 +107,60 @@ jobs:
           -DVVCHAIN_BUILD_STANDALONE=OFF `
           -DVVCHAIN_ENABLE_AAX=OFF
 
-    - name: Build Windows VST3
+    - name: Incremental Windows VST3 build
+      shell: pwsh
+      run: cmake --build build-vst3 --config Release --parallel
+
+    - name: Verify and package
       shell: pwsh
       run: |
-        cmake --build build-vst3 --config Release --parallel
+        $plugin = Get-ChildItem -Path build-vst3 -Recurse -Directory -Filter "VVChain.vst3" | Select-Object -First 1
+        if ($null -eq $plugin) { Write-Error "VVChain.vst3 was not produced." }
+        $zip = Join-Path $env:GITHUB_WORKSPACE "VVChain-v1.0.19-Windows-VST3.zip"
+        Compress-Archive -Path $plugin.FullName -DestinationPath $zip -Force
+        if (-not (Test-Path $zip)) { Write-Error "VST3 ZIP was not created." }
 
-    - name: Verify VST3 output
-      shell: pwsh
-      run: |
-        $plugin = Get-ChildItem -Path build-vst3 -Recurse -Directory -Filter "VVChain.vst3" |
-          Select-Object -First 1
-        if ($null -eq $plugin) {
-          Write-Error "VVChain.vst3 was not produced."
-        }
-        Write-Host "VST3: $($plugin.FullName)"
-        "VST3_PATH=$($plugin.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
-
-    - name: Package Windows VST3
-      shell: pwsh
-      run: |
-        $zip = Join-Path $env:GITHUB_WORKSPACE "VVChain-v1.0.18-Windows-VST3.zip"
-        Compress-Archive -Path $env:VST3_PATH -DestinationPath $zip -Force
-        if (-not (Test-Path $zip)) {
-          Write-Error "VST3 ZIP was not created."
-        }
-        Write-Host "Artifact: $zip"
-
-    - name: Upload Windows VST3 artifact
+    - name: Upload Windows VST3
       uses: actions/upload-artifact@v4
       with:
-        name: VVChain-v1.0.18-Windows-VST3
-        path: VVChain-v1.0.18-Windows-VST3.zip
+        name: VVChain-v1.0.19-Windows-VST3
+        path: VVChain-v1.0.19-Windows-VST3.zip
         if-no-files-found: error
+
+  full_validation:
+    name: Full Native / DSP Validation
+    if: github.event_name == 'workflow_dispatch' && inputs.full_validation == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        fetch-depth: 1
+
+    - name: Restore native compiler cache
+      uses: actions/cache@v6
+      with:
+        path: |
+          build
+          ~/.ccache
+          ~/.cache/pip
+        key: vvchain-linux-full-${{ github.run_id }}
+        restore-keys: |
+          vvchain-linux-full-
+
+    - name: Install native dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build ccache libasound2-dev libjack-jackd2-dev           libcurl4-openssl-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev           libx11-dev libxi-dev libxcomposite-dev libxcursor-dev libxext-dev           libxinerama-dev libxrandr-dev libxrender-dev
+        python3 -m pip install --upgrade numpy scipy
+
+    - name: Configure and build native VST3/DSP
+      run: |
+        cmake -B build -G Ninja           -DCMAKE_BUILD_TYPE=Release           -DVVCHAIN_BUILD_STANDALONE=OFF           -DVVCHAIN_ENABLE_AAX=OFF           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache           -DCMAKE_CXX_FLAGS="-O3 -ffast-math -mavx2 -D JUCE_WEB_BROWSER=0 -D JUCE_USE_CURL=0 -D JUCE_HEADLESS_PLUGIN_CLIENT=1"
+        cmake --build build --config Release --parallel
+
+    - name: Full DSP validation
+      run: |
+        python3 Tests/analog_matrix.py
+        python3 Tests/reference_stress.py --iterations 5
