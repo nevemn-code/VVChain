@@ -1,5 +1,13 @@
 # VVChain
 
+## 目前實際狀態（v1.0.49）
+
+目前 `main` 的五個測試腳本在本機各重跑十輪均提前失敗，包含 `web_smoke.py` 的 Python 語法錯誤；完整位置和驗證限制見 [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md)。歷史版本日誌描述當時修改，現行行為請以 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 與實際程式為準。本次只更新說明，未更改 DSP。
+
+目前主鏈的實際順序：EQ／Dynamic EQ + 四段 Analog → UDMBC → TAPE COLOR → De-Esser → Mix／Out → Solo → true-peak limiter → 主 Bypass／Delta。X1／X2／X3 共用於 Analog、UDMBC、TAPE COLOR 和頻段 Solo；EQ 四個點各有自己的頻率。LF／HF Roll-Off 供 6–72 dB/oct 的離散選項，預設 12 dB/oct。
+
+Analog 0% 的**非線性增量**為零；整條 EQ 路徑仍經過 oversampling 和分頻重建，未完成全鏈 bit-exact null 驗證。Native 的 Analog 在 4× EQ oversampling 內，Web 在 Worklet rate 運作，兩版不能視為逐 sample 相同。Windows VST3／DAW 實測尚未由這次封閉測試證實。
+
 四段式音訊鏈結 VST3 / AAX 專案，主介面固定為單一 plugin 視窗。
 
 ## Signal Flow
@@ -47,6 +55,11 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
+
+### v1.0.49
+- 文件更新：同步整理目前實際訊號流程、Native／Web 差異及十輪封閉測試結果與限制。
+- Native、Web、Worklet、CMake 與 Windows VST3 artifact 版本標示統一至 v1.0.49。
+- 僅更新文件與版本標示，DSP、參數、控制邏輯及聲音處理不變。
 
 ### v1.0.47
 - ANALOG COLOR 換入 VVChain 專用 analytical first-order ADAA，保留原 unity-normalized algebraic transfer 與 TT/SS 1.55 / 1.80 曲率差異。
@@ -303,4 +316,3 @@ VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測�
 - EQ FREQ 與 DE-ESS FREQ 拖曳靈敏度降低到接近 GAIN 手感；Web Preview 與 Native 同步。
 - TAPE COLOR 最大染色上限固定為 Band 1=50%、Band 2=60%、Band 3=70%、Band 4=90%，演算法本體不改。
 - 每段 ANALOG COLOR 新增 X2 開關；開啟後只將當前 COLOR 量乘以 1.6，並保留 100% 實際處理上限。
-
