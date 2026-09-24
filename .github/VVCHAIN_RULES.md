@@ -106,7 +106,7 @@ ANALOG COLOR 正式基準自 **v1.0.16** 起為 unity-normalized smooth algebrai
 
 ## 壓力測試與部署檢查
 
-### Fast Deploy 規則（v1.0.19 起，最高優先）
+### Fast Deploy 規則（v1.0.20 起，最高優先）
 - 一般 PR / main push 的預設驗證路徑必須以 **3 分鐘內完成工作執行** 為目標。
 - Fast Gate 只保留會直接阻止錯版上線的必要項目：Native/Web 同步規則、版本規則、Web/Worklet JavaScript syntax、Web smoke、UI/互動 regression。
 - 一般 PR **不得**再安裝整套 Linux audio/X11 開發套件，也不得每次重新跑 Linux VST3 全編譯、numpy/scipy 安裝、500-case ANALOG matrix 或 DSP stress。
