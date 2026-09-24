@@ -669,8 +669,8 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     addKnob("DEESS_FREQ", "DE-ESS FREQ", 6000, 18000, 10,
             parameterValue("DEESS_FREQ"), " Hz", 4, 0,
             juce::Colour(0xff67d3aa));
-    addKnob("DEESS_INTENSITY", "MAXIMUM REDUCTION", 0, 8, .1,
-            parameterValue("DEESS_INTENSITY"), " dB", 4, 1,
+    addKnob("DEESS_THRESHOLD", "THRESHOLD", -36, 0, .1,
+            parameterValue("DEESS_THRESHOLD"), " dB", 4, 1,
             juce::Colour(0xff67d3aa));
     deessModeSwitch = std::make_unique<juce::Slider>();
     deessModeSwitch->setLookAndFeel(&metalLook);
@@ -984,22 +984,6 @@ void VVChainAudioProcessorEditor::addKnob(
             }
         };
     }
-    else if (id == "DEESS_INTENSITY")
-    {
-        auto* slider = k.slider.get();
-        k.slider->onValueChange = [this, slider]
-        {
-            const float target =
-                slider->getValue() <= 0.0001 ? 1.0f : 0.0f;
-            if (auto* parameter =
-                    audioProcessor.apvts.getParameter("DEESS_BYPASS"))
-            {
-                if (std::abs(parameter->getValue() - target) > 1.0e-6f)
-                    parameter->setValueNotifyingHost(target);
-            }
-        };
-    }
-
     addAndMakeVisible(*k.slider);
     addAndMakeVisible(*k.label);
     knobs.push_back(std::move(k));
@@ -1886,8 +1870,7 @@ void VVChainAudioProcessorEditor::drawCard(
 
     accent = uiColour(accent);
     if (title == "DE-ESSER"
-        && (parameterValue("DEESS_BYPASS") > 0.5f
-            || parameterValue("DEESS_INTENSITY") <= 0.0001f))
+        && (parameterValue("DEESS_BYPASS") > 0.5f))
         accent = juce::Colour(0xff747b84);
     g.setColour(accent.withAlpha(.8f));
     g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
@@ -2122,7 +2105,7 @@ void VVChainAudioProcessorEditor::timerCallback()
         deessLocalBypassButton->setToggleState(
             deessBypassed, juce::dontSendNotification);
         deessLocalBypassButton->setAlpha(
-            parameterValue("DEESS_INTENSITY") <= 0.0001f ? 0.42f : 1.0f);
+            1.0f);
     }
 
     for (int b = 0; b < 4; ++b)
@@ -2175,10 +2158,9 @@ void VVChainAudioProcessorEditor::timerCallback()
     }
 
     const bool deessMuted =
-        parameterValue("DEESS_BYPASS") > 0.5f
-        || parameterValue("DEESS_INTENSITY") <= 0.0001f;
+        parameterValue("DEESS_BYPASS") > 0.5f;
     for (const auto& id : { juce::String("DEESS_FREQ"),
-                            juce::String("DEESS_INTENSITY"),
+                            juce::String("DEESS_THRESHOLD"),
                             juce::String("DEESS_MODE") })
         if (auto* knob = findKnob(id))
         {
@@ -2266,7 +2248,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.37 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
+    g.drawText("VVCHAIN v1.0.43 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS THRESHOLD",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2553,7 +2535,7 @@ void VVChainAudioProcessorEditor::resized()
         placeKnob("DEESS_FREQ",
                   { deInnerX, startY,
                     deInnerW, deKnobH });
-        placeKnob("DEESS_INTENSITY",
+        placeKnob("DEESS_THRESHOLD",
                   { deInnerX, startY + deKnobH + deKnobGap,
                     deInnerW, deKnobH });
         if (deessModeSwitch)
@@ -2570,7 +2552,7 @@ void VVChainAudioProcessorEditor::resized()
                 cardY + 58, 50, 50);
         
         if (deessLocalBypassButton)
-            if (auto* knob = findKnob("DEESS_INTENSITY"))
+            if (auto* knob = findKnob("DEESS_THRESHOLD"))
             {
                 const auto r = knob->slider->getBounds();
                 deessLocalBypassButton->setBounds(
