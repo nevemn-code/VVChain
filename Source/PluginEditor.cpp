@@ -486,9 +486,14 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addKnob("DYN_RELEASE" + n, "RELEASE", 5, 2000, 1,
                 parameterValue("DYN_RELEASE" + n), " ms", b, 10, c);
 
-        dynDetectSliders[(size_t) b] =
-            std::make_unique<juce::Slider>(juce::Slider::LinearHorizontal,
-                                           juce::Slider::NoTextBox);
+        auto detectBlendSlider = std::make_unique<WheelSlider>();
+        detectBlendSlider->setSliderStyle(juce::Slider::LinearHorizontal);
+        detectBlendSlider->setTextBoxStyle(
+            juce::Slider::NoTextBox, false, 0, 0);
+        detectBlendSlider->setSliderSnapsToMousePosition(false);
+        detectBlendSlider->setDragSensitivity(133, 1330);
+        detectBlendSlider->setWheelBehaviour(0.5, false);
+        dynDetectSliders[(size_t) b] = std::move(detectBlendSlider);
         dynDetectSliders[(size_t) b]->setComponentID("DYN_DETECT_BLEND");
         dynDetectSliders[(size_t) b]->setLookAndFeel(&metalLook);
         dynDetectSliders[(size_t) b]->setRange(0.0, 100.0, 0.1);
@@ -531,7 +536,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
         // The two EQ / ANALOG controls live inside every BAND card.
         // They intentionally remain attached to the shared DSP parameters.
-        addKnob("EQ_COLOR_B" + n, "ANALOG COLOR", 0, 100, .1,
+        addKnob("EQ_COLOR_B" + n, "ANALOG COLOR", 0, 60, .1,
                 parameterValue("EQ_COLOR" + n), " %", b, 6,
                 juce::Colour(0xff60a5fa), false, "EQ_COLOR" + n);
 
@@ -558,7 +563,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
             juce::ToggleButton::tickColourId,
             juce::Colour(0xff60a5fa));
         analogX2Buttons[(size_t) b]->setTooltip(
-            "ANALOG COLOR X2：亮起時，當前 ANALOG COLOR 量 × 1.6");
+            "ANALOG COLOR X2：亮起時，0–60% 的 ANALOG COLOR delta × 2");
         analogX2Attachments[(size_t) b] =
             std::make_unique<BoolAttachment>(
                 audioProcessor.apvts, "EQ_COLOR_X2" + n,
@@ -1136,9 +1141,11 @@ float VVChainAudioProcessorEditor::qFromWheel(
     float q, float deltaY, bool fine) const noexcept
 {
     const float safeQ = juce::jmax(0.1f, q);
-    return fine
-        ? juce::jlimit(0.1f, 18.f, safeQ + deltaY * 0.01f)
-        : juce::jlimit(0.1f, 18.f, safeQ * std::exp(-deltaY * 0.25f));
+    const float wheelUnits = juce::jlimit(-1.0f, 1.0f, deltaY);
+    const float speed = fine ? 0.0025f : 0.025f;
+    return juce::jlimit(
+        0.1f, 18.f,
+        safeQ * std::exp(wheelUnits * speed));
 }
 
 float VVChainAudioProcessorEditor::dynamicThresholdFromDynamics(float dynamics) const
@@ -2249,7 +2256,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.17 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
+    g.drawText("VVCHAIN v1.0.18 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2453,7 +2460,7 @@ void VVChainAudioProcessorEditor::resized()
 
         if (dynDetectSliders[(size_t) b])
         {
-            constexpr int detectW = 40;
+            constexpr int detectW = 60;
             const int dynamicsCentreX = cell(1, 0).getCentreX();
             dynDetectSliders[(size_t) b]->setBounds(
                 dynamicsCentreX - detectW / 2,
