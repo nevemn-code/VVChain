@@ -523,8 +523,13 @@ function dynamicTargetAtPointer(x,y,w,h){
     const dynamics=Math.abs(Number(state.dyn.dynamics[b]||0));
     if(dynamics<=.5)continue;
     const n=dynamicTargetPoint(b,w,h);
+    const staticX=logX(state.eq.freq[b],w);
+    const staticY=dbToY(state.eq.gain[b],h);
+    const onStaticNode=Math.hypot(x-staticX,y-staticY)<staticRadius;
     const d=Math.hypot(x-n.x,y-n.y);
-    if(d>=staticRadius&&d<best){best=d;band=b;}
+    // Full Dynamic target circle is draggable, including its centre.
+    // Static EQ priority is handled first when the two nodes overlap.
+    if(!onStaticNode&&d<best){best=d;band=b;}
   }
   return band;
 }
@@ -1057,8 +1062,9 @@ eqCanvas.addEventListener("pointerdown",e=>{
     }
   }
 
-  // The exact static EQ GAIN node (7 px) wins; the surrounding Dynamic Target
-  // ring behaves as one XY control: X = linked EQ FREQ, Y = linked DYNAMICS.
+  // The exact static EQ GAIN node wins only when the two nodes overlap.
+  // The entire Dynamic Target circle, including its centre, is one XY control:
+  // X = linked EQ FREQ, Y = linked DYNAMICS.
   const staticBand=staticEqAtPointer(x,y,w,h);
   if(staticBand<0){
     const tb=dynamicTargetAtPointer(x,y,w,h);
