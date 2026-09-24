@@ -2412,11 +2412,16 @@ void VVChainAudioProcessorEditor::resized()
         const int rowH = 70;
         const int knobH = 62;
 
+        constexpr int lowerSectionShiftY = 8;
         const auto cell = [&](int row, int col)
         {
+            // From the UDMBC performance row downward, move the complete
+            // control group (knobs, labels, values and attached buttons)
+            // slightly lower while keeping EQ / Dynamics untouched.
+            const int lowerShift = row >= 3 ? lowerSectionShiftY : 0;
             return juce::Rectangle<int>(
                 innerX + col * (cellW + cellGap),
-                innerTop + row * rowH,
+                innerTop + row * rowH + lowerShift,
                 cellW, knobH);
         };
 
