@@ -181,11 +181,11 @@ class VVChainWorklet extends AudioWorkletProcessor {
     ch.analogPrev[b]=x; ch.analogDc[b]=0; ch.analogPower[b]=0;
     if(a<=1e-6)return x;
     const modeAlpha=ss?1.80:1.55;
-    const alpha=a*modeAlpha*this.clamp(x2,1,1.6);
+    const alpha=a*modeAlpha;
     const unityNorm=Math.pow(1+alpha,.25);
     const denominator=Math.sqrt(Math.sqrt(1+alpha*x*x));
     const saturated=(x/denominator)*unityNorm;
-    return x+(saturated-x);
+    return x+(saturated-x)*this.clamp(x2,1,1.6);
   }
   deessSample(x,c,coef){
     const st=this.s.de;
@@ -231,7 +231,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       }
     }
     // ANALOG COLOR v1.0.15: unity-normalized smooth saturation.
-    // X2 increases saturation depth without applying an extra output attenuation.
+    // X2 preserves its established role: it multiplies only the generated ANALOG delta.
     if(!s.eq.globalBypass){
       for(let b=0;b<4;b++){
         if(s.eq.colorBypass[b])continue;
