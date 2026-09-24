@@ -106,6 +106,10 @@ VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測�
 - ANALOG COLOR 使用者範圍由 0–100% 改為 0–60%；DSP 仍以百分比 /100 轉成 amount，因此 60% 對應原演算法 0.60 強度。
 - ANALOG X2 改成真正將目前產生的 Analog delta ×2；不改原始乾聲。
 - PEAK ↔ ONSETS 寬度 40 px → 60 px；拖曳改為相對式慢速 0.3×，並加入慢速滾輪控制。
+- OTT %、TAPE-A +、DE-ESSER 的局部 LED BYPASS 與 0 值灰階連動；右上五個模組 BYPASS 也同步灰階其對應元件。
+- 下區塊最右側主 BYPASS 文字改為置中在圓形主 BYPASS 按鈕正上方。
+- 上方浮動值框固定兩行：EQ 或 DYN EQ 的 GAIN；第二行只顯示 FREQ + Q，依實際 hover 目標切換。
+- 右鍵 SOLO EQ 點時，SOLO 中心保持原彩色，往左右頻率距離增加時線性淡入灰階。
 - Native VST3 / Web Preview / AudioWorklet / Regression / Windows artifact 同步升至 v1.0.18。
 
 ## v1.0.17
