@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.17 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.18 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -135,7 +135,8 @@ def source_assertions():
     assert 'qFromWheel(' in cpp and 'qFromWheel(' in head
     assert 'function yToDb(' in web
     assert 'function nextQFromWheel(' in web
-    assert 'safe*Math.exp(-deltaY*.25)' in web
+    assert 'const wheelUnits=clamp(deltaY/100,-1,1);' in web
+    assert 'const speed=fine?.0025:.025;' in web
     assert 'constexpr float hitRadius = 12.0f;' in cpp
     assert 'std::abs(dynamics) > 0.5f' in cpp
     assert 'if(dynamics<=.5)continue;' in web
@@ -148,6 +149,13 @@ def source_assertions():
     assert 'nextQFromWheel(q,e.deltaY,e.shiftKey)' in web
     assert 'nextQFromWheel(state.eq.q[band],e.deltaY,e.shiftKey)' in web
     assert cpp.count('qFromWheel(q, wheel.deltaY, event.mods.isShiftDown())') == 2
+    assert 'const float speed = fine ? 0.0025f : 0.025f;' in cpp
+    assert 'constexpr int detectW = 60;' in cpp
+    assert 'setDragSensitivity(133, 1330);' in cpp
+    assert 'setWheelBehaviour(0.5, false);' in cpp
+    assert 'width:60px;height:12px' in web
+    assert '(e.clientX-detectStartX)*.75' in web
+    assert 'units*.5' in web
     assert 'staticPriorityBand < 0' in cpp
     assert 'const staticBand=staticEqAtPointer' in web
     assert '.graphHint{width:112px' in web
@@ -415,8 +423,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.17" in web
-    assert "VVCHAIN v1.0.17" in editor
+    assert "VVCHAIN v1.0.18" in web
+    assert "VVCHAIN v1.0.18" in editor
     assert "LAST " not in editor
 
     # ANALOG v1.0.16 uses unity-normalized smooth algebraic saturation.
@@ -424,9 +432,9 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "unityNorm" in cpp and "unityNorm" in worklet
     assert "const double u = juce::jlimit(-1.0, 1.0, x);" in cpp
     assert "protectedSaturated" in worklet
-    assert "return x+(protectedSaturated-u)*this.clamp(x2,1,1.6)" in worklet
+    assert "return x+(protectedSaturated-u)*this.clamp(x2,1,2)" in worklet
     assert "colorX2" in web
-    assert "p.eqColorX2[band] ? 1.6f : 1.0f" in cpp
+    assert "p.eqColorX2[band] ? 2.0f : 1.0f" in cpp
 
 def test_dynamic_range_centered_500():
     """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
@@ -508,8 +516,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.17" in web
-    assert "VVCHAIN v1.0.17" in cpp
+    assert "VVCHAIN v1.0.18" in web
+    assert "VVCHAIN v1.0.18" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -602,10 +610,10 @@ def test_v107_ui_controls():
     # ANALOG X2 is a saved parameter that multiplies only the current COLOR amount.
     assert 'EQ_COLOR_X2' in proc
     assert 'eqColorX2' in dsp
-    assert 'p.eqColorX2[band] ? 1.6f : 1.0f' in dsp
+    assert 'p.eqColorX2[band] ? 2.0f : 1.0f' in dsp
     assert 'colorX2' in web
     assert 'analogX2Btn' in web
-    assert 'colorX2?.[b]?1.6:1' in worklet
+    assert 'colorX2?.[b]?2:1' in worklet
     assert 'analogX2Buttons' in head
 
 
