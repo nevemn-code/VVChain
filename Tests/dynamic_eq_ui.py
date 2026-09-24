@@ -508,7 +508,7 @@ def test_v103_ui_rules_50():
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
     assert "VVCHAIN v1.0.17" in web
-    assert "VVCHAIN v1.0.16" in cpp
+    assert "VVCHAIN v1.0.17" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
