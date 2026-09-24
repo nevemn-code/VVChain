@@ -1284,22 +1284,31 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     g.setColour(juce::Colours::black.withAlpha(.95f));
     g.drawRoundedRectangle(graph, 8.f, 1.f);
 
-    for (int i = 0; i <= 6; ++i)
+    // Use the entire available gain range: -18 dB at the bottom,
+    // +18 dB at the top. Every 3 dB has a real grid line.
+    for (int db = -18; db <= 18; db += 3)
     {
-        const float db = 36.f - i * 12.0f;
-        const float y = eqDbToY(graph, db);
-        g.setColour(juce::Colour(0xff69717c).withAlpha(.42f));
-        g.drawHorizontalLine(
-            (int)y, graph.getX(), graph.getRight());
+        const float y = eqDbToY(graph, static_cast<float>(db));
+        const bool centre = (db == 0);
+        g.setColour(centre
+            ? juce::Colour(0xffffd84d).withAlpha(.45f)
+            : juce::Colour(0xff69717c).withAlpha(.34f));
+        g.drawHorizontalLine((int)y, graph.getX(), graph.getRight());
     }
 
-    for (float f : { 20.f, 50.f, 100.f, 200.f, 500.f, 1000.f,
-                     2000.f, 5000.f, 10000.f, 20000.f })
+    // Dense logarithmic frequency references so the EQ nodes are easy to place.
+    constexpr std::array<float, 19> frequencyTicks
+    {
+        20.f, 30.f, 40.f, 50.f, 70.f, 100.f, 150.f, 200.f, 300.f,
+        500.f, 700.f, 1000.f, 2000.f, 3000.f, 5000.f, 7000.f,
+        10000.f, 15000.f, 20000.f
+    };
+
+    for (const auto f : frequencyTicks)
     {
         const float x = graphFrequencyToX(graph, f);
-        g.setColour(juce::Colour(0xff68727d).withAlpha(.33f));
-        g.drawVerticalLine(
-            (int)x, graph.getY(), graph.getBottom());
+        g.setColour(juce::Colour(0xff68727d).withAlpha(.28f));
+        g.drawVerticalLine((int)x, graph.getY(), graph.getBottom());
     }
 
     const float xovers[3]
@@ -1393,34 +1402,49 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             xoverHovered ? 2.0f : 1.45f));
     }
 
-    // Restored graph axis labels: dB scale + frequency scale.
-    g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.setColour(juce::Colour(0xffaab0ba));
-    for (float db : { 18.f, 9.f, 0.f, -9.f, -18.f })
+    // Axis labels: dB on the LEFT; frequency along the BOTTOM.
+    // Do not waste graph height: +18 / -18 are the actual top / bottom limits.
+    g.setFont(juce::FontOptions(7.0f).withStyle("Bold"));
+    g.setColour(juce::Colour(0xffb8bec6));
+
+    for (int db = 18; db >= -18; db -= 3)
     {
-        const float y = eqDbToY(graph, db);
-        const auto label = (db > 0.f ? "+" : "")
-            + juce::String(db, 0) + " dB";
+        const float y = eqDbToY(graph, static_cast<float>(db));
+        const auto label = (db > 0 ? "+" : "") + juce::String(db) + " dB";
+        const int labelY = juce::jlimit(
+            (int)graph.getY(),
+            (int)graph.getBottom() - 11,
+            (int)std::lround(y - 5.0f));
+
         g.drawText(label,
-                   (int)graph.getX() + 5,
-                   (int)juce::jmax(graph.getY() + 1.f, y - 7.f),
-                   44, 12,
-                   juce::Justification::left);
+                   (int)graph.getX() + 5, labelY,
+                   42, 11, juce::Justification::left);
     }
-    for (const auto& tick : std::initializer_list<std::pair<float, juce::String>>{
-        { 20.f, "20 Hz" }, { 100.f, "100 Hz" }, { 1000.f, "1 kHz" },
-        { 10000.f, "10 kHz" }, { 20000.f, "20 kHz" } })
+
+    const std::array<std::pair<float, juce::String>, 19> frequencyLabels
+    {{
+        { 20.f, "20" }, { 30.f, "30" }, { 40.f, "40" }, { 50.f, "50" },
+        { 70.f, "70" }, { 100.f, "100" }, { 150.f, "150" }, { 200.f, "200" },
+        { 300.f, "300" }, { 500.f, "500" }, { 700.f, "700" },
+        { 1000.f, "1k" }, { 2000.f, "2k" }, { 3000.f, "3k" },
+        { 5000.f, "5k" }, { 7000.f, "7k" }, { 10000.f, "10k" },
+        { 15000.f, "15k" }, { 20000.f, "20k" }
+    }};
+
+    for (const auto& tick : frequencyLabels)
     {
         const float x = graphFrequencyToX(graph, tick.first);
-        const int width = 40;
-        const int left = tick.first == 20.f
-            ? (int)x
-            : tick.first == 20000.f
-                ? (int)x - width
-                : (int)x - width / 2;
-        g.drawText(tick.second, left, (int)graph.getBottom() - 12,
-                   width, 10,
-                   juce::Justification::centred);
+        const int width = 28;
+        int left = (int)std::lround(x - width * 0.5f);
+
+        if (tick.first == 20.f)
+            left = (int)graph.getX() + 1;
+        else if (tick.first == 20000.f)
+            left = (int)graph.getRight() - width - 1;
+
+        g.drawText(tick.second,
+                   left, (int)graph.getBottom() - 13,
+                   width, 10, juce::Justification::centred);
     }
 
     // Static Offset EQ response.
