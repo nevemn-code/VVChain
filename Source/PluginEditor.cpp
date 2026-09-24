@@ -149,7 +149,9 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
         g.setColour(blue.withAlpha(.62f));
         g.fillRoundedRectangle(fill, 3.0f);
 
-        g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
+        constexpr float kDynamicModeFontSize = 8.2f;
+        g.setFont(
+            juce::FontOptions(kDynamicModeFontSize).withStyle("Bold"));
         g.setColour(juce::Colours::white.withAlpha(.94f));
         g.drawText("PEAK", r.removeFromLeft(r.getWidth() * 0.5f).toNearestInt(),
                    juce::Justification::centred);
@@ -256,7 +258,9 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
         g.setColour(accent.withAlpha(on ? .82f : .38f));
         g.drawRoundedRectangle(r, 5.0f, on ? 1.1f : 1.0f);
         g.setColour(juce::Colour(0xffe8edf2));
-        g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
+        constexpr float kDynamicModeFontSize = 8.2f;
+        g.setFont(
+            juce::FontOptions(kDynamicModeFontSize).withStyle("Bold"));
         g.drawText(button.getButtonText(),
                    r.toNearestInt().reduced(3, 1),
                    juce::Justification::centred);
@@ -2748,21 +2752,23 @@ void VVChainAudioProcessorEditor::resized()
         placeKnob("DYN_ATTACK" + n,   cell(1, 1));
         placeKnob("DYN_RELEASE" + n,  cell(1, 2));
 
-        // Dynamic detector mode row: same 21 px height as + ADV.
-        // It sits immediately above the three Dynamic knobs.
-        const int halfW = (innerW - 8) / 2;
+        // Dynamic detector mode row follows the supplied reference:
+        // PEAK/ONSETS ~= 31% left, ABOVE/BELOW ~= 31% right,
+        // with the large centre gap preserved. Height matches + ADV.
+        const int modeW =
+            juce::jmax(44, juce::roundToInt(innerW * 0.31f));
         const int modeY = cell(1, 0).getY() - 21;
 
         if (dynDetectSliders[(size_t) b])
         {
             dynDetectSliders[(size_t) b]->setBounds(
-                innerX, modeY, halfW, 21);
+                innerX, modeY, modeW, 21);
         }
 
         if (dynTriggerButtons[(size_t) b])
         {
             dynTriggerButtons[(size_t) b]->setBounds(
-                innerX + halfW + 8, modeY, halfW, 21);
+                innerX + innerW - modeW, modeY, modeW, 21);
             dynTriggerButtons[(size_t) b]->setButtonText(
                 parameterValue("DYN_TRIGGER_BELOW" + n) > 0.5f
                     ? "BELOW" : "ABOVE");
