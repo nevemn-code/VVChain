@@ -100,6 +100,12 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.11
+
+- Web Preview 新增真正的音訊檔案拖放載入：拖入頁面即可解碼並顯示檔名，阻止瀏覽器直接開啟音檔。
+- 拖放載入與 LOAD AUDIO 按鈕共用同一個解碼流程。
+- Native VST3、Web Worklet、Web Preview、Regression Tests 與 CI artifact 統一升至 v1.0.11。
+
 ## v1.0.10
 
 - 本次更新正式升版；之後每一次新的 GitHub 修改批次都必須遞增 PATCH 版本，不再沿用上一版號。
