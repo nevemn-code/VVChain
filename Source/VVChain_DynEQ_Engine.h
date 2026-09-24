@@ -33,60 +33,61 @@ public:
                                              float gainDB,
                                              float frequency) noexcept
     {
+        // Graph-only transfer calculation for the same Cytomic / Simper TPT
+        // Bell topology used by the current Dynamic EQ DSP. This function does
+        // not process audio; it only evaluates the frequency response for UI.
         const double sr = sampleRate > 1000.0 ? sampleRate : 44100.0;
-        const double f = juce::jlimit(
-            10.0,
-            sr * 0.45,
-            static_cast<double>(centreFrequency));
-        const double safeQ = juce::jlimit(
-            0.05,
-            30.0,
-            static_cast<double>(q));
-        const double g = juce::jlimit(
-            -36.0,
-            36.0,
-            static_cast<double>(gainDB));
-        const double hz = juce::jlimit(
-            10.0,
-            sr * 0.45,
-            static_cast<double>(frequency));
+        const double f = juce::jlimit(20.0, sr * 0.45,
+                                      static_cast<double>(centreFrequency));
+        const double safeQ = juce::jlimit(0.1, 18.0,
+                                          static_cast<double>(q));
+        const double gDB = juce::jlimit(-18.0, 18.0,
+                                        static_cast<double>(gainDB));
+        const double hz = juce::jlimit(10.0, sr * 0.45,
+                                       static_cast<double>(frequency));
 
-        const double A = std::pow(10.0, g / 40.0);
-        const double w0 = juce::MathConstants<double>::twoPi * f / sr;
+        const double A = std::pow(10.0, gDB / 40.0);
+        const double g = std::tan(juce::MathConstants<double>::pi * f / sr);
+        const double k = 1.0 / (safeQ * A);
+        const double a1 = 1.0 / (1.0 + g * (g + k));
+        const double a2 = g * a1;
+        const double a3 = g * a2;
+        const double m1 = k * (A * A - 1.0);
+
+        const double A11 = 2.0 * a1 - 1.0;
+        const double A12 = -2.0 * a2;
+        const double A21 = 2.0 * a2;
+        const double A22 = 1.0 - 2.0 * a3;
+        const double B1 = 2.0 * a2;
+        const double B2 = 2.0 * a3;
+        const double C1 = m1 * a1;
+        const double C2 = -m1 * a2;
+        const double D = 1.0 + m1 * a2;
+
         const double w = juce::MathConstants<double>::twoPi * hz / sr;
-        const double alpha =
-            std::sin(w0) / (2.0 * safeQ);
-        const double c0 = std::cos(w);
-        const double c2 = std::cos(2.0 * w);
-        const double s0 = std::sin(w);
-        const double s2 = std::sin(2.0 * w);
+        const double zr = std::cos(w);
+        const double zi = std::sin(w);
 
-        const double b0 = 1.0 + alpha * A;
-        const double b1 = -2.0 * std::cos(w0);
-        const double b2 = 1.0 - alpha * A;
-        const double a0 = 1.0 + alpha / A;
-        const double a1 = -2.0 * std::cos(w0);
-        const double a2 = 1.0 - alpha / A;
+        const double d11 = zr - A11;
+        const double d22 = zr - A22;
+        const double detR = d11 * d22 - A12 * A21 - zi * zi;
+        const double detI = zi * (d11 + d22);
+        const double det2 = std::max(1.0e-30, detR * detR + detI * detI);
 
-        const double numReal =
-            b0 + b1 * c0 + b2 * c2;
-        const double numImag =
-            b1 * (-s0) + b2 * (-s2);
-        const double denReal =
-            a0 + a1 * c0 + a2 * c2;
-        const double denImag =
-            a1 * (-s0) + a2 * (-s2);
+        const double n1R = d22 * B1 + A12 * B2;
+        const double n1I = zi * B1;
+        const double n2R = A21 * B1 + d11 * B2;
+        const double n2I = zi * B2;
 
-        const double num2 =
-            numReal * numReal + numImag * numImag;
-        const double den2 =
-            std::max(1.0e-24,
-                     denReal * denReal + denImag * denImag);
+        const double h1R = (n1R * detR + n1I * detI) / det2;
+        const double h1I = (n1I * detR - n1R * detI) / det2;
+        const double h2R = (n2R * detR + n2I * detI) / det2;
+        const double h2I = (n2I * detR - n2R * detI) / det2;
 
-        const double magnitude =
-            std::sqrt(std::max(1.0e-24, num2 / den2));
-
-        return juce::Decibels::gainToDecibels(
-            static_cast<float>(magnitude));
+        const double outR = D + C1 * h1R + C2 * h2R;
+        const double outI = C1 * h1I + C2 * h2I;
+        const double magnitude = std::max(1.0e-12,
+                                          std::hypot(outR, outI));
+        return static_cast<float>(20.0 * std::log10(magnitude));
     }
 };
