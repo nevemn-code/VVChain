@@ -130,7 +130,7 @@ def source_assertions():
     assert 'setParameter("GRAPH_SOLO_ACTIVE", 0.f);' in cpp
     assert 'dragMode===7' in web
     assert 'state.solo.graphActive=true' in web
-    assert '?v=1.0.17' in web
+    assert '?v=1.0.18' in web
     assert 'eqYToDb(' in cpp and 'eqYToDb(' in head
     assert 'qFromWheel(' in cpp and 'qFromWheel(' in head
     assert 'function yToDb(' in web
@@ -617,8 +617,53 @@ def test_v107_ui_controls():
     assert 'analogX2Buttons' in head
 
 
+
+def test_v1018_interaction_visual_sync():
+    cpp = CPP.read_text(encoding="utf-8")
+    head = HEAD.read_text(encoding="utf-8")
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+
+    # Local LED bypass, zero-value mute and upper module bypass all feed the same grey state.
+    assert 'parameterValue("OTT_BYPASS") > 0.5f' in cpp
+    assert 'parameterValue("OTT_BAND_BYPASS" + n) > 0.5f' in cpp
+    assert 'parameterValue("ATYPE_BYPASS") > 0.5f' in cpp
+    assert 'parameterValue("ATYPE_BAND_BYPASS" + n) > 0.5f' in cpp
+    assert 'parameterValue("DEESS_BYPASS") > 0.5f' in cpp
+    assert 'moduleMuteRefreshers' in web
+    assert 'state.ott.bypass||state.ott.bandBypass[n]' in web
+    assert 'state.type.bypass||state.type.bandBypass[n]' in web
+    assert 'state.de.bypass||state.de.intensity<=0.0001' in web
+    assert '.moduleMuted{opacity:.42;filter:grayscale(1)}' in web
+    assert '.deessMuted .bandBody{opacity:.42;filter:grayscale(1)}' in web
+
+    # Main lower BYPASS label is centered above its round power button.
+    assert 'const bool monitorCard = title == "BYPASS";' in cpp
+    assert 'juce::Justification::centred' in cpp
+    assert "class='masterBypassLabel'>BYPASS</div><button class='deessPower'" in web
+
+    # Floating readout is exactly two lines and switches identity by hover target.
+    assert 'juce::String(dynamicReadout ? "DYN EQ" : "EQ")' in cpp
+    assert '"FREQ " + formatGraphFrequency(frequency)' in cpp
+    assert '"+ "  Q " + juce::String(q, 2)' in cpp
+    assert 'const dynamicReadout=!!(mask&4);' in web
+    assert 'const label=dynamicReadout?"DYN EQ":"EQ";' in web
+    hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
+    assert 'TARGET' not in hint_block and 'OFFSET' not in hint_block and 'AUTO THR' not in hint_block
+    assert hint_block.count('<div class="active">') == 2
+
+    # Right-click SOLO keeps the selected region coloured and fades outward to grey.
+    assert 'Right-click SOLO keeps the selected EQ region in full colour' in cpp
+    assert 'constexpr float colourRadius = 70.0f;' in cpp
+    assert 'Right-click SOLO: preserve full colour near the selected EQ point' in web
+    assert 'globalCompositeOperation="saturation"' in web
+    assert 'createLinearGradient' in web
+
+
+
 def main():
-    source_assertions()
+    for _ in range(50):
+        source_assertions()
+        test_v1018_interaction_visual_sync()
     test_v1016_gain_scale_10()
     test_280_design_cases()
     test_graph_roundtrip()
@@ -646,6 +691,7 @@ def main():
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
     print("PASS: 10 full simulated sessions")
+    print("PASS: 50x v1.0.18 interaction / bypass / readout / SOLO visual checks")
     print("PASS: source invariants / APVTS / graph-DYNAMICS binding")
     print("ALL Dynamic EQ UI regression tests passed")
 
