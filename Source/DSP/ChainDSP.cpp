@@ -1290,7 +1290,7 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
     //   - At 0 dB GR the original input is returned bit-for-bit.
     //   - The same LR4 crossover is used for detector and recombination.
     //   - Gain is smoothed in dB and is shared across the stereo pair.
-    if (p.deessBypass || p.deessIntensity <= 0.0f)
+    if (p.deessBypass)
     {
         deessLinkedGainDb = 0.0f;
         for (auto& state : deess)
@@ -1309,42 +1309,30 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
     {
         float attackMs;
         float releaseMs;
-        float threshold;
         float knee;
-        float maxReductionDb;
     };
 
-    // Response profiles. "Intensity" remains the user's maximum GR control,
-    // while each mode sets the response speed and the hard mastering ceiling.
+    // Response profiles. THRESHOLD is the user's trigger control.
+    // Maximum GR is a fixed internal 8 dB mastering ceiling.
     static constexpr DeEssPreset presets[4]
     {
-        { 2.50f, 120.0f, 0.22f, 0.12f, 5.5f }, // I   SAFE / SMOOTH
-        { 1.50f,  70.0f, 0.20f, 0.10f, 7.0f }, // II  MASTER / BALANCED
-        { 0.90f,  45.0f, 0.18f, 0.08f, 8.0f }, // III FAST / SILKY
-        { 0.60f,  30.0f, 0.17f, 0.07f, 8.0f }  // IV  FIRM / CONTROLLED
+        { 2.50f, 120.0f, 2.00f }, // I   SAFE / SMOOTH
+        { 1.50f,  70.0f, 1.75f }, // II  MASTER / BALANCED
+        { 0.90f,  45.0f, 1.50f }, // III FAST / SILKY
+        { 0.60f,  30.0f, 1.25f }  // IV  FIRM / CONTROLLED
     };
 
     const int modeIndex =
         juce::jlimit(1, 4, juce::roundToInt(p.deessMode)) - 1;
     const auto& preset = presets[modeIndex];
 
-    const float maxReductionDb =
-        juce::jmin(
-            preset.maxReductionDb,
-            juce::jmax(0.0f, p.deessIntensity));
+    constexpr float maxReductionDb = 8.0f;
 
-    if (maxReductionDb <= 0.0001f)
-    {
-        deessLinkedGainDb = 0.0f;
-        for (auto& state : deess)
-            state.gainDb = 0.0f;
-        return;
-    }
-
-    const float threshold =
+    const float thresholdDb =
         juce::jlimit(
-            0.05f, 0.60f,
-            preset.threshold + p.deessAverageOffset);
+            -36.0f,
+            0.0f,
+            p.deessThresholdDb + p.deessAverageOffset);
 
     const float broadbandAttack =
         timeCoeff(sr, 12.0f);
@@ -1474,14 +1462,17 @@ void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Paramete
                 std::sqrt(
                     hfPower
                     / juce::jmax(broadPower, 1.0e-12f));
+            const float relativeHfDb =
+                gainToDb(relativeHf);
 
-            const float kneeWidth =
-                juce::jmax(0.02f, preset.knee);
+            const float kneeWidthDb =
+                juce::jmax(0.25f, preset.knee);
             const float kneeT =
                 juce::jlimit(
                     0.0f,
                     1.0f,
-                    (relativeHf - threshold) / kneeWidth);
+                    (relativeHfDb - thresholdDb)
+                    / kneeWidthDb);
 
             const float trigger =
                 kneeT * kneeT * (3.0f - 2.0f * kneeT);
