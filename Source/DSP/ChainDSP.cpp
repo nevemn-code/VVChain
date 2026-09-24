@@ -437,11 +437,12 @@ void VVChainDSP::reset()
 
     for (auto& state : deess)
     {
-        state.sidechainHP.reset();
-        state.fastEnv = 0.f;
-        state.slowEnv = 0.f;
+        state.broadbandEnv = 0.f;
+        state.hfFastEnv = 0.f;
+        state.hfSlowEnv = 0.f;
         state.gainDb = 0.f;
     }
+    deessLinkedGainDb = 0.f;
 
     gateEnvDb = { 0.f, 0.f };
     limiterEnvDb = { 0.f, 0.f };
@@ -1272,102 +1273,264 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
 
 void VVChainDSP::processDeEsser(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
+    // HYBRID MASTERING DE-ESSER
+    // ------------------------------------------------------------
+    // Detector:
+    //   1) frequency-selective LR4 high-band
+    //   2) slower broadband envelope for relative-HF detection
+    //   3) fast + slow HF envelopes for stable sibilance detection
+    //   4) L/R energy-linked detector so gain reduction cannot wander by side
+    //
+    // Audio path:
+    //   lowBand + highBand * smoothedGain
+    //
+    // Design goals:
+    //   - No detector signal is ever mixed back into the audio path.
+    //   - No filter coefficients are recalculated per sample.
+    //   - At 0 dB GR the original input is returned bit-for-bit.
+    //   - The same LR4 crossover is used for detector and recombination.
+    //   - Gain is smoothed in dB and is shared across the stereo pair.
     if (p.deessBypass || p.deessIntensity <= 0.0f)
+    {
+        deessLinkedGainDb = 0.0f;
+        for (auto& state : deess)
+            state.gainDb = 0.0f;
         return;
+    }
 
     const float referenceHz =
-        juce::jlimit(6000.f, 18000.f, p.deessReferenceHz);
-    const float q = 0.70710678f;
+        juce::jlimit(6000.0f, 18000.0f, p.deessReferenceHz);
 
-    // Split-band de-essing: only the high band is gain-reduced. The low band
-    // is carried through untouched and recombined, matching the standard
-    // split-band approach used in professional de-essers.
-    updateCrossover(deessSplit, sr, referenceHz, q);
+    // Linkwitz-Riley 4th-order split: two Butterworth Q=0.707 sections.
+    constexpr float crossoverQ = 0.70710678f;
+    updateCrossover(deessSplit, sr, referenceHz, crossoverQ);
 
     struct DeEssPreset
     {
         float attackMs;
         float releaseMs;
-        float ratio;
+        float threshold;
+        float knee;
+        float maxReductionDb;
     };
 
+    // Response profiles. "Intensity" remains the user's maximum GR control,
+    // while each mode sets the response speed and the hard mastering ceiling.
     static constexpr DeEssPreset presets[4]
     {
-        { 5.0f,   120.0f, 3.0f },  // 1 SAFE / SMOOTH
-        { 2.0f,    70.0f, 4.0f },  // 2 VOCAL / BALANCED
-        { 0.75f,   35.0f, 8.0f },  // 3 FAST / TRACKING
-        { 0.25f,   20.0f, 10.0f }  // 4 HARD / AGGRESSIVE
+        { 2.50f, 120.0f, 0.22f, 0.12f, 5.5f }, // I   SAFE / SMOOTH
+        { 1.50f,  70.0f, 0.20f, 0.10f, 7.0f }, // II  MASTER / BALANCED
+        { 0.90f,  45.0f, 0.18f, 0.08f, 8.0f }, // III FAST / SILKY
+        { 0.60f,  30.0f, 0.17f, 0.07f, 8.0f }  // IV  FIRM / CONTROLLED
     };
 
     const int modeIndex =
         juce::jlimit(1, 4, juce::roundToInt(p.deessMode)) - 1;
     const auto& preset = presets[modeIndex];
 
-    const float fastAttack =
+    const float maxReductionDb =
+        juce::jmin(
+            preset.maxReductionDb,
+            juce::jmax(0.0f, p.deessIntensity));
+
+    if (maxReductionDb <= 0.0001f)
+    {
+        deessLinkedGainDb = 0.0f;
+        for (auto& state : deess)
+            state.gainDb = 0.0f;
+        return;
+    }
+
+    const float threshold =
+        juce::jlimit(
+            0.05f, 0.60f,
+            preset.threshold + p.deessAverageOffset);
+
+    const float broadbandAttack =
+        timeCoeff(sr, 12.0f);
+    const float broadbandRelease =
+        timeCoeff(sr, 180.0f);
+
+    const float hfFastAttack =
         timeCoeff(sr, preset.attackMs);
-    const float fastRelease =
+    const float hfFastRelease =
         timeCoeff(sr, preset.releaseMs);
-    const float slowAttack =
-        timeCoeff(sr, std::max(20.0f, preset.attackMs * 10.0f));
-    const float slowRelease =
-        timeCoeff(sr, std::max(80.0f, preset.releaseMs * 4.0f));
+    const float hfSlowAttack =
+        timeCoeff(sr, 8.0f);
+    const float hfSlowRelease =
+        timeCoeff(
+            sr,
+            juce::jmax(60.0f, preset.releaseMs * 1.5f));
+
     const float gainAttack =
         timeCoeff(sr, preset.attackMs);
     const float gainRelease =
         timeCoeff(sr, preset.releaseMs);
+    const float gainReleaseSlow =
+        timeCoeff(
+            sr,
+            juce::jmax(60.0f, preset.releaseMs * 1.8f));
 
-    for (int ch = 0; ch < channels; ++ch)
+    const float detectorFloor =
+        juce::Decibels::decibelsToGain(-60.0f);
+
+    const int activeChannels =
+        juce::jlimit(
+            1,
+            2,
+            std::min(buffer.getNumChannels(), channels));
+
+    for (int n = 0; n < buffer.getNumSamples(); ++n)
     {
-        auto* data = buffer.getWritePointer(ch);
-        auto& state = deess[(size_t) ch];
-        const bool right = ch == 1;
+        std::array<float, 2> lowBand { 0.0f, 0.0f };
+        std::array<float, 2> highBand { 0.0f, 0.0f };
+        std::array<float, 2> hfLevel { 0.0f, 0.0f };
+        std::array<float, 2> broadLevel { 0.0f, 0.0f };
 
-        for (int n = 0; n < buffer.getNumSamples(); ++n)
+        for (int ch = 0; ch < activeChannels; ++ch)
         {
+            auto* data = buffer.getWritePointer(ch);
+            const bool right = ch == 1;
+
             const float input = data[n];
-            const float lowBand = deessSplit.low(input, right);
-            const float highBand = deessSplit.high(input, right);
-            const float detector = std::abs(highBand);
+
+            // The crossover runs continuously so its internal states stay
+            // warm even while gain reduction is at zero.
+            lowBand[(size_t)ch] =
+                deessSplit.low(input, right);
+            highBand[(size_t)ch] =
+                deessSplit.high(input, right);
+
+            const float absInput =
+                std::abs(input);
+            const float absHigh =
+                std::abs(highBand[(size_t)ch]);
+
+            auto& state = deess[(size_t)ch];
+
+            const float broadCoeff =
+                absInput > state.broadbandEnv
+                    ? broadbandAttack
+                    : broadbandRelease;
+            state.broadbandEnv =
+                broadCoeff * state.broadbandEnv
+                + (1.0f - broadCoeff) * absInput;
 
             const float fastCoeff =
-                detector > state.fastEnv ? fastAttack : fastRelease;
-            state.fastEnv =
-                fastCoeff * state.fastEnv
-                + (1.f - fastCoeff) * detector;
+                absHigh > state.hfFastEnv
+                    ? hfFastAttack
+                    : hfFastRelease;
+            state.hfFastEnv =
+                fastCoeff * state.hfFastEnv
+                + (1.0f - fastCoeff) * absHigh;
 
             const float slowCoeff =
-                detector > state.slowEnv ? slowAttack : slowRelease;
-            state.slowEnv =
-                slowCoeff * state.slowEnv
-                + (1.f - slowCoeff) * detector;
+                absHigh > state.hfSlowEnv
+                    ? hfSlowAttack
+                    : hfSlowRelease;
+            state.hfSlowEnv =
+                slowCoeff * state.hfSlowEnv
+                + (1.0f - slowCoeff) * absHigh;
 
-            const float fastDb = gainToDb(state.fastEnv);
-            const float slowDb = gainToDb(state.slowEnv);
-            const float excessDb =
-                fastDb - slowDb - 2.0f - p.deessAverageOffset;
+            hfLevel[(size_t)ch] =
+                0.72f * state.hfFastEnv
+                + 0.28f * state.hfSlowEnv;
+            broadLevel[(size_t)ch] =
+                state.broadbandEnv;
+        }
 
-            // Ratio changes how strongly excess sibilance drives the detector:
-            // 2:1 is gentler; higher ratios approach limiter-like de-essing.
-            const float ratioShape =
-                1.f - 1.f / juce::jmax(1.1f, preset.ratio);
+        // RMS-style energy link is calculated once for the stereo pair.
+        // This yields one shared GR value for both channels.
+        float hfPower = 0.0f;
+        float broadPower = 0.0f;
+        for (int ch = 0; ch < activeChannels; ++ch)
+        {
+            const float hf =
+                hfLevel[(size_t)ch];
+            const float broad =
+                broadLevel[(size_t)ch];
+
+            hfPower += hf * hf;
+            broadPower += broad * broad;
+        }
+
+        const float invChannels =
+            1.0f / static_cast<float>(activeChannels);
+        hfPower *= invChannels;
+        broadPower *= invChannels;
+
+        const float linkedHf =
+            std::sqrt(juce::jmax(0.0f, hfPower));
+        const float linkedBroad =
+            std::sqrt(juce::jmax(0.0f, broadPower));
+
+        float targetGR = 0.0f;
+
+        if (linkedBroad > detectorFloor
+            && linkedHf > 1.0e-5f)
+        {
+            const float relativeHf =
+                linkedHf
+                / juce::jmax(linkedBroad, 1.0e-6f);
+
+            const float kneeWidth =
+                juce::jmax(0.02f, preset.knee);
+            const float kneeT =
+                juce::jlimit(
+                    0.0f,
+                    1.0f,
+                    (relativeHf - threshold) / kneeWidth);
+
             const float trigger =
-                juce::jlimit(0.f, 1.f,
-                    (excessDb / 6.f) * ratioShape);
+                kneeT * kneeT * (3.0f - 2.0f * kneeT);
 
-            const float targetReductionDb =
-                juce::jlimit(0.f, 8.f, p.deessIntensity) * trigger;
+            targetGR =
+                -maxReductionDb * trigger;
+        }
 
-            const float gainCoeff =
-                targetReductionDb > state.gainDb
-                    ? gainAttack
-                    : gainRelease;
+        // Deep reduction gets a somewhat longer release. Both coefficients are
+        // precomputed, so there is no per-sample exp()/pow()/tan() rebuild.
+        const float depth =
+            juce::jlimit(
+                0.0f,
+                1.0f,
+                std::abs(deessLinkedGainDb)
+                / juce::jmax(maxReductionDb, 1.0e-6f));
 
-            state.gainDb =
-                gainCoeff * state.gainDb
-                + (1.f - gainCoeff) * targetReductionDb;
+        const float releaseCoeff =
+            gainRelease
+            + (gainReleaseSlow - gainRelease) * depth;
 
+        const float gainCoeff =
+            targetGR < deessLinkedGainDb
+                ? gainAttack
+                : releaseCoeff;
+
+        deessLinkedGainDb =
+            gainCoeff * deessLinkedGainDb
+            + (1.0f - gainCoeff) * targetGR;
+
+        deessLinkedGainDb =
+            juce::jlimit(
+                -maxReductionDb,
+                0.0f,
+                deessLinkedGainDb);
+
+        for (int ch = 0; ch < activeChannels; ++ch)
+            deess[(size_t)ch].gainDb = deessLinkedGainDb;
+
+        if (deessLinkedGainDb > -0.001f)
+            continue;
+
+        const float gainLinear =
+            dbToGain(deessLinkedGainDb);
+
+        for (int ch = 0; ch < activeChannels; ++ch)
+        {
+            auto* data = buffer.getWritePointer(ch);
             data[n] =
-                lowBand + highBand * dbToGain(-state.gainDb);
+                lowBand[(size_t)ch]
+                + highBand[(size_t)ch] * gainLinear;
         }
     }
 }
