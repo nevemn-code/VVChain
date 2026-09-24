@@ -2683,14 +2683,15 @@ void VVChainAudioProcessorEditor::showFloatingValueBoxForBand(
         juce::String(displayedGain >= 0.0f ? "+" : "")
         + juce::String(displayedGain, 2) + " dB";
 
-    // The node label lives beside the frequency; one value per short line.
+    // Compact graph readout: values only.
+    // EQ and Dynamic EQ share the same presentation; the supplied gain value
+    // still comes from the correct static or dynamic target.
+    juce::ignoreUnused(dynamicReadout);
     const juce::String shortFrequency = frequency >= 1000.f
         ? juce::String(frequency / 1000.f, 2) + " kHz"
         : juce::String(frequency, 2) + " Hz";
-    const juce::String line1 =
-        juce::String(dynamicReadout ? "DYN EQ" : "EQ")
-        + "  " + shortFrequency;
-    const juce::String line2 = "GAIN " + signedDb;
+    const juce::String line1 = signedDb;
+    const juce::String line2 = shortFrequency;
     const juce::String line3 = "Q " + juce::String(q, 3);
 
     floatingValueBox.updateInfo(
