@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.38
+// VVChain Web AudioWorklet DSP module · v1.0.42
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -6,6 +6,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     this.N=512;
     this.masterBlend=0;
     this.soloBlend=0;
+    this.deessLinkedGain=0;
     this._lastSoloBand=-9;
     this._lastSoloPost=false;
     this._meterBlocks=0;
@@ -40,7 +41,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       analogPrev:[0,0,0,0], analogDc:[0,0,0,0], analogPower:[0,0,0,0],
       analogLp:[0,0,0], lp:[0,0,0], typeLp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,
       lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0],
-      deHp:{z1:0,z2:0}, deHp2:{z1:0,z2:0}, deFast:0, deSlow:0, deGain:0, soloPre:[0,0,0], soloPost:[0,0,0], graphSoloPre:{z1:0,z2:0}, graphSoloPost:{z1:0,z2:0}
+      deLp:{z1:0,z2:0}, deLp2:{z1:0,z2:0}, deHp:{z1:0,z2:0}, deHp2:{z1:0,z2:0}, deBroad:0, deHfFast:0, deHfSlow:0, deGain:0, soloPre:[0,0,0], soloPost:[0,0,0], graphSoloPre:{z1:0,z2:0}, graphSoloPost:{z1:0,z2:0}
     };
   }
   clamp(v,a,b){return Math.max(a,Math.min(b,v))}
@@ -79,6 +80,12 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const w=2*Math.PI*this.clamp(f,10,sampleRate*.45)/sampleRate;
     const sn=Math.sin(w),cc=Math.cos(w),a=sn/(2*Math.max(.1,q));
     const b0=sn/2,b1=0,b2=-sn/2,a0=1+a,a1=-2*cc,a2=1-a;
+    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]
+  }
+  lp(f,q=.707){
+    const w=2*Math.PI*this.clamp(f,10,sampleRate*.45)/sampleRate;
+    const a=Math.sin(w)/(2*Math.max(.1,q)),cc=Math.cos(w);
+    const b0=(1-cc)/2,b1=1-cc,b2=(1-cc)/2,a0=1+a,a1=-2*cc,a2=1-a;
     return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]
   }
   hp(f,q=.707){
@@ -189,30 +196,93 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const protectedSaturated=Math.sign(u||1)*Math.max(Math.abs(saturated),Math.abs(u));
     return x+(protectedSaturated-u)*this.clamp(x2,1,2);
   }
-  deessSample(x,c,coef){
+  deessStereo(l,r,stereo,coef){
     const st=this.s.de;
-    if(st.bypass||Number(st.intensity||0)<=0)return x;
-    const high1=this.biquad(x,coef,c.deHp),high=this.biquad(high1,coef,c.deHp2);
-    const low=x-high,sc=Math.abs(high);
+    if(st.bypass||Number(st.intensity||0)<=0){
+      this.deessLinkedGain=0;
+      this.ch[0].deGain=0; this.ch[1].deGain=0;
+      return[l,r];
+    }
+
     const modes=[
-      {attack:5,release:120,ratio:3},
-      {attack:2,release:70,ratio:4},
-      {attack:.75,release:35,ratio:8},
-      {attack:.25,release:20,ratio:10}
+      {attack:2.5,release:120,threshold:.22,knee:.12,maxReduction:5.5},
+      {attack:1.5,release:70,threshold:.20,knee:.10,maxReduction:7.0},
+      {attack:.9,release:45,threshold:.18,knee:.08,maxReduction:8.0},
+      {attack:.6,release:30,threshold:.17,knee:.07,maxReduction:8.0}
     ];
     const mode=Math.max(0,Math.min(3,Math.round(Number(st.mode||2))-1));
     const preset=modes[mode];
-    const fa=sc>c.deFast?this.tc(preset.attack):this.tc(preset.release);
-    c.deFast=fa*c.deFast+(1-fa)*sc;
-    const sa=sc>c.deSlow?this.tc(Math.max(20,preset.attack*10)):this.tc(Math.max(80,preset.release*4));
-    c.deSlow=sa*c.deSlow+(1-sa)*sc;
-    const excess=this.g2db(Math.max(c.deFast,1e-9))-this.g2db(Math.max(c.deSlow,1e-9))-2-Number(st.offset||0);
-    const ratioShape=1-1/Math.max(1.1,preset.ratio);
-    const red=this.clamp(
-      Number(st.intensity||0)*this.clamp((excess/6)*ratioShape,0,1),0,8);
-    const ga=red>c.deGain?this.tc(preset.attack):this.tc(preset.release);
-    c.deGain=ga*c.deGain+(1-ga)*red;
-    return low+high*this.db2g(-c.deGain);
+    const maxReduction=Math.min(preset.maxReduction,Math.max(0,Number(st.intensity||0)));
+    if(maxReduction<=1e-4){
+      this.deessLinkedGain=0;
+      return[l,r];
+    }
+
+    const threshold=this.clamp(preset.threshold+Number(st.offset||0),.05,.60);
+    const broadAttack=this.tc(12), broadRelease=this.tc(180);
+    const hfFastAttack=this.tc(preset.attack), hfFastRelease=this.tc(preset.release);
+    const hfSlowAttack=this.tc(8), hfSlowRelease=this.tc(Math.max(60,preset.release*1.5));
+    const gainAttack=this.tc(preset.attack), gainRelease=this.tc(preset.release);
+    const gainReleaseSlow=this.tc(Math.max(60,preset.release*1.8));
+    const detectorFloor=this.db2g(-60);
+
+    const count=stereo?2:1;
+    const inputs=stereo?[l,r]:[l];
+    const hf=[0,0], broad=[0,0], low=[0,0], high=[0,0];
+
+    for(let ch=0;ch<count;ch++){
+      const x=inputs[ch]||0, state=this.ch[ch];
+      const lp1=this.biquad(x,coef.lp,state.deLp);
+      low[ch]=this.biquad(lp1,coef.lp,state.deLp2);
+      const hp1=this.biquad(x,coef.hp,state.deHp);
+      high[ch]=this.biquad(hp1,coef.hp,state.deHp2);
+
+      const absInput=Math.abs(x), absHigh=Math.abs(high[ch]);
+      const bc=absInput>state.deBroad?broadAttack:broadRelease;
+      state.deBroad=bc*state.deBroad+(1-bc)*absInput;
+      const fc=absHigh>state.deHfFast?hfFastAttack:hfFastRelease;
+      state.deHfFast=fc*state.deHfFast+(1-fc)*absHigh;
+      const sc=absHigh>state.deHfSlow?hfSlowAttack:hfSlowRelease;
+      state.deHfSlow=sc*state.deHfSlow+(1-sc)*absHigh;
+
+      hf[ch]=.72*state.deHfFast+.28*state.deHfSlow;
+      broad[ch]=state.deBroad;
+    }
+
+    let hfPower=0,broadPower=0;
+    for(let ch=0;ch<count;ch++){
+      hfPower+=hf[ch]*hf[ch];
+      broadPower+=broad[ch]*broad[ch];
+    }
+    hfPower/=count; broadPower/=count;
+
+    let targetGR=0;
+    const floorPower=detectorFloor*detectorFloor;
+    if(broadPower>floorPower&&hfPower>1e-10){
+      const relativeHf=Math.sqrt(hfPower/Math.max(broadPower,1e-12));
+      const kneeWidth=Math.max(.02,preset.knee);
+      const kneeT=this.clamp((relativeHf-threshold)/kneeWidth,0,1);
+      const trigger=kneeT*kneeT*(3-2*kneeT);
+      targetGR=-maxReduction*trigger;
+    }
+
+    const depth=this.clamp(Math.abs(this.deessLinkedGain)/Math.max(maxReduction,1e-6),0,1);
+    const releaseCoeff=gainRelease+(gainReleaseSlow-gainRelease)*depth;
+    const gainCoeff=targetGR<this.deessLinkedGain?gainAttack:releaseCoeff;
+    this.deessLinkedGain=gainCoeff*this.deessLinkedGain+(1-gainCoeff)*targetGR;
+    this.deessLinkedGain=this.clamp(this.deessLinkedGain,-maxReduction,0);
+
+    this.ch[0].deGain=this.deessLinkedGain;
+    this.ch[1].deGain=this.deessLinkedGain;
+
+    if(this.deessLinkedGain>-0.001)
+      return[l,r];
+
+    const g=this.db2g(this.deessLinkedGain);
+    const yL=low[0]+high[0]*g;
+    if(!stereo)return[yL,r];
+    const yR=low[1]+high[1]*g;
+    return[yL,yR];
   }
   zoneBands(x,c,which,xs){
     const lp=c[which];
@@ -342,14 +412,24 @@ class VVChainWorklet extends AudioWorkletProcessor {
       this.port.postMessage({type:"ready"});
     }
     const L=inp[0],R=inp[1]||inp[0],stereo=inp.length>1;
-    const deCoef=this.hp(this.clamp(Number(this.s.de.freq||8000),6000,18000));
+    const deFreq=this.clamp(Number(this.s.de.freq||7500),6000,18000);
+    const deCoef={
+      lp:this.lp(deFreq,.70710678118),
+      hp:this.hp(deFreq,.70710678118)
+    };
     const mix=this.clamp((this.s.mix.bypass?100:this.s.mix.drywet)/100,0,1),og=this.db2g(this.clamp(this.s.mix.output,-24,12));
     const soloBand=Number(this.s.solo?.band??-1),graphSolo=!!this.s.solo?.graphActive,soloEnabled=graphSolo||(soloBand>=0&&soloBand<4),xs=this.s.ott.x;
     for(let n=0;n<out[0].length;n++){
       const l=L[n]||0,r=R[n]||0;
       const dyn=this.dynamicStereo(l,r,stereo);
-      let yL=this.deessSample(this.sample(dyn[0],0),this.ch[0],deCoef);
-      let yR=this.deessSample(this.sample(dyn[1],1),this.ch[1],deCoef);
+      const deOut=this.deessStereo(
+        this.sample(dyn[0],0),
+        this.sample(dyn[1],1),
+        stereo,
+        deCoef
+      );
+      let yL=deOut[0];
+      let yR=deOut[1];
       yL=(l+mix*(yL-l))*og;yR=(r+mix*(yR-r))*og;
       if(this.s.solo && Number(this.s.solo.band)!==this._lastSoloBand){this.soloBlend=0;this._lastSoloBand=Number(this.s.solo.band)}
       if(this.s.solo && !!this.s.solo.post!==this._lastSoloPost){this.soloBlend=0;this._lastSoloPost=!!this.s.solo.post}
