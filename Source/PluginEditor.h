@@ -434,9 +434,9 @@ private:
     std::array<std::unique_ptr<juce::ToggleButton>, 4> analogBypassButtons;
     std::array<std::unique_ptr<BoolAttachment>, 4> analogBypassAttachments;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> soloButtons;
-    std::array<std::unique_ptr<juce::ToggleButton>, 4> dynDetectButtons;
+    std::array<std::unique_ptr<juce::Slider>, 4> dynDetectSliders;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> dynTriggerButtons;
-    std::array<std::unique_ptr<BoolAttachment>, 4> dynDetectAttachments;
+    std::array<std::unique_ptr<Attachment>, 4> dynDetectAttachments;
     std::array<std::unique_ptr<BoolAttachment>, 4> dynTriggerAttachments;
     std::unique_ptr<juce::ToggleButton> soloModeButton;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> atypeBandBypassButtons;
@@ -456,6 +456,7 @@ private:
     int dragOverlapXover = -1;
     int dragDynamicMsBand = -1;
     int dragDynamicHandleBand = -1;
+    int rightSoloBand = -1;
     int hoverDynamicBand = -1;
     int hoverXover = -1;
     float dynamicGainDragStartY = 0.0f;
