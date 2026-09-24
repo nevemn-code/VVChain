@@ -5,6 +5,7 @@
 #include <array>
 #include <complex>
 #include <atomic>
+#include "VVChain_AnalogADAA_v2.h"
 
 class VVChainDSP
 {
@@ -260,7 +261,8 @@ private:
     static float timeCoeff(double sampleRate, float ms) noexcept;
     void processAnalogColor(juce::dsp::AudioBlock<float>& block,
                                 float drive, float amount,
-                                float colourMultiplier = 1.0f);
+                                float colourMultiplier,
+                                size_t band);
 
     static float rmsDetectPDR(float input,
                                float& fastPower,
@@ -332,6 +334,12 @@ private:
 
     // Feed-forward detector source shared by all four Dynamic EQ bands.
     juce::AudioBuffer<float> dynamicDetectorInput;
+
+    // One nonlinear ADAA state per Analog band/channel.
+    std::array<std::array<VVChain_AnalogADAA_v2, 2>, 4> analogADAA {};
+    // Shared smoothed alpha trajectory per band; L/R consume the same value.
+    std::array<double, 4> analogAlpha {};
+    std::array<bool, 4> analogAlphaInitialized { false, false, false, false };
 
     // Reusable scratch for allocation-free four-band ANALOG.
     Crossover4th analogXover1 {};

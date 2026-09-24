@@ -1,183 +1,57 @@
 import numpy as np
 
-# ANALOG v1.0.18 reference:
-# smooth odd-symmetric algebraic saturation with |x|=1 unity normalization.
-# User control is limited to 0-60%; 0% is exact dry; X2 doubles only the generated ANALOG delta.
+def static_transfer(x, amount, solid_state):
+    x=np.asarray(x,dtype=np.float64); amount=float(np.clip(amount,0.0,0.60))
+    if amount<=0.0:return x.copy()
+    alpha=amount*(1.80 if solid_state else 1.55); norm=(1.0+alpha)**0.25
+    u=np.clip(x,-1.0,1.0)
+    return u/(1.0+alpha*u*u)**0.25*norm
 
-def process_reference(x, drive, amount, colour_multiplier=1.0):
-    x = np.asarray(x, dtype=np.float64)
-    amount = float(np.clip(amount, 0.0, 1.0))
-    colour_multiplier = float(np.clip(colour_multiplier, 1.0, 2.0))
+def adaa_reference(x, amount, solid_state):
+    x=np.asarray(x,dtype=np.float64); amount=float(np.clip(amount,0.0,0.60))
+    if x.size==0 or amount<=0.0:return x.copy()
+    alpha=amount*(1.80 if solid_state else 1.55); norm=(1.0+alpha)**0.25
+    def f(v):return v/(1.0+alpha*v*v)**0.25*norm
+    def F(v):return (2.0/(3.0*alpha))*((1.0+alpha*v*v)**0.75-1.0)*norm
+    shaped=np.clip(x,-1.0,1.0);y=np.empty_like(shaped);prev=0.0;has=False
+    for i,sample in enumerate(shaped):
+        if not has:out=f(sample);has=True
+        else:
+            d=sample-prev;out=f(0.5*(sample+prev)) if abs(d)<1e-7 else (F(sample)-F(prev))/d
+        y[i]=out;prev=sample
+    return y
 
-    if x.size == 0 or amount <= 0.0:
-        return x.copy()
-
-    solid_state = float(drive) > 1.0
-    mode_alpha = 1.80 if solid_state else 1.55
-    alpha = amount * mode_alpha
-    unity_norm = (1.0 + alpha) ** 0.25
-
-    u = np.clip(x, -1.0, 1.0)
-    denominator = np.sqrt(np.sqrt(1.0 + alpha * u * u))
-    saturated = (u / denominator) * unity_norm
-    protected = np.sign(np.where(u == 0.0, 1.0, u)) * np.maximum(np.abs(saturated), np.abs(u))
-    return x + (protected - u) * colour_multiplier
-
-
-def static_native_guard():
-    from pathlib import Path
-
-    source = Path("Source/DSP/ChainDSP.cpp").read_text(encoding="utf-8")
-    start = source.index("void VVChainDSP::processAnalogColor")
-    end = source.index("void VVChainDSP::prepare", start)
-    core = source[start:end]
-
-    required = [
-        "const bool solidState = drive > 1.0f;",
-        "const double modeAlpha = solidState ? 1.80 : 1.55;",
-        "const double unityNorm = std::pow(1.0 + alpha, 0.25);",
-        "const double u = juce::jlimit(-1.0, 1.0, x);",
-        "protectedSaturated",
-        "x + (protectedSaturated - u)",
-        "safeColourMultiplier",
-    ]
-
-    for marker in required:
-        assert marker in core, f"missing v1.0.18 Analog marker: {marker}"
-
-    apply_start = source.index("void VVChainDSP::applyEq")
-    apply_end = source.index("void VVChainDSP::applyOtt", apply_start)
-    apply = source[apply_start:apply_end]
-    assert apply.count("processAnalogColor(") == 1
-    assert "p.eqColorSolidState[band] ? 1.15f : 0.95f" in apply
-    assert "juce::jlimit(0.f, 60.f, p.eqColor[band]) / 100.f" in apply
-    assert "p.eqColorX2[band] ? 2.0f : 1.0f" in apply
-    assert "juce::jlimit(1.0f, 2.0f, colourMultiplier)" in core
-
+def analog_reference(x,amount,solid_state,x2=1.0):
+    x=np.asarray(x,dtype=np.float64);amount=float(np.clip(amount,0.0,0.60));x2=float(np.clip(x2,1.0,2.0))
+    if amount<=0.0:return x.copy()
+    shaped=np.clip(x,-1.0,1.0);return x+(adaa_reference(x,amount,solid_state)-shaped)*x2
 
 def run():
-    static_native_guard()
-
-    rng = np.random.default_rng(20260924)
-    sample_rates = [44100.0, 48000.0, 88200.0, 96000.0]
-
-    max_stereo_error = 0.0
-    max_output = 0.0
-    max_dc = 0.0
-    min_tt_ss_delta = np.inf
-    max_finite_error = 0.0
-    max_shrink = 0.0
-
+    from pathlib import Path
+    cpp=Path("Source/DSP/ChainDSP.cpp").read_text(encoding="utf-8");h=Path("Source/DSP/ChainDSP.h").read_text(encoding="utf-8");ah=Path("Source/DSP/VVChain_AnalogADAA_v2.h").read_text(encoding="utf-8")
+    for marker in ('#include "VVChain_AnalogADAA_v2.h"',"const double modeAlpha = solidState ? 1.80 : 1.55;","const double shapingInput = juce::jlimit(-1.0, 1.0, x);","analogADAA[band][ch].processSample","const double delta = saturated - shapingInput","x + delta * static_cast<double>(safeColourMultiplier)","constexpr double kSmoothingMs = 0.25;"):assert marker in cpp,marker
+    assert "std::array<std::array<VVChain_AnalogADAA_v2, 2>, 4> analogADAA" in h
+    for marker in ("calcAntiderivative","m_hasPrev","std::sqrt(std::sqrt(1.0 + alpha))","(u075 - 1.0)"):assert marker in ah,marker
+    rng=np.random.default_rng(20260924);rates=[44100.0,48000.0,88200.0,96000.0];min_tt_ss=np.inf;max_out=0.0
     for case in range(500):
-        fs = sample_rates[case % len(sample_rates)]
-        amount = 0.60 * (((case * 37) % 1001) / 1000.0)
-        drive = 0.95 if (case & 1) == 0 else 1.15
+        fs=rates[case%4];amount=.60*(((case*37)%1001)/1000.0);ss=bool(case&1);n=8192;t=np.arange(n)/fs;freq=20+((case*43)%int(min(18000,fs*.4)));amp=.02+.95*((case*71)%1000)/999
+        kind=case%5
+        if kind==0:x=amp*np.sin(2*np.pi*freq*t)
+        elif kind==1:
+            f2=min(freq*1.73,fs*.45);x=.72*amp*np.sin(2*np.pi*freq*t+.17)+.21*amp*np.sin(2*np.pi*f2*t+.91)
+        elif kind==2:x=.35*amp*rng.standard_normal(n)
+        elif kind==3:x=amp*np.sign(np.sin(2*np.pi*freq*t))
+        else:x=amp*np.linspace(-1,1,n)
+        y=analog_reference(x,amount,ss);assert np.all(np.isfinite(y));max_out=max(max_out,float(np.max(np.abs(y))))
+        if amount==0.0:assert np.array_equal(y,x)
+        p=np.linspace(-1,1,4097);sy=static_transfer(p,amount,ss)
+        if amount>0:assert np.min(np.abs(sy)-np.abs(p))>=-1e-12;assert np.max(np.abs(static_transfer(np.array([-1.,0.,1.]),amount,ss)-np.array([-1.,0.,1.])))<=1e-12
+        tt=analog_reference(x,max(amount,.01),False);ssy=analog_reference(x,max(amount,.01),True);min_tt_ss=min(min_tt_ss,float(np.max(np.abs(tt-ssy))))
+        b=analog_reference(x[:1024],amount,ss,1);z=analog_reference(x[:1024],amount,ss,2);assert np.max(np.abs((z-x[:1024])-(b-x[:1024])*2))<1e-9
+        pair=np.concatenate([x,-x]);yp=analog_reference(pair,amount,ss);assert np.max(np.abs(yp[:n]+yp[n:]))<1e-9
+    for ss in (False,True):
+        amount=.60;alpha=amount*(1.80 if ss else 1.55);norm=(1+alpha)**.25;x=.437;direct=x/(1+alpha*x*x)**.25*norm;assert abs(adaa_reference(np.array([x]),amount,ss)[0]-direct)<1e-12
+    assert min_tt_ss>1e-7
+    print(f"PASS ANALOG v1.0.45 500-case matrix: cases=500, min_tt_ss_delta={min_tt_ss:.3e}, max_output={max_out:.6f}")
 
-        n = 8192
-        t = np.arange(n, dtype=np.float64) / fs
-        freq = 20.0 + ((case * 43) % int(min(18000, fs * 0.40)))
-        amp = 0.02 + 0.95 * ((case * 71) % 1000) / 999.0
-
-        kind = case % 5
-        if kind == 0:
-            x = amp * np.sin(2.0 * np.pi * freq * t)
-        elif kind == 1:
-            f2 = min(freq * 1.73, fs * 0.45)
-            x = (
-                0.72 * amp * np.sin(2.0 * np.pi * freq * t + 0.17)
-                + 0.21 * amp * np.sin(2.0 * np.pi * f2 * t + 0.91)
-            )
-        elif kind == 2:
-            x = 0.35 * amp * rng.standard_normal(n)
-        elif kind == 3:
-            x = amp * np.sign(np.sin(2.0 * np.pi * freq * t))
-        else:
-            x = amp * np.linspace(-1.0, 1.0, n)
-
-        y = process_reference(x, drive, amount)
-        assert np.all(np.isfinite(y)), f"non-finite output in case {case}"
-
-        # 0% must be bit-transparent.
-        if amount == 0.0:
-            assert np.array_equal(y, x)
-
-        # In the documented -1..+1 input domain, ANALOG must never shrink
-        # sample magnitude as the control is increased.
-        mask = np.abs(x) <= 1.0
-        if np.any(mask):
-            shrink = np.abs(x[mask]) - np.abs(y[mask])
-            max_shrink = max(max_shrink, float(np.max(shrink)))
-            assert np.max(shrink) <= 1.0e-12
-
-        # Stereo/channel determinism.
-        right_input = np.roll(x, (case * 13) % n)
-        left = process_reference(x, drive, amount)
-        right = process_reference(right_input, drive, amount)
-        left_again = process_reference(x, drive, amount)
-        right_again = process_reference(right_input, drive, amount)
-        max_stereo_error = max(
-            max_stereo_error,
-            float(np.max(np.abs(left-left_again))),
-            float(np.max(np.abs(right-right_again))),
-        )
-
-        tt = process_reference(x, 0.95, max(amount, 0.01))
-        ss = process_reference(x, 1.15, max(amount, 0.01))
-        min_tt_ss_delta = min(
-            min_tt_ss_delta,
-            float(np.max(np.abs(tt - ss))),
-        )
-
-        max_output = max(max_output, float(np.max(np.abs(y))))
-        max_dc = max(max_dc, abs(float(np.mean(y))))
-        max_finite_error = max(
-            max_finite_error,
-            float(np.max(np.abs(y[~np.isfinite(y)])))
-            if np.any(~np.isfinite(y)) else 0.0,
-        )
-
-    # Increasing ANALOG amount must not make any sample smaller.
-    monotonic_probe = np.linspace(-0.99, 0.99, 4097)
-    for drive in (0.95, 1.15):
-        prev = np.abs(monotonic_probe)
-        for amount in np.linspace(0.0, 0.60, 41):
-            cur = np.abs(process_reference(monotonic_probe, drive, amount))
-            assert np.min(cur - prev) >= -1.0e-12
-            prev = cur
-
-    # Boundary guarantees.
-    for drive in (0.95, 1.15):
-        for amount in np.linspace(0.0, 0.60, 51):
-            edge = np.array([-1.0, 0.0, 1.0])
-            out = process_reference(edge, drive, amount)
-            assert np.max(np.abs(out-edge)) < 1.0e-12
-
-    # X2 still multiplies only the generated delta.
-    probe = np.array([-0.75, -0.25, 0.0, 0.25, 0.75], dtype=np.float64)
-    base = process_reference(probe, 1.15, 0.37, 1.0)
-    x2 = process_reference(probe, 1.15, 0.37, 2.0)
-    assert np.max(np.abs((x2-probe) - (base-probe)*2.0)) < 1e-12
-
-    # Odd symmetry => no algorithmic DC bias.
-    odd_probe = np.linspace(-1.0, 1.0, 10001)
-    odd_out = process_reference(odd_probe, 1.15, 0.60)
-    assert np.max(np.abs(odd_out + odd_out[::-1])) < 1e-12
-
-    assert max_stereo_error < 1.0e-15
-    assert min_tt_ss_delta > 1.0e-7
-    assert max_finite_error == 0.0
-    assert max_shrink <= 1.0e-12
-    assert np.isfinite(max_output)
-    assert np.isfinite(max_dc)
-
-    print(
-        "PASS ANALOG v1.0.18 500-case matrix: "
-        f"cases=500, stereo_error={max_stereo_error:.3e}, "
-        f"min_tt_ss_delta={min_tt_ss_delta:.3e}, "
-        f"max_output={max_output:.6f}, max_dc={max_dc:.6f}, "
-        f"max_shrink={max_shrink:.3e}"
-    )
-
-
-if __name__ == "__main__":
-    run()
+if __name__=="__main__":run()

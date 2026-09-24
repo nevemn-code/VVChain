@@ -39,6 +39,8 @@ assert not (ROOT / "docs" / "legacy analog-copper.html").exists()
 assert "×1.6" not in rules + root_rules
 assert "x1.6" not in (rules + root_rules).lower()
 assert "delta ×2" in root_rules
+assert "analytical first-order ADAA" in rules
+assert "ADAA state" in rules
 
 assert "github.run_id" not in build
 assert "vvchain-win-vst3-juce-9.0.2-vs2026-v1" in build

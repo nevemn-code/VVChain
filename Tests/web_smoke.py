@@ -76,7 +76,8 @@ for token in required_html:
 required_worklet = [
     "registerProcessor",
     "tptBell",
-    "analog(x,a,ss,ch,b,x2=1)",
+    "analog(x,alpha,ch,b,x2=1)",
+    "analytical first-order ADAA",
     "colorX2?.[b]?2:1",
 ]
 for token in required_worklet:

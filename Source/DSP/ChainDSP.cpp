@@ -259,59 +259,68 @@ void VVChainDSP::processAnalogColor(
     juce::dsp::AudioBlock<float>& block,
     float drive,
     float amount,
-    float colourMultiplier)
+    float colourMultiplier,
+    size_t band)
 {
-    if (amount <= 0.0f || block.getNumSamples() == 0)
+    if (block.getNumSamples() == 0 || band >= 4)
         return;
 
-    const auto numSamples = block.getNumSamples();
-    const float safeAmount = juce::jlimit(0.0f, 1.0f, amount);
+    const float safeAmount = juce::jlimit(0.0f, 0.60f, amount);
     const float safeColourMultiplier =
         juce::jlimit(1.0f, 2.0f, colourMultiplier);
 
-    // v1.0.16 smooth zero-phase algebraic saturation with hard no-shrink guard.
-    // Raw y=x/(1+alpha*x^2)^(1/4) attenuates full-scale samples, so normalize
-    // at |x|=1.0 before mixing the delta back. This keeps 0% bit-transparent,
-    // preserves odd symmetry/DC=0, and prevents ANALOG amount from shrinking
-    // the signal simply because the saturation curve bends.
     const bool solidState = drive > 1.0f;
     const double modeAlpha = solidState ? 1.80 : 1.55;
-    const double alpha =
+    const double targetAlpha =
         static_cast<double>(safeAmount) * modeAlpha;
-    const double unityNorm = std::pow(1.0 + alpha, 0.25);
+    const auto mode =
+        solidState ? VVChain_AnalogADAA_v2::Mode::SS
+                   : VVChain_AnalogADAA_v2::Mode::TT;
 
-    for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
+    constexpr double kSmoothingMs = 0.25;
+    const double osRate = std::max(8000.0, sr * 4.0);
+    const double smoothingCoeff =
+        std::exp(-1.0 / (0.001 * kSmoothingMs * osRate));
+
+    for (size_t ch = 0; ch < block.getNumChannels() && ch < 2; ++ch)
+        analogADAA[band][ch].setMode(mode);
+
+    if (safeAmount <= 0.000001f)
     {
-        auto* channelData = block.getChannelPointer(ch);
+        analogAlpha[band] = 0.0;
+        analogAlphaInitialized[band] = true;
+        for (size_t ch = 0; ch < block.getNumChannels() && ch < 2; ++ch)
+            analogADAA[band][ch].resetState();
+        return;
+    }
 
-        for (size_t i = 0; i < numSamples; ++i)
+    if (!analogAlphaInitialized[band])
+    {
+        analogAlpha[band] = targetAlpha;
+        analogAlphaInitialized[band] = true;
+    }
+
+    for (size_t i = 0; i < block.getNumSamples(); ++i)
+    {
+        analogAlpha[band] +=
+            (targetAlpha - analogAlpha[band]) * (1.0 - smoothingCoeff);
+
+        for (size_t ch = 0; ch < block.getNumChannels() && ch < 2; ++ch)
         {
-            const double x = static_cast<double>(channelData[i]);
-            const double u = juce::jlimit(-1.0, 1.0, x);
-            const double denominator =
-                std::sqrt(std::sqrt(1.0 + alpha * u * u));
+            auto* data = block.getChannelPointer(ch);
+            const double x = static_cast<double>(data[i]);
+            const double shapingInput = juce::jlimit(-1.0, 1.0, x);
             const double saturated =
-                (u / denominator) * unityNorm;
-
-            // Hard no-shrink guard: ANALOG is colour, not a level reducer.
-            // Preserve sign/odd symmetry while guaranteeing that increasing
-            // COLOR cannot reduce instantaneous magnitude in the shaping domain.
-            const double protectedSaturated =
-                std::copysign(
-                    std::max(std::abs(saturated), std::abs(u)),
-                    u);
-
-            // The shaping domain is exactly the documented -1..+1 range.
-            // Outside it the delta naturally becomes zero at the clamp edge,
-            // so oversampled/intermediate peaks are never attenuated.
-            channelData[i] =
-                static_cast<float>(
-                    x + (protectedSaturated - u)
-                        * static_cast<double>(safeColourMultiplier));
+                analogADAA[band][ch].processSample(
+                    shapingInput, analogAlpha[band]);
+            const double delta = saturated - shapingInput;
+            const double output =
+                x + delta * static_cast<double>(safeColourMultiplier);
+            data[i] = static_cast<float>(
+                std::isfinite(output) ? output : x);
         }
     }
 }
-
 void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels)
 {
     sr = std::max(8000.0, sampleRate);
@@ -408,6 +417,12 @@ void VVChainDSP::reset()
         b.downRmsPower = { 0.f, 0.f };
         b.downSlowRmsPower = { 0.f, 0.f };
     }
+
+    for (auto& bandState : analogADAA)
+        for (auto& channelState : bandState)
+            channelState.resetState();
+    analogAlpha = { 0.0, 0.0, 0.0, 0.0 };
+    analogAlphaInitialized = { false, false, false, false };
 
     analogXover1.reset();
     analogXover2.reset();
@@ -922,26 +937,21 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     }
 
-    // ANALOG COLOR v1.0.16: keep the same processing order and controls,
-    // but use unity-normalized smooth algebraic saturation so increasing
-    // ANALOG does not reduce full-scale level. X2 increases saturation depth.
+    // ANALOG COLOR v1.0.45: normalized algebraic transfer + analytical
+    // first-order ADAA inside the existing 4x EQ oversampler.
     for (size_t band = 0; band < 4; ++band)
     {
-        if (p.eqColorGlobalBypass || p.eqColorBypass[band])
-            continue;
-
-        const float amount =
-            juce::jlimit(0.f, 60.f, p.eqColor[band]) / 100.f;
-        if (amount <= 0.000001f)
-            continue;
-
+        const bool bypass =
+            p.eqColorGlobalBypass || p.eqColorBypass[band];
+        const float amount = bypass
+            ? 0.0f
+            : juce::jlimit(0.0f, 60.0f, p.eqColor[band]) / 100.0f;
         const float drive =
             p.eqColorSolidState[band] ? 1.15f : 0.95f;
         const float x2Multiplier =
             p.eqColorX2[band] ? 2.0f : 1.0f;
-
         processAnalogColor(
-            osBlock, drive, amount, x2Multiplier);
+            osBlock, drive, amount, x2Multiplier, band);
     }
 
     eqOversampler.processSamplesDown(outputBlock);

@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.43
+// VVChain Web AudioWorklet DSP module · v1.0.45
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -12,6 +12,9 @@ class VVChainWorklet extends AudioWorkletProcessor {
     this._meterBlocks=0;
     this._sentReady=false;
     this.pendingState=null;
+    this.analogAlpha=[0,0,0,0];
+    this.analogAlphaInitialized=[false,false,false,false];
+    this.analogMode=[false,false,false,false];
     this.pendingRevision=0;
     this.activeRevision=0;
     this._errorReported=false;
@@ -38,7 +41,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       eq:Array.from({length:4},()=>({g:0,k:1,a1:1,a2:0,a3:0,m1:0,ic1:0,ic2:0})),
       dynMid:Array.from({length:4},dynState),
       dynSide:Array.from({length:4},dynState),
-      analogPrev:[0,0,0,0], analogDc:[0,0,0,0], analogPower:[0,0,0,0],
+      analogAd:Array.from({length:4},()=>({prevX:0,hasPrev:false})),
       analogLp:[0,0,0], lp:[0,0,0], typeLp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,
       lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0],
       deLp:{z1:0,z2:0}, deLp2:{z1:0,z2:0}, deHp:{z1:0,z2:0}, deHp2:{z1:0,z2:0}, deBroad:0, deHfFast:0, deHfSlow:0, deGain:0, soloPre:[0,0,0], soloPost:[0,0,0], graphSoloPre:{z1:0,z2:0}, graphSoloPost:{z1:0,z2:0}
@@ -182,19 +185,38 @@ class VVChainWorklet extends AudioWorkletProcessor {
     if(stereo)return[(mid+side)*invSqrt2,(mid-side)*invSqrt2];
     return[mid,r];
   }
-  // v1.0.16 unity-normalized smooth zero-phase algebraic saturation.
-  analog(x,a,ss,ch,b,x2=1){
-    a=this.clamp(a,0,1);
-    ch.analogPrev[b]=x; ch.analogDc[b]=0; ch.analogPower[b]=0;
-    if(a<=1e-6)return x;
-    const modeAlpha=ss?1.80:1.55;
-    const alpha=a*modeAlpha;
-    const unityNorm=Math.pow(1+alpha,.25);
-    const u=this.clamp(x,-1,1);
-    const denominator=Math.sqrt(Math.sqrt(1+alpha*u*u));
-    const saturated=(u/denominator)*unityNorm;
-    const protectedSaturated=Math.sign(u||1)*Math.max(Math.abs(saturated),Math.abs(u));
-    return x+(protectedSaturated-u)*this.clamp(x2,1,2);
+  // v1.0.45 analytical first-order ADAA over the same
+  // unity-normalized algebraic transfer used by Native.
+  analog(x,alpha,ch,b,x2=1){
+    alpha=this.clamp(Number(alpha||0),0,1.25);
+    const u=this.clamp(Number(x||0),-1,1);
+    const st=ch.analogAd[b];
+    if(alpha<=1e-5){
+      st.prevX=u;st.hasPrev=true;
+      return x;
+    }
+    const norm=Math.sqrt(Math.sqrt(1+alpha));
+    const f0=v=>v/Math.sqrt(Math.sqrt(1+alpha*v*v))*norm;
+    if(!st.hasPrev){
+      st.prevX=u;st.hasPrev=true;
+      return f0(u);
+    }
+    const diff=u-st.prevX;
+    let saturated;
+    if(Math.abs(diff)<1e-7){
+      saturated=f0((u+st.prevX)*0.5);
+    }else{
+      const F=v=>{
+        const uu=1+alpha*v*v;
+        const u075=Math.sqrt(uu)*Math.sqrt(Math.sqrt(uu));
+        return (2/(3*alpha))*(u075-1)*norm;
+      };
+      saturated=(F(u)-F(st.prevX))/diff;
+    }
+    st.prevX=u;
+    return this.finite(saturated)
+      ? u+(saturated-u)*this.clamp(x2,1,2)
+      : x;
   }
   deessStereo(l,r,stereo,coef){
     const st=this.s.de;
@@ -296,7 +318,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     lp[2]+=a3*(h1-lp[2]); const h2=h1-lp[2];
     return [lp[0],lp[1],lp[2],h2];
   }
-  sample(x,ch){
+  sample(x,ch,analogAlpha){
     const s=this.s,c=this.ch[ch];let y=x;
     if(!s.eq.bypass){
       for(let b=0;b<4;b++){
@@ -304,15 +326,12 @@ class VVChainWorklet extends AudioWorkletProcessor {
         y=this.tptBell(y,c.eq[b],sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]);
       }
     }
-    // ANALOG COLOR v1.0.16: unity-normalized smooth saturation.
-    // X2 preserves its established role: it multiplies only the generated ANALOG delta.
+    // ANALOG COLOR v1.0.45: shared smoothed alpha + analytical ADAA.
     if(!s.eq.globalBypass){
       for(let b=0;b<4;b++){
         if(s.eq.colorBypass[b])continue;
-        const amount=this.clamp(Number(s.eq.color[b]||0),0,60)/100;
-        if(amount<=1e-6)continue;
         const x2=s.eq.colorX2?.[b]?2:1;
-        y=this.analog(y,amount,!!s.eq.mode[b],c,b,x2);
+        y=this.analog(y,analogAlpha[b],c,b,x2);
       }
     }
     if(!s.udmbc.bypass){
@@ -421,12 +440,43 @@ class VVChainWorklet extends AudioWorkletProcessor {
     };
     const mix=this.clamp((this.s.mix.bypass?100:this.s.mix.drywet)/100,0,1),og=this.db2g(this.clamp(this.s.mix.output,-24,12));
     const soloBand=Number(this.s.solo?.band??-1),graphSolo=!!this.s.solo?.graphActive,soloEnabled=graphSolo||(soloBand>=0&&soloBand<4),xs=this.s.udmbc.x;
+    const analogSmoothingCoeff=Math.exp(-1/(0.001*0.25*sampleRate));
+    const analogAlpha=this.analogAlpha;
+
+    for(let b=0;b<4;b++){
+      const active=!this.s.eq.globalBypass&&!this.s.eq.colorBypass[b]&&Number(this.s.eq.color[b]||0)>1e-6;
+      const ss=!!this.s.eq.mode[b];
+      const target=active?this.clamp(Number(this.s.eq.color[b]||0),0,60)/100*(ss?1.80:1.55):0;
+      if(this.analogMode[b]!==ss){
+        this.analogMode[b]=ss;
+        this.analogAlpha[b]=target;
+        this.analogAlphaInitialized[b]=true;
+        this.ch[0].analogAd[b]={prevX:0,hasPrev:false};
+        this.ch[1].analogAd[b]={prevX:0,hasPrev:false};
+      }else if(!this.analogAlphaInitialized[b]){
+        this.analogAlpha[b]=target;
+        this.analogAlphaInitialized[b]=true;
+      }else if(!active){
+        this.analogAlpha[b]=0;
+        this.ch[0].analogAd[b]={prevX:0,hasPrev:false};
+        this.ch[1].analogAd[b]={prevX:0,hasPrev:false};
+      }
+    }
+
     for(let n=0;n<out[0].length;n++){
+      for(let b=0;b<4;b++){
+        const active=!this.s.eq.globalBypass&&!this.s.eq.colorBypass[b]&&Number(this.s.eq.color[b]||0)>1e-6;
+        if(active){
+          const ss=!!this.s.eq.mode[b];
+          const target=this.clamp(Number(this.s.eq.color[b]||0),0,60)/100*(ss?1.80:1.55);
+          this.analogAlpha[b]+=(target-this.analogAlpha[b])*(1-analogSmoothingCoeff);
+        }
+      }
       const l=L[n]||0,r=R[n]||0;
       const dyn=this.dynamicStereo(l,r,stereo);
       const deOut=this.deessStereo(
-        this.sample(dyn[0],0),
-        this.sample(dyn[1],1),
+        this.sample(dyn[0],0,analogAlpha),
+        this.sample(dyn[1],1,analogAlpha),
         stereo,
         deCoef
       );

@@ -37,17 +37,19 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 
 ## ANALOG 規則
 
-ANALOG COLOR 正式基準自 **v1.0.16** 起為 unity-normalized smooth algebraic saturation + hard no-shrink guard。
+ANALOG COLOR 自 **v1.0.45** 起以「既有 unity-normalized smooth algebraic saturation + analytical first-order ADAA」為正式基準。
 
-- 0% COLOR 必須 exact dry / Delta 靜音。
-- Native VST3 與 Web AudioWorklet 必須使用相同公式：奇對稱、無濾波 state、零額外相位旋轉。
-- 核心 shaping 使用 `x / (1 + alpha*x^2)^(1/4)` 類型平滑曲線，並以 `|x|=1` normalization 避免 COLOR 增加時整體萎縮。
-- shaping domain 限制在 -1..+1；超出範圍不得因 ANALOG 額外衰減。
-- hard no-shrink guard 必須保證 COLOR 增加時，shaping domain 內每個 sample 的絕對值不得低於未染色值；0% 仍須 exact dry。
-- 每個頻段仍保留獨立 COLOR、TT/SS、BYPASS、X2。
-- **X2 仍只能把該頻段由 ANALOG COLOR 產生的 delta ×2；不得乘到 EQ、UDMBC、TAPE COLOR、DE-ESSER、MIX、OUT 或其他頻段。**
-- 不再建立或保留 V1 / V2 / V3 Analog 選擇頁、切換頁或版本導覽。
-- 修改 ANALOG 後必須完成 500-case regression matrix，並檢查 0% transparency、TT/SS 差異、odd symmetry、X2 delta isolation、finite output 與 no-shrink 邊界。
+- Native VST3 在既有 EQ 4x Oversampling 內執行 ADAA；Web AudioWorklet 使用相同 transfer、解析 antiderivative 與一階 ADAA 核心。
+- 核心 transfer：`f(x)=x/(1+alpha*x^2)^(1/4)`，並乘 `(1+alpha)^(1/4)` 做 `|x|=1` unity normalization。
+- TT / SS 均維持純奇對稱；TT 使用 `alpha = amount × 1.55`，SS 使用 `alpha = amount × 1.80`。不加入固定 `beta*x^2` 偶次注入，因此不主動製造 DC 偏移。
+- 每一頻段、每一聲道有獨立 ADAA previous shaping-domain sample；這是抗混疊所需的數值 state，不是額外的 EQ / HP / LP tone filter。
+- 使用者處理範圍維持 0–60%；0% COLOR / BYPASS 必須 exact dry，並立即重新對齊 ADAA state。
+- shaping input 限制在 `-1..+1`；原始 sample 超出此範圍時，只以邊界 shaping sample 產生 delta，因此 Analog 不會額外縮小超範圍 peak。
+- no-shrink 保證改以靜態 transfer curve 定義：在 `|x|<=1` 時，normalized transfer 滿足 `|f(x)|>=|x|` 且 `f(±1)=±1`。ADAA 一階差分不以逐 sample 硬 clamp，避免重新產生毛邊。
+- COLOR automation 使用約 0.25 ms control smoothing；Native 在 4x rate、Web 在實際 Worklet rate 均保持相同時間常數。
+- X2 仍只能把該頻段由 ANALOG COLOR 產生的 delta ×2，不得影響原始 sample 或其他模組。
+- 修改 ANALOG 後必須完成 500-case regression matrix，並檢查 0% transparency、TT/SS 差異、odd symmetry、X2 delta isolation、ADAA finite / boundary / state-reset 行為。
+
 
 ## UDMBC 規則
 
