@@ -102,6 +102,13 @@ VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測�
 
 ## v1.0.14
 
+- Dynamic EQ 的 PEAK / ONSETS 改為 0–100% 連續混合，預設 50% / 50%；Native 與 Web DSP 同步以比例混合 onset detector。
+- 上方 EQ 右鍵按住即 SOLO 該 EQ 頻率；右鍵拖曳同步調整 FREQ / GAIN，右鍵滾輪調整 Q，放開右鍵解除頻率 SOLO。
+- PEAK / ONSETS 控制改為較短、寬版 TT / SS 類型比例條，比例填色使用藍色。
+- Native / Web Preview / Web Worklet / Regression / CI artifact 統一升至 v1.0.14。
+
+## v1.0.13
+
 - 修正 EQ 上方曲線的頻率響應計算：Native / Web Graph 現在直接依目前 TPT Bell 拓撲計算，不再使用錯誤的舊複數響應公式。
 - 修正正增益曲線反向、S 型與單一 Band 響應形狀異常；EQ 聲音處理核心保持 v1.0.12 不變。
 - Native 與 Web Graph 使用相同的 TPT Bell state-space transfer evaluation。
