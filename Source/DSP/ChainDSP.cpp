@@ -267,7 +267,7 @@ void VVChainDSP::processChebyshevAnalog(
     const auto numSamples = block.getNumSamples();
     const float safeAmount = juce::jlimit(0.0f, 1.0f, amount);
     const float safeColourMultiplier =
-        juce::jlimit(1.0f, 1.6f, colourMultiplier);
+        juce::jlimit(1.0f, 2.0f, colourMultiplier);
 
     // v1.0.16 smooth zero-phase algebraic saturation with hard no-shrink guard.
     // Raw y=x/(1+alpha*x^2)^(1/4) attenuates full-scale samples, so normalize
@@ -935,14 +935,14 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             continue;
 
         const float amount =
-            juce::jlimit(0.f, 100.f, p.eqColor[band]) / 100.f;
+            juce::jlimit(0.f, 60.f, p.eqColor[band]) / 100.f;
         if (amount <= 0.000001f)
             continue;
 
         const float drive =
             p.eqColorSolidState[band] ? 1.15f : 0.95f;
         const float x2Multiplier =
-            p.eqColorX2[band] ? 1.6f : 1.0f;
+            p.eqColorX2[band] ? 2.0f : 1.0f;
 
         processChebyshevAnalog(
             osBlock, drive, amount, x2Multiplier);
