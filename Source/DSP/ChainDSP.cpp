@@ -1245,6 +1245,9 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
     std::array<float, 4> staticMakeupMultiplier {};
     std::array<float, 4> bandTrim {};
     constexpr float kTypeAMaxDegree[4] = { 50.f, 60.f, 70.f, 90.f };
+    // Keep legacy parameter ranges for preset/automation compatibility.
+    // Full travel in every band now maps to the old 50-degree reference
+    // (depth 0.5), the requested ~3 dB maximum colour range.
 
     // Parameter/update section: calculate each band's fixed drive and makeup
     // once per audio block, avoiding per-sample division.
@@ -1252,8 +1255,10 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
     {
         const float limitedDegree =
             juce::jlimit(0.f, kTypeAMaxDegree[band], p.tapeDegree[band]);
+        const float controlNorm =
+            limitedDegree / juce::jmax(1.0f, kTypeAMaxDegree[band]);
         const float depth =
-            juce::jlimit(0.f, 1.f, limitedDegree / 100.f);
+            juce::jlimit(0.f, 0.5f, controlNorm * 0.5f);
         const float rawDriveParam = 1.0f + 1.5f * depth;
         driveParam[band] = juce::jmax(1.0f, rawDriveParam);
 
@@ -1304,8 +1309,10 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
 
                 const float limitedDegree =
                     juce::jlimit(0.f, kTypeAMaxDegree[band], p.tapeDegree[band]);
+                const float controlNorm =
+                    limitedDegree / juce::jmax(1.0f, kTypeAMaxDegree[band]);
                 const float depth =
-                    juce::jlimit(0.f, 1.f, limitedDegree / 100.f);
+                    juce::jlimit(0.f, 0.5f, controlNorm * 0.5f);
                 if (depth <= 0.f)
                     continue;
 
