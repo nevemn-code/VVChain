@@ -3,43 +3,54 @@
 Signal flow:
 
 INPUT
-→ 4-band per-band Analog Color EQ
-→ 4-band OTT-style dynamics
-→ 4-band TAPE-A dynamic enhancer
+→ 4-band Parametric / Dynamic EQ + per-band Analog Color
+→ 4-band UDMBC
+→ 4-band TAPE-A
 → split-band De-Esser
 → dry/wet
 → output level
+→ master limiter
 → OUTPUT
 
 ## Parametric / Dynamic EQ
 
-- Four EQ bands use a double-precision Cytomic/Simper TPT Bell topology.
-- Bell damping follows k = 1 / (Q * A), with A = 10^(gain/40); no secondary empirical Q reduction is applied.
-- The filter has no additional plugin sample latency; its state and coefficient math remain double precision.
-- At 0 dB, the Bell mix coefficient is exactly zero, so the EQ path is structurally identity.
-- Native and Web Preview use the same Bell topology and Q mapping.
-## DSP layers
-
-1. Parameter layer: JUCE AudioProcessorValueTreeState.
-2. Processor layer: converts host parameters to one DSP parameter struct.
-3. DSP layer: sample processing and persistent detector/filter/nonlinear state.
-4. Editor layer: EQ response graph, Shared X-Over controls, TT/SS controls, module controls and bypass LEDs.
-5. Validation layer: deterministic reference stress tests plus host/pluginval validation.
+- Four EQ bands use the current double-precision TPT Bell topology.
+- Bell damping follows `k = 1 / (Q * A)`, with `A = 10^(gain/40)`.
+- Static EQ, Dynamic EQ and the response graph share the same Q / Bell mapping.
+- At 0 dB static gain the static Bell contribution is structurally neutral.
+- Native and Web Preview must keep the same parameter ranges and response mapping.
 
 ## Analog Color
 
-Each EQ band has an independent Analog Color amount and TT/SS mode.
+Each EQ band has an independent Analog Color amount, TT/SS mode, bypass and X2.
 
-- TT: softer tanh/ADAA path with controlled even-order contribution.
-- SS: steeper tanh/ADAA path emphasizing odd-order saturation.
-- The implementation avoids a separate oversampling stage, so it does not add plugin latency.
+- User processing range: 0–60.
+- 0 = exact dry.
+- Core transfer: unity-normalized smooth algebraic saturation based on `x / (1 + alpha*x^2)^(1/4)`.
+- A hard no-shrink guard prevents the shaping domain from reducing sample magnitude.
+- X2 doubles only the generated Analog delta; it does not multiply EQ / UDMBC / TAPE-A / De-Esser / Mix / Out.
+- The current Analog core is stateless and adds no filter phase rotation.
 
 ## De-Esser
 
 - Frequency: 6–18 kHz.
-- Maximum Reduction: 0–8 dB, default 0 dB.
-- When reduction is 0 dB, the realtime preview can bypass the block processor path.
+- Maximum Reduction: 0–8 dB.
+- Four response presets control attack / release / ratio.
+- Current Native implementation is sample-domain split-band processing: low band passes untouched, only the high band is gain-reduced.
+- The current De-Esser does not use the old 8192-sample FFT/block design and does not add an 8192-sample PDC by itself.
+
+## Plugin latency
+
+The reported plugin latency is derived from the active EQ oversampling path plus limiter oversampling/lookahead. Master bypass keeps the dry path aligned to the same reported latency.
+
+## Layers
+
+1. APVTS parameter layer.
+2. Processor parameter mapping.
+3. Persistent DSP state and processing.
+4. Native editor / Web Preview interaction layer.
+5. Fast regression gate plus optional full Native / DSP validation.
 
 ## Release gate
 
-Reference tests passing is necessary but not sufficient. Release requires compiled VST3 validation in real hosts, automation/state recall, sample-rate/block-size changes, mono/stereo, and AAX-specific validation/signing.
+A fast PR gate protects Source/Web synchronization, JavaScript syntax and interaction regressions. Windows VST3 compilation runs on main push. Heavy Linux Native / Analog / stress validation remains manual.
