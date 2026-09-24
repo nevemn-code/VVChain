@@ -405,7 +405,8 @@ private:
     bool pointNearDynamicNode(juce::Point<float>, int& band) const;
     void updateFloatingValueBoxAt(juce::Point<float> position);
     void showFloatingValueBoxForBand(
-        int band, bool dynamicReadout, juce::Point<float> position);
+        int band, bool dynamicReadout, float displayedGain,
+        juce::Point<float> position);
     float dynamicAverageGainChangeDb(int band) const;
     float dynamicMidGainChangeDb(int band) const;
     float dynamicSideGainChangeDb(int band) const;
