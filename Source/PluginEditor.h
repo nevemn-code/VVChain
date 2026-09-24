@@ -415,6 +415,8 @@ private:
     void showFloatingValueBoxForBand(
         int band, bool dynamicReadout, float displayedGain,
         juce::Point<float> position);
+    void showEqTypeMenu(int band, juce::Point<float> position);
+    void beginRightSolo(int band, juce::Point<float> position);
     float dynamicAverageGainChangeDb(int band) const;
     float dynamicMidGainChangeDb(int band) const;
     float dynamicSideGainChangeDb(int band) const;
@@ -471,6 +473,9 @@ private:
     int dragDynamicHandleBand = -1;
     int rightSoloBand = -1;
     juce::Point<float> rightSoloPosition {};
+    int pendingRightClickBand = -1;
+    juce::Point<float> pendingRightClickPosition {};
+    bool pendingRightClickDragged = false;
     int hoverDynamicBand = -1;
     int hoverXover = -1;
     float dynamicGainDragStartY = 0.0f;
