@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.13
+// VVChain Web AudioWorklet DSP module · v1.0.14
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -40,7 +40,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       analogPrev:[0,0,0,0], analogDc:[0,0,0,0], analogPower:[0,0,0,0],
       analogLp:[0,0,0], lp:[0,0,0], typeLp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,
       lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0],
-      deHp:{z1:0,z2:0}, deHp2:{z1:0,z2:0}, deFast:0, deSlow:0, deGain:0, soloPre:[0,0,0], soloPost:[0,0,0]
+      deHp:{z1:0,z2:0}, deHp2:{z1:0,z2:0}, deFast:0, deSlow:0, deGain:0, soloPre:[0,0,0], soloPost:[0,0,0], graphSoloPre:{z1:0,z2:0}, graphSoloPost:{z1:0,z2:0}
     };
   }
   clamp(v,a,b){return Math.max(a,Math.min(b,v))}
@@ -142,9 +142,10 @@ class VVChainWorklet extends AudioWorkletProcessor {
       };
 
       let midLevel=md.env,sideLevel=sd.env;
-      if(s.dyn.detectOnsets?.[b]){
-        midLevel+=this.clamp(Math.max(0,mDb-md.slow)*1.5,0,12);
-        sideLevel+=this.clamp(Math.max(0,sDb-sd.slow)*1.5,0,12);
+      const onsetMix=this.clamp(Number(s.dyn.detectOnsets?.[b]??50)/100,0,1);
+      if(onsetMix>0){
+        midLevel+=onsetMix*this.clamp(Math.max(0,mDb-md.slow)*1.5,0,12);
+        sideLevel+=onsetMix*this.clamp(Math.max(0,sDb-sd.slow)*1.5,0,12);
       }
 
       const ma=activation(midLevel,!!s.dyn.triggerBelow?.[b]);
@@ -343,7 +344,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const L=inp[0],R=inp[1]||inp[0],stereo=inp.length>1;
     const deCoef=this.hp(this.clamp(Number(this.s.de.freq||8000),6000,18000));
     const mix=this.clamp((this.s.mix.bypass?100:this.s.mix.drywet)/100,0,1),og=this.db2g(this.clamp(this.s.mix.output,-24,12));
-    const soloBand=Number(this.s.solo?.band??-1),soloEnabled=soloBand>=0&&soloBand<4,xs=this.s.ott.x;
+    const soloBand=Number(this.s.solo?.band??-1),graphSolo=!!this.s.solo?.graphActive,soloEnabled=graphSolo||(soloBand>=0&&soloBand<4),xs=this.s.ott.x;
     for(let n=0;n<out[0].length;n++){
       const l=L[n]||0,r=R[n]||0;
       const dyn=this.dynamicStereo(l,r,stereo);
@@ -355,8 +356,17 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const targetSolo=soloEnabled?1:0;
       if(this.soloBlend<targetSolo)this.soloBlend=Math.min(targetSolo,this.soloBlend+1/64);else if(this.soloBlend>targetSolo)this.soloBlend=Math.max(targetSolo,this.soloBlend-1/64);
       if(this.soloBlend>0){
-        const preL=this.zoneBands(l,this.ch[0],"soloPre",xs)[soloBand],preR=this.zoneBands(r,this.ch[1],"soloPre",xs)[soloBand];
-        const postL=this.zoneBands(yL,this.ch[0],"soloPost",xs)[soloBand],postR=this.zoneBands(yR,this.ch[1],"soloPost",xs)[soloBand];
+        let preL,preR,postL,postR;
+        if(graphSolo){
+          const gf=this.clamp(Number(this.s.solo?.graphFreq??1000),20,sampleRate*.45);
+          const gq=this.clamp(Number(this.s.solo?.graphQ??.707),.1,18);
+          const gc=this.bp(gf,gq);
+          preL=this.biquad(l,gc,this.ch[0].graphSoloPre);preR=this.biquad(r,gc,this.ch[1].graphSoloPre);
+          postL=this.biquad(yL,gc,this.ch[0].graphSoloPost);postR=this.biquad(yR,gc,this.ch[1].graphSoloPost);
+        }else{
+          preL=this.zoneBands(l,this.ch[0],"soloPre",xs)[soloBand];preR=this.zoneBands(r,this.ch[1],"soloPre",xs)[soloBand];
+          postL=this.zoneBands(yL,this.ch[0],"soloPost",xs)[soloBand];postR=this.zoneBands(yR,this.ch[1],"soloPost",xs)[soloBand];
+        }
         const soloL=this.s.solo.post?postL:preL,soloR=this.s.solo.post?postR:preR;
         yL=yL*(1-this.soloBlend)+soloL*this.soloBlend;yR=yR*(1-this.soloBlend)+soloR*this.soloBlend;
       }
