@@ -2694,6 +2694,36 @@ void VVChainAudioProcessorEditor::resized()
     repaint();
 }
 
+void VVChainAudioProcessorEditor::showFloatingValueBoxForBand(
+    int band, bool dynamicReadout, float displayedGain,
+    juce::Point<float> position)
+{
+    if (band < 0 || band >= 4)
+    {
+        floatingValueBox.hideInstantly();
+        return;
+    }
+
+    const auto n = juce::String(band + 1);
+    const float frequency = parameterValue("EQ" + n + "_FREQ");
+    const float q = juce::jmax(0.1f, parameterValue("EQ" + n + "_Q"));
+
+    const juce::String signedDb =
+        juce::String(displayedGain >= 0.0f ? "+" : "")
+        + juce::String(displayedGain, 1) + " dB";
+
+    // Exactly two compact lines. No TARGET / OFFSET / DYN % / AUTO THR.
+    const juce::String line1 =
+        juce::String(dynamicReadout ? "DYN EQ" : "EQ")
+        + "  GAIN " + signedDb;
+    const juce::String line2 =
+        "FREQ " + formatGraphFrequency(frequency)
+        + "  Q " + juce::String(q, 2);
+
+    floatingValueBox.updateInfo(
+        line1, line2, position.toInt(), getLocalBounds());
+}
+
 void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
     juce::Point<float> position)
 {
@@ -2800,29 +2830,13 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
              || bestTarget == HoverTarget::Handle)
         displayedGain = dynamicEffectiveTargetGain(bestBand);
 
-    const juce::String signedDb =
-        juce::String(displayedGain >= 0.0f ? "+" : "")
-        + juce::String(displayedGain, 1) + " dB";
-
-    const float q =
-        juce::jmax(0.1f, parameterValue("EQ" + n + "_Q"));
     const bool dynamicReadout =
         bestTarget == HoverTarget::Live
         || bestTarget == HoverTarget::Dynamic
         || bestTarget == HoverTarget::Handle;
 
-    const juce::String line1 =
-        juce::String(dynamicReadout ? "DYN EQ" : "EQ")
-        + "  GAIN " + signedDb;
-    const juce::String line2 =
-        "FREQ " + formatGraphFrequency(frequency)
-        + "  Q " + juce::String(q, 2);
-
-    floatingValueBox.updateInfo(
-        line1,
-        line2,
-        position.toInt(),
-        getLocalBounds());
+    showFloatingValueBoxForBand(
+        bestBand, dynamicReadout, displayedGain, position);
 }
 
 
@@ -3292,6 +3306,8 @@ void VVChainAudioProcessorEditor::mouseDrag(
         graphDragHint = "SOLO  " + formatGraphFrequency(hz)
             + "   GAIN " + juce::String(gain, 1) + " dB";
         showGraphDragHint = true;
+        showFloatingValueBoxForBand(
+            rightSoloBand, false, gain, event.position);
         repaint();
         return;
     }
@@ -3326,6 +3342,10 @@ void VVChainAudioProcessorEditor::mouseDrag(
             + (dynamics < 0.f ? "COMPRESS" :
                dynamics > 0.f ? "EXPAND" : "STATIC");
         showGraphDragHint = true;
+        showFloatingValueBoxForBand(
+            dragDynamicHandleBand, true,
+            dynamicEffectiveTargetGain(dragDynamicHandleBand),
+            event.position);
         repaint();
         return;
     }
@@ -3363,6 +3383,8 @@ void VVChainAudioProcessorEditor::mouseDrag(
             + "   GAIN "
             + juce::String(offset, 1) + " dB";
         showGraphDragHint = true;
+        showFloatingValueBoxForBand(
+            dragOffsetBand, false, offset, event.position);
         repaint();
         return;
     }
@@ -3513,6 +3535,9 @@ void VVChainAudioProcessorEditor::mouseDrag(
             + " dB";
 
         showGraphDragHint = true;
+        showFloatingValueBoxForBand(
+            dragBand, true, dynamicEffectiveTargetGain(dragBand),
+            event.position);
         repaint();
         return;
     }
