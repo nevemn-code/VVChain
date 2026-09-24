@@ -64,7 +64,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 <script>
 const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=null,workletNode=null,workletModuleUrl=null,playing=false,directFallback=false,workletHeartbeatSeen=false;
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
-const state={masterBypass:false,delta:false,solo:{band:-1,post:false},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:[35,35,35,35],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[50,50,50,50],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},ott:{bypass:false,bandBypass:[false,false,false,false],degree:[25,25,22,18],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[6,12,28,22],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:8000,intensity:3,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
+const state={masterBypass:false,delta:false,solo:{band:-1,pointBand:-1,post:false},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:[35,35,35,35],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[50,50,50,50],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},ott:{bypass:false,bandBypass:[false,false,false,false],degree:[25,25,22,18],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[6,12,28,22],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:8000,intensity:3,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
 const defaults=structuredClone(state),knobRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.14
 function makeWorkletUrl(){
@@ -808,6 +808,7 @@ eqCanvas.addEventListener("wheel",e=>{
   }
   if(band<0)return;
   e.preventDefault();
+  state.solo.pointBand=band;
   setGraphControls(["EQ"+(band+1)+"_Q"],false);
   showGraphHint(e,graphHintBandHtml(band,8));
   clearTimeout(window.__vvQHintTimer);window.__vvQHintTimer=setTimeout(hideGraphHint,350);
@@ -827,8 +828,7 @@ eqCanvas.addEventListener("pointerdown",e=>{
   if(e.button===2&&!e.shiftKey){
     const hit=graphHoverTarget(x,y,w,h),band=hit.band;
     if(band>=0){
-      e.preventDefault();state.solo.band=band;dragMode=7;dragBand=band;
-      document.querySelectorAll(".soloBtn").forEach((btn,i)=>btn.classList.toggle("on",i===band));
+      e.preventDefault();state.solo.pointBand=band;dragMode=7;dragBand=band;
       setGraphControls(["EQ"+(band+1)+"_FREQ","EQ"+(band+1)+"_GAIN"],false);
       eqCanvas.setPointerCapture(e.pointerId);sendParams();drawEQ();return;
     }
@@ -981,12 +981,14 @@ eqCanvas.addEventListener("pointerup",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
   const hit=graphHoverTarget(x,y,w,h);
   if(hit.band>=0)showGraphHint(e,graphHintBandHtml(hit.band,hit.mask));else hideGraphHint();
+  if(state.solo.pointBand>=0){state.solo.pointBand=-1;sendParams();}
   dragMode=0;dragBand=-1;dragXover=-1;dragOverlapXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;dragDynamicHandleBand=-1;eqDragAxis=0;clearGraphControls();drawEQ();
 });
 eqCanvas.addEventListener("pointercancel",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
   const hit=graphHoverTarget(x,y,w,h);
   if(hit.band>=0)showGraphHint(e,graphHintBandHtml(hit.band,hit.mask));else hideGraphHint();
+  if(state.solo.pointBand>=0){state.solo.pointBand=-1;sendParams();}
   dragMode=0;dragBand=-1;dragXover=-1;dragOverlapXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;dragDynamicHandleBand=-1;eqDragAxis=0;clearGraphControls();drawEQ();
 });
 function stopPlayback(){if(source){try{source.stop()}catch{}try{source.disconnect()}catch{}source=null}playing=false;$("#status").textContent="READY"}
