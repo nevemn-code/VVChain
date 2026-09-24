@@ -6,6 +6,8 @@ class VVChainWorklet extends AudioWorkletProcessor {
     this.N=512;
     this.masterBlend=0;
     this.soloBlend=0;
+    this.pointSoloBlend=0;
+    this._lastPointSoloBand=-9;
     this._lastSoloBand=-9;
     this._lastSoloPost=false;
     this._meterBlocks=0;
@@ -40,7 +42,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       analogPrev:[0,0,0,0], analogDc:[0,0,0,0], analogPower:[0,0,0,0],
       analogLp:[0,0,0], lp:[0,0,0], typeLp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,
       lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0],
-      deHp:{z1:0,z2:0}, deHp2:{z1:0,z2:0}, deFast:0, deSlow:0, deGain:0, soloPre:[0,0,0], soloPost:[0,0,0]
+      deHp:{z1:0,z2:0}, deHp2:{z1:0,z2:0}, deFast:0, deSlow:0, deGain:0, soloPre:[0,0,0], soloPost:[0,0,0], pointSoloPre:{z1:0,z2:0}, pointSoloPost:{z1:0,z2:0}
     };
   }
   clamp(v,a,b){return Math.max(a,Math.min(b,v))}
@@ -80,6 +82,12 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const sn=Math.sin(w),cc=Math.cos(w),a=sn/(2*Math.max(.1,q));
     const b0=sn/2,b1=0,b2=-sn/2,a0=1+a,a1=-2*cc,a2=1-a;
     return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]
+  }
+  pointBp(f,q=.707){
+    const w=2*Math.PI*this.clamp(f,20,sampleRate*.45)/sampleRate;
+    const sn=Math.sin(w),cc=Math.cos(w),alpha=sn/(2*Math.max(.1,q));
+    const a0=1+alpha;
+    return[alpha/a0,0,-alpha/a0,(-2*cc)/a0,(1-alpha)/a0]
   }
   hp(f,q=.707){
     const w=2*Math.PI*this.clamp(f,10,sampleRate*.45)/sampleRate;
@@ -344,7 +352,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const L=inp[0],R=inp[1]||inp[0],stereo=inp.length>1;
     const deCoef=this.hp(this.clamp(Number(this.s.de.freq||8000),6000,18000));
     const mix=this.clamp((this.s.mix.bypass?100:this.s.mix.drywet)/100,0,1),og=this.db2g(this.clamp(this.s.mix.output,-24,12));
-    const soloBand=Number(this.s.solo?.band??-1),soloEnabled=soloBand>=0&&soloBand<4,xs=this.s.ott.x;
+    const soloBand=Number(this.s.solo?.band??-1),pointSoloBand=Number(this.s.solo?.pointBand??-1),pointSoloEnabled=pointSoloBand>=0&&pointSoloBand<4,soloEnabled=!pointSoloEnabled&&soloBand>=0&&soloBand<4,xs=this.s.ott.x;
     for(let n=0;n<out[0].length;n++){
       const l=L[n]||0,r=R[n]||0;
       const dyn=this.dynamicStereo(l,r,stereo);
@@ -360,6 +368,21 @@ class VVChainWorklet extends AudioWorkletProcessor {
         const postL=this.zoneBands(yL,this.ch[0],"soloPost",xs)[soloBand],postR=this.zoneBands(yR,this.ch[1],"soloPost",xs)[soloBand];
         const soloL=this.s.solo.post?postL:preL,soloR=this.s.solo.post?postR:preR;
         yL=yL*(1-this.soloBlend)+soloL*this.soloBlend;yR=yR*(1-this.soloBlend)+soloR*this.soloBlend;
+      }
+      if(pointSoloEnabled&&pointSoloBand!==this._lastPointSoloBand){
+        this._lastPointSoloBand=pointSoloBand;this.pointSoloBlend=0;
+        for(const ch of this.ch){ch.pointSoloPre.z1=ch.pointSoloPre.z2=0;ch.pointSoloPost.z1=ch.pointSoloPost.z2=0;}
+      }
+      const targetPoint=pointSoloEnabled?1:0;
+      if(this.pointSoloBlend<targetPoint)this.pointSoloBlend=Math.min(targetPoint,this.pointSoloBlend+1/32);
+      else if(this.pointSoloBlend>targetPoint)this.pointSoloBlend=Math.max(targetPoint,this.pointSoloBlend-1/32);
+      if(this.pointSoloBlend>0&&this._lastPointSoloBand>=0&&this._lastPointSoloBand<4){
+        const pb=this._lastPointSoloBand,coef=this.pointBp(this.s.eq.freq[pb],this.s.eq.q[pb]);
+        const preL=this.biquad(l,coef,this.ch[0].pointSoloPre),preR=this.biquad(r,coef,this.ch[1].pointSoloPre);
+        const postL=this.biquad(yL,coef,this.ch[0].pointSoloPost),postR=this.biquad(yR,coef,this.ch[1].pointSoloPost);
+        const auditionL=this.s.solo.post?postL:preL,auditionR=this.s.solo.post?postR:preR;
+        yL=yL*(1-this.pointSoloBlend)+auditionL*this.pointSoloBlend;
+        yR=yR*(1-this.pointSoloBlend)+auditionR*this.pointSoloBlend;
       }
       const target=this.s.masterBypass?1:0,step=1/64;
       if(this.masterBlend<target)this.masterBlend=Math.min(target,this.masterBlend+step);else if(this.masterBlend>target)this.masterBlend=Math.max(target,this.masterBlend-step);
