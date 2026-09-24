@@ -503,7 +503,7 @@ function tptBellMagnitudeDb(fs,f,q,g,hz){
   const A11=2*a1-1,A12=-2*a2,B1=2*a2;
   const A21=2*a2,A22=1-2*a3,B2=2*a3;
   const d11=zr-A11,d12=-A12,d21=-A21,d22=zr-A22;
-  const detR=d11*d22-d12*d21,detI=zi*(d11+d22);
+  const detR=d11*d22-d12*d21-zi*zi,detI=zi*(d11+d22);
   const den=Math.max(1e-24,detR*detR+detI*detI);
   const rhs1R=B1,rhs2R=B2;
   const i1R=(rhs1R*d22-d12*rhs2R),i1I=(-zi*rhs1R)/1;
@@ -517,10 +517,6 @@ function tptBellMagnitudeDb(fs,f,q,g,hz){
 function gainShapeDb(b,hz,gain){
   const f=Math.max(20,state.eq.freq[b]),q=Math.max(.1,state.eq.q[b]);
   return tptBellMagnitudeDb(audioCtx?.sampleRate||44100,f,q,gain,hz);
-}
-function gainShapeDb(b,hz,gain){
-  const f=Math.max(20,state.eq.freq[b]),q=Math.max(.1,state.eq.q[b]);
-  return peakMagnitudeDb(audioCtx?.sampleRate||44100,f,q,gain,hz);
 }
 function dynamicPopupBounds(b,w,h){
   const n=dynamicNodePoint(b,w,h);
