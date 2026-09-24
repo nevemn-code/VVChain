@@ -37,15 +37,16 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 
 ## ANALOG 規則
 
-ANALOG COLOR 正式基準固定為 **Deploy VVChain Web Preview #443**
-（基準 commit：`847729bb72900b8f4a573d69efe7e763ea393eee`）。
+ANALOG COLOR 正式基準自 **v1.0.15** 起改為 unity-normalized smooth algebraic saturation。
 
-- Native VST3 與 Web AudioWorklet 的 ANALOG COLOR processing order / transfer function 必須以 #443 為基準。
-- 每個頻段仍保留獨立的 COLOR、TT/SS、BYPASS、X2 參數；這些參數不可交叉影響其他頻段。
-- **X2 只能把該頻段由 ANALOG COLOR 產生的染色 delta 乘以 1.6；不得把 EQ、OTT、TAPE-A、DE-ESSER、MIX、OUT 或其他頻段一起乘 1.6。**
-- 未特別指定的新 Analog 演算法不得自行替換 #443 基準。
+- 0% COLOR 必須 exact dry / Delta 靜音。
+- Native VST3 與 Web AudioWorklet 必須使用相同公式：奇對稱、無濾波 state、零額外相位旋轉。
+- 核心 shaping 使用 `x / (1 + alpha*x^2)^(1/4)` 類型平滑曲線，並以 `|x|=1` normalization 避免 COLOR 增加時整體萎縮。
+- shaping domain 限制在 -1..+1；超出範圍不得因 ANALOG 額外衰減。
+- 每個頻段仍保留獨立 COLOR、TT/SS、BYPASS、X2。
+- **X2 仍只能把該頻段由 ANALOG COLOR 產生的 delta ×1.6；不得乘到 EQ、OTT、TAPE-A、DE-ESSER、MIX、OUT 或其他頻段。**
 - 不再建立或保留 V1 / V2 / V3 Analog 選擇頁、切換頁或版本導覽。
-- 修改 ANALOG 後必須完成既有 500-case regression matrix，另加至少 50 組 X2 isolation / cursor mapping 檢查。
+- 修改 ANALOG 後必須完成 500-case regression matrix，並檢查 0% transparency、TT/SS 差異、odd symmetry、X2 delta isolation、finite output 與 no-shrink 邊界。
 
 ## OTT 規則
 
