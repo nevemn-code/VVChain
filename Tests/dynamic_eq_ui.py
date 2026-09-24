@@ -493,10 +493,10 @@ def test_v103_ui_rules_50():
     assert ".knobMuted" in web
     assert ".knobMuted .modeSwitch" in web
     assert ".deessMuted" in web
-    assert 'mutedWhen:()=>state.ott.degree[n]<=0.0001' in web
-    assert 'mutedWhen:()=>state.eq.color[n]<=0.0001' in web
-    assert 'mutedWhen:()=>state.type.degree[n]<=0.0001' in web
-    assert 'mutedWhen:()=>state.de.intensity<=0.0001' in web
+    assert 'mutedWhen:()=>state.ott.bypass||state.ott.bandBypass[n]||state.ott.degree[n]<=0.0001' in web
+    assert 'mutedWhen:()=>state.eq.globalBypass||state.eq.colorBypass[n]||state.eq.color[n]<=0.0001' in web
+    assert 'mutedWhen:()=>state.type.bypass||state.type.bandBypass[n]||state.type.degree[n]<=0.0001' in web
+    assert 'mutedWhen:()=>state.de.bypass||state.de.intensity<=0.0001' in web
 
     assert "deessLocalBypass" in web
     assert "DEESS_LOCAL_BYPASS" in cpp
