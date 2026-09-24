@@ -1472,11 +1472,100 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     // Static Offset EQ response.
     auto qForGain = [](float baseQ, float gainDb)
     {
-        // Oxford Type-3 philosophy: Q reduces as gain moves away from 0,
-        // making stronger boosts/cuts progressively wider and softer.
         return juce::jlimit(
             0.10f, 18.0f,
             baseQ / (1.0f + 0.045f * std::abs(gainDb)));
+    };
+
+    const double graphSampleRate =
+        audioProcessor.getSampleRate() > 1000.0
+            ? audioProcessor.getSampleRate()
+            : 44100.0;
+
+    // UI response evaluator for all selectable minimum-phase filter shapes.
+    // It changes only graph rendering; the realtime DSP uses updateEqFilter().
+    auto filterShapeDb =
+        [graphSampleRate](int type, float f0, float q,
+                          float gainDb, float hz) -> float
+    {
+        type = juce::jlimit(0, 13, type);
+        const double sf = juce::jlimit(
+            20.0, graphSampleRate * 0.45, static_cast<double>(f0));
+        const double xHz = juce::jlimit(
+            20.0, graphSampleRate * 0.45, static_cast<double>(hz));
+        const double qq = juce::jlimit(0.10, 18.0, static_cast<double>(q));
+        const double gain = juce::jlimit(
+            -18.0, 18.0, static_cast<double>(gainDb));
+
+        if (type <= 1)
+            return VVChain_DynEQ_Engine::peakMagnitudeDBAtFrequency(
+                graphSampleRate, sf, qq, gain, xHz);
+
+        const double ratio = juce::jmax(1.0e-9, xHz / sf);
+        const double logRatio = std::log2(ratio);
+
+        if (type == 2 || type == 3)
+        {
+            const double width =
+                juce::jlimit(0.15, 2.5, 0.90 / std::sqrt(qq));
+            const double p = type == 3 ? 12.0 : 4.0;
+            const double shape =
+                1.0 / (1.0 + std::pow(std::abs(logRatio) / width, p));
+            return static_cast<float>(gain * shape);
+        }
+
+        if (type == 4 || type == 5 || type == 8 || type == 9)
+        {
+            const bool high = type == 5 || type == 9;
+            const double exponent = (type == 8 || type == 9) ? 0.8 : 2.0;
+            const double shape = high
+                ? 1.0 / (1.0 + std::pow(1.0 / ratio, exponent))
+                : 1.0 / (1.0 + std::pow(ratio, exponent));
+            return static_cast<float>(gain * shape);
+        }
+
+        if (type == 6 || type == 7)
+        {
+            const bool high = type == 7;
+            const double shape = high
+                ? 1.0 / (1.0 + std::pow(1.0 / ratio, 2.0))
+                : 1.0 / (1.0 + std::pow(ratio, 2.0));
+            const double resonanceGain =
+                (gain >= 0.0 ? 1.0 : -1.0)
+                * juce::jmin(6.0, std::abs(gain) * 0.35);
+            const double resonance =
+                VVChain_DynEQ_Engine::peakMagnitudeDBAtFrequency(
+                    graphSampleRate, sf, qq, resonanceGain, xHz);
+            return static_cast<float>(gain * shape + resonance);
+        }
+
+        if (type == 10)
+        {
+            const double width =
+                juce::jlimit(0.04, 1.2, 0.55 / std::sqrt(qq));
+            const double attenuation =
+                -10.0 * std::log10(
+                    1.0 + std::pow(std::abs(logRatio) / width, 4.0));
+            return static_cast<float>(gain + attenuation);
+        }
+
+        if (type == 11)
+        {
+            const double width =
+                juce::jlimit(0.015, 0.60, 0.16 / std::sqrt(qq));
+            const double z = logRatio / width;
+            return static_cast<float>(
+                -60.0 * std::exp(-0.5 * z * z));
+        }
+
+        if (type == 12)
+            return static_cast<float>(
+                -10.0 * std::log10(
+                    1.0 + std::pow(ratio, 24.0)));
+
+        return static_cast<float>(
+            -10.0 * std::log10(
+                1.0 + std::pow(1.0 / ratio, 24.0)));
     };
 
     juce::Path offsetResponse;
@@ -1497,15 +1586,13 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             const float q =
                 qForGain(
                     parameterValue("EQ" + n + "_Q"), gain);
-            const float width =
-                juce::jmax(.02f, 1.f / (q * 1.8f));
-            const float xx = std::log(
-                std::max(hz, 20.f) / std::max(f0, 20.f));
-            const float shape =
-                std::exp(
-                    -(xx * xx) /
-                    (2.f * width * width));
-            db += gain * shape;
+            int type = juce::jlimit(
+                0, 13,
+                juce::roundToInt(
+                    parameterValue("EQ" + n + "_TYPE")));
+            if ((band == 1 || band == 2) && type >= 12)
+                type = 0;
+            db += filterShapeDb(type, f0, q, gain, hz);
         }
 
         const auto pt = juce::Point<float>(
@@ -1535,16 +1622,17 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             dynamicEffectiveTargetGain(band);
         const float baseQ =
             parameterValue("EQ" + n + "_Q");
+        int filterType = juce::jlimit(
+            0, 13,
+            juce::roundToInt(
+                parameterValue("EQ" + n + "_TYPE")));
+        if ((band == 1 || band == 2) && filterType >= 12)
+            filterType = 0;
         const auto c =
             uiColour(kBandColours[(size_t)band]);
 
         juce::Path top;
         juce::Path bottom;
-
-        const double graphSampleRate =
-            audioProcessor.getSampleRate() > 1000.0
-                ? audioProcessor.getSampleRate()
-                : 44100.0;
 
         for (int i = 0; i <= 220; ++i)
         {
@@ -1555,11 +1643,11 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             const float targetQ =
                 qForGain(baseQ, target);
             const float offsetDb =
-                VVChain_DynEQ_Engine::peakMagnitudeDBAtFrequency(
-                    graphSampleRate, f0, offsetQ, offset, hz);
+                filterShapeDb(
+                    filterType, f0, offsetQ, offset, hz);
             const float targetDb =
-                VVChain_DynEQ_Engine::peakMagnitudeDBAtFrequency(
-                    graphSampleRate, f0, targetQ, target, hz);
+                filterShapeDb(
+                    filterType, f0, targetQ, target, hz);
             const float gx =
                 graphFrequencyToX(graph, hz);
 
@@ -1601,8 +1689,8 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             const float y =
                 eqDbToY(
                     graph,
-                    VVChain_DynEQ_Engine::peakMagnitudeDBAtFrequency(
-                        graphSampleRate, f0, targetQ, target, hz));
+                    filterShapeDb(
+                        filterType, f0, targetQ, target, hz));
             const float gx =
                 graphFrequencyToX(graph, hz);
 
