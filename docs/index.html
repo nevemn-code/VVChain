@@ -756,25 +756,21 @@ function drawEQ(){
     }
   }
 
-  // Right-click SOLO: preserve full colour near the selected EQ point,
-  // then linearly desaturate farther frequencies.
+  // Right-click SOLO spotlight follows the exact mouse position.
+  // The focus stays bright while the rest of the upper graph is dimmed.
   if(state.solo.graphActive){
-    const cx=logX(state.solo.graphFreq,w),radius=70;
-    eqCtx.save();
-    eqCtx.globalCompositeOperation="saturation";
-    if(cx-radius>0){
-      const lg=eqCtx.createLinearGradient(0,0,cx-radius,0);
-      lg.addColorStop(0,"rgba(128,128,128,1)");
-      lg.addColorStop(1,"rgba(128,128,128,0)");
-      eqCtx.fillStyle=lg;eqCtx.fillRect(0,0,cx-radius,h);
-    }
-    if(cx+radius<w){
-      const rg=eqCtx.createLinearGradient(cx+radius,0,w,0);
-      rg.addColorStop(0,"rgba(128,128,128,0)");
-      rg.addColorStop(1,"rgba(128,128,128,1)");
-      eqCtx.fillStyle=rg;eqCtx.fillRect(cx+radius,0,w-(cx+radius),h);
-    }
-    eqCtx.restore();
+    const cx=clamp(soloSpotX,0,w),cy=clamp(soloSpotY,0,h),radius=155;
+    const spot=eqCtx.createRadialGradient(cx,cy,0,cx,cy,radius);
+    spot.addColorStop(0,"rgba(0,0,0,0)");
+    spot.addColorStop(.22,"rgba(0,0,0,0)");
+    spot.addColorStop(.52,"rgba(0,0,0,.18)");
+    spot.addColorStop(.76,"rgba(0,0,0,.48)");
+    spot.addColorStop(1,"rgba(0,0,0,.72)");
+    eqCtx.fillStyle=spot;
+    eqCtx.fillRect(0,0,w,h);
+    eqCtx.strokeStyle="rgba(255,255,255,.16)";
+    eqCtx.lineWidth=1.2;
+    eqCtx.beginPath();eqCtx.arc(cx,cy,46,0,Math.PI*2);eqCtx.stroke();
   }
 
   // Mirror each lower BAND BYPASS state in the upper frequency zone.
@@ -787,7 +783,7 @@ function drawEQ(){
   }
 
 }
-let expandedDynamicBand=-1,hoverDynamicBand=-1,hoverXover=-1,dragMode=0,dragBand=-1,dragXover=-1,dragOverlapXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dragDynamicHandleBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynFreqGrabOffsetX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0,dynHandleStartY=0,dynHandleStartValue=0,overlapDragStartY=0,overlapDragStartValue=50;
+let expandedDynamicBand=-1,hoverDynamicBand=-1,hoverXover=-1,dragMode=0,dragBand=-1,dragXover=-1,dragOverlapXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dragDynamicHandleBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynFreqGrabOffsetX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0,dynHandleStartY=0,dynHandleStartValue=0,overlapDragStartY=0,overlapDragStartValue=50,soloSpotX=0,soloSpotY=0;
 function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRatio||1;eqCanvas.width=Math.max(1,Math.round(r.width*d));eqCanvas.height=Math.max(1,Math.round(r.height*d));eqCtx.setTransform(d,0,0,d,0,0);drawEQ();}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function showGraphHint(e,text){
@@ -876,6 +872,7 @@ eqCanvas.addEventListener("wheel",e=>{
       e.preventDefault();
       const q=Math.max(.1,Number(state.eq.q[band]||.707));
       state.eq.q[band]=nextQFromWheel(q,e.deltaY,e.shiftKey);
+      soloSpotX=x;soloSpotY=y;
       state.solo.graphActive=true;state.solo.graphFreq=state.eq.freq[band];state.solo.graphQ=state.eq.q[band];
       showGraphHint(e,graphHintBandHtml(band,8));sendParams();drawEQ();return;
     }
@@ -976,6 +973,7 @@ eqCanvas.addEventListener("pointerdown",e=>{
     if(band>=0){
       e.preventDefault();expandedDynamicBand=-1;dragDynamicMsBand=-1;dragMode=7;dragBand=band;
       dynGainStartY=y;dynGainStartOffset=state.eq.gain[band];
+      soloSpotX=x;soloSpotY=y;
       state.solo.graphActive=true;state.solo.graphFreq=state.eq.freq[band];state.solo.graphQ=state.eq.q[band];
       setGraphControls(["EQ"+(band+1)+"_FREQ","EQ"+(band+1)+"_GAIN"],false);
       eqCanvas.setPointerCapture(e.pointerId);showGraphHint(e,graphHintBandHtml(band,1|2));sendParams();drawEQ();return;
@@ -1066,6 +1064,7 @@ eqCanvas.addEventListener("pointerdown",e=>{
 });
 eqCanvas.addEventListener("pointermove",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,0,r.width),y=clamp(e.clientY-r.top,0,r.height),w=r.width,h=r.height;
+  if(state.solo.graphActive&&(e.buttons&2)){soloSpotX=x;soloSpotY=y;}
   hoverDynamicBand=dynamicTargetAtPointer(x,y,w,h);
   if(dragMode===7&&dragBand>=0){
     const hzv=invLog(clamp(x,0,w)/w),gain=yToDb(y,h);
