@@ -277,9 +277,7 @@ void VVChainDSP::processChebyshevAnalog(
     const bool solidState = drive > 1.0f;
     const double modeAlpha = solidState ? 1.80 : 1.55;
     const double alpha =
-        static_cast<double>(safeAmount)
-        * modeAlpha
-        * static_cast<double>(safeColourMultiplier);
+        static_cast<double>(safeAmount) * modeAlpha;
     const double unityNorm = std::pow(1.0 + alpha, 0.25);
 
     for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
@@ -295,9 +293,12 @@ void VVChainDSP::processChebyshevAnalog(
                 (x / denominator) * unityNorm;
 
             // Keep the original dry fundamental as the reference and add only
-            // the normalized nonlinear delta. At amount=0 this is exact x.
+            // the normalized nonlinear delta. X2 retains its established role:
+            // only the generated ANALOG delta is multiplied by 1.6.
             channelData[i] =
-                static_cast<float>(x + (saturated - x));
+                static_cast<float>(
+                    x + (saturated - x)
+                        * static_cast<double>(safeColourMultiplier));
         }
     }
 }
