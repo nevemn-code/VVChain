@@ -189,7 +189,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       }else if(type===11){
         coefs=[this.notch(sf,qq)];
       }else{
-        const idx=this.clamp(Math.round(Number(slopeIndex)??1),0,6);
+        const idx=this.clamp(Math.round(Number(slopeIndex??1)),0,6);
         if(idx===0){
           coefs=[type===12?this.lp1(sf):this.hp1(sf)];
         }else{
