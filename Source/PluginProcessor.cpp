@@ -130,6 +130,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     p.push_back(std::make_unique<juce::AudioParameterChoice>(
         "SOLO_MODE", "Solo Routing",
         juce::StringArray { "PRE", "POST" }, 0));
+    p.push_back(std::make_unique<juce::AudioParameterBool>(
+        "GRAPH_SOLO_ACTIVE", "Graph Frequency Solo Active", false));
+    f("GRAPH_SOLO_FREQ", "Graph Frequency Solo Frequency",
+      20.f, 20000.f, 1000.f, 0.25f);
+    f("GRAPH_SOLO_Q", "Graph Frequency Solo Q",
+      0.10f, 18.f, 0.707f, 0.35f);
 
     // Reference-based DeEsser controls. Frequency is now directly selectable.
     // Reference reference points remain documented at 12.5 kHz / 13.5 kHz;
