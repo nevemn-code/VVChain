@@ -64,7 +64,7 @@ const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive
 const defaults=structuredClone(state),knobRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.15
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.14";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.15";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -362,8 +362,7 @@ makeKnob(ottGrid,{label:"OTT %",get:()=>state.ott.degree[n],set:v=>state.ott.deg
 makeKnob(ottGrid,{label:"ATTACK",get:()=>state.ott.compA[n],set:v=>state.ott.compA[n]=v,min:.1,max:120,suffix:" ms",accent:"#facc15",formatDigits:1,formatValue:()=>fmt(effectiveCompAttackMs(n),1)+" ms",mutedWhen:()=>state.ott.degree[n]<=0.0001});
 makeKnob(ottGrid,{label:"RELEASE",get:()=>state.ott.compR[n],set:v=>state.ott.compR[n]=v,min:10,max:2500,suffix:" ms",accent:"#facc15",formatDigits:0,formatValue:()=>fmt(effectiveCompReleaseMs(n),0)+" ms",mutedWhen:()=>state.ott.degree[n]<=0.0001});
 
-// ANALOG COLOR baseline locked to Deploy VVChain Web Preview #443.
-// ANALOG #443
+// ANALOG COLOR v1.0.15 unity-normalized smooth saturation.
 const analogKnob=makeKnob(bottomGrid,{label:"ANALOG COLOR",get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:100,suffix:" %",accent:"#60a5fa",mutedWhen:()=>state.eq.color[n]<=0.0001});
 analogKnob.classList.add("analogKnob");
 let syncTapeLed=()=>{};
@@ -458,7 +457,7 @@ function dynamicBandAtPointer(x,y,w,h){
   let best=22,band=-1;
   for(let b=0;b<4;b++){
     const n=dynamicNodePoint(b,w,h),t=dynamicTargetPoint(b,w,h);
-    const handleX=clamp(t.x+20,18,w-12),handleY=t.y;
+    const handleX=clamp(t.x+30,18,w-12),handleY=t.y;
     const points=[
       [n.x,n.y],
       [n.x,dbToY(state.eq.gain[b],h)],
@@ -483,9 +482,11 @@ function staticEqAtPointer(x,y,w,h){
   return band;
 }
 function dynamicTargetAtPointer(x,y,w,h){
-  let best=18,band=-1;
-  const staticRadius=5.5;
+  let best=12,band=-1;
+  const staticRadius=7;
   for(let b=0;b<4;b++){
+    const dynamics=Math.abs(Number(state.dyn.dynamics[b]||0));
+    if(dynamics<=.5)continue;
     const n=dynamicTargetPoint(b,w,h);
     const d=Math.hypot(x-n.x,y-n.y);
     if(d>=staticRadius&&d<best){best=d;band=b;}
