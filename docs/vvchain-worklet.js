@@ -36,9 +36,14 @@ class VVChainWorklet extends AudioWorkletProcessor {
     };
   }
   makeCh(){
-    const dynState=()=>({det:{z1:0,z2:0},eq:{g:0,k:1,a1:1,a2:0,a3:0,m1:0,ic1:0,ic2:0},env:-120});
+    const eqFilter=()=>({
+      type:-1,tpt:{g:0,k:1,a1:1,a2:0,a3:0,m1:0,ic1:0,ic2:0},
+      stages:Array.from({length:12},()=>({z1:0,z2:0})),
+      last:0,start:0,transition:1
+    });
+    const dynState=()=>({det:{z1:0,z2:0},eq:eqFilter(),env:-120});
     return {
-      eq:Array.from({length:4},()=>({g:0,k:1,a1:1,a2:0,a3:0,m1:0,ic1:0,ic2:0})),
+      eq:Array.from({length:4},eqFilter),
       dynMid:Array.from({length:4},dynState),
       dynSide:Array.from({length:4},dynState),
       analogAd:Array.from({length:4},()=>({prevX:0,hasPrev:false})),
@@ -98,6 +103,96 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const b0=(1+cc)/2,b1=-(1+cc),b2=(1+cc)/2;
     const a0=1+a,a1=-2*cc,a2=1-a;
     return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]
+  }
+
+  notch(f,q=.707){
+    const w=2*Math.PI*this.clamp(f,10,sampleRate*.45)/sampleRate;
+    const sn=Math.sin(w),cc=Math.cos(w),a=sn/(2*Math.max(.1,q)),a0=1+a;
+    return[1/a0,-2*cc/a0,1/a0,-2*cc/a0,(1-a)/a0]
+  }
+  shelf(high,f,gain,slope=1){
+    const sf=this.clamp(f,20,sampleRate*.45),A=Math.pow(10,gain/40);
+    const w=2*Math.PI*sf/sampleRate,sn=Math.sin(w),cs=Math.cos(w),S=this.clamp(slope,.1,1);
+    const rootA=Math.sqrt(A),term=Math.max(0,(A+1/A)*(1/S-1)+2);
+    const alpha=.5*sn*Math.sqrt(term),beta=2*rootA*alpha;
+    let b0,b1,b2,a0,a1,a2;
+    if(!high){
+      b0=A*((A+1)-(A-1)*cs+beta);
+      b1=2*A*((A-1)-(A+1)*cs);
+      b2=A*((A+1)-(A-1)*cs-beta);
+      a0=(A+1)+(A-1)*cs+beta;
+      a1=-2*((A-1)+(A+1)*cs);
+      a2=(A+1)+(A-1)*cs-beta;
+    }else{
+      b0=A*((A+1)+(A-1)*cs+beta);
+      b1=-2*A*((A-1)+(A+1)*cs);
+      b2=A*((A+1)+(A-1)*cs-beta);
+      a0=(A+1)-(A-1)*cs+beta;
+      a1=2*((A-1)-(A+1)*cs);
+      a2=(A+1)-(A-1)*cs-beta;
+    }
+    return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]
+  }
+  resetEqFilter(z,type){
+    if(z.type===type)return;
+    z.start=Number.isFinite(z.last)?z.last:0;z.transition=0;z.type=type;
+    z.tpt={g:0,k:1,a1:1,a2:0,a3:0,m1:0,ic1:0,ic2:0};
+    z.stages.forEach(s=>{s.z1=0;s.z2=0});
+  }
+  eqFilter(x,z,type,f,q,gainDb){
+    type=this.clamp(Math.round(Number(type)||0),0,13);
+    this.resetEqFilter(z,type);
+    const sf=this.clamp(Number(f)||1000,20,sampleRate*.45);
+    const qq=this.clamp(Number(q)||.707,.1,18);
+    const gain=this.clamp(Number(gainDb)||0,-18,18);
+    let y=x;
+    if(type===0){
+      y=this.tptBell(x,z.tpt,sampleRate,sf,qq,gain);
+    }else{
+      let coefs=[],parallel=false,mix=0,outGain=1;
+      if(type===1){
+        coefs=[this.peak(sampleRate,sf,qq,gain)];
+      }else if(type===2||type===3){
+        const bw=this.clamp(1.4/Math.sqrt(qq),.2,4),ratio=Math.pow(2,bw*.5);
+        const lo=this.clamp(sf/ratio,20,sampleRate*.44),hi=this.clamp(sf*ratio,lo*1.02,sampleRate*.45);
+        parallel=true;mix=Math.pow(10,gain/20)-1;
+        if(type===2){
+          const edgeQ=this.clamp(qq,.45,2.5);
+          coefs=[this.hp(lo,edgeQ),this.lp(hi,edgeQ)];
+        }else{
+          const butter=[.5043144803,.5411961001,.630236207, .8213398159,1.3065629649,3.8306487878];
+          const scale=this.clamp(qq/.7071067811865476,.35,2.5);
+          for(let i=0;i<6;i++)coefs.push(this.hp(lo,this.clamp(butter[i]*scale,.25,12)));
+          for(let i=0;i<6;i++)coefs.push(this.lp(hi,this.clamp(butter[i]*scale,.25,12)));
+        }
+      }else if(type===4||type===5){
+        coefs=[this.shelf(type===5,sf,gain,1)];
+      }else if(type===6||type===7){
+        const rg=(gain>=0?1:-1)*Math.min(6,Math.abs(gain)*.35);
+        coefs=[this.shelf(type===7,sf,gain,1),this.peak(sampleRate,sf,qq,rg)];
+      }else if(type===8||type===9){
+        coefs=[this.shelf(type===9,sf,gain,.28)];
+      }else if(type===10){
+        coefs=[this.bp(sf,qq)];outGain=Math.pow(10,gain/20);
+      }else if(type===11){
+        coefs=[this.notch(sf,qq)];
+      }else{
+        const butter=[.5043144803,.5411961001,.630236207,.8213398159,1.3065629649,3.8306487878];
+        const scale=this.clamp(qq/.7071067811865476,.35,2.5);
+        for(let i=0;i<6;i++){
+          const rq=this.clamp(butter[i]*scale,.25,12);
+          coefs.push(type===12?this.lp(sf,rq):this.hp(sf,rq));
+        }
+      }
+      for(let i=0;i<coefs.length;i++)y=this.biquad(y,coefs[i],z.stages[i]);
+      y=parallel?x+mix*y:y*outGain;
+    }
+    if(z.transition<1){
+      z.transition=Math.min(1,z.transition+1/64);
+      y=z.start*(1-z.transition)+y*z.transition;
+    }
+    z.last=Number.isFinite(y)?y:0;
+    return z.last;
   }
   dynamicStereo(l,r,stereo){
     const s=this.s,c=this.ch[0];
@@ -178,10 +273,10 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const sGain=this.clamp(offset+s.dyn.gainSide[b],-18,18);
       const mDynamicGain=mGain-offset;
       const sDynamicGain=sGain-offset;
-      // Cytomic / Simper TPT Bell. Q is passed directly because the Bell
-      // denominator already uses k = 1 / (Q * A).
-      mid=this.tptBell(mid,md.eq,sampleRate,f,baseQ,mDynamicGain);
-      if(stereo)side=this.tptBell(side,sd.eq,sampleRate,f,baseQ,sDynamicGain);
+      let eqType=this.clamp(Math.round(Number(s.eq.type?.[b]||0)),0,13);
+      if((b===1||b===2)&&eqType>=12)eqType=0;
+      mid=this.eqFilter(mid,md.eq,eqType,f,baseQ,mGain);
+      if(stereo)side=this.eqFilter(side,sd.eq,eqType,f,baseQ,sGain);
     }
     if(stereo)return[(mid+side)*invSqrt2,(mid-side)*invSqrt2];
     return[mid,r];
