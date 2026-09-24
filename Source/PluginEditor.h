@@ -213,6 +213,19 @@ private:
             discreteScreenEndAngle = endAngle;
         }
 
+        // Dedicated detector-blend interaction:
+        // vertical drag while the visual remains a horizontal PEAK/ONSETS bar.
+        // Up = lower value (toward PEAK/left), down = higher value
+        // (toward ONSETS/right).
+        void setVerticalValueDrag(bool enabled, double pixelsForFullRange = 133.0)
+        {
+            verticalValueDrag = enabled;
+            verticalPixelsForFullRange =
+                std::max(20.0, pixelsForFullRange);
+            if (enabled)
+                setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
+        }
+
         void mouseDown(const juce::MouseEvent& e) override
         {
             fineDragging = e.mods.isShiftDown();
@@ -220,6 +233,14 @@ private:
             if (discreteArcEnabled)
             {
                 setDiscreteValueFromPoint(e.position);
+                return;
+            }
+
+            if (verticalValueDrag)
+            {
+                verticalDragStartY = e.position.y;
+                verticalDragStartValue = getValue();
+                juce::Slider::mouseDown(e);
                 return;
             }
 
@@ -233,6 +254,29 @@ private:
             if (discreteArcEnabled)
             {
                 setDiscreteValueFromPoint(e.position);
+                return;
+            }
+
+            if (verticalValueDrag)
+            {
+                const double range =
+                    std::max(0.000001, getMaximum() - getMinimum());
+                const double fineScale =
+                    e.mods.isShiftDown() ? 0.10 : 1.0;
+                const double deltaY =
+                    static_cast<double>(e.position.y - verticalDragStartY);
+
+                // Deliberately non-standard direction requested by the UI:
+                // moving UP reduces value -> visual blend moves LEFT/PEAK.
+                // moving DOWN increases value -> visual blend moves RIGHT/ONSETS.
+                const double next =
+                    verticalDragStartValue
+                    + deltaY / verticalPixelsForFullRange
+                        * range * fineScale;
+
+                setValue(
+                    juce::jlimit(getMinimum(), getMaximum(), next),
+                    juce::sendNotificationSync);
                 return;
             }
 
@@ -340,6 +384,10 @@ private:
         bool fineDragging = false;
         bool discreteArcEnabled = false;
         int discretePositions = 4;
+        bool verticalValueDrag = false;
+        double verticalPixelsForFullRange = 133.0;
+        float verticalDragStartY = 0.0f;
+        double verticalDragStartValue = 0.0;
         float discreteScreenStartAngle = 7.0f * juce::MathConstants<float>::pi / 6.0f;
         float discreteScreenEndAngle = 11.0f * juce::MathConstants<float>::pi / 6.0f;
         bool graphControlActive = false;
