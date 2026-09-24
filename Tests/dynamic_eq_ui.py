@@ -79,7 +79,7 @@ def source_assertions():
         'sendNotificationSync',
         'graphFreqDragGrabOffsetX',
         'DYNAMICS uses a truly linear bipolar map',
-        'constexpr float staticNodeRadius = 5.5f',
+        'constexpr float staticNodeRadius = 7.0f',
         'getTargetGainDB',
         'peakMagnitudeDBAtFrequency',
         'getTargetGainDB',
