@@ -52,8 +52,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
           0.1f, 200.f, dynAttackDefaults[i], 0.35f);
         f("DYN_RELEASE" + n, "Dynamic EQ " + n + " Release",
           5.f, 2000.f, dynReleaseDefaults[i], 0.35f);
-        p.push_back(std::make_unique<juce::AudioParameterBool>(
-            "DYN_DETECT_ONSETS" + n, "Dynamic EQ " + n + " Detect Onsets", false));
+        f("DYN_DETECT_ONSETS" + n, "Dynamic EQ " + n + " Peak / Onsets Blend",
+          0.f, 100.f, 50.f);
         p.push_back(std::make_unique<juce::AudioParameterBool>(
             "DYN_TRIGGER_BELOW" + n, "Dynamic EQ " + n + " Trigger Below", false));
         f("DYN_MS" + n, "Dynamic EQ " + n + " Mid Weight",
@@ -201,7 +201,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.dynDynamics[(size_t)i] = value("DYN_DYNAMICS" + n);
         p.dynAttack[(size_t)i] = value("DYN_ATTACK" + n);
         p.dynRelease[(size_t)i] = value("DYN_RELEASE" + n);
-        p.dynDetectOnsets[(size_t)i] = value("DYN_DETECT_ONSETS" + n) > 0.5f;
+        p.dynDetectOnsets[(size_t)i] = value("DYN_DETECT_ONSETS" + n);
         p.dynTriggerBelow[(size_t)i] = value("DYN_TRIGGER_BELOW" + n) > 0.5f;
         p.dynMSBalance[(size_t)i] = value("DYN_MS" + n);
         p.eqColor[(size_t)i] = value("EQ_COLOR" + n);
