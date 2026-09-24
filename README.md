@@ -100,7 +100,7 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
-## v1.0.32
+## v1.0.33
 
 - 上方浮動數值框命中規則改為確定式：滑鼠碰到 Static EQ 點時永遠顯示 `EQ GAIN`，不再被 Dynamic Live/Target 搶走。
 - 只有滑鼠明確碰到 Dynamic Target 或右側 DYNAMICS 箭頭時，才顯示 `DYN EQ GAIN`。
