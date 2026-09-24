@@ -40,7 +40,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified"></div></div><div class="sub"></div><!-- VVCHAIN v1.0.48 --></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.48</div></div><div class="sub"></div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · ANALOG COLOR · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -763,9 +763,9 @@ function drawEQ(){
     const spot=eqCtx.createRadialGradient(cx,cy,0,cx,cy,radius);
     spot.addColorStop(0,"rgba(0,0,0,0)");
     spot.addColorStop(.22,"rgba(0,0,0,0)");
-    spot.addColorStop(.52,"rgba(0,0,0,.18)");
-    spot.addColorStop(.76,"rgba(0,0,0,.48)");
-    spot.addColorStop(1,"rgba(0,0,0,.72)");
+    spot.addColorStop(.52,"rgba(0,0,0,.126)");
+    spot.addColorStop(.76,"rgba(0,0,0,.336)");
+    spot.addColorStop(1,"rgba(0,0,0,.504)");
     eqCtx.fillStyle=spot;
     eqCtx.fillRect(0,0,w,h);
     eqCtx.strokeStyle="rgba(255,255,255,.16)";
