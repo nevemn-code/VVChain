@@ -416,12 +416,8 @@ class VVChainWorklet extends AudioWorkletProcessor {
   }
   sample(x,ch,analogAlpha,bandProcessingHpCoef){
     const s=this.s,c=this.ch[ch];let y=x;
-    if(!s.eq.bypass){
-      for(let b=0;b<4;b++){
-        if(s.bandBypass?.[b])continue;
-        y=this.tptBell(y,c.eq[b],sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]);
-      }
-    }
+    // Static + Dynamic EQ are both applied once in dynamicStereo() so the
+    // selected filter type never gets duplicated here.
     // One shared BAND-processing low cut: 30 Hz, 12 dB/oct Butterworth.
     // It runs once after EQ/Dynamics and before ANALOG -> UDMBC -> TAPE.
     // This is an IIR filter, so it adds phase rotation near 30 Hz but zero samples
