@@ -40,7 +40,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.12 · ANALOG 4-BAND + DEESS PRESETS · TPT BELL GRAPH</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.13 · ANALOG 4-BAND + DEESS PRESETS · TPT BELL GRAPH</div></div><div class="sub">DYNAMIC EQ · M/S · VVCHAIN · DYNAMIC EQ · M/S · 4-BAND + DE-ESSER</div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · CHEBYSHEV · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -62,7 +62,7 @@ const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=n
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
 const state={masterBypass:false,delta:false,solo:{band:-1,post:false},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],color:[35,35,35,35],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[false,false,false,false],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},ott:{bypass:false,bandBypass:[false,false,false,false],degree:[25,25,22,18],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[6,12,28,22],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:8000,intensity:3,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
 const defaults=structuredClone(state),knobRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.12
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.13
 function makeWorkletUrl(){
   return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.12";
 }
@@ -496,24 +496,25 @@ function dbToY(db,h){
   return h-clamp((db+18)/36,0,1)*h;
 }
 function tptBellMagnitudeDb(fs,f,q,g,hz){
+  // UI-only frequency response evaluator. This mirrors the Native TPT Bell
+  // graph math; it does not alter the AudioWorklet processing path.
   const sr=fs>1000?fs:44100,cf=clamp(Number(f),20,sr*.45),fq=clamp(Number(q),.1,18),gd=clamp(Number(g),-18,18),xHz=clamp(Number(hz),10,sr*.45);
   const A=Math.pow(10,gd/40),gt=Math.tan(Math.PI*cf/sr),k=1/(fq*A);
   const a1=1/(1+gt*(gt+k)),a2=gt*a1,a3=gt*a2,m1=k*(A*A-1);
+  const A11=2*a1-1,A12=-2*a2,A21=2*a2,A22=1-2*a3;
+  const B1=2*a2,B2=2*a3,C1=m1*a1,C2=-m1*a2,D=1+m1*a2;
   const w=2*Math.PI*xHz/sr,zr=Math.cos(w),zi=Math.sin(w);
-  const A11=2*a1-1,A12=-2*a2,B1=2*a2;
-  const A21=2*a2,A22=1-2*a3,B2=2*a3;
-  const d11=zr-A11,d12=-A12,d21=-A21,d22=zr-A22;
-  const detR=d11*d22-d12*d21-zi*zi,detI=zi*(d11+d22);
-  const den=Math.max(1e-24,detR*detR+detI*detI);
-  const rhs1R=B1,rhs2R=B2;
-  const i1R=(rhs1R*d22-d12*rhs2R),i1I=(-zi*rhs1R)/1;
-  const i2R=(d11*rhs2R-d21*rhs1R),i2I=(-zi*rhs2R)/1;
-  const h1R=(i1R*detR+i1I*detI)/den,h1I=(i1I*detR-i1R*detI)/den;
-  const h2R=(i2R*detR+i2I*detI)/den,h2I=(i2I*detR-i2R*detI)/den;
-  const v1R=a1*h1R-a2*h2R+a2,v1I=a1*h1I-a2*h2I;
-  const outR=1+m1*v1R,outI=m1*v1I;
+  const d11=zr-A11,d22=zr-A22;
+  const detR=d11*d22-A12*A21-zi*zi,detI=zi*(d11+d22);
+  const det2=Math.max(1e-30,detR*detR+detI*detI);
+  const n1R=d22*B1+A12*B2,n1I=zi*B1;
+  const n2R=A21*B1+d11*B2,n2I=zi*B2;
+  const h1R=(n1R*detR+n1I*detI)/det2,h1I=(n1I*detR-n1R*detI)/det2;
+  const h2R=(n2R*detR+n2I*detI)/det2,h2I=(n2I*detR-n2R*detI)/det2;
+  const outR=D+C1*h1R+C2*h2R,outI=C1*h1I+C2*h2I;
   return 20*Math.log10(Math.max(Math.hypot(outR,outI),1e-12));
 }
+
 function gainShapeDb(b,hz,gain){
   const f=Math.max(20,state.eq.freq[b]),q=Math.max(.1,state.eq.q[b]);
   return tptBellMagnitudeDb(audioCtx?.sampleRate||44100,f,q,gain,hz);
