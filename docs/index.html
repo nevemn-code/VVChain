@@ -749,7 +749,7 @@ function drawEQ(){
     // DYNAMICS is at 0 and the Dynamic target is still on the EQ point.
     // Once pulled out, the Dynamic target circle itself is the drag control.
     const target=dynamicTargetPoint(b,w,h);
-    const handleX=clamp(target.x+44,18,w-12),handleY=target.y;
+    const handleX=clamp(target.x+31,18,w-12),handleY=target.y; // 30% closer than 44px
     if(Math.abs(Number(state.dyn.dynamics[b]||0))<=.05){
       eqCtx.strokeStyle=(hoverDynamicBand===b?c:"#f8fafc")+"ee";eqCtx.lineWidth=1.4;
       eqCtx.beginPath();eqCtx.moveTo(handleX,handleY-8);eqCtx.lineTo(handleX,handleY+8);eqCtx.stroke();
@@ -885,7 +885,7 @@ function graphHoverTarget(x,y,w,h){
   for(let b=0;b<4;b++){
     const dyn=Number(state.dyn.dynamics[b]||0);
     const target=dynamicTargetPoint(b,w,h);
-    const handleX=clamp(target.x+44,18,w-12),handleY=target.y;
+    const handleX=clamp(target.x+31,18,w-12),handleY=target.y;
 
     if(Math.abs(dyn)<=.05
       && Math.abs(x-handleX)<=6&&Math.abs(y-handleY)<=10)
@@ -1043,7 +1043,7 @@ eqCanvas.addEventListener("pointerdown",e=>{
   for(let b=0;b<4;b++){
     const dyn=Number(state.dyn.dynamics[b]||0);
     const target=dynamicTargetPoint(b,w,h);
-    const handleX=clamp(target.x+44,18,w-12),handleY=target.y;
+    const handleX=clamp(target.x+31,18,w-12),handleY=target.y;
     if(Math.abs(dyn)<=.05&&Math.abs(x-handleX)<=3&&Math.abs(y-handleY)<=7){
       dragMode=5;dragDynamicHandleBand=b;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;
       setGraphControls(["DYN_DYNAMICS"+(b+1)],false);
