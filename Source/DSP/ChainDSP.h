@@ -25,9 +25,9 @@ public:
         std::array<float, 4> freq { 80.f, 350.f, 2500.f, 10000.f };
         std::array<float, 4> gain { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> q { 0.707f, 0.707f, 0.707f, 0.707f };
-        // 0 Peak, 1 Peak analog, 2/3 Band-shelf A/B, 4/5 Shelf,
-        // 6/7 resonant Shelf, 8/9 Slope, 10 BP, 11 Notch,
-        // 12/13 resonant 72 dB/oct LP/HP.
+        // 0 Parametric Bell, 1 Matched Bell, 2/3 Plateau A/B,
+        // 4/5 Shelf, 6/7 resonant Shelf, 8/9 Contour,
+        // 10 Focus Pass, 11 Deep Reject, 12/13 72 dB/oct roll-off.
         std::array<int, 4> eqType { 0, 0, 0, 0 };
 
         // Four independent Dynamic EQ bands. Each detector is frequency-selective
