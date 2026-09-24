@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.35 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.36 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -160,8 +160,8 @@ def source_assertions():
     assert 'units*.5' in web
     assert 'staticPriorityBand < 0' in cpp
     assert 'const staticBand=staticEqAtPointer' in web
-    assert '.graphHint{width:176px' in web
-    assert 'm_boxWidth = 176' in head
+    assert '.graphHint{width:112px' in web
+    assert 'm_boxWidth = 112' in head
     assert 'A mouse drag keeps ownership of the node' in cpp
     assert 'Pointer capture owns the readout until pointerup/cancel.' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
@@ -427,8 +427,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.35" in web
-    assert "VVCHAIN v1.0.35" in editor
+    assert "VVCHAIN v1.0.36" in web
+    assert "VVCHAIN v1.0.36" in editor
     assert "LAST " not in editor
 
     # ANALOG v1.0.16 uses unity-normalized smooth algebraic saturation.
@@ -520,8 +520,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.35" in web
-    assert "VVCHAIN v1.0.35" in cpp
+    assert "VVCHAIN v1.0.36" in web
+    assert "VVCHAIN v1.0.36" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -598,8 +598,8 @@ def test_v107_ui_controls():
 
     # Graph readout is compact: EQ / DYN EQ + GAIN, FREQ, Q only.
     assert 'DYN EQ' in cpp
-    assert 'm_boxWidth = 176' in head
-    assert '.graphHint{width:176px' in web
+    assert 'm_boxWidth = 112' in head
+    assert '.graphHint{width:112px' in web
     assert 'DYN EQ' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
     assert ' | ' not in hint_block
@@ -645,15 +645,15 @@ def test_v1018_interaction_visual_sync():
     assert 'juce::Justification::centred' in cpp
     assert "class='masterBypassLabel'>BYPASS</div><button class='deessPower'" in web
 
-    # Floating readout is exactly two lines and switches identity by hover target.
+    # Floating readout has three short lines and switches identity by hover target.
     assert 'juce::String(dynamicReadout ? "DYN EQ" : "EQ")' in cpp
-    assert '"FREQ " + formatGraphFrequency(frequency)' in cpp
-    assert '"  Q " + juce::String(q, 2)' in cpp
+    assert 'const juce::String line2 = "GAIN " + signedDb' in cpp
+    assert 'const juce::String line3 = "Q " + juce::String(q, 3)' in cpp
     assert 'const dynamicReadout=!!(mask&4);' in web
     assert 'const label=dynamicReadout?"DYN EQ":"EQ";' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
     assert 'TARGET' not in hint_block and 'OFFSET' not in hint_block and 'AUTO THR' not in hint_block
-    assert hint_block.count('<div class="active">') == 2
+    assert hint_block.count('<div class="active">') == 3
 
     # Right-click SOLO keeps the selected region coloured and fades outward to grey.
     assert 'Right-click SOLO keeps the selected EQ region in full colour' in cpp
@@ -670,10 +670,10 @@ def test_v1024_compact_readout_50():
     head = HEAD.read_text(encoding="utf-8")
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
 
-    # Source-level invariants: one fixed compact box, two lines only.
-    assert 'm_boxWidth = 176' in head
-    assert 'm_line1Text' in head and 'm_line2Text' in head
-    assert 'Exactly two compact lines. No TARGET / OFFSET / DYN % / AUTO THR.' in cpp
+    # Source-level invariants: one fixed compact box, three lines only.
+    assert 'm_boxWidth = 112' in head
+    assert 'm_line1Text' in head and 'm_line2Text' in head and 'm_line3Text' in head
+    assert 'The node label lives beside the frequency; one value per short line.' in cpp
     assert 'showFloatingValueBoxForBand(' in cpp
     assert 'rightSoloBand, false, gain, event.position' in cpp
     assert 'dragOffsetBand, false, offset, event.position' in cpp
@@ -681,10 +681,10 @@ def test_v1024_compact_readout_50():
     assert 'dragBand, true, dynamicEffectiveTargetGain(dragBand)' in cpp
     assert 'dynamicWheelReadout' in cpp
     assert 'dynamicWheelReadout?4:8' in web
-    assert '.graphHint{width:176px;min-width:176px;max-width:176px}' in web
+    assert '.graphHint{width:112px;min-width:112px;max-width:112px}' in web
 
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
-    assert hint_block.count('<div class="active">') == 2
+    assert hint_block.count('<div class="active">') == 3
     for forbidden in ('TARGET', 'OFFSET', 'AUTO THR', 'DYNAMICS', 'THRESH'):
         assert forbidden not in hint_block
 
@@ -698,12 +698,13 @@ def test_v1024_compact_readout_50():
         gain = -18.0 + (36.0 * i / 49.0)
         freq = 20.0 * (1000.0 ** (i / 49.0))
         q = 0.1 + (17.9 * i / 49.0)
-        line1 = f"{label}  GAIN {gain:+.1f} dB"
-        line2 = f"FREQ {freq:.1f}  Q {q:.2f}"
-        assert line1.startswith("DYN EQ  GAIN") if dynamic else line1.startswith("EQ  GAIN")
-        assert "FREQ " in line2 and "  Q " in line2
-        assert "TARGET" not in line1 + line2
-        assert "OFFSET" not in line1 + line2
+        line1 = f"{label}  {freq:.2f} Hz"
+        line2 = f"GAIN {gain:+.2f} dB"
+        line3 = f"Q {q:.3f}"
+        assert line1.startswith("DYN EQ  ") if dynamic else line1.startswith("EQ  ")
+        assert "GAIN " in line2 and "Q " in line3
+        assert "TARGET" not in line1 + line2 + line3
+        assert "OFFSET" not in line1 + line2 + line3
 
 
 
@@ -820,9 +821,9 @@ def main():
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
     print("PASS: 10 full simulated sessions")
-    print("PASS: 50x v1.0.35 compact EQ/DYN EQ readout identity + format checks")
-    print("PASS: 50x v1.0.35 Static-EQ priority vs Dynamic-target hit testing")
-    print("PASS: v1.0.35 Q wheel 3x continuous / shared-path check")
+    print("PASS: 50x v1.0.36 compact EQ/DYN EQ readout identity + format checks")
+    print("PASS: 50x v1.0.36 Static-EQ priority vs Dynamic-target hit testing")
+    print("PASS: v1.0.36 Q wheel 3x continuous / shared-path check")
     print("PASS: source invariants / APVTS / graph-DYNAMICS binding")
     print("ALL Dynamic EQ UI regression tests passed")
 

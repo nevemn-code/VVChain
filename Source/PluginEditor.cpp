@@ -2240,7 +2240,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.35 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
+    g.drawText("VVCHAIN v1.0.36 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2630,18 +2630,20 @@ void VVChainAudioProcessorEditor::showFloatingValueBoxForBand(
 
     const juce::String signedDb =
         juce::String(displayedGain >= 0.0f ? "+" : "")
-        + juce::String(displayedGain, 1) + " dB";
+        + juce::String(displayedGain, 2) + " dB";
 
-    // Exactly two compact lines. No TARGET / OFFSET / DYN % / AUTO THR.
+    // The node label lives beside the frequency; one value per short line.
+    const juce::String shortFrequency = frequency >= 1000.f
+        ? juce::String(frequency / 1000.f, 2) + " kHz"
+        : juce::String(frequency, 2) + " Hz";
     const juce::String line1 =
         juce::String(dynamicReadout ? "DYN EQ" : "EQ")
-        + "  GAIN " + signedDb;
-    const juce::String line2 =
-        "FREQ " + formatGraphFrequency(frequency)
-        + "  Q " + juce::String(q, 2);
+        + "  " + shortFrequency;
+    const juce::String line2 = "GAIN " + signedDb;
+    const juce::String line3 = "Q " + juce::String(q, 3);
 
     floatingValueBox.updateInfo(
-        line1, line2, position.toInt(), getLocalBounds());
+        line1, line2, line3, position.toInt(), getLocalBounds());
 }
 
 void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
@@ -2671,7 +2673,7 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
         return;
     }
 
-    // v1.0.35: explicit hit priority.
+    // v1.0.36: explicit hit priority.
     // 1) Static EQ point always wins when the pointer is actually on it.
     // 2) Only the Dynamic target or its dedicated arrow can produce DYN EQ.
     // The live gain marker is visual only and never steals the value box.

@@ -100,6 +100,11 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.36
+
+- 依使用者提供的節點浮動框參考圖，改成 112px 的三行讀值：`EQ / DYN EQ + 頻率`、`GAIN`、`Q`。
+- 頻率和增益顯示兩位小數，Q 顯示三位小數；Native 與 Web 使用同一種排列。
+
 ## v1.0.35
 
 - 上方 EQ 與動態 EQ 浮動框在拖曳期間固定顯示被抓取的節點，放開後才重新判斷游標位置。

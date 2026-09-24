@@ -79,25 +79,27 @@ private:
 
         void updateInfo(const juce::String& line1Text,
                         const juce::String& line2Text,
+                        const juce::String& line3Text,
                         juce::Point<int> mousePos,
                         juce::Rectangle<int> parentBounds)
         {
             const bool textChanged =
-                m_line1Text != line1Text || m_line2Text != line2Text;
+                m_line1Text != line1Text || m_line2Text != line2Text
+                || m_line3Text != line3Text;
 
             if (!textChanged && m_lastPos == mousePos && isVisible())
                 return;
 
             m_line1Text = line1Text;
             m_line2Text = line2Text;
+            m_line3Text = line3Text;
             m_lastPos = mousePos;
 
-            // v1.0.24: this readout is intentionally a compact two-line box.
-            // Never auto-expand into a long one-row strip.
+            // One value per line keeps the readout narrow at every frequency.
             if (textChanged || m_boxWidth <= 0)
-                m_boxWidth = 176;
+                m_boxWidth = 112;
 
-            constexpr int boxHeight = 36;
+            constexpr int boxHeight = 50;
             int targetX = mousePos.x + 14;
             int targetY = mousePos.y - boxHeight - 14;
 
@@ -124,6 +126,7 @@ private:
             m_lastPos = { -1, -1 };
             m_line1Text.clear();
             m_line2Text.clear();
+            m_line3Text.clear();
         }
 
         void paint(juce::Graphics& g) override
@@ -143,11 +146,15 @@ private:
             g.drawText(
                 m_line2Text, 5, 19, getWidth() - 10, 14,
                 juce::Justification::centredLeft);
+            g.drawText(
+                m_line3Text, 5, 35, getWidth() - 10, 14,
+                juce::Justification::centredLeft);
         }
 
     private:
         juce::String m_line1Text;
         juce::String m_line2Text;
+        juce::String m_line3Text;
         juce::Font m_font;
         juce::Point<int> m_lastPos { -1, -1 };
         int m_boxWidth = 0;
