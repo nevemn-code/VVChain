@@ -130,6 +130,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     p.push_back(std::make_unique<juce::AudioParameterChoice>(
         "SOLO_MODE", "Solo Routing",
         juce::StringArray { "PRE", "POST" }, 0));
+    p.push_back(std::make_unique<juce::AudioParameterChoice>(
+        "EQ_POINT_SOLO", "EQ Point Audition",
+        juce::StringArray { "OFF", "EQ 1", "EQ 2", "EQ 3", "EQ 4" }, 0));
 
     // Reference-based DeEsser controls. Frequency is now directly selectable.
     // Reference reference points remain documented at 12.5 kHz / 13.5 kHz;
@@ -247,6 +250,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.atypeOutputGainDb = value("ATYPE_OUTPUT");
 
     p.soloBand = static_cast<int>(juce::roundToInt(value("SOLO_BAND"))) - 1;
+    p.pointSoloBand = static_cast<int>(juce::roundToInt(value("EQ_POINT_SOLO"))) - 1;
     p.soloPost = value("SOLO_MODE") > 0.5f;
 
     p.deessReferenceHz = value("DEESS_FREQ");
