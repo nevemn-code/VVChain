@@ -230,6 +230,12 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.eqType[(size_t)i] = juce::jlimit(
             0, 13,
             juce::roundToInt(value("EQ" + n + "_TYPE")));
+        // Removed user-facing legacy shapes keep their numeric slots so
+        // existing host automation indices do not shift.
+        if (p.eqType[(size_t)i] == 3)
+            p.eqType[(size_t)i] = 2; // Steep Plateau -> Wide Plateau
+        else if (p.eqType[(size_t)i] == 11)
+            p.eqType[(size_t)i] = 0; // Deep Reject -> Parametric Bell
         p.eqSlope[(size_t)i] = juce::jlimit(
             0, 5,
             juce::roundToInt(value("EQ" + n + "_SLOPE")));
