@@ -134,6 +134,39 @@ private:
         }
     };
 
+    struct TPTBell
+    {
+        double g = 0.0;
+        double k = 1.0;
+        double a1 = 1.0;
+        double a2 = 0.0;
+        double a3 = 0.0;
+        double m1 = 0.0;
+        double ic1eq = 0.0;
+        double ic2eq = 0.0;
+
+        void reset() noexcept
+        {
+            ic1eq = 0.0;
+            ic2eq = 0.0;
+        }
+
+        inline float process(float input) noexcept
+        {
+            const double x = static_cast<double>(input);
+            const double v3 = x - ic2eq;
+            const double v1 = a1 * ic1eq + a2 * v3;
+            const double v2 = ic2eq + a2 * ic1eq + a3 * v3;
+
+            ic1eq = 2.0 * v1 - ic1eq;
+            ic2eq = 2.0 * v2 - ic2eq;
+
+            // Bell: y = x + m1 * band-pass.  At 0 dB, m1 is exactly 0,
+            // making the filter structurally bit-transparent.
+            return static_cast<float>(x + m1 * v1);
+        }
+    };
+
     struct Crossover4th
     {
         Biquad lp1, lp2, hp1, hp2;
@@ -206,7 +239,7 @@ private:
 
     static void updateAnalogPeak(Biquad& filter, double fs, double f0,
                                  double gainDb, double q);
-    static void updateDynamicPeak(Biquad& filter, double fs, double f0,
+    static void updateDynamicPeak(TPTBell& filter, double fs, double f0,
                                   double gainDb, double q);
     static void updateDynamicDetector(Biquad& filter, double fs, double f0,
                                       double q);
@@ -263,8 +296,8 @@ private:
     void alignDryBuffer(int numSamples);
 
     std::array<Biquad, 4> eq {};
-    std::array<Biquad, 4> dynMidEq {};
-    std::array<Biquad, 4> dynSideEq {};
+    std::array<TPTBell, 4> dynMidEq {};
+    std::array<TPTBell, 4> dynSideEq {};
     std::array<Biquad, 4> dynMidDetectors {};
     std::array<Biquad, 4> dynSideDetectors {};
 

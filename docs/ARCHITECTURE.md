@@ -11,6 +11,13 @@ INPUT
 → output level
 → OUTPUT
 
+## Parametric / Dynamic EQ
+
+- Four EQ bands use a double-precision Cytomic/Simper TPT Bell topology.
+- Bell damping follows k = 1 / (Q * A), with A = 10^(gain/40); no secondary empirical Q reduction is applied.
+- The filter has no additional plugin sample latency; its state and coefficient math remain double precision.
+- At 0 dB, the Bell mix coefficient is exactly zero, so the EQ path is structurally identity.
+- Native and Web Preview use the same Bell topology and Q mapping.
 ## DSP layers
 
 1. Parameter layer: JUCE AudioProcessorValueTreeState.

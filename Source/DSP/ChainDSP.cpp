@@ -121,31 +121,26 @@ void VVChainDSP::updateAnalogPeak(Biquad& filter, double fs, double f0, double g
     filter.updateCoefficients(b0, b1, b2, a1, a2);
 }
 
-void VVChainDSP::updateDynamicPeak(Biquad& filter, double fs, double f0,
+void VVChainDSP::updateDynamicPeak(TPTBell& filter, double fs, double f0,
                                       double gainDb, double q)
 {
-    const double safeF = juce::jlimit(10.0, fs * 0.45, f0);
-    const double safeQ = juce::jlimit(0.05, 30.0, q);
-    const double A = std::pow(
-        10.0, juce::jlimit(-36.0, 36.0, gainDb) / 40.0);
-    const double w0 = juce::MathConstants<double>::twoPi * safeF / fs;
-    const double c = std::cos(w0);
-    const double s = std::sin(w0);
-    const double alpha = s / (2.0 * safeQ);
+    // Cytomic / Simper TPT Bell EQ. Gain-dependent damping is intrinsic:
+    // k = 1 / (Q * A), A = 10^(gain / 40).
+    // Coefficients and state are double precision; audio I/O remains float.
+    const double safeF = juce::jlimit(20.0, fs * 0.45, f0);
+    const double safeQ = juce::jlimit(0.1, 18.0, q);
+    const double safeGain = juce::jlimit(-18.0, 18.0, gainDb);
+    const double A = std::pow(10.0, safeGain / 40.0);
+    const double g = std::tan(juce::MathConstants<double>::pi * safeF / fs);
+    const double k = 1.0 / (safeQ * A);
 
-    const double b0 = 1.0 + alpha * A;
-    const double b1 = -2.0 * c;
-    const double b2 = 1.0 - alpha * A;
-    const double a0 = 1.0 + alpha / A;
-    const double a1 = -2.0 * c;
-    const double a2 = 1.0 - alpha / A;
-    const double invA0 = 1.0 / std::max(1.0e-12, a0);
-
-    filter.updateCoefficients(
-        b0 * invA0, b1 * invA0, b2 * invA0,
-        a1 * invA0, a2 * invA0);
+    filter.g = g;
+    filter.k = k;
+    filter.a1 = 1.0 / (1.0 + g * (g + k));
+    filter.a2 = g * filter.a1;
+    filter.a3 = g * filter.a2;
+    filter.m1 = k * (A * A - 1.0);
 }
-
 void VVChainDSP::updateDynamicDetector(Biquad& filter, double fs, double f0, double q)
 {
     // Constant-peak-gain band-pass detector: approximately unity at the
@@ -870,22 +865,16 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 // Oxford Type-3-style gain/Q interaction:
                 // as gain moves farther from 0 dB, Q reduces and the
                 // effective bandwidth becomes wider / softer.
-                const double midQ = juce::jlimit(
-                    0.1, 18.0,
-                    baseQ / (1.0 + 0.045
-                        * std::abs(static_cast<double>(safeMidTotalGain))));
-                const double sideQ = juce::jlimit(
-                    0.1, 18.0,
-                    baseQ / (1.0 + 0.045
-                        * std::abs(static_cast<double>(safeSideTotalGain))));
+                // The TPT Bell handles gain-dependent pole damping via A.
+                const double midQ = baseQ;
+                const double sideQ = baseQ;
 
-                if ((sample & 3) == 0)
-                {
-                    updateDynamicPeak(
-                        dynMidEq[band], osSr, frequency, midTotalGain, midQ);
-                    updateDynamicPeak(
-                        dynSideEq[band], osSr, frequency, sideTotalGain, sideQ);
-                }
+                // Update every sample. The detector gain movement is already
+                // attack/release smoothed, eliminating the old 4-sample zipper.
+                updateDynamicPeak(
+                    dynMidEq[band], osSr, frequency, safeMidTotalGain, midQ);
+                updateDynamicPeak(
+                    dynSideEq[band], osSr, frequency, safeSideTotalGain, sideQ);
 
                 auto* left = osBlock.getChannelPointer(0);
                 const float leftIn = left[sample];
@@ -901,9 +890,9 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                         (leftIn - rightIn) * invSqrt2;
 
                     currentMid =
-                        dynMidEq[band].process(currentMid, false);
+                        dynMidEq[band].process(currentMid);
                     currentSide =
-                        dynSideEq[band].process(currentSide, false);
+                        dynSideEq[band].process(currentSide);
 
                     left[sample] =
                         (currentMid + currentSide) * invSqrt2;
@@ -913,7 +902,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 else
                 {
                     left[sample] =
-                        dynMidEq[band].process(leftIn, false);
+                        dynMidEq[band].process(leftIn);
                 }
             }
 

@@ -21,10 +21,11 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 1. 不得要求使用者提供、比對、同步或確認電腦時間。
 2. 不讀取使用者電腦系統時間來建立版本識別。
 3. 不在 Commit message、PR、Issue、Review、Workflow、Web Preview 中加入 TST / TIMECODE / LAST MODIFIED 等時間欄位。
-4. 每次可發版的功能修改，版本號至少遞增 PATCH；重大不相容變更才遞增 MAJOR / MINOR。
-5. 同一批連續修正可使用同一版本號，直到該版本完成。
-6. Web Preview 不需要因程式修改而同步更新日期或時間顯示。
+4. **每一次 GitHub 更新，只要有任何程式碼、DSP、UI、互動、測試或 CI/CD 規則修改，都必須建立新的 PATCH 版本號；不得用同一版本號覆蓋不同次更新。**
+5. 同一次原子提交內可以包含多個互相關聯的檔案，但只要再次提交新的修改，就必須再遞增版本號。
+6. Web Preview 不需要使用日期／時間碼；版本號本身就是唯一的修改識別。
 7. GitHub 自己產生的建立時間、Push 時間、Workflow 時間屬於 GitHub 平台資料，不納入 VVChain 版本規則。
+8. Native VST3、Web Preview、Regression Tests 與對外可見的 CI/CD artifact，必須使用同一個目前版本號。
 
 ### 版本驗收
 
@@ -67,6 +68,12 @@ ANALOG COLOR 正式基準固定為 **Deploy VVChain Web Preview #443**
 - Web Preview 不要求加入或更新日期／時間碼。
 - 變更未重新引入 V1/V2/V3 舊版切換頁、舊版 HTML 或舊版選擇器。
 
+## 每次更新版本號（最高優先、強制）
+
+- **每一個新的 GitHub 修改批次都必須升 PATCH 版本。** 例如 v1.0.9 完成後下一次任何修改即為 v1.0.10，再下一次為 v1.0.11。
+- 不得因「只是修 bug／只是補測試／只是修 Web」而沿用上一個版本號。
+- 一次 GitHub 更新若包含 Native + Web + Tests，三者仍屬同一個新版本；後續再改任何一個檔案，就必須再升一版。
+
 ## Native VST3 / Web 雙版本同步（最高優先、強制）
 
 凡是任何會改變 DSP 行為的改版，都必須同時修改 Native VST3 與 Web Preview，兩邊不得再分開演進。
@@ -94,6 +101,11 @@ ANALOG COLOR 正式基準固定為 **Deploy VVChain Web Preview #443**
 - 兩端的頻段 crossover / phase / detector / smoothing / gain 結構一致。
 - 四頻段與左右聲道 state 定義一致。
 - 不得再出現「Native 已更新，但 Web 還在跑舊演算法」的情況。
+
+## 壓力測試與部署檢查
+- GitHub CI 壓力測試：**5 次**。
+- GPT 在提交前後的自我驗證：**10 + 10 次**（10 次基礎功能／回歸 + 10 次交叉／邊界檢查）。
+- Native VST3 與 Web Preview 每次更新必須一起檢查；只改其中一端不得宣告完成。
 
 ## CI/CD
 - CI 的 Git checkout 必須保留完整 history（`fetch-depth: 0`），因為 Plugin/Web Preview 同步檢查需要比較 push 前後 commit。

@@ -100,6 +100,21 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.10
+
+- 本次更新正式升版；之後每一次新的 GitHub 修改批次都必須遞增 PATCH 版本，不再沿用上一版號。
+- Native VST3、Web AudioWorklet、Web EQ response graph、Regression Tests 與 CI artifact 統一使用 v1.0.10。
+- Web Dynamic EQ response graph 與 Native / Web TPT Bell DSP 保持同一套 Q / Bell 拓撲，避免「聲音已更新但 Web 曲線仍是舊演算法」的不同步問題。
+- GitHub CI 壓測規則為 5 次；GPT 提交前後自我驗證規則為 10 + 10 次。
+
+## v1.0.9
+
+- 4-band Dynamic/Parametric EQ core replaced with double-precision Cytomic/Simper TPT Bell topology.
+- Bell damping uses the exact relation k = 1 / (Q * A); the previous empirical extra Q reduction is removed.
+- EQ state remains double precision while audio I/O stays float; 0 dB is structurally bit-transparent.
+- Native updates the TPT Bell coefficients every sample, removing the old 4-sample coefficient stepping during Dynamic EQ movement.
+- Web AudioWorklet and EQ response graph are synchronized to the same Bell topology/Q mapping.
+- Added deterministic 50-case TPT Bell frequency/phase regression plus 50-case per-sample modulation stability stress testing.
 ## v1.0.8
 
 - 上方 EQ / DYNAMICS 改為絕對游標座標映射；X/Y 都直接跟隨滑鼠，不再用累積位移或抓取偏移造成越跑越遠。
