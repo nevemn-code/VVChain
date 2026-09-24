@@ -932,15 +932,32 @@ void VVChainAudioProcessorEditor::addKnob(
     k.slider->setNumDecimalPlacesToDisplay(
         step < .01 ? 3 : step < .1 ? 2 : step < 1 ? 1 : 0);
 
-    if (tapeDisplayDb)
+    if (id.startsWith("EQ_COLOR_B"))
     {
+        // ANALOG COLOR keeps the same 0..60 DSP parameter; display only is 0.0..10.0.
         k.slider->textFromValueFunction = [](double value)
         {
-            return juce::String(value * .06, 1) + " dB";
+            return juce::String(value / 6.0, 1);
         };
         k.slider->valueFromTextFunction = [](const juce::String& text)
         {
-            return text.retainCharacters("0123456789.-").getDoubleValue() / .06;
+            return text.retainCharacters("0123456789.-").getDoubleValue() * 6.0;
+        };
+    }
+    else if (tapeDisplayDb)
+    {
+        // TAPE keeps its preset/automation parameter range; display only is 0.0..10.0.
+        k.slider->textFromValueFunction = [max](double value)
+        {
+            const double norm =
+                juce::jlimit(0.0, 1.0, value / juce::jmax(0.000001, max));
+            return juce::String(norm * 10.0, 1);
+        };
+        k.slider->valueFromTextFunction = [max](const juce::String& text)
+        {
+            const double shown =
+                text.retainCharacters("0123456789.-").getDoubleValue();
+            return juce::jlimit(0.0, 10.0, shown) * max / 10.0;
         };
     }
     else
