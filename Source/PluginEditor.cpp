@@ -3269,11 +3269,13 @@ void VVChainAudioProcessorEditor::showEqTypeMenu(
         if ((band == 1 || band == 2) && type >= 12)
             continue;
 
+        const bool selected = current == type;
         menu.addItem(
             type + 1,
-            names[(size_t) type],
+            (selected ? juce::String("● ") : juce::String("   "))
+                + names[(size_t) type],
             true,
-            current == type);
+            selected);
     }
 
     const auto screen = localPointToGlobal(position.toInt());
