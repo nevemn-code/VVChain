@@ -470,6 +470,7 @@ private:
     int dragDynamicMsBand = -1;
     int dragDynamicHandleBand = -1;
     int rightSoloBand = -1;
+    juce::Point<float> rightSoloPosition {};
     int hoverDynamicBand = -1;
     int hoverXover = -1;
     float dynamicGainDragStartY = 0.0f;
