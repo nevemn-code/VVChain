@@ -113,7 +113,7 @@ def source_assertions():
         "graph drag must write DYN_DYNAMICS"
     assert cpp.count("juce::StringArray({") == 0, "no ambiguous JUCE StringArray brace initializers"
     assert "Direct DYNAMICS target control takes priority" in cpp, "DYNAMICS point must be hit before static EQ"
-    assert "graphHintActiveMask" in cpp and "graphHintAutoHideAt" in cpp, "Native graph hint state missing"
+    assert "graphHintActiveMask" not in cpp, "dead Native graph hint mask must stay removed"\n    assert "graphHintAutoHideAt" in cpp, "Native Q hint auto-hide state missing"
     assert "function graphHintBandHtml" in web, "Web graph hint formatter missing"
     assert "showGraphHint(e,graphHintBandHtml(dragBand,1|2))" in web
     assert "showGraphHint(e,graphHintBandHtml(dragBand,1|4))" in web
@@ -423,8 +423,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.28" in web
-    assert "VVCHAIN v1.0.28" in editor
+    assert "VVCHAIN v1.0.29" in web
+    assert "VVCHAIN v1.0.29" in editor
     assert "LAST " not in editor
 
     # ANALOG v1.0.16 uses unity-normalized smooth algebraic saturation.
@@ -516,8 +516,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.28" in web
-    assert "VVCHAIN v1.0.28" in cpp
+    assert "VVCHAIN v1.0.29" in web
+    assert "VVCHAIN v1.0.29" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -766,8 +766,8 @@ def main():
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
     print("PASS: 10 full simulated sessions")
-    print("PASS: 50x v1.0.28 compact EQ/DYN EQ readout identity + format checks")
-    print("PASS: v1.0.28 Q wheel 3x continuous / shared-path check")
+    print("PASS: 50x v1.0.29 compact EQ/DYN EQ readout identity + format checks")
+    print("PASS: v1.0.29 Q wheel 3x continuous / shared-path check")
     print("PASS: source invariants / APVTS / graph-DYNAMICS binding")
     print("ALL Dynamic EQ UI regression tests passed")
 
