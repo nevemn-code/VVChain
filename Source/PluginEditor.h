@@ -95,7 +95,7 @@ private:
             // v1.0.24: this readout is intentionally a compact two-line box.
             // Never auto-expand into a long one-row strip.
             if (textChanged || m_boxWidth <= 0)
-                m_boxWidth = 112;
+                m_boxWidth = 176;
 
             constexpr int boxHeight = 36;
             int targetX = mousePos.x + 14;

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.34 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.35 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -160,8 +160,10 @@ def source_assertions():
     assert 'units*.5' in web
     assert 'staticPriorityBand < 0' in cpp
     assert 'const staticBand=staticEqAtPointer' in web
-    assert '.graphHint{width:112px' in web
-    assert 'm_boxWidth = 112' in head
+    assert '.graphHint{width:176px' in web
+    assert 'm_boxWidth = 176' in head
+    assert 'A mouse drag keeps ownership of the node' in cpp
+    assert 'Pointer capture owns the readout until pointerup/cancel.' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
     assert 'TARGET' not in hint_block and 'OFFSET' not in hint_block and 'AUTO THR' not in hint_block
     assert 'protectedSaturated' in dsp
@@ -425,8 +427,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.34" in web
-    assert "VVCHAIN v1.0.34" in editor
+    assert "VVCHAIN v1.0.35" in web
+    assert "VVCHAIN v1.0.35" in editor
     assert "LAST " not in editor
 
     # ANALOG v1.0.16 uses unity-normalized smooth algebraic saturation.
@@ -518,8 +520,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.34" in web
-    assert "VVCHAIN v1.0.34" in cpp
+    assert "VVCHAIN v1.0.35" in web
+    assert "VVCHAIN v1.0.35" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -596,8 +598,8 @@ def test_v107_ui_controls():
 
     # Graph readout is compact: EQ / DYN EQ + GAIN, FREQ, Q only.
     assert 'DYN EQ' in cpp
-    assert 'm_boxWidth = 112' in head
-    assert '.graphHint{width:112px' in web
+    assert 'm_boxWidth = 176' in head
+    assert '.graphHint{width:176px' in web
     assert 'DYN EQ' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
     assert ' | ' not in hint_block
@@ -669,7 +671,7 @@ def test_v1024_compact_readout_50():
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
 
     # Source-level invariants: one fixed compact box, two lines only.
-    assert 'm_boxWidth = 112' in head
+    assert 'm_boxWidth = 176' in head
     assert 'm_line1Text' in head and 'm_line2Text' in head
     assert 'Exactly two compact lines. No TARGET / OFFSET / DYN % / AUTO THR.' in cpp
     assert 'showFloatingValueBoxForBand(' in cpp
@@ -679,7 +681,7 @@ def test_v1024_compact_readout_50():
     assert 'dragBand, true, dynamicEffectiveTargetGain(dragBand)' in cpp
     assert 'dynamicWheelReadout' in cpp
     assert 'dynamicWheelReadout?4:8' in web
-    assert '.graphHint{width:112px;min-width:112px;max-width:112px}' in web
+    assert '.graphHint{width:176px;min-width:176px;max-width:176px}' in web
 
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
     assert hint_block.count('<div class="active">') == 2
@@ -751,7 +753,8 @@ def test_v1032_readout_hit_priority_50():
     # Web: same priority, and initial Dynamic arrow press uses the normal compact formatter.
     web_block = web[web.index('function graphHoverTarget'):web.index('eqCanvas.addEventListener("mousemove"')]
     assert 'const staticBand=staticEqAtPointer' in web_block
-    assert 'if(staticBand>=0)return {band:staticBand,mask:1|2};' in web_block
+    assert 'if(staticBand>=0&&Math.hypot(' in web_block
+    assert 'return {band:staticBand,mask:2};' in web_block
     assert 'dynamicNodePoint' not in web_block
     assert 'return {band:b,mask:1|4};' in web_block
     assert 'showGraphHint(e,graphHintBandHtml(b,1|4));' in web
@@ -759,7 +762,7 @@ def test_v1032_readout_hit_priority_50():
 
     # 50 geometry cases: whenever pointer is inside Static EQ radius, EQ must win
     # even if a Dynamic target/live marker mathematically sits closer or overlaps.
-    static_radius = 9.0
+    static_radius = 7.0
     dynamic_radius = 12.0
     for i in range(50):
         # Static point at origin; Dynamic target sweeps across/near it.
@@ -777,7 +780,10 @@ def test_v1032_readout_hit_priority_50():
         else:
             selected = "NONE"
 
-        assert selected == "EQ"
+        if static_dist <= static_radius:
+            assert selected == "EQ"
+        elif dynamic_dist < dynamic_radius:
+            assert selected == "DYN EQ"
 
 
 def main():
@@ -814,13 +820,11 @@ def main():
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
     print("PASS: 10 full simulated sessions")
-    print("PASS: 50x v1.0.34 compact EQ/DYN EQ readout identity + format checks")
-    print("PASS: 50x v1.0.34 Static-EQ priority vs Dynamic-target hit testing")
-    print("PASS: v1.0.34 Q wheel 3x continuous / shared-path check")
+    print("PASS: 50x v1.0.35 compact EQ/DYN EQ readout identity + format checks")
+    print("PASS: 50x v1.0.35 Static-EQ priority vs Dynamic-target hit testing")
+    print("PASS: v1.0.35 Q wheel 3x continuous / shared-path check")
     print("PASS: source invariants / APVTS / graph-DYNAMICS binding")
     print("ALL Dynamic EQ UI regression tests passed")
 
 if __name__ == "__main__":
     main()
-
-

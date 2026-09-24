@@ -2240,7 +2240,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.34 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
+    g.drawText("VVCHAIN v1.0.35 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2654,11 +2654,28 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
         return;
     }
 
-    // v1.0.34: explicit hit priority.
+    // A mouse drag keeps ownership of the node that received mouseDown.
+    // Geometric hover can cross the other node while the target is moving.
+    if (rightSoloBand >= 0 || dragOffsetBand >= 0)
+    {
+        const int band = rightSoloBand >= 0 ? rightSoloBand : dragOffsetBand;
+        showFloatingValueBoxForBand(band, false,
+            parameterValue("EQ" + juce::String(band + 1) + "_GAIN"), position);
+        return;
+    }
+    if (dragBand >= 0 || dragDynamicHandleBand >= 0)
+    {
+        const int band = dragBand >= 0 ? dragBand : dragDynamicHandleBand;
+        showFloatingValueBoxForBand(band, true,
+            dynamicEffectiveTargetGain(band), position);
+        return;
+    }
+
+    // v1.0.35: explicit hit priority.
     // 1) Static EQ point always wins when the pointer is actually on it.
     // 2) Only the Dynamic target or its dedicated arrow can produce DYN EQ.
     // The live gain marker is visual only and never steals the value box.
-    constexpr float staticHitRadius = 9.0f;
+    constexpr float staticHitRadius = 7.0f;
     constexpr float dynamicHitRadius = 12.0f;
     constexpr float handleHitX = 6.0f;
     constexpr float handleHitY = 10.0f;
@@ -2693,10 +2710,11 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
 
         // At 0% the Dynamic target sits on the Static EQ point, so the
         // target itself is intentionally disabled; the arrow remains available.
-        if (std::abs(dynamics) > 0.01f)
+        if (std::abs(dynamics) > 0.5f)
         {
             const float d = position.getDistanceFrom({ x, targetY });
-            if (d < bestDistance)
+            const float staticY = eqDbToY(graph, parameterValue("EQ" + n + "_GAIN"));
+            if (d < bestDistance && position.getDistanceFrom({ x, staticY }) >= staticHitRadius)
             {
                 bestDistance = d;
                 bestBand = b;

@@ -100,6 +100,12 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.35
+
+- 上方 EQ 與動態 EQ 浮動框在拖曳期間固定顯示被抓取的節點，放開後才重新判斷游標位置。
+- Native 與網頁預覽同步擴充兩行浮動框寬度，完整顯示 GAIN、FREQ 與 Q；縮小靜態 EQ 的滑鼠命中範圍，避免遮住鄰近動態節點。
+- 保持 EQ 與動態 EQ 各自獨立數值來源，浮動框不顯示其他參數。
+
 ## v1.0.34
 
 - 上方浮動數值框命中規則改為確定式：滑鼠碰到 Static EQ 點時永遠顯示 `EQ GAIN`，不再被 Dynamic Live/Target 搶走。
