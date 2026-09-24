@@ -1659,10 +1659,11 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         // target is pulled out, the target circle itself becomes the control.
         const bool showDynamicsArrow =
             std::abs(parameterValue("DYN_DYNAMICS" + n)) <= 0.05f;
+        // 30% closer to the EQ/Dynamic node than the previous 44 px spacing.
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
-                         x + 44.f);
+                         x + 31.f);
         const float handleY = targetY;
 
         if (showDynamicsArrow)
@@ -2816,7 +2817,7 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
         }
 
         const float handleX = juce::jlimit(
-            graph.getX() + 18.f, graph.getRight() - 12.f, x + 44.f);
+            graph.getX() + 18.f, graph.getRight() - 12.f, x + 31.f);
         if (std::abs(dynamics) <= 0.05f
             && std::abs(position.x - handleX) <= handleHitX
             && std::abs(position.y - targetY) <= handleHitY)
@@ -3122,7 +3123,7 @@ void VVChainAudioProcessorEditor::mouseDown(
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
-                         x + 44.f);
+                         x + 31.f);
         const float targetY =
             eqDbToY(graph, dynamicEffectiveTargetGain(b));
         const auto handleRect =
