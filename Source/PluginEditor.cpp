@@ -1486,7 +1486,8 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     // It changes only graph rendering; the realtime DSP uses updateEqFilter().
     auto filterShapeDb =
         [graphSampleRate](int type, float f0, float q,
-                          float gainDb, float hz) -> float
+                          float gainDb, float hz,
+                          int slopeIndex) -> float
     {
         type = juce::jlimit(0, 13, type);
         const double sf = juce::jlimit(
@@ -1558,14 +1559,20 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                 -60.0 * std::exp(-0.5 * z * z));
         }
 
+        const int sections =
+            juce::jlimit(1, 6, slopeIndex + 1);
+        const double order =
+            2.0 * static_cast<double>(sections);
+        const double exponent = 2.0 * order;
+
         if (type == 12)
             return static_cast<float>(
                 -10.0 * std::log10(
-                    1.0 + std::pow(ratio, 24.0)));
+                    1.0 + std::pow(ratio, exponent)));
 
         return static_cast<float>(
             -10.0 * std::log10(
-                1.0 + std::pow(1.0 / ratio, 24.0)));
+                1.0 + std::pow(1.0 / ratio, exponent)));
     };
 
     juce::Path offsetResponse;
@@ -1592,7 +1599,12 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                     parameterValue("EQ" + n + "_TYPE")));
             if ((band == 1 || band == 2) && type >= 12)
                 type = 0;
-            db += filterShapeDb(type, f0, q, gain, hz);
+            const int slopeIndex = juce::jlimit(
+                0, 5,
+                juce::roundToInt(
+                    parameterValue("EQ" + n + "_SLOPE")));
+            db += filterShapeDb(
+                type, f0, q, gain, hz, slopeIndex);
         }
 
         const auto pt = juce::Point<float>(
@@ -1628,6 +1640,10 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                 parameterValue("EQ" + n + "_TYPE")));
         if ((band == 1 || band == 2) && filterType >= 12)
             filterType = 0;
+        const int slopeIndex = juce::jlimit(
+            0, 5,
+            juce::roundToInt(
+                parameterValue("EQ" + n + "_SLOPE")));
         const auto c =
             uiColour(kBandColours[(size_t)band]);
 
@@ -1644,10 +1660,12 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                 qForGain(baseQ, target);
             const float offsetDb =
                 filterShapeDb(
-                    filterType, f0, offsetQ, offset, hz);
+                    filterType, f0, offsetQ, offset, hz,
+                    slopeIndex);
             const float targetDb =
                 filterShapeDb(
-                    filterType, f0, targetQ, target, hz);
+                    filterType, f0, targetQ, target, hz,
+                    slopeIndex);
             const float gx =
                 graphFrequencyToX(graph, hz);
 
@@ -1690,7 +1708,8 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                 eqDbToY(
                     graph,
                     filterShapeDb(
-                        filterType, f0, targetQ, target, hz));
+                        filterType, f0, targetQ, target, hz,
+                        slopeIndex));
             const float gx =
                 graphFrequencyToX(graph, hz);
 
