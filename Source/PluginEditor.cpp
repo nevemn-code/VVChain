@@ -231,37 +231,10 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
         const float cy = r.getCentreY();
         const float ledD = 9.0f;
         const float ledX = r.getX() + 7.0f;
-        const auto ledBody = active
-            ? accent.darker(0.22f)
-            : juce::Colour(0xff34383e);
-
-        // Analog panel LED: metal bezel + glass body + internal highlight.
-        // No outer glow/halo is drawn.
-        g.setColour(juce::Colour(0xff07090b));
-        g.fillEllipse(
-            ledX - 2.0f, cy - ledD * 0.5f - 2.0f,
-            ledD + 4.0f, ledD + 4.0f);
-        g.setColour(juce::Colour(0xff555b63));
-        g.drawEllipse(
-            ledX - 1.5f, cy - ledD * 0.5f - 1.5f,
-            ledD + 3.0f, ledD + 3.0f, 1.0f);
-
-        juce::ColourGradient ledGradient(
-            active ? accent.brighter(0.18f) : juce::Colour(0xff555b61),
-            ledX + ledD * 0.32f, cy - ledD * 0.22f,
-            ledBody,
-            ledX + ledD * 0.72f, cy + ledD * 0.35f,
-            false);
-        g.setGradientFill(ledGradient);
+        g.setColour(juce::Colours::black.withAlpha(.75f));
+        g.fillEllipse(ledX - 1.5f, cy - ledD * 0.5f - 1.5f, ledD + 3.0f, ledD + 3.0f);
+        g.setColour(active ? accent : juce::Colour(0xff5d636b));
         g.fillEllipse(ledX, cy - ledD * 0.5f, ledD, ledD);
-
-        g.setColour(
-            active ? juce::Colours::white.withAlpha(.58f)
-                   : juce::Colours::white.withAlpha(.18f));
-        g.fillEllipse(
-            ledX + ledD * 0.22f,
-            cy - ledD * 0.5f + ledD * 0.18f,
-            ledD * 0.24f, ledD * 0.18f);
 
         g.setColour(juce::Colour(0xffe2e7ec));
         g.setFont(juce::FontOptions(8.0f).withStyle("Bold"));
@@ -388,57 +361,28 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
 
     if (button.getWidth() <= 36 && button.getHeight() <= 36)
     {
-        const float d =
-            juce::jmax(5.0f,
-                       juce::jmin(button.getWidth(), button.getHeight()) - 10.f);
+        const float d = juce::jmin(button.getWidth(), button.getHeight()) - 10.f;
         const float cx = button.getLocalBounds().getCentreX();
         const float cy = button.getLocalBounds().getCentreY();
         const auto accent = monochrome
-            ? button.findColour(
-                  juce::ToggleButton::tickColourId).withSaturation(0.0f)
+            ? button.findColour(juce::ToggleButton::tickColourId).withSaturation(0.0f)
             : button.findColour(juce::ToggleButton::tickColourId);
         const bool active = !button.getToggleState();
 
-        // Recessed analog LED bezel.  Deliberately no shadow outside the LED.
-        g.setColour(juce::Colour(0xff060708));
-        g.fillEllipse(
-            cx - d * .5f - 2.5f, cy - d * .5f - 2.5f,
-            d + 5.0f, d + 5.0f);
-        g.setColour(juce::Colour(0xff555b62));
-        g.drawEllipse(
-            cx - d * .5f - 1.7f, cy - d * .5f - 1.7f,
-            d + 3.4f, d + 3.4f, 1.0f);
+        g.setColour(juce::Colours::black.withAlpha(.8f));
+        g.fillEllipse(cx - d * .5f - 3.f, cy - d * .5f - 3.f, d + 6.f, d + 6.f);
 
-        const auto bottom =
-            active ? accent.darker(0.42f)
-                   : juce::Colour(0xff25292e);
-        const auto top =
-            active ? accent.brighter(0.20f)
-                   : juce::Colour(0xff555b62);
-
-        juce::ColourGradient bulb(
-            top,
-            cx - d * .16f, cy - d * .26f,
-            bottom,
-            cx + d * .25f, cy + d * .34f,
-            false);
-        g.setGradientFill(bulb);
+        juce::ColourGradient glow(active ? accent.withAlpha(.95f)
+                                          : juce::Colour(0xff4b5058),
+                                  cx, cy - d * .5f,
+                                  active ? accent.withAlpha(.18f)
+                                         : juce::Colour(0xff17191d),
+                                  cx, cy + d * .5f, false);
+        g.setGradientFill(glow);
         g.fillEllipse(cx - d * .5f, cy - d * .5f, d, d);
 
-        // Small resin/glass reflection, contained inside the bulb.
-        g.setColour(
-            active ? juce::Colours::white.withAlpha(.62f)
-                   : juce::Colours::white.withAlpha(.16f));
-        g.fillEllipse(
-            cx - d * .27f, cy - d * .30f,
-            d * .24f, d * .17f);
-
-        g.setColour(
-            active ? accent.darker(0.18f)
-                   : juce::Colour(0xff4b5057));
-        g.drawEllipse(
-            cx - d * .5f, cy - d * .5f,
-            d, d, 0.9f);
+        g.setColour(active ? accent : juce::Colour(0xff666b74));
+        g.drawEllipse(cx - d * .5f, cy - d * .5f, d, d, 1.2f);
         return;
     }
 
@@ -1619,10 +1563,11 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                 -60.0 * std::exp(-0.5 * z * z));
         }
 
-        const int sections =
-            juce::jlimit(1, 6, slopeIndex + 1);
+        slopeIndex = juce::jlimit(0, 6, slopeIndex);
         const double order =
-            2.0 * static_cast<double>(sections);
+            slopeIndex == 0
+                ? 1.0
+                : 2.0 * static_cast<double>(slopeIndex);
         const double exponent = 2.0 * order;
 
         if (type == 12)
@@ -1664,7 +1609,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             if ((band == 1 || band == 2) && type >= 12)
                 type = 0;
             const int slopeIndex = juce::jlimit(
-                0, 5,
+                0, 6,
                 juce::roundToInt(
                     parameterValue("EQ" + n + "_SLOPE")));
             db += filterShapeDb(
@@ -2409,17 +2354,18 @@ void VVChainAudioProcessorEditor::timerCallback()
                 {
                     qKnob->label->setText(
                         "OCT", juce::dontSendNotification);
-                    qKnob->slider->setRange(0.0, 5.0, 1.0);
+                    qKnob->slider->setRange(0.0, 6.0, 1.0);
                     qKnob->slider->setNumDecimalPlacesToDisplay(0);
-                    qKnob->slider->setDoubleClickReturnValue(true, 5.0);
+                    qKnob->slider->setDoubleClickReturnValue(true, 1.0);
                     qKnob->slider->textFromValueFunction =
                         [](double value)
                         {
+                            const int index =
+                                juce::jlimit(
+                                    0, 6,
+                                    juce::roundToInt(value));
                             const int slope =
-                                (juce::jlimit(
-                                     0, 5,
-                                     juce::roundToInt(value))
-                                 + 1) * 12;
+                                index == 0 ? 6 : index * 12;
                             return juce::String(slope) + " dB/oct";
                         };
                     qKnob->slider->valueFromTextFunction =
@@ -2429,11 +2375,13 @@ void VVChainAudioProcessorEditor::timerCallback()
                                 text.retainCharacters(
                                         "0123456789.")
                                     .getDoubleValue();
+                            if (slope <= 9.0)
+                                return 0.0;
                             return static_cast<double>(
                                 juce::jlimit(
-                                    0, 5,
+                                    1, 6,
                                     juce::roundToInt(
-                                        slope / 12.0) - 1));
+                                        slope / 12.0)));
                         };
 
                     if (auto* wheel =
@@ -2442,6 +2390,7 @@ void VVChainAudioProcessorEditor::timerCallback()
                     {
                         wheel->setDragSensitivity(90, 900);
                         wheel->setWheelBehaviour(1.0, false);
+                        wheel->setWheelSingleStepPerEvent(true);
                     }
 
                     qKnob->attachment =
@@ -2476,6 +2425,7 @@ void VVChainAudioProcessorEditor::timerCallback()
                     {
                         wheel->setDragSensitivity(225, 2250);
                         wheel->setWheelBehaviour(0.016, false);
+                        wheel->setWheelSingleStepPerEvent(false);
                     }
 
                     qKnob->attachment =
@@ -3018,11 +2968,12 @@ void VVChainAudioProcessorEditor::showFloatingValueBoxForBand(
     const juce::String line3 =
         filterType >= 12
             ? juce::String(
-                  (juce::jlimit(
-                       0, 5,
-                       juce::roundToInt(
-                           parameterValue("EQ" + n + "_SLOPE")))
-                   + 1) * 12)
+                  ([](int index)
+                   {
+                       index = juce::jlimit(0, 6, index);
+                       return index == 0 ? 6 : index * 12;
+                   })(juce::roundToInt(
+                       parameterValue("EQ" + n + "_SLOPE"))))
                   + " dB/oct"
             : "Q " + juce::String(q, 3);
 
@@ -4171,14 +4122,14 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
             if (filterType >= 12)
             {
                 const int slope = juce::jlimit(
-                    0, 5,
+                    0, 6,
                     juce::roundToInt(
                         parameterValue("EQ" + n + "_SLOPE")));
                 const int delta = wheel.deltaY > 0.0f ? 1 : -1;
                 setParameter(
                     "EQ" + n + "_SLOPE",
                     static_cast<float>(
-                        juce::jlimit(0, 5, slope + delta)));
+                        juce::jlimit(0, 6, slope + delta)));
             }
             else
             {
@@ -4310,7 +4261,7 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
         setParameter(
             "EQ" + n + "_SLOPE",
             static_cast<float>(
-                juce::jlimit(0, 5, slope + delta)));
+                juce::jlimit(0, 6, slope + delta)));
     }
     else
     {
