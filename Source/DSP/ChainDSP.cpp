@@ -144,7 +144,8 @@ void VVChainDSP::updateDynamicPeak(TPTBell& filter, double fs, double f0,
 
 void VVChainDSP::updateEqFilter(EqFilter& filter, int type,
                                 double fs, double f0,
-                                double gainDb, double q)
+                                double gainDb, double q,
+                                int slopeIndex)
 {
     type = juce::jlimit(0, 13, type);
     filter.beginType(type);
@@ -368,20 +369,22 @@ void VVChainDSP::updateEqFilter(EqFilter& filter, int type,
         return;
     }
 
-    // 72 dB/oct HF / LF roll-off.
-    constexpr double butterQ[6] =
-    {
-        0.5043144803, 0.5411961001, 0.6302362070,
-        0.8213398159, 1.3065629649, 3.8306487878
-    };
-    filter.stageCount = 6;
-    const double resonanceScale =
-        juce::jlimit(0.35, 2.5, safeQ / 0.7071067811865476);
+    // Variable Butterworth roll-off: 1..6 second-order sections
+    // = 12 / 24 / 36 / 48 / 60 / 72 dB per octave.
+    // Slope is independent of Q so switching filter types never destroys
+    // the user's saved Q value.
+    filter.stageCount = juce::jlimit(1, 6, slopeIndex + 1);
+    const int order = filter.stageCount * 2;
 
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < filter.stageCount; ++i)
     {
-        const double rq = juce::jlimit(
-            0.25, 12.0, butterQ[i] * resonanceScale);
+        const double angle =
+            (2.0 * static_cast<double>(i) + 1.0)
+            * juce::MathConstants<double>::pi
+            / (2.0 * static_cast<double>(order));
+        const double rq =
+            1.0 / (2.0 * std::cos(angle));
+
         if (type == 12)
             lowPass(filter.stages[(size_t)i], safeF, rq);
         else
@@ -1090,12 +1093,17 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 if ((band == 1 || band == 2) && eqType >= 12)
                     eqType = 0;
 
+                const int slopeIndex =
+                    juce::jlimit(0, 5, p.eqSlope[band]);
+
                 updateEqFilter(
                     dynMidEq[band], eqType,
-                    osSr, frequency, safeMidTotalGain, midQ);
+                    osSr, frequency, safeMidTotalGain, midQ,
+                    slopeIndex);
                 updateEqFilter(
                     dynSideEq[band], eqType,
-                    osSr, frequency, safeSideTotalGain, sideQ);
+                    osSr, frequency, safeSideTotalGain, sideQ,
+                    slopeIndex);
 
                 auto* left = osBlock.getChannelPointer(0);
                 const float leftIn = left[sample];
