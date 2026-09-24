@@ -1603,7 +1603,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                     parameterValue("EQ" + n + "_TYPE")));
             if (type == 3)
                 type = 2;
-            else if (type == 11)
+            else if (type == 1 || type == 10 || type == 11)
                 type = 0;
             if ((band == 1 || band == 2) && type >= 12)
                 type = 0;
@@ -1648,7 +1648,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
                 parameterValue("EQ" + n + "_TYPE")));
         if (filterType == 3)
             filterType = 2;
-        else if (filterType == 11)
+        else if (filterType == 1 || filterType == 10 || filterType == 11)
             filterType = 0;
         if ((band == 1 || band == 2) && filterType >= 12)
             filterType = 0;
@@ -3248,15 +3248,19 @@ void VVChainAudioProcessorEditor::showEqTypeMenu(
 
     // Original VVChain presentation order.  Parameter IDs/types stay unchanged
     // so old presets and host automation retain the same DSP meaning.
-    static constexpr std::array<int, 12> displayOrder
+    static constexpr std::array<int, 10> displayOrder
     {{
-        0, 1, 4, 5, 6, 7, 8, 9, 2, 10, 13, 12
+        0, 4, 5, 6, 7, 8, 9, 2, 13, 12
     }};
 
     const auto n = juce::String(band + 1);
-    const int current = juce::jlimit(
+    int current = juce::jlimit(
         0, 13,
         juce::roundToInt(parameterValue("EQ" + n + "_TYPE")));
+    if (current == 1 || current == 10 || current == 11)
+        current = 0;
+    else if (current == 3)
+        current = 2;
 
     juce::PopupMenu menu;
     for (const int type : displayOrder)
