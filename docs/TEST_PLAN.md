@@ -1,4 +1,4 @@
-# VVChain Test Plan（v1.0.48）
+# VVChain Test Plan（v1.0.49）
 
 目前五個現有測試腳本在十輪本機封閉測試均未通過；詳見 `TEST_REPORT.md`。下列 CI 觸發描述的是配置，不代表驗證已成功。
 

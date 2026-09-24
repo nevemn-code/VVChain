@@ -13,4 +13,4 @@ VVChain 的唯一正式開發規則位於：
 - ANALOG COLOR 使用者處理範圍為 0–60%；TT/SS 維持 odd-symmetric，ADAA state 逐 band/channel 隔離；X2 只把 Analog delta ×2，不影響其他模組。0% 的非線性 delta 為零；整條 EQ 路徑是否 bit-exact dry 仍須量測。
 - 一般 PR 使用 Fast Gate；重型 Native / DSP 驗證改為手動 Full Validation。
 - Web Pages 從 `main/docs` 獨立快速部署，不等待 Windows VST3 建置。
-- v1.0.48 的封閉測試結果與失效位置見 `docs/TEST_REPORT.md`；CI 規則不能視為已通過的驗證。
+- v1.0.48 基準的封閉測試結果與失效位置見 `docs/TEST_REPORT.md`；CI 規則不能視為已通過的驗證。

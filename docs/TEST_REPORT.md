@@ -1,4 +1,4 @@
-# VVChain Validation Status（v1.0.48）
+# VVChain Validation Status（v1.0.49；測試基準仍為 v1.0.48）
 
 This document records what the repository actually verifies. It is not a claim of DAW certification.
 

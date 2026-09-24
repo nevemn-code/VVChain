@@ -1,6 +1,6 @@
 # VVChain
 
-## 目前實際狀態（v1.0.48）
+## 目前實際狀態（v1.0.49）
 
 目前 `main` 的五個測試腳本在本機各重跑十輪均提前失敗，包含 `web_smoke.py` 的 Python 語法錯誤；完整位置和驗證限制見 [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md)。歷史版本日誌描述當時修改，現行行為請以 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 與實際程式為準。本次只更新說明，未更改 DSP。
 
@@ -55,6 +55,11 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
+
+### v1.0.49
+- 文件更新：同步整理目前實際訊號流程、Native／Web 差異及十輪封閉測試結果與限制。
+- Native、Web、Worklet、CMake 與 Windows VST3 artifact 版本標示統一至 v1.0.49。
+- 僅更新文件與版本標示，DSP、參數、控制邏輯及聲音處理不變。
 
 ### v1.0.47
 - ANALOG COLOR 換入 VVChain 專用 analytical first-order ADAA，保留原 unity-normalized algebraic transfer 與 TT/SS 1.55 / 1.80 曲率差異。
