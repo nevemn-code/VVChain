@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.13
+// VVChain Web AudioWorklet DSP module · v1.0.14
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -142,9 +142,10 @@ class VVChainWorklet extends AudioWorkletProcessor {
       };
 
       let midLevel=md.env,sideLevel=sd.env;
-      if(s.dyn.detectOnsets?.[b]){
-        midLevel+=this.clamp(Math.max(0,mDb-md.slow)*1.5,0,12);
-        sideLevel+=this.clamp(Math.max(0,sDb-sd.slow)*1.5,0,12);
+      const onsetsBlend=this.clamp(Number(s.dyn.detectOnsets?.[b]??50)/100,0,1);
+      if(onsetsBlend>0){
+        midLevel+=onsetsBlend*this.clamp(Math.max(0,mDb-md.slow)*1.5,0,12);
+        sideLevel+=onsetsBlend*this.clamp(Math.max(0,sDb-sd.slow)*1.5,0,12);
       }
 
       const ma=activation(midLevel,!!s.dyn.triggerBelow?.[b]);
