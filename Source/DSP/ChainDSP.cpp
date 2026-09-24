@@ -283,6 +283,28 @@ void VVChainDSP::updateEqFilter(EqFilter& filter, int type,
             (1.0 - K / qq + K2) / a0);
     };
 
+    auto firstOrderLowPass = [fs](Biquad& b, double f)
+    {
+        const double sf = juce::jlimit(20.0, fs * 0.45, f);
+        const double K = std::tan(
+            juce::MathConstants<double>::pi * sf / fs);
+        const double inv = 1.0 / (1.0 + K);
+        b.updateCoefficients(
+            K * inv, K * inv, 0.0,
+            (K - 1.0) * inv, 0.0);
+    };
+
+    auto firstOrderHighPass = [fs](Biquad& b, double f)
+    {
+        const double sf = juce::jlimit(20.0, fs * 0.45, f);
+        const double K = std::tan(
+            juce::MathConstants<double>::pi * sf / fs);
+        const double inv = 1.0 / (1.0 + K);
+        b.updateCoefficients(
+            inv, -inv, 0.0,
+            (K - 1.0) * inv, 0.0);
+    };
+
     // Peak keeps the current TPT/Simper path exactly.
     if (type == 0)
     {
@@ -373,32 +395,46 @@ void VVChainDSP::updateEqFilter(EqFilter& filter, int type,
         return;
     }
 
-    // Variable Butterworth roll-off: 1..6 second-order sections
-    // = 12 / 24 / 36 / 48 / 60 / 72 dB per octave.
-    // Slope is independent of Q so switching filter types never destroys
-    // the user's saved Q value.
-    filter.stageCount = juce::jlimit(1, 6, slopeIndex + 1);
-    const int order = filter.stageCount * 2;
+    // 6 dB/oct is a genuine first-order IIR.
+    // 12..72 dB/oct use 1..6 second-order Butterworth sections.
+    slopeIndex = juce::jlimit(0, 6, slopeIndex);
 
-    for (int i = 0; i < filter.stageCount; ++i)
+    if (slopeIndex == 0)
     {
-        const double angle =
-            (2.0 * static_cast<double>(i) + 1.0)
-            * juce::MathConstants<double>::pi
-            / (2.0 * static_cast<double>(order));
-        const double rq =
-            1.0 / (2.0 * std::cos(angle));
-
+        filter.stageCount = 1;
         if (type == 12)
-            lowPass(filter.stages[(size_t)i], safeF, rq);
+            firstOrderLowPass(filter.stages[0], safeF);
         else
-            highPass(filter.stages[(size_t)i], safeF, rq);
+            firstOrderHighPass(filter.stages[0], safeF);
+    }
+    else
+    {
+        filter.stageCount = juce::jlimit(1, 6, slopeIndex);
+        const int order = filter.stageCount * 2;
+
+        for (int i = 0; i < filter.stageCount; ++i)
+        {
+            const double angle =
+                (2.0 * static_cast<double>(i) + 1.0)
+                * juce::MathConstants<double>::pi
+                / (2.0 * static_cast<double>(order));
+            const double rq =
+                1.0 / (2.0 * std::cos(angle));
+
+            if (type == 12)
+                lowPass(filter.stages[(size_t)i], safeF, rq);
+            else
+                highPass(filter.stages[(size_t)i], safeF, rq);
+        }
     }
 
     // Clear unused coefficients defensively so old states cannot leak if the
     // stage count later increases after an automation jump.
     for (int i = filter.stageCount; i < 12; ++i)
+    {
+        filter.stages[(size_t)i].reset();
         identity(filter.stages[(size_t)i]);
+    }
 }
 
 void VVChainDSP::updateDynamicDetector(Biquad& filter, double fs, double f0, double q)
@@ -1102,7 +1138,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     eqType = 0;
 
                 const int slopeIndex =
-                    juce::jlimit(0, 5, p.eqSlope[band]);
+                    juce::jlimit(0, 6, p.eqSlope[band]);
 
                 updateEqFilter(
                     dynMidEq[band], eqType,
