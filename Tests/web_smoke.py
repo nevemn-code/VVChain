@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import json
 import re
 import subprocess
 from pathlib import Path
@@ -19,15 +18,15 @@ node = subprocess.run(
 )
 assert node.returncode == 0, node.stderr
 
-ws_start = script.index("const WORKLET_SOURCE=") + len("const WORKLET_SOURCE=")
-ws_end = script.index(";\nfunction makeWorkletUrl", ws_start)
-worklet = json.loads(script[ws_start:ws_end])
-
+worklet_path = ROOT / "docs" / "vvchain-worklet.js"
+assert worklet_path.is_file(), "missing external AudioWorklet source"
+worklet = worklet_path.read_text(encoding="utf-8")
 node = subprocess.run(
-    ["node", "-e", "new Function(require('fs').readFileSync(0,'utf8'));"],
-    input=worklet, text=True, encoding="utf-8", capture_output=True,
+    ["node", "--check", str(worklet_path)],
+    text=True, encoding="utf-8", capture_output=True,
 )
 assert node.returncode == 0, node.stderr
+assert "new URL(\"vvchain-worklet.js\",document.baseURI)" in script
 
 required = [
     "LOAD AUDIO", "AudioWorkletNode",
