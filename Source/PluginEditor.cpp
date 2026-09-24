@@ -885,6 +885,11 @@ void VVChainAudioProcessorEditor::addKnob(
 
         if (id.endsWith("_FREQ"))
             wheelSlider->setDragSensitivity(900, 9000);
+        else if ((id.startsWith("EQ") && id.endsWith("_GAIN"))
+                 || id.startsWith("DYN_DYNAMICS"))
+            wheelSlider->setDragSensitivity(257, 2570);
+        else if (id.endsWith("_Q"))
+            wheelSlider->setDragSensitivity(225, 2250);
         else
             wheelSlider->setDragSensitivity(180, 1800);
 
@@ -897,12 +902,16 @@ void VVChainAudioProcessorEditor::addKnob(
         double wheelStep = std::max(
             0.01, (max - min) * 0.01);
 
-        if (id.contains("GAIN") || id.contains("LEVEL")
-            || id.contains("THRESH") || id.endsWith("_OUTPUT")
-            || id == "OUTPUT_LEVEL" || id == "TAPE_LEVEL")
-            wheelStep = 0.5;
+        if (id.startsWith("DYN_DYNAMICS"))
+            wheelStep = 0.7;
+        else if (id.startsWith("EQ") && id.endsWith("_GAIN"))
+            wheelStep = 0.35;
         else if (id.endsWith("_Q"))
-            wheelStep = 0.02;
+            wheelStep = 0.016;
+        else if (id.contains("GAIN") || id.contains("LEVEL")
+                 || id.contains("THRESH") || id.endsWith("_OUTPUT")
+                 || id == "OUTPUT_LEVEL" || id == "TAPE_LEVEL")
+            wheelStep = 0.5;
         else if (id.contains("DYNAMICS"))
             wheelStep = 1.0;
         else if (id.contains("ATTACK"))
@@ -2547,8 +2556,10 @@ void VVChainAudioProcessorEditor::resized()
             if (auto* knob = findKnob("EQ_COLOR_B" + n))
             {
                 const auto r = knob->slider->getBounds();
+                // Same LED geometry/logic as TYPE-A: upper-right,
+                // lit = active, dim = bypass.
                 analogBypassButtons[(size_t) b]->setBounds(
-                    r.getRight() - 12, r.getY() - 6, 12, 12);
+                    r.getRight() - 14, r.getY() - 10, 14, 14);
             }
 
         if (tapeBandBypassButtons[(size_t) b])
