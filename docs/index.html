@@ -65,11 +65,11 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 <script>
 const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=null,workletNode=null,workletModuleUrl=null,playing=false,directFallback=false,workletHeartbeatSeen=false;
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
-const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive:false,graphFreq:1000,graphQ:.707},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],type:[0,0,0,0],color:[35,35,35,35],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[50,50,50,50],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},udmbc:{bypass:false,bandBypass:[false,false,false,false],degree:[25,25,22,18],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[6,12,28,22],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:7500,threshold:-6,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
+const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive:false,graphFreq:1000,graphQ:.707},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],type:[0,0,0,0],slope:[5,5,5,5],color:[35,35,35,35],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[50,50,50,50],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},udmbc:{bypass:false,bandBypass:[false,false,false,false],degree:[25,25,22,18],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[6,12,28,22],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:7500,threshold:-6,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
 const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.48
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.48"+"-hpf30-eqtypes-original";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.48"+"-hpf30-eqtypes-oct";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -233,6 +233,11 @@ function dialVisual(d,v,min,max,a){
 }
 function makeKnob(parent,cfg){
   const{label,get,set,min,max,suffix="",accent="#38bdf8",formatDigits=1,formatValue=null}=cfg;
+  const curMin=()=>cfg.dynamicMin?cfg.dynamicMin():min;
+  const curMax=()=>cfg.dynamicMax?cfg.dynamicMax():max;
+  const curSensitivity=()=>cfg.dynamicSensitivity?cfg.dynamicSensitivity():(cfg.sensitivity??1);
+  const curWheelStep=()=>cfg.dynamicWheelStep?cfg.dynamicWheelStep():(cfg.wheelStep??null);
+  const curFineStep=()=>cfg.dynamicFineStep?cfg.dynamicFineStep():0.01;
   const w=document.createElement("div");w.className="knob";w.style.setProperty("--accent",accent);if(cfg.controlId)w.dataset.controlId=cfg.controlId;
   const d=document.createElement("div");d.className="dial";
   const t=document.createElement("div");t.className="knobTitle";t.textContent=label;
@@ -252,9 +257,15 @@ function makeKnob(parent,cfg){
   }
   w.append(d,t,v);parent.appendChild(w);
   const def=get();
-  const render=()=>{const n=get();v.textContent=formatValue?formatValue(n):fmt(n,formatDigits)+suffix;dialVisual(d,n,min,max,accent);if(cfg.mutedWhen)w.classList.toggle("knobMuted",!!cfg.mutedWhen())};
+  const render=()=>{
+    const n=get(),lo=curMin(),hi=curMax();
+    t.textContent=cfg.dynamicLabel?cfg.dynamicLabel():label;
+    v.textContent=formatValue?formatValue(n):fmt(n,formatDigits)+suffix;
+    dialVisual(d,n,lo,hi,accent);
+    if(cfg.mutedWhen)w.classList.toggle("knobMuted",!!cfg.mutedWhen())
+  };
   const apply=n=>{
-    const next=clamp(n,min,max);
+    const next=clamp(n,curMin(),curMax());
     set(next);
     if(cfg.afterSet)cfg.afterSet(next);
     render();
@@ -263,7 +274,7 @@ function makeKnob(parent,cfg){
     sendParams();drawEQ()
   };
   const logarithmic=cfg.logWheel??(/FREQ|X-OVER|XOVER/.test(label));
-  const wheelStep=cfg.wheelStep??(
+  const defaultWheelStep=(
     /Q$/.test(label)?0.02:
     /GAIN|LEVEL|THRESH|OUT/.test(label)?0.5:
     /ATTACK/.test(label)?1:
@@ -272,7 +283,6 @@ function makeKnob(parent,cfg){
     discreteMode?1:
     Math.max(0.1,(max-min)*0.01)
   );
-  const fineStep=0.01;
   const freqSkew=5.02888112;
   const freqToNorm=x=>Math.pow(clamp((x-20)/(20000-20),0,1),1/freqSkew);
   const normToFreq=x=>20+(20000-20)*Math.pow(clamp(x,0,1),freqSkew);
@@ -305,7 +315,8 @@ function makeKnob(parent,cfg){
         0,1);
       apply(normToFreq(norm));
     }else{
-      const mult=(max-min)/180*(cfg.sensitivity??1)*fineScale;
+      const lo=curMin(),hi=curMax();
+      const mult=(hi-lo)/180*curSensitivity()*fineScale;
       apply(dragStartValue+(dragStartY-e.clientY)*mult);
     }
   });
@@ -316,12 +327,17 @@ function makeKnob(parent,cfg){
     const ticks=Math.trunc(wheelRemainder);if(ticks===0)return;
     wheelRemainder-=ticks;let next=get();
     if(discreteMode)next=Math.round(next)+ticks;
-    else if(e.shiftKey)next+=ticks*fineStep;
+    else if(e.shiftKey)next+=ticks*curFineStep();
     else if(logarithmic)next*=Math.pow(2,ticks/24);
-    else next+=ticks*wheelStep;
+    else next+=ticks*(curWheelStep()??defaultWheelStep);
     apply(next)
   },{passive:false});
-  d.addEventListener("dblclick",()=>apply(cfg.doubleClickValue??def));
+  d.addEventListener("dblclick",()=>{
+    const dv=typeof cfg.doubleClickValue==="function"
+      ?cfg.doubleClickValue()
+      :(cfg.doubleClickValue??def);
+    apply(dv)
+  });
   render();return w
 }
 function setGraphControls(ids,moving=false){
@@ -335,7 +351,9 @@ function setGraphControls(ids,moving=false){
 }
 function clearGraphControls(){document.querySelectorAll(".knob.graphActive").forEach(el=>el.classList.remove("graphActive","graphMoving"))}
 const cols=["#ef4444","#facc15","#3b82f6","#22c55e"],bg=$("#bandGrid");
-function hz(v){return v>=1000?fmt(v/1000,2)+" kHz":fmt(v,0)+" Hz"}function graphFrequencyText(v){return fmt(v,0)+" Hz"}function tape(v,max){return fmt(clamp(v/Math.max(1,max),0,1)*10,1)}function effectiveCompAttackMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(.1,Math.min(120,Number(state.udmbc.compA[b]||0)));const k=Math.max(0,(120-base)/.49);return Math.max(b===0?15:(b===1?8:1),base+k*(amount*amount))}function effectiveCompReleaseMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(10,Math.min(2500,Number(state.udmbc.compR[b]||0)));return Math.max(20,base+amount*100)}
+function hz(v){return v>=1000?fmt(v/1000,2)+" kHz":fmt(v,0)+" Hz"}function graphFrequencyText(v){return fmt(v,0)+" Hz"}function tape(v,max){return fmt(clamp(v/Math.max(1,max),0,1)*10,1)}
+function isRollOffType(b){return Number(state.eq.type?.[b]||0)>=12}
+function slopeDbPerOct(b){return (clamp(Math.round(Number(state.eq.slope?.[b]??5)),0,5)+1)*12}function effectiveCompAttackMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(.1,Math.min(120,Number(state.udmbc.compA[b]||0)));const k=Math.max(0,(120-base)/.49);return Math.max(b===0?15:(b===1?8:1),base+k*(amount*amount))}function effectiveCompReleaseMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(10,Math.min(2500,Number(state.udmbc.compR[b]||0)));return Math.max(20,base+amount*100)}
 for(let b=0;b<4;b++){
 const n=b,card=document.createElement("div");
 card.className="band";card.style.setProperty("--accent",cols[n]);
@@ -359,7 +377,20 @@ soloBtn.onclick=()=>{state.solo.band=Number(state.solo.band)===n?-1:n;document.q
 
 makeKnob(staticGrid,{label:"GAIN",controlId:"EQ"+(n+1)+"_GAIN",get:()=>state.eq.gain[n],set:v=>state.eq.gain[n]=v,min:-18,max:18,suffix:" dB",accent:cols[n],formatDigits:1,sensitivity:.70,wheelStep:.35});
 makeKnob(staticGrid,{label:"FREQ",controlId:"EQ"+(n+1)+"_FREQ",get:()=>state.eq.freq[n],set:v=>state.eq.freq[n]=v,min:20,max:20000,suffix:" Hz",accent:cols[n],formatDigits:0,sensitivity:.20});
-makeKnob(staticGrid,{label:"Q",controlId:"EQ"+(n+1)+"_Q",get:()=>state.eq.q[n],set:v=>state.eq.q[n]=v,min:.1,max:18,accent:cols[n],formatDigits:2,sensitivity:.80,wheelStep:.016});
+makeKnob(staticGrid,{
+  label:"Q",controlId:"EQ"+(n+1)+"_Q",
+  get:()=>isRollOffType(n)?Number(state.eq.slope[n]??5):state.eq.q[n],
+  set:v=>{if(isRollOffType(n))state.eq.slope[n]=clamp(Math.round(v),0,5);else state.eq.q[n]=v},
+  min:.1,max:18,accent:cols[n],formatDigits:2,
+  dynamicLabel:()=>isRollOffType(n)?"OCT":"Q",
+  dynamicMin:()=>isRollOffType(n)?0:.1,
+  dynamicMax:()=>isRollOffType(n)?5:18,
+  dynamicSensitivity:()=>isRollOffType(n)?.55:.80,
+  dynamicWheelStep:()=>isRollOffType(n)?1:.016,
+  dynamicFineStep:()=>isRollOffType(n)?1:.01,
+  doubleClickValue:()=>isRollOffType(n)?5:.707,
+  formatValue:v=>isRollOffType(n)?((clamp(Math.round(v),0,5)+1)*12)+" dB/oct":fmt(v,2)
+});
 
 makeKnob(dynControls,{label:"DYNAMICS",controlId:"DYN_DYNAMICS"+(n+1),get:()=>state.dyn.dynamics[n],set:v=>state.dyn.dynamics[n]=v,min:-100,max:100,suffix:" %",accent:"#f8fafc",formatDigits:0,sensitivity:.70,wheelStep:.70,doubleClickValue:0});
 makeKnob(dynControls,{label:"ATTACK",get:()=>state.dyn.attack[n],set:v=>state.dyn.attack[n]=v,min:.1,max:200,suffix:" ms",accent:"#f8fafc",formatDigits:1});
@@ -614,13 +645,15 @@ function filterShapeDb(type,f,q,gain,hz){
     const width=clamp(.16/Math.sqrt(qq),.015,.60),z=lr/width;
     return -60*Math.exp(-.5*z*z);
   }
-  if(type===12)return -10*Math.log10(1+Math.pow(ratio,24));
-  return -10*Math.log10(1+Math.pow(1/ratio,24));
+  const slopeIndex=clamp(Math.round(Number(arguments[5]??5)),0,5);
+  const order=2*(slopeIndex+1),exp=2*order;
+  if(type===12)return -10*Math.log10(1+Math.pow(ratio,exp));
+  return -10*Math.log10(1+Math.pow(1/ratio,exp));
 }
 function gainShapeDb(b,hz,gain){
   let type=clamp(Math.round(Number(state.eq.type?.[b]||0)),0,13);
   if((b===1||b===2)&&type>=12)type=0;
-  return filterShapeDb(type,state.eq.freq[b],state.eq.q[b],gain,hz);
+  return filterShapeDb(type,state.eq.freq[b],state.eq.q[b],gain,hz,state.eq.slope?.[b]??5);
 }
 function dynamicPopupBounds(b,w,h){
   const n=dynamicNodePoint(b,w,h);
@@ -903,9 +936,12 @@ function graphHintBandHtml(b,mask){
   const signed=(gain>=0?"+":"")+fmt(gain,2)+" dB";
   const freq=Number(state.eq.freq[b]||20);
   const freqText=freq>=1000?fmt(freq/1000,2)+" kHz":fmt(freq,2)+" Hz";
+  const third=isRollOffType(b)
+    ? slopeDbPerOct(b)+" dB/oct"
+    : "Q "+fmt(state.eq.q[b],3);
   return '<div class="active">'+signed
     +'</div><div class="active">'+freqText
-    +'</div><div class="active">Q '+fmt(state.eq.q[b],3)+"</div>";
+    +'</div><div class="active">'+third+"</div>";
 }
 
 const EQ_FILTER_TYPES=[
@@ -921,33 +957,31 @@ const EQ_FILTER_TYPES=[
   ["High Contour","#fb923c"],
   ["Focus Pass","#f472b6"],
   ["Deep Reject","#fb7185"],
-  ["HF Roll-Off 72","#fbbf24"],
-  ["LF Roll-Off 72","#fbbf24"]
+  ["HF Roll-Off","#fbbf24"],
+  ["LF Roll-Off","#fbbf24"]
 ];
 const EQ_FILTER_ORDER=[0,1,4,5,6,7,8,9,2,3,10,11,13,12];
 const eqTypeMenu=$("#eqTypeMenu");
 function eqTypeIcon(type){
-  // VVChain-original mini response glyphs: neutral axis + category-coloured curve.
   const p=[
-    "M2 15 C8 15 10 5 17 5 C24 5 26 15 34 15",
-    "M2 15 C7 15 10 4 17 4 C24 4 27 15 34 15",
-    "M2 16 C8 16 10 7 14 7 H20 C24 7 26 16 34 16",
-    "M2 17 H10 L12 5 H22 L24 17 H34",
-    "M2 6 H9 C13 6 14 15 21 15 H34",
-    "M2 15 H15 C22 15 22 6 26 6 H34",
-    "M2 6 H8 C11 6 12 3 15 3 C18 3 18 15 23 15 H34",
-    "M2 15 H12 C17 15 17 3 20 3 C23 3 24 6 27 6 H34",
-    "M2 5 C9 5 12 8 17 11 C22 14 27 15 34 15",
-    "M2 15 C9 15 12 12 17 9 C22 6 27 5 34 5",
-    "M2 17 C9 17 10 5 17 5 C24 5 25 17 34 17",
-    "M2 6 H11 C13 6 14 17 17 17 C20 17 21 6 23 6 H34",
-    "M2 5 H18 C23 5 25 8 27 13 C29 16 31 17 34 17",
-    "M2 17 C5 17 7 16 9 13 C11 8 13 5 18 5 H34"
+    "M2 16 H7 C10 16 11 5 18 5 C25 5 26 16 34 16",
+    "M2 16 H6 C10 16 11 4 18 4 C25 4 26 16 34 16",
+    "M2 16 H7 C10 16 11 7 14 7 H22 C25 7 26 16 34 16",
+    "M2 17 H10 L12 5 H24 L26 17 H34",
+    "M2 6 H9 C13 6 14 16 23 16 H34",
+    "M2 16 H13 C22 16 23 6 27 6 H34",
+    "M2 6 H8 C11 6 12 3 15 3 C18 3 19 16 24 16 H34",
+    "M2 16 H12 C17 16 18 3 21 3 C24 3 25 6 28 6 H34",
+    "M2 7 C10 7 13 9 18 12 C23 15 28 16 34 16",
+    "M2 16 C8 16 13 14 18 11 C23 8 28 7 34 7",
+    "M2 17 C9 17 11 5 18 5 C25 5 27 17 34 17",
+    "M2 6 H12 C14 6 15 17 18 17 C21 17 22 6 24 6 H34",
+    "M2 6 H20 C25 6 27 8 29 12 C31 15 32 17 34 17",
+    "M2 17 C4 17 5 15 7 12 C9 8 11 6 16 6 H34"
   ][type]||"M2 11H34";
-  const node=[0,1,2,3,10,11].includes(type)?'<circle class="node" cx="17" cy="11" r="1.25"/>':"";
   return '<svg class="eqTypeIcon" viewBox="0 0 36 22" aria-hidden="true">'
     +'<path class="axis" d="M2 18.5H34"/>'
-    +'<path class="shape" d="'+p+'"/>'+node+'</svg>';
+    +'<path class="shape" d="'+p+'"/></svg>';
 }
 function closeEqTypeMenu(){eqTypeMenu.hidden=true;eqTypeMenu.innerHTML="";}
 function openEqTypeMenu(b,clientX,clientY){
@@ -964,6 +998,7 @@ function openEqTypeMenu(b,clientX,clientY){
       e.stopPropagation();
       state.eq.type[b]=type;
       closeEqTypeMenu();
+      knobRefreshers.forEach(fn=>fn());
       sendParams();drawEQ();
     };
     eqTypeMenu.appendChild(btn);
@@ -1036,10 +1071,16 @@ eqCanvas.addEventListener("wheel",e=>{
     if(band>=0){
       e.preventDefault();
       if(pendingRightBand>=0){pendingRightBand=-1;dragMode=7;dragBand=band;}
-      const q=Math.max(.1,Number(state.eq.q[band]||.707));
-      state.eq.q[band]=nextQFromWheel(q,e.deltaY,e.shiftKey);
+      if(isRollOffType(band)){
+        const dir=e.deltaY>0?1:-1;
+        state.eq.slope[band]=clamp(Math.round(Number(state.eq.slope[band]??5))+dir,0,5);
+      }else{
+        const q=Math.max(.1,Number(state.eq.q[band]||.707));
+        state.eq.q[band]=nextQFromWheel(q,e.deltaY,e.shiftKey);
+      }
       soloSpotX=x;soloSpotY=y;
-      state.solo.graphActive=true;state.solo.graphFreq=state.eq.freq[band];state.solo.graphQ=state.eq.q[band];
+      state.solo.graphActive=true;state.solo.graphFreq=state.eq.freq[band];
+      state.solo.graphQ=isRollOffType(band)?.70710678:state.eq.q[band];
       showGraphHint(e,graphHintBandHtml(band,8));sendParams();drawEQ();return;
     }
   }
@@ -1073,7 +1114,13 @@ eqCanvas.addEventListener("wheel",e=>{
   if(band<0)return;
   e.preventDefault();
   setGraphControls(["EQ"+(band+1)+"_Q"],false);
-  state.eq.q[band]=nextQFromWheel(state.eq.q[band],e.deltaY,e.shiftKey);
+  if(isRollOffType(band)){
+    const dir=e.deltaY>0?1:-1;
+    state.eq.slope[band]=clamp(Math.round(Number(state.eq.slope[band]??5))+dir,0,5);
+  }else{
+    state.eq.q[band]=nextQFromWheel(state.eq.q[band],e.deltaY,e.shiftKey);
+  }
+  knobRefreshers.forEach(fn=>fn());
   showGraphHint(e,graphHintBandHtml(band,dynamicWheelReadout?4:8));
   sendParams();drawEQ();
 },{passive:false});
