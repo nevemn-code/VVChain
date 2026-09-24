@@ -155,7 +155,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
         g.setColour(juce::Colours::white.withAlpha(.94f));
         g.drawText("PEAK", r.removeFromLeft(r.getWidth() * 0.5f).toNearestInt(),
                    juce::Justification::centred);
-        g.drawText("ONSETS", r.toNearestInt(), juce::Justification::centred);
+        g.drawText("RMS", r.toNearestInt(), juce::Justification::centred);
         return;
     }
 
@@ -505,7 +505,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
             parameterValue("DYN_DETECT_ONSETS" + n),
             juce::dontSendNotification);
         dynDetectSliders[(size_t) b]->setTooltip(
-            "PEAK ↔ ONSETS detector blend；上下拖曳：上 = ONSETS / 右，下 = PEAK / 左；50% = equal blend");
+            "PEAK ↔ RMS detector blend；上下拖曳：上 = RMS / 右，下 = PEAK / 左；50% = equal blend");
         dynDetectAttachments[(size_t) b] =
             std::make_unique<Attachment>(
                 audioProcessor.apvts,
@@ -2727,7 +2727,7 @@ void VVChainAudioProcessorEditor::resized()
         constexpr int lowerSectionShiftY = 8;
         const auto cell = [&](int row, int col)
         {
-            // The taller PEAK/ONSETS + ABOVE row needs real vertical space.
+            // The taller PEAK/RMS + ABOVE row needs real vertical space.
             // Everything below the static EQ row moves down together.
             const int dynamicShift =
                 row >= 1 ? dynamicSectionShiftY : 0;
@@ -2753,7 +2753,7 @@ void VVChainAudioProcessorEditor::resized()
         placeKnob("DYN_RELEASE" + n,  cell(1, 2));
 
         // Dynamic detector mode row follows the supplied reference:
-        // PEAK/ONSETS ~= 31% left, ABOVE/BELOW ~= 31% right,
+        // PEAK/RMS ~= 31% left, ABOVE/BELOW ~= 31% right,
         // with the large centre gap preserved. Height matches + ADV.
         const int modeW =
             juce::jmax(44, juce::roundToInt(innerW * 0.31f));
