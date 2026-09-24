@@ -451,8 +451,10 @@ def test_v103_closed_10():
         assert 'if(s.delta){yL=yL-l;yR=yR-r;}' not in worklet
         assert 'mDynamicGain=mGain-offset' in worklet
         assert 'sDynamicGain=sGain-offset' in worklet
-        assert 'this.peak(sampleRate,f,mq,mDynamicGain)' in worklet
-        assert 'this.peak(sampleRate,f,sq,sDynamicGain)' in worklet
+        assert 'mid=this.tptBell(mid,md.eq,sampleRate,f,baseQ,mDynamicGain);' in worklet
+        assert 'side=this.tptBell(side,sd.eq,sampleRate,f,baseQ,sDynamicGain);' in worklet
+        assert 'this.peak(sampleRate,f,mq,mDynamicGain)' not in worklet
+        assert 'this.peak(sampleRate,f,sq,sDynamicGain)' not in worklet
         assert 'this.peak(sampleRate,f,mq,mGain)' not in worklet
         assert 'this.peak(sampleRate,f,sq,sGain)' not in worklet
 
