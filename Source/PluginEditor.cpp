@@ -1250,11 +1250,19 @@ bool VVChainAudioProcessorEditor::pointNearDynamicNode(
             juce::jlimit(-100.0f, 100.0f,
                          parameterValue("DYN_DYNAMICS" + juce::String(b + 1)));
 
-        // At/near 0% Dynamics the EQ point owns the whole central area;
-        // Dynamics is then adjusted with the separate arrow handle.
+        // The entire visible Dynamic target circle is draggable,
+        // including its centre. The Static EQ point is resolved separately
+        // before this hit-test, so it only wins when the two nodes overlap.
+        const auto n = juce::String(b + 1);
+        const float staticX = graphFrequencyToX(
+            eqGraphBounds(), parameterValue("EQ" + n + "_FREQ"));
+        const float staticY = eqDbToY(
+            eqGraphBounds(), parameterValue("EQ" + n + "_GAIN"));
+        const bool onStaticNode =
+            p.getDistanceFrom({ staticX, staticY }) < staticNodeRadius;
         const bool hit =
             std::abs(dynamics) > 0.5f
-            && d >= staticNodeRadius
+            && !onStaticNode
             && d < hitRadius;
 
         if (hit && d < best)
@@ -3155,11 +3163,12 @@ void VVChainAudioProcessorEditor::mouseDown(
         }
     }
 
-    // Direct DYNAMICS target control takes priority over the static center node.
-    // Dynamic Gain point:
-    // - click/drag the coloured Target handle;
-    // - vertical = Dynamic Gain only;
-    // - frequency stays locked while Gain is dragged;
+    // Direct DYNAMICS target control.
+    // The full coloured target circle, including its centre, is draggable.
+    // Static EQ still wins only when the two visible nodes overlap.
+    // Dynamic target drag matches the EQ node interaction:
+    // - horizontal = linked Frequency;
+    // - vertical = Dynamic target gain via DYNAMICS;
     // - Threshold is never edited independently.
     int staticPriorityBand = -1;
     float staticPriorityDistance = 7.0f;
