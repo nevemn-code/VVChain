@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.14 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.15 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -113,7 +113,48 @@ def source_assertions():
     assert 'setParameter("GRAPH_SOLO_ACTIVE", 0.f);' in cpp
     assert 'dragMode===7' in web
     assert 'state.solo.graphActive=true' in web
-    assert '?v=1.0.14' in web
+    assert '?v=1.0.15' in web
+    assert 'gainDragDeltaDb(' in cpp and 'gainDragDeltaDb(' in head
+    assert 'gainDragDeltaDb(y-dynGainStartY,h)' in web
+    assert 'constexpr float hitRadius = 12.0f;' in cpp
+    assert 'std::abs(dynamics) > 0.5f' in cpp
+    assert 'if(dynamics<=.5)continue;' in web
+    assert 'x + 30.f' in cpp
+    assert 't.x+30' in web or 'target.x+30' in web
+    assert 'detectW = juce::jmax(42, halfW / 2)' in cpp
+    assert 'width:48px' in web
+    assert 'Compact two-line FloatingValueBox is the only EQ/Dynamic EQ hover readout.' in cpp
+    assert 'Compact two-line graphHint is the only EQ/Dynamic EQ hover readout.' in web
+    assert 'Math.exp((e.deltaY/100)*.025)' in web
+    assert 'Math.exp(-e.deltaY*.25)' not in web
+
+
+def v1015_gain_drag_delta(delta_y, graph_h=315.0):
+    half = max(1.0, graph_h * 0.5)
+    t = clamp(abs(delta_y) / half, 0.0, 1.0)
+    if t <= 0.34:
+        mag = 3.0 * (t / 0.34)
+    elif t <= 0.56:
+        mag = 3.0 + 3.0 * ((t - 0.34) / 0.22)
+    elif t <= 0.80:
+        mag = 6.0 + 6.0 * ((t - 0.56) / 0.24)
+    else:
+        mag = 12.0 + 6.0 * ((t - 0.80) / 0.20)
+    return mag if delta_y <= 0 else -mag
+
+def test_v1015_gain_drag_10():
+    probes = [0.0, 10.0, 25.0, 53.55, 70.0, 88.2, 110.0, 126.0, 145.0, 157.5]
+    values = [abs(v1015_gain_drag_delta(-p)) for p in probes]
+    assert len(values) == 10
+    assert all(values[i] <= values[i+1] for i in range(9))
+    assert abs(v1015_gain_drag_delta(0.0)) < 1e-12
+    assert abs(v1015_gain_drag_delta(-53.55) - 3.0) < 1e-6
+    assert abs(v1015_gain_drag_delta(-88.2) - 6.0) < 1e-6
+    assert abs(v1015_gain_drag_delta(-126.0) - 12.0) < 1e-6
+    assert abs(v1015_gain_drag_delta(-157.5) - 18.0) < 1e-6
+    for p in probes:
+        assert abs(v1015_gain_drag_delta(-p) + v1015_gain_drag_delta(p)) < 1e-9
+
 
 def test_280_design_cases():
     # 280 deterministic absolute-cursor combinations:
@@ -190,7 +231,7 @@ def test_eq_xy_drag_math():
     assert 'const float gainAtCursor' in cpp
     assert 'const float targetGain' in cpp
     assert 'const hzv=invLog(clamp(x,0,w)/w);' in web
-    assert 'const gainAtCursor=clamp(18-(y/Math.max(1,h))*36,-18,18);' in web
+    assert 'gainDragDeltaDb(y-dynGainStartY,h)' in web
     assert 'const targetGain=clamp(18-(y/Math.max(1,h))*36,-18,18);' in web
     assert 'GAIN / FREQ / Q' in cpp
     assert 'function graphHintBandHtml' in web
@@ -355,15 +396,16 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.14" in web
-    assert "VVCHAIN v1.0.14" in editor
+    assert "VVCHAIN v1.0.15" in web
+    assert "VVCHAIN v1.0.15" in editor
     assert "LAST " not in editor
 
-    # ANALOG is now locked to Deploy VVChain Web Preview #443.
-    assert "ANALOG COLOR baseline = Deploy VVChain Web Preview #443." in cpp
-    assert "VVCHAIN ANALOG BASELINE #443" in worklet
+    # ANALOG v1.0.15 uses unity-normalized smooth algebraic saturation.
+    assert "v1.0.15 smooth zero-phase algebraic saturation" in cpp
+    assert "unityNorm" in cpp and "unityNorm" in worklet
+    assert "const double u = juce::jlimit(-1.0, 1.0, x);" in cpp
+    assert "return x+(saturated-u)*this.clamp(x2,1,1.6)" in worklet
     assert "colorX2" in web
-    assert "ANALOG COLOR baseline locked to Deploy VVChain Web Preview #443." in web
     assert "p.eqColorX2[band] ? 1.6f : 1.0f" in cpp
 
 def test_dynamic_range_centered_500():
@@ -446,8 +488,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.14" in web
-    assert "VVCHAIN v1.0.14" in cpp
+    assert "VVCHAIN v1.0.15" in web
+    assert "VVCHAIN v1.0.15" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -549,6 +591,7 @@ def test_v107_ui_controls():
 
 def main():
     source_assertions()
+    test_v1015_gain_drag_10()
     test_280_design_cases()
     test_graph_roundtrip()
     test_dynamic_range_direction()
