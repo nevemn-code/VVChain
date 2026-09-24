@@ -3473,9 +3473,11 @@ void VVChainAudioProcessorEditor::mouseUp(
         const auto n = juce::String(rightDragBand + 1);
         if (auto* p = audioProcessor.apvts.getParameter("EQ" + n + "_FREQ")) p->endChangeGesture();
         if (auto* p = audioProcessor.apvts.getParameter("EQ" + n + "_GAIN")) p->endChangeGesture();
-        setParameter("EQ_POINT_SOLO", 0.f);
         rightDragBand = -1;
     }
+
+    if (parameterValue("EQ_POINT_SOLO") > 0.5f)
+        setParameter("EQ_POINT_SOLO", 0.f);
 
     if (dragDynamicHandleBand >= 0)
     {
@@ -3641,7 +3643,6 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
     const auto n =
         juce::String(band + 1);
     setParameter("EQ_POINT_SOLO", static_cast<float>(band + 1));
-    rightDragBand = band;
     const float q =
         juce::jmax(
             0.1f,
