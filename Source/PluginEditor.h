@@ -95,7 +95,7 @@ private:
             // Fixed width avoids repeated font-metric work on every mouse move.
             // The box is deliberately compact but wide enough for frequency + signed dB.
             if (textChanged || m_boxWidth <= 0)
-                m_boxWidth = 108;
+                m_boxWidth = 112;
 
             constexpr int boxHeight = 36;
             int targetX = mousePos.x + 14;
@@ -407,7 +407,8 @@ private:
     float dynamicAverageGainChangeDb(int band) const;
     float dynamicMidGainChangeDb(int band) const;
     float dynamicSideGainChangeDb(int band) const;
-    float gainDragDeltaDb(float deltaY, float graphHeight) const noexcept;
+    float eqYToDb(const juce::Rectangle<float>& graph, float y) const noexcept;
+    float qFromWheel(float q, float deltaY, bool fine) const noexcept;
 
     FloatingValueBox floatingValueBox;
     VVChainAudioProcessor& audioProcessor;
