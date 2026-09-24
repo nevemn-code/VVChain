@@ -183,9 +183,10 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const modeAlpha=ss?1.80:1.55;
     const alpha=a*modeAlpha;
     const unityNorm=Math.pow(1+alpha,.25);
-    const denominator=Math.sqrt(Math.sqrt(1+alpha*x*x));
-    const saturated=(x/denominator)*unityNorm;
-    return x+(saturated-x)*this.clamp(x2,1,1.6);
+    const u=this.clamp(x,-1,1);
+    const denominator=Math.sqrt(Math.sqrt(1+alpha*u*u));
+    const saturated=(u/denominator)*unityNorm;
+    return x+(saturated-u)*this.clamp(x2,1,1.6);
   }
   deessSample(x,c,coef){
     const st=this.s.de;
