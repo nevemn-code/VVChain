@@ -145,10 +145,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     p.push_back(std::make_unique<juce::AudioParameterChoice>(
         "DEESS_VOICE", "Legacy DeEsser Voice",
         juce::StringArray { "Male Vocal", "Female Vocal" }, 0));
-    f("DEESS_FREQ", "DeEsser Frequency", 6000.f, 18000.f, 8000.f);
+    f("DEESS_FREQ", "DeEsser Frequency", 6000.f, 18000.f, 7500.f);
     p.push_back(std::make_unique<juce::AudioParameterFloat>(
         "DEESS_INTENSITY", "DeEsser Maximum Reduction",
-        juce::NormalisableRange<float>(0.f, 8.f, 0.1f), 3.f));
+        juce::NormalisableRange<float>(0.f, 8.f, 0.1f), 4.f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(
         "DEESS_MODE", "DeEsser Response",
         juce::NormalisableRange<float>(1.f, 4.f, 1.f), 2.f));
