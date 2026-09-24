@@ -135,6 +135,7 @@ def source_assertions():
     assert 'qFromWheel(' in cpp and 'qFromWheel(' in head
     assert 'function yToDb(' in web
     assert 'function nextQFromWheel(' in web
+    assert 'safe*Math.exp(-deltaY*.25)' in web
     assert 'constexpr float hitRadius = 12.0f;' in cpp
     assert 'std::abs(dynamics) > 0.5f' in cpp
     assert 'if(dynamics<=.5)continue;' in web
