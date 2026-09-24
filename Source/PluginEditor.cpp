@@ -2052,16 +2052,6 @@ void VVChainAudioProcessorEditor::setGraphControlMoving(bool moving)
 
 void VVChainAudioProcessorEditor::timerCallback()
 {
-    if (graphHintAutoHideAt != 0
-        && juce::Time::getMillisecondCounter() >= graphHintAutoHideAt)
-    {
-        showGraphDragHint = false;
-        graphDragHint.clear();
-        graphHintBand = -1;
-        graphHintAutoHideAt = 0;
-        repaint();
-    }
-
     for (auto& k : knobs)
         if (auto* slider = dynamic_cast<WheelSlider*>(k.slider.get()))
             if (slider->isGraphControlActive())
@@ -2191,10 +2181,8 @@ void VVChainAudioProcessorEditor::drawGraphDragHint(
     if (!showGraphDragHint)
         return;
 
-    // EQ/DYNAMICS values are now rendered by FloatingValueBox next to the
-    // pointer. Keep the older graph-anchored drag hint only for X-over/other
-    // graph controls so the two hint systems never overlap.
-    if (graphHintBand >= 0)
+    // Only X-over drags use the old graph-anchored hint.
+    if (dragXover < 0 && dragOverlapXover < 0)
         return;
 
     const float boxH = 30.0f;
@@ -2252,7 +2240,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.29 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
+    g.drawText("VVCHAIN v1.0.30 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2906,11 +2894,8 @@ void VVChainAudioProcessorEditor::mouseDown(
             graphIds.add("EQ" + n + "_FREQ");
             graphIds.add("EQ" + n + "_GAIN");
             setGraphControlState(graphIds, false);
-            graphHintBand = band;
-            showGraphDragHint = true;
-            graphDragHintPosition = pos;
-            graphDragHint = "SOLO  " + formatGraphFrequency(
-                parameterValue("EQ" + n + "_FREQ"));
+            showGraphDragHint = false;
+            graphDragHint.clear();
             repaint();
             return;
         }
@@ -2991,10 +2976,7 @@ void VVChainAudioProcessorEditor::mouseDown(
             juce::StringArray graphIds;
             graphIds.add("DYN_DYNAMICS" + n);
             setGraphControlState(graphIds, false);
-            graphHintBand = b;
-            graphHintAutoHideAt = 0;
-            showGraphDragHint = true;
-            graphDragHintPosition = pos;
+            showGraphDragHint = false;
             graphDragHint.clear();
             repaint();
             return;
@@ -3059,11 +3041,8 @@ void VVChainAudioProcessorEditor::mouseDown(
         graphIds.add("EQ" + n + "_FREQ");
         setGraphControlState(graphIds, false);
 
-        graphHintBand = band;
-        graphHintAutoHideAt = 0;
-        showGraphDragHint = true;
-        graphDragHintPosition = pos;
-        graphDragHint.clear();
+            showGraphDragHint = false;
+            graphDragHint.clear();
         repaint();
         return;
     }
@@ -3108,10 +3087,7 @@ void VVChainAudioProcessorEditor::mouseDown(
             graphIds.add("EQ" + n + "_GAIN");
             setGraphControlState(graphIds, false);
 
-            graphHintBand = b;
-            graphHintAutoHideAt = 0;
-            showGraphDragHint = true;
-            graphDragHintPosition = pos;
+            showGraphDragHint = false;
             graphDragHint.clear();
             repaint();
             return;
@@ -3230,10 +3206,8 @@ void VVChainAudioProcessorEditor::mouseDrag(
             knob->slider->setValue(hz, juce::dontSendNotification);
         if (auto* knob = findKnob("EQ" + n + "_GAIN"))
             knob->slider->setValue(gain, juce::dontSendNotification);
-        graphDragHintPosition = event.position;
-        graphDragHint = "SOLO  " + formatGraphFrequency(hz)
-            + "   GAIN " + juce::String(gain, 1) + " dB";
-        showGraphDragHint = true;
+        showGraphDragHint = false;
+        graphDragHint.clear();
         showFloatingValueBoxForBand(
             rightSoloBand, false, gain, event.position);
         repaint();
@@ -3263,13 +3237,8 @@ void VVChainAudioProcessorEditor::mouseDrag(
                 parameterValue("DYN_DYNAMICS" + n),
                 juce::sendNotificationSync);
 
-        graphDragHintPosition = event.position;
-        graphDragHint =
-            "DYN " + n + "   "
-            + juce::String(dynamics, 0) + "%   "
-            + (dynamics < 0.f ? "COMPRESS" :
-               dynamics > 0.f ? "EXPAND" : "STATIC");
-        showGraphDragHint = true;
+        showGraphDragHint = false;
+        graphDragHint.clear();
         showFloatingValueBoxForBand(
             dragDynamicHandleBand, true,
             dynamicEffectiveTargetGain(dragDynamicHandleBand),
@@ -3304,13 +3273,8 @@ void VVChainAudioProcessorEditor::mouseDrag(
             gainKnob->slider->setValue(
                 offset, juce::dontSendNotification);
 
-        graphDragHintPosition = event.position;
-        graphDragHint =
-            "EQ " + n + "   "
-            + formatGraphFrequency(hz)
-            + "   GAIN "
-            + juce::String(offset, 1) + " dB";
-        showGraphDragHint = true;
+        showGraphDragHint = false;
+        graphDragHint.clear();
         showFloatingValueBoxForBand(
             dragOffsetBand, false, offset, event.position);
         repaint();
@@ -3448,21 +3412,8 @@ void VVChainAudioProcessorEditor::mouseDrag(
                 parameterValue("DYN_DYNAMICS" + n),
                 juce::sendNotificationSync);
 
-        graphDragHintPosition = event.position;
-        graphDragHint =
-            "DYN " + n + "  "
-            + juce::String(dynamics, 0)
-            + "%   "
-            + (dynamics < 0.f ? "COMPRESS" :
-               dynamics > 0.f ? "EXPAND" : "STATIC")
-            + "   "
-            + formatGraphFrequency(hz)
-            + "   AUTO THR "
-            + juce::String(
-                dynamicThresholdFromDynamics(dynamics), 1)
-            + " dB";
-
-        showGraphDragHint = true;
+        showGraphDragHint = false;
+        graphDragHint.clear();
         showFloatingValueBoxForBand(
             dragBand, true, dynamicEffectiveTargetGain(dragBand),
             event.position);
@@ -3549,8 +3500,6 @@ void VVChainAudioProcessorEditor::mouseUp(
     dragDynamicHandleBand = -1;
     showGraphDragHint = false;
     graphDragHint.clear();
-    graphHintBand = -1;
-    graphHintAutoHideAt = 0;
     repaint();
 }
 
@@ -3599,10 +3548,8 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
             setParameter("GRAPH_SOLO_ACTIVE", 1.f);
             if (rightSoloBand < 0)
                 rightSoloBand = band;
-            graphHintBand = band;
-            showGraphDragHint = true;
-            graphDragHintPosition = event.position;
-            graphDragHint = "SOLO Q  " + juce::String(nextQ, 2);
+            showGraphDragHint = false;
+            graphDragHint.clear();
             showFloatingValueBoxForBand(
                 band, false, parameterValue("EQ" + n + "_GAIN"),
                 event.position);
@@ -3704,11 +3651,7 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
     juce::StringArray qGraphIds;
     qGraphIds.add("EQ" + n + "_Q");
     setGraphControlState(qGraphIds, false);
-    graphHintBand = band;
-    graphHintAutoHideAt =
-        juce::Time::getMillisecondCounter() + 350u;
-    showGraphDragHint = true;
-    graphDragHintPosition = event.position;
+    showGraphDragHint = false;
     graphDragHint.clear();
     setParameter(
         "EQ" + n + "_Q", nextQ);
