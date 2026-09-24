@@ -37,12 +37,13 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 
 ## ANALOG 規則
 
-ANALOG COLOR 正式基準自 **v1.0.15** 起改為 unity-normalized smooth algebraic saturation。
+ANALOG COLOR 正式基準自 **v1.0.16** 起為 unity-normalized smooth algebraic saturation + hard no-shrink guard。
 
 - 0% COLOR 必須 exact dry / Delta 靜音。
 - Native VST3 與 Web AudioWorklet 必須使用相同公式：奇對稱、無濾波 state、零額外相位旋轉。
 - 核心 shaping 使用 `x / (1 + alpha*x^2)^(1/4)` 類型平滑曲線，並以 `|x|=1` normalization 避免 COLOR 增加時整體萎縮。
 - shaping domain 限制在 -1..+1；超出範圍不得因 ANALOG 額外衰減。
+- hard no-shrink guard 必須保證 COLOR 增加時，shaping domain 內每個 sample 的絕對值不得低於未染色值；0% 仍須 exact dry。
 - 每個頻段仍保留獨立 COLOR、TT/SS、BYPASS、X2。
 - **X2 仍只能把該頻段由 ANALOG COLOR 產生的 delta ×1.6；不得乘到 EQ、OTT、TAPE-A、DE-ESSER、MIX、OUT 或其他頻段。**
 - 不再建立或保留 V1 / V2 / V3 Analog 選擇頁、切換頁或版本導覽。

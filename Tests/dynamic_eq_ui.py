@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.15 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.16 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -30,25 +30,42 @@ def clamp(v, lo, hi):
     return max(lo, min(hi, v))
 
 def gain_from_y(y, height=315.0):
-    # Graph Y is an absolute cursor coordinate: top = +18 dB, bottom = -18 dB.
-    return clamp(18.0 - (y / max(1.0, height)) * 36.0, -18.0, 18.0)
+    half = max(1.0, height * 0.5)
+    sd = height * 0.5 - y
+    t = clamp(abs(sd) / half, 0.0, 1.0)
+    if t <= 0.34:
+        mag = 3.0 * (t / 0.34)
+    elif t <= 0.56:
+        mag = 3.0 + 3.0 * ((t - 0.34) / 0.22)
+    elif t <= 0.80:
+        mag = 6.0 + 6.0 * ((t - 0.56) / 0.24)
+    else:
+        mag = 12.0 + 6.0 * ((t - 0.80) / 0.20)
+    return clamp(mag if sd >= 0 else -mag, -18.0, 18.0)
 
 def dynamics_from_cursor(eq_gain, y, height=315.0):
     target_gain = gain_from_y(y, height)
     return clamp((target_gain - eq_gain) / 18.0 * 100.0, -100.0, 100.0)
 
 def dyn_from_drag(start_dyn, start_y, current_y, graph_h=315.0, scale=1.0, eq_gain=0.0):
-    # Compatibility helper kept for older call sites: the result intentionally
-    # does not depend on previous dynamics or the mouse-down Y. It follows the
-    # current cursor Y absolutely.
     _ = start_dyn, start_y, scale
     return dynamics_from_cursor(eq_gain, current_y, graph_h)
 
 def y_from_db(db, height=315.0):
-    return height - height * clamp((db + 18.0) / 36.0, 0.0, 1.0)
+    v = clamp(db, -18.0, 18.0)
+    mag = abs(v)
+    if mag <= 3.0:
+        t = 0.34 * (mag / 3.0)
+    elif mag <= 6.0:
+        t = 0.34 + 0.22 * ((mag - 3.0) / 3.0)
+    elif mag <= 12.0:
+        t = 0.56 + 0.24 * ((mag - 6.0) / 6.0)
+    else:
+        t = 0.80 + 0.20 * ((mag - 12.0) / 6.0)
+    return height * 0.5 + (-1.0 if v >= 0 else 1.0) * t * height * 0.5
 
 def db_from_y(y, height=315.0):
-    return clamp((height - y) / height * 36.0 - 18.0, -18.0, 18.0)
+    return gain_from_y(y, height)
 
 def dynamic_target(offset, dyn_range, dynamics):
     amount = abs(clamp(dynamics, -100.0, 100.0)) / 100.0
@@ -72,7 +89,7 @@ def source_assertions():
         'DYN_DYNAMICS',
         'dynamicTargetDragStartY = pos.y',
         'const float correctedX',
-        'const float gainAtCursor',
+        'eqYToDb(graph, event.position.y)',
         'const float targetGain',
         'dragDynamicHandleBand',
         'dynamicHandleDragStartValue',
@@ -83,7 +100,7 @@ def source_assertions():
         'getTargetGainDB',
         'peakMagnitudeDBAtFrequency',
         'getTargetGainDB',
-        'gainAtCursor',
+        'qFromWheel',
         'juce::jlimit(-18.f, 18.f',
     ]
     for token in required:
@@ -113,47 +130,45 @@ def source_assertions():
     assert 'setParameter("GRAPH_SOLO_ACTIVE", 0.f);' in cpp
     assert 'dragMode===7' in web
     assert 'state.solo.graphActive=true' in web
-    assert '?v=1.0.15' in web
-    assert 'gainDragDeltaDb(' in cpp and 'gainDragDeltaDb(' in head
-    assert 'gainDragDeltaDb(y-dynGainStartY,h)' in web
+    assert '?v=1.0.16' in web
+    assert 'eqYToDb(' in cpp and 'eqYToDb(' in head
+    assert 'qFromWheel(' in cpp and 'qFromWheel(' in head
+    assert 'function yToDb(' in web
+    assert 'function nextQFromWheel(' in web
     assert 'constexpr float hitRadius = 12.0f;' in cpp
     assert 'std::abs(dynamics) > 0.5f' in cpp
     assert 'if(dynamics<=.5)continue;' in web
-    assert 'x + 30.f' in cpp
-    assert 't.x+30' in web or 'target.x+30' in web
-    assert 'detectW = juce::jmax(42, halfW / 2)' in cpp
-    assert 'width:48px' in web
+    assert 'x + 44.f' in cpp
+    assert 't.x+44' in web or 'target.x+44' in web
+    assert 'constexpr int detectW = 40' in cpp
+    assert 'width:40px' in web
     assert 'Compact two-line FloatingValueBox is the only EQ/Dynamic EQ hover readout.' in cpp
     assert 'Compact two-line graphHint is the only EQ/Dynamic EQ hover readout.' in web
-    assert 'Math.exp((e.deltaY/100)*.025)' in web
-    assert 'Math.exp(-e.deltaY*.25)' not in web
+    assert 'nextQFromWheel(q,e.deltaY,e.shiftKey)' in web
+    assert 'nextQFromWheel(state.eq.q[band],e.deltaY,e.shiftKey)' in web
+    assert cpp.count('qFromWheel(q, wheel.deltaY, event.mods.isShiftDown())') == 2
+    assert 'staticPriorityBand < 0' in cpp
+    assert 'const staticBand=staticEqAtPointer' in web
+    assert '.graphHint{width:112px' in web
+    assert 'm_boxWidth = 112' in head
+    hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
+    assert 'TARGET' not in hint_block and 'OFFSET' not in hint_block and 'AUTO THR' not in hint_block
+    assert 'protectedSaturated' in dsp
 
 
-def v1015_gain_drag_delta(delta_y, graph_h=315.0):
-    half = max(1.0, graph_h * 0.5)
-    t = clamp(abs(delta_y) / half, 0.0, 1.0)
-    if t <= 0.34:
-        mag = 3.0 * (t / 0.34)
-    elif t <= 0.56:
-        mag = 3.0 + 3.0 * ((t - 0.34) / 0.22)
-    elif t <= 0.80:
-        mag = 6.0 + 6.0 * ((t - 0.56) / 0.24)
-    else:
-        mag = 12.0 + 6.0 * ((t - 0.80) / 0.20)
-    return mag if delta_y <= 0 else -mag
+def test_v1016_gain_scale_10():
+    db_points = [-18.0, -12.0, -6.0, -3.0, -1.0, 0.0, 1.0, 3.0, 6.0, 18.0]
+    ys = [y_from_db(v) for v in db_points]
+    assert len(ys) == 10
+    for db, y in zip(db_points, ys):
+        assert abs(db_from_y(y) - db) < 1e-6
 
-def test_v1015_gain_drag_10():
-    probes = [0.0, 10.0, 25.0, 53.55, 70.0, 88.2, 110.0, 126.0, 145.0, 157.5]
-    values = [abs(v1015_gain_drag_delta(-p)) for p in probes]
-    assert len(values) == 10
-    assert all(values[i] <= values[i+1] for i in range(9))
-    assert abs(v1015_gain_drag_delta(0.0)) < 1e-12
-    assert abs(v1015_gain_drag_delta(-53.55) - 3.0) < 1e-6
-    assert abs(v1015_gain_drag_delta(-88.2) - 6.0) < 1e-6
-    assert abs(v1015_gain_drag_delta(-126.0) - 12.0) < 1e-6
-    assert abs(v1015_gain_drag_delta(-157.5) - 18.0) < 1e-6
-    for p in probes:
-        assert abs(v1015_gain_drag_delta(-p) + v1015_gain_drag_delta(p)) < 1e-9
+    # Near 0 dB consumes the most pixels per dB.
+    p0 = abs(y_from_db(0.0) - y_from_db(3.0)) / 3.0
+    p1 = abs(y_from_db(3.0) - y_from_db(6.0)) / 3.0
+    p2 = abs(y_from_db(6.0) - y_from_db(12.0)) / 6.0
+    p3 = abs(y_from_db(12.0) - y_from_db(18.0)) / 6.0
+    assert p0 > p1 > p2 > p3
 
 
 def test_280_design_cases():
@@ -199,13 +214,16 @@ def test_dynamic_drag_anchor_is_exact():
 
 
 def test_dynamic_cross_zero_is_linear():
-    # Equal absolute pixel increments produce equal parameter increments.
-    start_y = 157.5
-    step = 15.75
-    ys = [start_y + i * step for i in range(-10, 11)]
-    vals = [dynamics_from_cursor(0.0, y) for y in ys]
-    increments = [vals[i + 1] - vals[i] for i in range(len(vals) - 1)]
-    assert all(abs(v - increments[0]) < 1.0e-9 for v in increments)
+    # The graph is intentionally nonlinear in pixel space, but remains
+    # symmetric and monotonic around 0 dB.
+    center = 157.5
+    offsets = [0.0, 10.0, 25.0, 50.0, 80.0, 120.0, 157.5]
+    upper = [gain_from_y(center - d) for d in offsets]
+    lower = [gain_from_y(center + d) for d in offsets]
+    assert all(upper[i] <= upper[i + 1] for i in range(len(upper)-1))
+    assert all(lower[i] >= lower[i + 1] for i in range(len(lower)-1))
+    for a, b in zip(upper, lower):
+        assert abs(a + b) < 1e-9
 
 
 def test_eq_xy_drag_math():
@@ -228,11 +246,11 @@ def test_eq_xy_drag_math():
     cpp = CPP.read_text(encoding="utf-8")
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
     assert 'const float correctedX' in cpp
-    assert 'const float gainAtCursor' in cpp
+    assert 'eqYToDb(graph, event.position.y)' in cpp
     assert 'const float targetGain' in cpp
     assert 'const hzv=invLog(clamp(x,0,w)/w);' in web
-    assert 'gainDragDeltaDb(y-dynGainStartY,h)' in web
-    assert 'const targetGain=clamp(18-(y/Math.max(1,h))*36,-18,18);' in web
+    assert 'const gainAtCursor=yToDb(y,h);' in web
+    assert 'const targetGain=yToDb(y,h);' in web
     assert 'GAIN / FREQ / Q' in cpp
     assert 'function graphHintBandHtml' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
@@ -396,15 +414,16 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.15" in web
-    assert "VVCHAIN v1.0.15" in editor
+    assert "VVCHAIN v1.0.16" in web
+    assert "VVCHAIN v1.0.16" in editor
     assert "LAST " not in editor
 
-    # ANALOG v1.0.15 uses unity-normalized smooth algebraic saturation.
-    assert "v1.0.15 smooth zero-phase algebraic saturation" in cpp
+    # ANALOG v1.0.16 uses unity-normalized smooth algebraic saturation.
+    assert "v1.0.16 smooth zero-phase algebraic saturation" in cpp
     assert "unityNorm" in cpp and "unityNorm" in worklet
     assert "const double u = juce::jlimit(-1.0, 1.0, x);" in cpp
-    assert "return x+(saturated-u)*this.clamp(x2,1,1.6)" in worklet
+    assert "protectedSaturated" in worklet
+    assert "return x+(protectedSaturated-u)*this.clamp(x2,1,1.6)" in worklet
     assert "colorX2" in web
     assert "p.eqColorX2[band] ? 1.6f : 1.0f" in cpp
 
@@ -476,7 +495,7 @@ def test_v103_ui_rules_50():
     assert 'DEESS_BYPASS", *deessLocalBypassButton' in cpp
 
     assert "const hzv=invLog(clamp(x,0,w)/w);" in web
-    assert "const targetGain=clamp(18-(y/Math.max(1,h))*36,-18,18);" in web
+    assert "const targetGain=yToDb(y,h);" in web
     assert "state.eq.freq[dragBand]=hzv" in web
     assert "state.eq.freq[dragBand]=hzv" in web
     assert 'setParameter("EQ" + n + "_FREQ", hz);' in cpp
@@ -488,8 +507,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.15" in web
-    assert "VVCHAIN v1.0.15" in cpp
+    assert "VVCHAIN v1.0.16" in web
+    assert "VVCHAIN v1.0.16" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -520,7 +539,7 @@ def test_v103_closed_10():
 
         # DYNAMICS Target XY mapping.
         assert "const hzv=invLog(clamp(x,0,w)/w);" in web
-        assert "const targetGain=clamp(18-(y/Math.max(1,h))*36,-18,18);" in web
+        assert "const targetGain=yToDb(y,h);" in web
         assert "state.eq.freq[dragBand]=hzv" in web
         assert "state.dyn.dynamics[dragBand]=clamp" in web
 
@@ -566,7 +585,7 @@ def test_v107_ui_controls():
 
     # Graph readout is compact: EQ / DYN EQ + GAIN, FREQ, Q only.
     assert 'DYN EQ' in cpp
-    assert 'm_boxWidth = 108' in head
+    assert 'm_boxWidth = 112' in head
     assert '.graphHint{width:112px' in web
     assert 'DYN EQ' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
@@ -591,7 +610,7 @@ def test_v107_ui_controls():
 
 def main():
     source_assertions()
-    test_v1015_gain_drag_10()
+    test_v1016_gain_scale_10()
     test_280_design_cases()
     test_graph_roundtrip()
     test_dynamic_range_direction()

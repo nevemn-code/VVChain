@@ -1,6 +1,6 @@
 import numpy as np
 
-# ANALOG v1.0.15 reference:
+# ANALOG v1.0.16 reference:
 # smooth odd-symmetric algebraic saturation with |x|=1 unity normalization.
 # 0% is exact dry; X2 still multiplies only the generated ANALOG delta.
 
@@ -20,7 +20,8 @@ def process_reference(x, drive, amount, colour_multiplier=1.0):
     u = np.clip(x, -1.0, 1.0)
     denominator = np.sqrt(np.sqrt(1.0 + alpha * u * u))
     saturated = (u / denominator) * unity_norm
-    return x + (saturated - u) * colour_multiplier
+    protected = np.sign(np.where(u == 0.0, 1.0, u)) * np.maximum(np.abs(saturated), np.abs(u))
+    return x + (protected - u) * colour_multiplier
 
 
 def static_native_guard():
@@ -36,12 +37,13 @@ def static_native_guard():
         "const double modeAlpha = solidState ? 1.80 : 1.55;",
         "const double unityNorm = std::pow(1.0 + alpha, 0.25);",
         "const double u = juce::jlimit(-1.0, 1.0, x);",
-        "x + (saturated - u)",
+        "protectedSaturated",
+        "x + (protectedSaturated - u)",
         "safeColourMultiplier",
     ]
 
     for marker in required:
-        assert marker in core, f"missing v1.0.15 Analog marker: {marker}"
+        assert marker in core, f"missing v1.0.16 Analog marker: {marker}"
 
     apply_start = source.index("void VVChainDSP::applyEq")
     apply_end = source.index("void VVChainDSP::applyOtt", apply_start)
@@ -131,6 +133,15 @@ def run():
             if np.any(~np.isfinite(y)) else 0.0,
         )
 
+    # Increasing ANALOG amount must not make any sample smaller.
+    monotonic_probe = np.linspace(-0.99, 0.99, 4097)
+    for drive in (0.95, 1.15):
+        prev = np.abs(monotonic_probe)
+        for amount in np.linspace(0.0, 1.0, 41):
+            cur = np.abs(process_reference(monotonic_probe, drive, amount))
+            assert np.min(cur - prev) >= -1.0e-12
+            prev = cur
+
     # Boundary guarantees.
     for drive in (0.95, 1.15):
         for amount in np.linspace(0.0, 1.0, 51):
@@ -157,7 +168,7 @@ def run():
     assert np.isfinite(max_dc)
 
     print(
-        "PASS ANALOG v1.0.15 500-case matrix: "
+        "PASS ANALOG v1.0.16 500-case matrix: "
         f"cases=500, stereo_error={max_stereo_error:.3e}, "
         f"min_tt_ss_delta={min_tt_ss_delta:.3e}, "
         f"max_output={max_output:.6f}, max_dc={max_dc:.6f}, "
