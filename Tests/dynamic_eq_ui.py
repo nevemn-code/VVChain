@@ -584,7 +584,7 @@ def test_v107_ui_controls():
 
     # Graph readout is compact: EQ / DYN EQ + GAIN, FREQ, Q only.
     assert 'DYN EQ' in cpp
-    assert 'm_boxWidth = 108' in head
+    assert 'm_boxWidth = 112' in head
     assert '.graphHint{width:112px' in web
     assert 'DYN EQ' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
