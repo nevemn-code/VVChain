@@ -535,6 +535,40 @@ def test_v107_ui_controls():
     assert 'analogX2Buttons' in head
 
 
+
+def test_v1014_detect_blend_and_right_click():
+    cpp = (ROOT / "Source" / "PluginEditor.cpp").read_text(encoding="utf-8")
+    head = (ROOT / "Source" / "PluginEditor.h").read_text(encoding="utf-8")
+    proc = (ROOT / "Source" / "PluginProcessor.cpp").read_text(encoding="utf-8")
+    dsp_h = (ROOT / "Source" / "DSP" / "ChainDSP.h").read_text(encoding="utf-8")
+    dsp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
+
+    # PEAK <-> ONSETS is a true continuous 0..100 detector mix, default 50/50.
+    assert '"DYN_DETECT_ONSETS" + n, "Dynamic EQ " + n + " Peak / Onsets Blend"' in proc
+    assert '0.f, 100.f, 50.f' in proc
+    assert 'std::array<float, 4> dynDetectOnsets { 50.f, 50.f, 50.f, 50.f }' in dsp_h
+    assert 'const float onsetsBlend' in dsp
+    assert 'p.dynDetectOnsets[band] * 0.01f' in dsp
+    assert 'detectOnsets:[50,50,50,50]' in web
+    assert 'class=\'detectBlend\'' in web
+    assert 'Number(s.dyn.detectOnsets?.[b]??50)/100' in worklet
+
+    # Native/Web graph gestures: plain right = solo+XY drag, right+wheel = Q.
+    assert 'rightDragBand' in head
+    assert 'setParameter("SOLO_BAND", static_cast<float>(soloBand + 1))' in cpp
+    assert 'rightDragBand >= 0 && event.mods.isRightButtonDown()' in cpp
+    assert 'if (!event.mods.isRightButtonDown())' in cpp
+    assert 'dragMode=7;dragBand=band' in web
+    assert 'if(dragMode===7&&dragBand>=0)' in web
+    assert 'if(!(e.buttons===2||e.button===2))return;' in web
+
+    # M/S remains reachable only as Shift+right-click and no longer owns plain right.
+    assert 'event.mods.isRightButtonDown() && event.mods.isShiftDown()' in cpp
+    assert 'e.button===2&&e.shiftKey' in web
+
+
 def main():
     source_assertions()
     test_280_design_cases()
@@ -559,6 +593,8 @@ def main():
     test_v103_ui_rules_50()
     test_v103_closed_10()
     test_v107_ui_controls()
+    for _ in range(10):
+        test_v1014_detect_blend_and_right_click()
     print("PASS: 280 design cases")
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
