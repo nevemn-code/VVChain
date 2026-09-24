@@ -771,6 +771,37 @@ function drawEQ(){
     eqCtx.strokeStyle="rgba(255,255,255,.16)";
     eqCtx.lineWidth=1.2;
     eqCtx.beginPath();eqCtx.arc(cx,cy,46,0,Math.PI*2);eqCtx.stroke();
+
+    // SOLO never dims the reference grid or the frequency/dB labels.
+    dbTicks.forEach(db=>{
+      const y=dbToY(db,h);
+      eqCtx.beginPath();eqCtx.moveTo(0,y);eqCtx.lineTo(w,y);
+      eqCtx.strokeStyle=db===0?"#facc1566":"#4b556044";
+      eqCtx.lineWidth=db===0?1.2:1;
+      eqCtx.stroke();
+    });
+    freqTicks.forEach(([hzv])=>{
+      const x=logX(hzv,w);
+      eqCtx.beginPath();eqCtx.moveTo(x,0);eqCtx.lineTo(x,h);
+      eqCtx.strokeStyle="#4b556044";
+      eqCtx.lineWidth=1;
+      eqCtx.stroke();
+    });
+
+    eqCtx.fillStyle="#b8bec6";
+    eqCtx.font="bold 7px Consolas";
+    eqCtx.textAlign="left";
+    dbTicks.forEach(db=>{
+      if(db===15||db===-15)return;
+      const y=dbToY(db,h);
+      eqCtx.fillText((db>0?"+":"")+db+" dB",6,clamp(y+3,10,h-7));
+    });
+    eqCtx.textAlign="center";
+    freqTicks.forEach(([hzv,label])=>{
+      const x=logX(hzv,w);
+      eqCtx.fillText(label,clamp(x,16,w-16),h-4);
+    });
+    eqCtx.textAlign="left";
   }
 
   // Mirror each lower BAND BYPASS state in the upper frequency zone.
