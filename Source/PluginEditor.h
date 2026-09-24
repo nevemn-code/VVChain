@@ -71,7 +71,7 @@ private:
     {
     public:
         FloatingValueBox()
-            : m_font(juce::FontOptions(8.5f).withStyle("Bold"))
+            : m_font(juce::FontOptions(10.5f).withStyle("Bold"))
         {
             setInterceptsMouseClicks(false, false);
             setMouseCursor(juce::MouseCursor::NormalCursor);
@@ -98,9 +98,9 @@ private:
 
             // One value per line keeps the readout narrow at every frequency.
             if (textChanged || m_boxWidth <= 0)
-                m_boxWidth = 112;
+                m_boxWidth = 150;
 
-            constexpr int boxHeight = 50;
+            constexpr int boxHeight = 66;
             int targetX = mousePos.x - m_boxWidth / 2;
             int targetY = mousePos.y - boxHeight - 14;
 
@@ -142,13 +142,13 @@ private:
             g.setColour(juce::Colours::white);
             g.setFont(m_font);
             g.drawText(
-                m_line1Text, 5, 3, getWidth() - 10, 14,
+                m_line1Text, 8, 4, getWidth() - 16, 18,
                 juce::Justification::centredLeft);
             g.drawText(
-                m_line2Text, 5, 19, getWidth() - 10, 14,
+                m_line2Text, 8, 24, getWidth() - 16, 18,
                 juce::Justification::centredLeft);
             g.drawText(
-                m_line3Text, 5, 35, getWidth() - 10, 14,
+                m_line3Text, 8, 44, getWidth() - 16, 18,
                 juce::Justification::centredLeft);
         }
 

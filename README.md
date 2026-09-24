@@ -100,6 +100,13 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.41
+
+- 修正 Native FloatingValueBox 實際尺寸與字體設定：寬 150 px、高 66 px、字體 10.5 pt。
+- 修正 Web graphHint 實際 CSS：字體 10 px / 15 px，並保持 150 px 寬。
+- Dynamic EQ 點維持 XY 連動：X 同步 EQ FREQ、Y 同步 DYNAMICS；下方控制即時同步。
+- EQ Graph 左側 +15 / -15 dB 標籤維持移除。
+
 ## v1.0.40
 
 - EQ / DYN EQ 浮動說明框放大，字體同步放大，讀取 GAIN / FREQ / Q 更清楚。
