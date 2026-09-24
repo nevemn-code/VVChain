@@ -100,6 +100,15 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.19
+
+- CI/CD 改成 Fast Deploy 預設路徑：一般 PR 只跑必要同步、版本、JS syntax、Web smoke、UI/互動 regression。
+- 一般 PR 不再安裝 Linux audio/X11 開發套件、不再每次完整 Linux VST3 build、不再每次安裝 numpy/scipy。
+- 500-case ANALOG matrix 與 5 次 DSP stress 移至手動 Full Validation。
+- Windows VST3 Release 改為 main push / 手動 workflow 才建置，並加入 incremental build cache。
+- GitHub Pages 改為 docs-only sparse checkout，與 Windows/Native CI 平行，Fast Gate 與 Pages 都以 3 分鐘執行時間為上限。
+- GitHub hosted runner 排隊不受 repo 控制；若要保證從 push 到完成的牆鐘時間低於 3 分鐘，需要 self-hosted runner。
+
 ## v1.0.18
 
 - 上方 EQ 點的一般滾輪與右鍵 SOLO 滾輪統一回到慢速、連續 Q 調整；Web 以每標準滾輪單位約 2.5% 比例變化，避免直接撞 0.1 / 18 上下限。
