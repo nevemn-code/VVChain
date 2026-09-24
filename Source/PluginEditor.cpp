@@ -3902,9 +3902,11 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
     {
         if (pendingRightClickBand >= 0)
         {
-            rightSoloBand = pendingRightClickBand;
+            const int pendingBand = pendingRightClickBand;
+            const auto pendingPosition = pendingRightClickPosition;
             pendingRightClickBand = -1;
             pendingRightClickDragged = true;
+            beginRightSolo(pendingBand, pendingPosition);
         }
 
         int band = rightSoloBand;
@@ -3929,6 +3931,10 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
 
         if (band >= 0)
         {
+            if (rightSoloBand < 0)
+                beginRightSolo(band, event.position);
+            band = rightSoloBand >= 0 ? rightSoloBand : band;
+
             rightSoloPosition = {
                 juce::jlimit(graph.getX(), graph.getRight(), event.position.x),
                 juce::jlimit(graph.getY(), graph.getBottom(), event.position.y)
