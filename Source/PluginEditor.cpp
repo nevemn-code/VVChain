@@ -2986,6 +2986,118 @@ void VVChainAudioProcessorEditor::mouseExit(
     repaint();
 }
 
+
+void VVChainAudioProcessorEditor::showEqTypeMenu(
+    int band, juce::Point<float> position)
+{
+    if (band < 0 || band >= 4)
+        return;
+
+    static const std::array<juce::String, 14> names
+    {{
+        "Peak",
+        "Peak analog",
+        "Band-shelf A",
+        "Band-shelf B  ·  72 dB/oct",
+        "Low-shelf",
+        "High-shelf",
+        "Low-shelf  ·  resonant",
+        "High-shelf  ·  resonant",
+        "Low-slope",
+        "High-slope",
+        "Band-pass  ·  resonant",
+        "Notch  ·  resonant",
+        "Low-pass  ·  resonant  ·  72 dB/oct",
+        "High-pass  ·  resonant  ·  72 dB/oct"
+    }};
+
+    const auto n = juce::String(band + 1);
+    const int current = juce::jlimit(
+        0, 13,
+        juce::roundToInt(parameterValue("EQ" + n + "_TYPE")));
+
+    juce::PopupMenu menu;
+    for (int type = 0; type < 14; ++type)
+    {
+        // Middle bands deliberately omit Low-pass / High-pass.
+        if ((band == 1 || band == 2) && type >= 12)
+            continue;
+
+        menu.addItem(
+            type + 1,
+            names[(size_t) type],
+            true,
+            current == type);
+    }
+
+    const auto screen = localPointToGlobal(position.toInt());
+    auto options = juce::PopupMenu::Options()
+        .withTargetScreenArea({ screen.x, screen.y, 2, 2 })
+        .withMaximumNumColumns(2)
+        .withStandardItemHeight(28);
+
+    auto safeThis =
+        juce::Component::SafePointer<VVChainAudioProcessorEditor>(this);
+
+    menu.showMenuAsync(
+        options,
+        [safeThis, band](int result)
+        {
+            if (safeThis == nullptr || result <= 0)
+                return;
+
+            const int type = result - 1;
+            if ((band == 1 || band == 2) && type >= 12)
+                return;
+
+            const auto n = juce::String(band + 1);
+            safeThis->setParameter(
+                "EQ" + n + "_TYPE",
+                static_cast<float>(type));
+            safeThis->repaint();
+        });
+}
+
+void VVChainAudioProcessorEditor::beginRightSolo(
+    int band, juce::Point<float> position)
+{
+    if (band < 0 || band >= 4 || rightSoloBand >= 0)
+        return;
+
+    const auto n = juce::String(band + 1);
+    rightSoloBand = band;
+    rightSoloPosition = position;
+    expandedDynamicBand = -1;
+    dragDynamicMsBand = -1;
+    dragBand = -1;
+    dragOffsetBand = -1;
+    dynamicGainDragStartY = position.y;
+    dynamicGainDragStartOffset =
+        parameterValue("EQ" + n + "_GAIN");
+
+    setParameter(
+        "GRAPH_SOLO_FREQ",
+        parameterValue("EQ" + n + "_FREQ"));
+    setParameter(
+        "GRAPH_SOLO_Q",
+        parameterValue("EQ" + n + "_Q"));
+    setParameter("GRAPH_SOLO_ACTIVE", 1.f);
+
+    if (auto* pFreq =
+            audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
+        pFreq->beginChangeGesture();
+    if (auto* pGain =
+            audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
+        pGain->beginChangeGesture();
+
+    juce::StringArray graphIds;
+    graphIds.add("EQ" + n + "_FREQ");
+    graphIds.add("EQ" + n + "_GAIN");
+    setGraphControlState(graphIds, false);
+    showGraphDragHint = false;
+    graphDragHint.clear();
+}
+
 void VVChainAudioProcessorEditor::mouseDown(
     const juce::MouseEvent& event)
 {
@@ -3018,12 +3130,13 @@ void VVChainAudioProcessorEditor::mouseDown(
 
     int band = -1;
 
-    // Right-click auditions the EQ point itself. While the right button is
-    // held, dragging edits Frequency/Gain and the audition filter follows it.
+    // Right-click is dual-purpose:
+    // click/release = filter-type menu; drag/wheel = existing SOLO.
     if (event.mods.isRightButtonDown())
     {
         float bestDistance = 24.0f;
         band = -1;
+
         for (int b = 0; b < 4; ++b)
         {
             const auto n = juce::String(b + 1);
@@ -3032,8 +3145,10 @@ void VVChainAudioProcessorEditor::mouseDown(
             const float y = eqDbToY(
                 graph, parameterValue("EQ" + n + "_GAIN"));
             const float dStatic = pos.getDistanceFrom({ x, y });
-            const float dDynamic = pos.getDistanceFrom(dynamicTargetPoint(b));
+            const float dDynamic =
+                pos.getDistanceFrom(dynamicTargetPoint(b));
             const float d = juce::jmin(dStatic, dDynamic);
+
             if (d < bestDistance)
             {
                 bestDistance = d;
@@ -3043,29 +3158,10 @@ void VVChainAudioProcessorEditor::mouseDown(
 
         if (band >= 0)
         {
-            const auto n = juce::String(band + 1);
-            rightSoloBand = band;
-            rightSoloPosition = pos;
-            expandedDynamicBand = -1;
-            dragDynamicMsBand = -1;
-            dragBand = -1;
-            dragOffsetBand = -1;
-            dynamicGainDragStartY = pos.y;
-            dynamicGainDragStartOffset =
-                parameterValue("EQ" + n + "_GAIN");
-            setParameter("GRAPH_SOLO_FREQ", parameterValue("EQ" + n + "_FREQ"));
-            setParameter("GRAPH_SOLO_Q", parameterValue("EQ" + n + "_Q"));
-            setParameter("GRAPH_SOLO_ACTIVE", 1.f);
-            if (auto* pFreq = audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
-                pFreq->beginChangeGesture();
-            if (auto* pGain = audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
-                pGain->beginChangeGesture();
-            juce::StringArray graphIds;
-            graphIds.add("EQ" + n + "_FREQ");
-            graphIds.add("EQ" + n + "_GAIN");
-            setGraphControlState(graphIds, false);
-            showGraphDragHint = false;
-            graphDragHint.clear();
+            pendingRightClickBand = band;
+            pendingRightClickPosition = pos;
+            pendingRightClickDragged = false;
+            floatingValueBox.hideInstantly();
             repaint();
             return;
         }
@@ -3362,6 +3458,17 @@ void VVChainAudioProcessorEditor::mouseDrag(
 {
     const auto graph = eqGraphBounds();
 
+    if (pendingRightClickBand >= 0
+        && event.mods.isRightButtonDown()
+        && event.position.getDistanceFrom(pendingRightClickPosition) > 3.0f)
+    {
+        const int band = pendingRightClickBand;
+        const auto start = pendingRightClickPosition;
+        pendingRightClickBand = -1;
+        pendingRightClickDragged = true;
+        beginRightSolo(band, start);
+    }
+
     if (rightSoloBand >= 0 && event.mods.isRightButtonDown())
     {
         rightSoloPosition = {
@@ -3604,6 +3711,15 @@ void VVChainAudioProcessorEditor::mouseDrag(
 void VVChainAudioProcessorEditor::mouseUp(
     const juce::MouseEvent&)
 {
+    if (pendingRightClickBand >= 0 && !pendingRightClickDragged)
+    {
+        const int band = pendingRightClickBand;
+        const auto position = pendingRightClickPosition;
+        pendingRightClickBand = -1;
+        pendingRightClickDragged = false;
+        showEqTypeMenu(band, position);
+    }
+
     if (rightSoloBand >= 0)
     {
         const auto n = juce::String(rightSoloBand + 1);
@@ -3677,6 +3793,7 @@ void VVChainAudioProcessorEditor::mouseUp(
     dragOverlapXover = -1;
     dragDynamicMsBand = -1;
     dragDynamicHandleBand = -1;
+    pendingRightClickDragged = false;
     showGraphDragHint = false;
     graphDragHint.clear();
     repaint();
@@ -3695,6 +3812,13 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
     // Right-button + wheel uses the exact same Q direction/speed as normal EQ wheel while auditioning it.
     if (event.mods.isRightButtonDown())
     {
+        if (pendingRightClickBand >= 0)
+        {
+            rightSoloBand = pendingRightClickBand;
+            pendingRightClickBand = -1;
+            pendingRightClickDragged = true;
+        }
+
         int band = rightSoloBand;
         float bestDistance = 24.0f;
         if (band < 0)
