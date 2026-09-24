@@ -35,7 +35,7 @@ public:
         std::array<float, 4> dynDynamics { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> dynAttack { 8.f, 8.f, 5.f, 3.f };
         std::array<float, 4> dynRelease { 120.f, 120.f, 100.f, 80.f };
-        std::array<bool, 4> dynDetectOnsets { false, false, false, false };
+        std::array<float, 4> dynDetectOnsets { 50.f, 50.f, 50.f, 50.f };
         std::array<bool, 4> dynTriggerBelow { false, false, false, false };
         // 0 = Side only, 50 = equal Mid/Side, 100 = Mid only.
         std::array<float, 4> dynMSBalance { 50.f, 50.f, 50.f, 50.f };
