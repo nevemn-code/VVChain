@@ -505,7 +505,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
             parameterValue("DYN_DETECT_ONSETS" + n),
             juce::dontSendNotification);
         dynDetectSliders[(size_t) b]->setTooltip(
-            "PEAK ↔ ONSETS detector blend；上下拖曳：上 = PEAK / 左，下 = ONSETS / 右；50% = equal blend");
+            "PEAK ↔ ONSETS detector blend；上下拖曳：上 = ONSETS / 右，下 = PEAK / 左；50% = equal blend");
         dynDetectAttachments[(size_t) b] =
             std::make_unique<Attachment>(
                 audioProcessor.apvts,
