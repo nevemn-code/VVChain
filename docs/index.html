@@ -498,7 +498,7 @@ function dynamicBandAtPointer(x,y,w,h){
       [n.x,dbToY(state.eq.gain[b],h)],
       [t.x,t.y]
     ];
-    if(Math.abs(Number(state.dyn.dynamics[b]||0))<=.5)
+    if(Math.abs(Number(state.dyn.dynamics[b]||0))<=.05)
       points.push([handleX,handleY]);
     for(const [px,py] of points){
       const d=Math.hypot(x-px,y-py);
@@ -522,7 +522,7 @@ function dynamicTargetAtPointer(x,y,w,h){
   const staticRadius=7;
   for(let b=0;b<4;b++){
     const dynamics=Math.abs(Number(state.dyn.dynamics[b]||0));
-    if(dynamics<=.5)continue;
+    if(dynamics<=.05)continue;
     const n=dynamicTargetPoint(b,w,h);
     const staticX=logX(state.eq.freq[b],w);
     const staticY=dbToY(state.eq.gain[b],h);
@@ -750,7 +750,7 @@ function drawEQ(){
     // Once pulled out, the Dynamic target circle itself is the drag control.
     const target=dynamicTargetPoint(b,w,h);
     const handleX=clamp(target.x+44,18,w-12),handleY=target.y;
-    if(Math.abs(Number(state.dyn.dynamics[b]||0))<=.5){
+    if(Math.abs(Number(state.dyn.dynamics[b]||0))<=.05){
       eqCtx.strokeStyle=(hoverDynamicBand===b?c:"#f8fafc")+"ee";eqCtx.lineWidth=1.4;
       eqCtx.beginPath();eqCtx.moveTo(handleX,handleY-8);eqCtx.lineTo(handleX,handleY+8);eqCtx.stroke();
       eqCtx.lineWidth=1.6;
@@ -887,11 +887,11 @@ function graphHoverTarget(x,y,w,h){
     const target=dynamicTargetPoint(b,w,h);
     const handleX=clamp(target.x+44,18,w-12),handleY=target.y;
 
-    if(Math.abs(dyn)<=.5
+    if(Math.abs(dyn)<=.05
       && Math.abs(x-handleX)<=6&&Math.abs(y-handleY)<=10)
       return {band:b,mask:1|4};
 
-    if(Math.abs(dyn)>.5){
+    if(Math.abs(dyn)>.05){
       const d=Math.hypot(x-target.x,y-target.y);
       const staticY=dbToY(state.eq.gain[b],h);
       if(d<best&&Math.hypot(x-target.x,y-staticY)>=7){best=d;band=b;}
@@ -972,7 +972,15 @@ function resetGraphGainAtDoubleClick(e){
   if(e.button!==0)return;
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
 
-  // Static EQ GAIN node takes priority when the two nodes overlap.
+  let dynamicBand=-1,bestDynamic=13;
+  for(let b=0;b<4;b++){
+    const dynamics=Math.abs(Number(state.dyn.dynamics[b]||0));
+    if(dynamics<=.05)continue;
+    const target=dynamicTargetPoint(b,w,h);
+    const d=Math.hypot(x-target.x,y-target.y);
+    if(d<=bestDynamic){bestDynamic=d;dynamicBand=b;}
+  }
+
   let staticBand=-1,bestStatic=8;
   for(let b=0;b<4;b++){
     const px=logX(state.eq.freq[b],w),py=dbToY(state.eq.gain[b],h);
@@ -980,36 +988,19 @@ function resetGraphGainAtDoubleClick(e){
     if(d<=bestStatic){bestStatic=d;staticBand=b;}
   }
 
-  if(staticBand>=0){
-    state.eq.gain[staticBand]=0;
+  if(dynamicBand>=0&&(staticBand<0||bestDynamic<=bestStatic)){
+    state.dyn.dynamics[dynamicBand]=0;
     knobRefreshers.forEach(fn=>fn());
-    setGraphControls(["EQ"+(staticBand+1)+"_GAIN"],false);
+    setGraphControls(["DYN_DYNAMICS"+(dynamicBand+1)],false);
     sendParams();drawEQ();
     e.preventDefault();
     return;
   }
 
-  // Dynamic EQ target is derived from static GAIN + DYNAMICS.
-  // Double-click means DYNAMICS = 0, so it rejoins the CURRENT EQ GAIN point.
-  let dynamicBand=-1,bestDynamic=13;
-  for(let b=0;b<4;b++){
-    const dynamics=Math.abs(Number(state.dyn.dynamics[b]||0));
-    if(dynamics<=.5)continue;
-
-    const target=dynamicTargetPoint(b,w,h);
-    const staticY=dbToY(state.eq.gain[b],h);
-    const d=Math.hypot(x-target.x,y-target.y);
-
-    if(d<=bestDynamic&&Math.hypot(x-target.x,y-staticY)>8){
-      bestDynamic=d;
-      dynamicBand=b;
-    }
-  }
-
-  if(dynamicBand>=0){
-    state.dyn.dynamics[dynamicBand]=0;
+  if(staticBand>=0){
+    state.eq.gain[staticBand]=0;
     knobRefreshers.forEach(fn=>fn());
-    setGraphControls(["DYN_DYNAMICS"+(dynamicBand+1)],false);
+    setGraphControls(["EQ"+(staticBand+1)+"_GAIN"],false);
     sendParams();drawEQ();
     e.preventDefault();
   }
@@ -1053,7 +1044,7 @@ eqCanvas.addEventListener("pointerdown",e=>{
     const dyn=Number(state.dyn.dynamics[b]||0);
     const target=dynamicTargetPoint(b,w,h);
     const handleX=clamp(target.x+44,18,w-12),handleY=target.y;
-    if(Math.abs(dyn)<=.5&&Math.abs(x-handleX)<=3&&Math.abs(y-handleY)<=7){
+    if(Math.abs(dyn)<=.05&&Math.abs(x-handleX)<=3&&Math.abs(y-handleY)<=7){
       dragMode=5;dragDynamicHandleBand=b;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;
       setGraphControls(["DYN_DYNAMICS"+(b+1)],false);
       dynHandleStartY=y;dynHandleStartValue=dyn;
