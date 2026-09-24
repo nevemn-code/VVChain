@@ -269,7 +269,7 @@ void VVChainDSP::processChebyshevAnalog(
     const float safeColourMultiplier =
         juce::jlimit(1.0f, 1.6f, colourMultiplier);
 
-    // v1.0.15 smooth zero-phase algebraic saturation.
+    // v1.0.16 smooth zero-phase algebraic saturation with hard no-shrink guard.
     // Raw y=x/(1+alpha*x^2)^(1/4) attenuates full-scale samples, so normalize
     // at |x|=1.0 before mixing the delta back. This keeps 0% bit-transparent,
     // preserves odd symmetry/DC=0, and prevents ANALOG amount from shrinking
@@ -293,12 +293,20 @@ void VVChainDSP::processChebyshevAnalog(
             const double saturated =
                 (u / denominator) * unityNorm;
 
+            // Hard no-shrink guard: ANALOG is colour, not a level reducer.
+            // Preserve sign/odd symmetry while guaranteeing that increasing
+            // COLOR cannot reduce instantaneous magnitude in the shaping domain.
+            const double protectedSaturated =
+                std::copysign(
+                    std::max(std::abs(saturated), std::abs(u)),
+                    u);
+
             // The shaping domain is exactly the documented -1..+1 range.
             // Outside it the delta naturally becomes zero at the clamp edge,
             // so oversampled/intermediate peaks are never attenuated.
             channelData[i] =
                 static_cast<float>(
-                    x + (saturated - u)
+                    x + (protectedSaturated - u)
                         * static_cast<double>(safeColourMultiplier));
         }
     }
