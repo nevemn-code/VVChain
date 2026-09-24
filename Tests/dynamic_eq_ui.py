@@ -453,6 +453,9 @@ def test_v103_closed_10():
         assert 'sDynamicGain=sGain-offset' in worklet
         assert 'mid=this.tptBell(mid,md.eq,sampleRate,f,baseQ,mDynamicGain);' in worklet
         assert 'side=this.tptBell(side,sd.eq,sampleRate,f,baseQ,sDynamicGain);' in worklet
+        assert 'eq:{g:0,k:1,a1:1,a2:0,a3:0,m1:0,ic1:0,ic2:0}' in worklet
+        assert 'z.ic1=Number.isFinite(z.ic1)?z.ic1:0;' in worklet
+        assert 'z.ic2=Number.isFinite(z.ic2)?z.ic2:0;' in worklet
         assert 'this.peak(sampleRate,f,mq,mDynamicGain)' not in worklet
         assert 'this.peak(sampleRate,f,sq,sDynamicGain)' not in worklet
         assert 'this.peak(sampleRate,f,mq,mGain)' not in worklet
