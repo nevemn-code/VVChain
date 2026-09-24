@@ -1654,7 +1654,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         if ((band == 1 || band == 2) && filterType >= 12)
             filterType = 0;
         const int slopeIndex = juce::jlimit(
-            0, 5,
+            0, 6,
             juce::roundToInt(
                 parameterValue("EQ" + n + "_SLOPE")));
         const auto c =
