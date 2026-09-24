@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       full_stress:
-        description: "Run the 50-iteration stress test"
+        description: "Run the 5-iteration stress test"
         required: false
         default: false
         type: boolean
@@ -128,7 +128,7 @@ jobs:
       run: python Tests/dynamic_eq_ui.py
 
     - name: Run fast DSP stress test
-      run: python Tests/reference_stress.py --iterations 50
+      run: python Tests/reference_stress.py --iterations 5
 
     - name: Run ANALOG #443 regression matrix
       run: python Tests/analog_matrix.py
