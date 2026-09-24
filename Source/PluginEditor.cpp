@@ -1805,12 +1805,12 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         juce::ColourGradient spotlight(
             juce::Colours::black.withAlpha(0.0f),
             cx, cy,
-            juce::Colours::black.withAlpha(0.72f),
+            juce::Colours::black.withAlpha(0.504f),
             cx + spotlightRadius, cy,
             true);
         spotlight.addColour(0.22, juce::Colours::black.withAlpha(0.0f));
-        spotlight.addColour(0.52, juce::Colours::black.withAlpha(0.18f));
-        spotlight.addColour(0.76, juce::Colours::black.withAlpha(0.48f));
+        spotlight.addColour(0.52, juce::Colours::black.withAlpha(0.126f));
+        spotlight.addColour(0.76, juce::Colours::black.withAlpha(0.336f));
 
         g.setGradientFill(spotlight);
         g.fillRoundedRectangle(graph, 8.0f);
@@ -2228,7 +2228,10 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.setFont(juce::FontOptions(22.f).withStyle("Bold"));
     g.drawText("VVCHAIN", 18, 8, 240, 27, juce::Justification::left);
 
-    // VVCHAIN v1.0.48 — internal version parity; descriptive header text intentionally hidden.
+    g.setColour(juce::Colour(0xff7f8893));
+    g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
+    g.drawText("VVCHAIN v1.0.48", 20, 39, 180, 12,
+               juce::Justification::left);
 
     const auto graph = eqGraphBounds();
     drawEqGraph(g, graph);
