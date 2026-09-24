@@ -644,7 +644,7 @@ def test_v1018_interaction_visual_sync():
     # Floating readout is exactly two lines and switches identity by hover target.
     assert 'juce::String(dynamicReadout ? "DYN EQ" : "EQ")' in cpp
     assert '"FREQ " + formatGraphFrequency(frequency)' in cpp
-    assert '"+ "  Q " + juce::String(q, 2)' in cpp
+    assert '"  Q " + juce::String(q, 2)' in cpp
     assert 'const dynamicReadout=!!(mask&4);' in web
     assert 'const label=dynamicReadout?"DYN EQ":"EQ";' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
