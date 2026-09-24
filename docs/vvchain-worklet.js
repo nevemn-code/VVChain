@@ -401,7 +401,8 @@ class VVChainWorklet extends AudioWorkletProcessor {
       for(let b=0;b<4;b++){
         const typeMax=[50,60,70,90][b];
         const limitedDegree=this.clamp(Number(s.type.degree[b]||0),0,typeMax);
-        const depth=this.clamp(limitedDegree/100,0,1);
+        const controlNorm=limitedDegree/Math.max(1,typeMax);
+        const depth=this.clamp(controlNorm*.5,0,.5);
         const rawDriveParam=1+1.5*depth;
         const driveParam=Math.max(1,rawDriveParam);
         driveParams[b]=driveParam;
@@ -416,7 +417,8 @@ class VVChainWorklet extends AudioWorkletProcessor {
         if(s.bandBypass?.[b]||s.type.bandBypass[b])continue;
         const typeMax=[50,60,70,90][b];
         const limitedDegree=this.clamp(Number(s.type.degree[b]||0),0,typeMax);
-        const depth=this.clamp(limitedDegree/100,0,1);
+        const controlNorm=limitedDegree/Math.max(1,typeMax);
+        const depth=this.clamp(controlNorm*.5,0,.5);
         if(depth<=0)continue;
         const driven=Math.tanh(bands[b]*driveParams[b])*makeup[b];
         const processed=driven*trims[b];
