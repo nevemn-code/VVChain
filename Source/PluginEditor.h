@@ -179,6 +179,12 @@ private:
             wheelRemainder = 0.0;
         }
 
+        void setWheelSingleStepPerEvent(bool enabled)
+        {
+            wheelSingleStepPerEvent = enabled;
+            wheelRemainder = 0.0;
+        }
+
         void setGraphControlState(bool active, bool moving)
         {
             graphControlActive = active;
@@ -299,8 +305,19 @@ private:
                 || std::abs(wheel.deltaY) < 0.000001f)
                 return;
 
-            // Mouse wheels can arrive as full notches or fractional touch-pad
-            // deltas. Accumulate the latter so both devices feel identical.
+            if (wheelSingleStepPerEvent)
+            {
+                // OCT selector: one incoming wheel event = exactly one slope
+                // position, independent of wheel/touchpad delta magnitude.
+                const double direction = wheel.deltaY > 0.0f ? 1.0 : -1.0;
+                const double next = juce::jlimit(
+                    getMinimum(), getMaximum(),
+                    getValue() + direction * wheelStep);
+                setValue(next, juce::sendNotificationSync);
+                return;
+            }
+
+            // Continuous controls keep fractional-wheel accumulation.
             wheelRemainder += juce::jlimit(-4.0, 4.0,
                                            static_cast<double>(wheel.deltaY));
 
@@ -381,6 +398,7 @@ private:
         int dragSensitivity = 180;
         int fineDragSensitivity = 1800;
         bool wheelLogarithmic = false;
+        bool wheelSingleStepPerEvent = false;
         bool fineDragging = false;
         bool discreteArcEnabled = false;
         int discretePositions = 4;
