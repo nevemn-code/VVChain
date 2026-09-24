@@ -100,6 +100,11 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.31
+
+- 修正 Dynamic EQ regression 仍硬寫舊 `?v=1.0.18` 的問題；版本/cache 真正一致性改由通用 parity audit 驗證，不再每版維護舊常數。
+- 本版不改 DSP 聲音公式；延續 v1.0.30 的專案清理、真實 stress test 與 Fast Deploy 優化。
+
 ## v1.0.30
 
 - 第二輪專案除錯：Native EQ / DYN 不再維護舊 `graphHintBand / graphHintAutoHideAt` 狀態；舊 graph hint 只保留給 XOVER 拖曳，EQ / DYN 一律走兩行浮動框。
