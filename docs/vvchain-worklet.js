@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.15
+// VVChain Web AudioWorklet DSP module · v1.0.16
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -175,7 +175,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     if(stereo)return[(mid+side)*invSqrt2,(mid-side)*invSqrt2];
     return[mid,r];
   }
-  // v1.0.15 unity-normalized smooth zero-phase algebraic saturation.
+  // v1.0.16 unity-normalized smooth zero-phase algebraic saturation.
   analog(x,a,ss,ch,b,x2=1){
     a=this.clamp(a,0,1);
     ch.analogPrev[b]=x; ch.analogDc[b]=0; ch.analogPower[b]=0;
@@ -186,7 +186,8 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const u=this.clamp(x,-1,1);
     const denominator=Math.sqrt(Math.sqrt(1+alpha*u*u));
     const saturated=(u/denominator)*unityNorm;
-    return x+(saturated-u)*this.clamp(x2,1,1.6);
+    const protectedSaturated=Math.sign(u||1)*Math.max(Math.abs(saturated),Math.abs(u));
+    return x+(protectedSaturated-u)*this.clamp(x2,1,1.6);
   }
   deessSample(x,c,coef){
     const st=this.s.de;
@@ -231,7 +232,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
         y=this.tptBell(y,c.eq[b],sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]);
       }
     }
-    // ANALOG COLOR v1.0.15: unity-normalized smooth saturation.
+    // ANALOG COLOR v1.0.16: unity-normalized smooth saturation.
     // X2 preserves its established role: it multiplies only the generated ANALOG delta.
     if(!s.eq.globalBypass){
       for(let b=0;b<4;b++){
