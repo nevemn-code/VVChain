@@ -468,7 +468,7 @@ def test_v103_closed_10():
         assert 'eq:{g:0,k:1,a1:1,a2:0,a3:0,m1:0,ic1:0,ic2:0}' in worklet
         assert 'z.ic1=Number.isFinite(z.ic1)?z.ic1:0;' in worklet
         assert 'z.ic2=Number.isFinite(z.ic2)?z.ic2:0;' in worklet
-        assert 'const D=1+m1*a2;' in web
+        assert 'C1=m1*a1,C2=-m1*a2,D=1+m1*a2' in web
         assert 'const detR=d11*d22-A12*A21-zi*zi' in web
         assert 'const outR=D+C1*h1R+C2*h2R' in web
         assert 'this.peak(sampleRate,f,mq,mDynamicGain)' not in worklet
