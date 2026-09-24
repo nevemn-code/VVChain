@@ -35,7 +35,7 @@ public:
         std::array<float, 4> dynDynamics { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> dynAttack { 8.f, 8.f, 5.f, 3.f };
         std::array<float, 4> dynRelease { 120.f, 120.f, 100.f, 80.f };
-        std::array<bool, 4> dynDetectOnsets { false, false, false, false };
+        std::array<float, 4> dynDetectOnsets { 50.f, 50.f, 50.f, 50.f };
         std::array<bool, 4> dynTriggerBelow { false, false, false, false };
         // 0 = Side only, 50 = equal Mid/Side, 100 = Mid only.
         std::array<float, 4> dynMSBalance { 50.f, 50.f, 50.f, 50.f };
@@ -87,6 +87,9 @@ public:
 
         int soloBand = -1;
         bool soloPost = false;
+        bool graphSoloActive = false;
+        float graphSoloFreq = 1000.f;
+        float graphSoloQ = 0.707f;
 
         float dryWet = 100.f;
         float outputDb = 0.f;
@@ -379,6 +382,8 @@ private:
 
     Crossover4th soloPreXover1 {}, soloPreXover2 {}, soloPreXover3 {};
     Crossover4th soloPostXover1 {}, soloPostXover2 {}, soloPostXover3 {};
+    Biquad graphSoloPre {};
+    Biquad graphSoloPost {};
     float soloBlend = 0.f;
     int lastSoloBand = -2;
     bool lastSoloPost = false;

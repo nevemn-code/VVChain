@@ -380,6 +380,8 @@ void VVChainDSP::reset()
         v.store(0.f, std::memory_order_relaxed);
     soloPreXover1.reset(); soloPreXover2.reset(); soloPreXover3.reset();
     soloPostXover1.reset(); soloPostXover2.reset(); soloPostXover3.reset();
+    graphSoloPre.reset();
+    graphSoloPost.reset();
     soloBlend = 0.f;
     lastSoloBand = -2;
     lastSoloPost = false;
@@ -803,15 +805,19 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 float midTriggerDb = midEnv;
                 float sideTriggerDb = sideEnv;
 
-                if (p.dynDetectOnsets[band])
+                const float onsetMix =
+                    juce::jlimit(0.f, 1.f, p.dynDetectOnsets[band] / 100.f);
+                if (onsetMix > 0.f)
                 {
                     const float midRise =
                         juce::jmax(0.f, midDb - midSlow);
                     const float sideRise =
                         juce::jmax(0.f, sideDb - sideSlow);
 
-                    midTriggerDb += juce::jlimit(0.f, 12.f, midRise * 1.5f);
-                    sideTriggerDb += juce::jlimit(0.f, 12.f, sideRise * 1.5f);
+                    midTriggerDb += onsetMix
+                        * juce::jlimit(0.f, 12.f, midRise * 1.5f);
+                    sideTriggerDb += onsetMix
+                        * juce::jlimit(0.f, 12.f, sideRise * 1.5f);
                 }
 
                 const float midTargetActivation = activationFor(
@@ -1511,8 +1517,19 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     updateCrossover(
         soloPostXover3, sr, soloX3, soloQ);
 
-    const bool soloEnabled =
+    updateDynamicDetector(
+        graphSoloPre, sr,
+        juce::jlimit(20.f, static_cast<float>(sr * 0.45), p.graphSoloFreq),
+        juce::jlimit(0.1f, 18.f, p.graphSoloQ));
+    updateDynamicDetector(
+        graphSoloPost, sr,
+        juce::jlimit(20.f, static_cast<float>(sr * 0.45), p.graphSoloFreq),
+        juce::jlimit(0.1f, 18.f, p.graphSoloQ));
+
+    const bool bandSoloEnabled =
         p.soloBand >= 0 && p.soloBand < 4;
+    const bool soloEnabled =
+        p.graphSoloActive || bandSoloEnabled;
 
     if (p.soloBand != lastSoloBand
         || p.soloPost != lastSoloPost)
@@ -1566,21 +1583,28 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
             auto* wet = buffer.getWritePointer(ch);
             const bool right = ch == 1;
 
-            const float preSolo = splitBand(
-                alignedDryBuffer.getSample(ch, n),
-                soloPreXover1,
-                soloPreXover2,
-                soloPreXover3,
-                safeSoloBand,
-                right);
+            const float preSolo =
+                p.graphSoloActive
+                    ? graphSoloPre.process(
+                        alignedDryBuffer.getSample(ch, n), right)
+                    : splitBand(
+                        alignedDryBuffer.getSample(ch, n),
+                        soloPreXover1,
+                        soloPreXover2,
+                        soloPreXover3,
+                        safeSoloBand,
+                        right);
 
-            const float postSolo = splitBand(
-                wet[n],
-                soloPostXover1,
-                soloPostXover2,
-                soloPostXover3,
-                safeSoloBand,
-                right);
+            const float postSolo =
+                p.graphSoloActive
+                    ? graphSoloPost.process(wet[n], right)
+                    : splitBand(
+                        wet[n],
+                        soloPostXover1,
+                        soloPostXover2,
+                        soloPostXover3,
+                        safeSoloBand,
+                        right);
 
             const float solo =
                 p.soloPost ? postSolo : preSolo;

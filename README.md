@@ -100,6 +100,13 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.14
+
+- Dynamic EQ 的 PEAK / ONSETS 改為 0–100% 連續混合，預設 50% / 50%；Native 與 Web DSP 同步以比例混合 onset detector。
+- 上方 EQ 右鍵按住即 SOLO 該 EQ 頻率；右鍵拖曳同步調整 FREQ / GAIN，右鍵滾輪調整 Q，放開右鍵解除頻率 SOLO。
+- PEAK / ONSETS 控制改為較短、寬版 TT / SS 類型比例條，比例填色使用藍色。
+- Native / Web Preview / Web Worklet / Regression / CI artifact 統一升至 v1.0.14。
+
 ## v1.0.13
 
 - 修正 EQ 上方曲線的頻率響應計算：Native / Web Graph 現在直接依目前 TPT Bell 拓撲計算，不再使用錯誤的舊複數響應公式。
