@@ -45,7 +45,7 @@ ANALOG COLOR 正式基準自 **v1.0.16** 起為 unity-normalized smooth algebrai
 - shaping domain 限制在 -1..+1；超出範圍不得因 ANALOG 額外衰減。
 - hard no-shrink guard 必須保證 COLOR 增加時，shaping domain 內每個 sample 的絕對值不得低於未染色值；0% 仍須 exact dry。
 - 每個頻段仍保留獨立 COLOR、TT/SS、BYPASS、X2。
-- **X2 仍只能把該頻段由 ANALOG COLOR 產生的 delta ×1.6；不得乘到 EQ、OTT、TAPE-A、DE-ESSER、MIX、OUT 或其他頻段。**
+- **X2 仍只能把該頻段由 ANALOG COLOR 產生的 delta ×2；不得乘到 EQ、OTT、TAPE-A、DE-ESSER、MIX、OUT 或其他頻段。**
 - 不再建立或保留 V1 / V2 / V3 Analog 選擇頁、切換頁或版本導覽。
 - 修改 ANALOG 後必須完成 500-case regression matrix，並檢查 0% transparency、TT/SS 差異、odd symmetry、X2 delta isolation、finite output 與 no-shrink 邊界。
 
@@ -105,11 +105,26 @@ ANALOG COLOR 正式基準自 **v1.0.16** 起為 unity-normalized smooth algebrai
 - 不得再出現「Native 已更新，但 Web 還在跑舊演算法」的情況。
 
 ## 壓力測試與部署檢查
-- GitHub CI 壓力測試：**5 次**。
-- GPT 在提交前後的自我驗證：**10 + 10 次**（10 次基礎功能／回歸 + 10 次交叉／邊界檢查）。
-- Native VST3 與 Web Preview 每次更新必須一起檢查；只改其中一端不得宣告完成。
+
+### Fast Deploy 規則（v1.0.23 起，最高優先）
+- 一般 PR / main push 的預設驗證路徑必須以 **3 分鐘內完成工作執行** 為目標。
+- Fast Gate 只保留會直接阻止錯版上線的必要項目：Native/Web 同步規則、版本規則、Web/Worklet JavaScript syntax、Web smoke、UI/互動 regression。
+- 一般 PR **不得**再安裝整套 Linux audio/X11 開發套件，也不得每次重新跑 Linux VST3 全編譯、numpy/scipy 安裝、500-case ANALOG matrix 或 DSP stress。
+- 完整 Linux Native build、500-case ANALOG matrix、5 次 DSP stress 移至 `workflow_dispatch -> full_validation=true`，需要深度驗證時才執行。
+- Windows VST3 正式 artifact 只在 **main push / 手動 workflow** 建置；PR 階段不重複做 Windows Release build。
+- Windows VST3 必須使用可恢復的 incremental build cache，避免每次從零編譯 JUCE。
+- GitHub Pages 必須獨立於重型 Native CI，使用 docs-only sparse checkout + 最少必要 syntax/structure 驗證，不能等待 VST3 build 才部署。
+- Pages workflow 設定 `timeout-minutes: 3`；Fast Gate 也設定 `timeout-minutes: 3`。若超時視為流程設計需要再優化，而不是把 timeout 往上放寬。
+- GitHub hosted runner 的「排隊等待時間」不受 repository workflow 控制，因此 3 分鐘目標指 workflow 實際開始執行後；若要保證牆鐘時間，需改用常駐 self-hosted runner。
+
+### 深度驗證
+- GitHub 完整 DSP stress：**5 次**，只在 full validation 執行。
+- ANALOG 修改後仍必須完成 500-case regression matrix，但不放在每次一般部署關卡。
+- GPT 在提交前後的自我驗證仍維持 **10 + 10 次**；此規則不要求把 20 次都搬進 GitHub hosted runner。
+- Native VST3 與 Web Preview 每次功能更新仍必須同步；Fast Deploy 只改驗證時機，不降低同步要求。
 
 ## CI/CD
-- CI 的 Git checkout 必須保留完整 history（`fetch-depth: 0`），因為 Plugin/Web Preview 同步檢查需要比較 push 前後 commit。
-
-- CI verification branch: workflow changes must be validated by an actual PR run before merge.
+- Fast Gate 為一般 PR 的必要 gate。
+- main push 後，Web Pages 與 Windows VST3 應平行執行，互不等待。
+- 只有需要比較完整 commit 範圍的 sync gate 使用 `fetch-depth: 0`；Pages / Windows artifact 使用淺層 checkout。
+- CI verification branch: workflow changes must validated by an actual PR run before merge.

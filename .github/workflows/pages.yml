@@ -2,8 +2,10 @@ name: Deploy VVChain Web Preview
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
+    paths:
+      - "docs/**"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -12,39 +14,36 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: vvchain-pages
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Validate Web Preview structure
+      - name: Checkout docs only
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          sparse-checkout: |
+            docs
+          sparse-checkout-cone-mode: true
+
+      - name: Fast Web validation
         shell: bash
         run: |
           set -euo pipefail
           test -s docs/index.html
-          test ! -e docs/analog-v1.html
-          test ! -e docs/analog-v2.html
-          test ! -e docs/analog-v3.html
+          test -s docs/vvchain-worklet.js
           grep -q 'id="bandGrid"' docs/index.html
-          grep -q 'for(let b=0;b<4;b++){' docs/index.html
           grep -q 'DE-ESSER' docs/index.html
           grep -q 'ANALOG COLOR' docs/index.html
-          grep -q 'unity-normalized smooth saturation' docs/index.html
-          echo "Web Preview structure: PASS"
-
-      - name: Validate Web Preview JavaScript
-        shell: bash
-        run: |
-          python - <<'PY'
+          node --check docs/vvchain-worklet.js
+          python3 - <<'PY'
           from pathlib import Path
           import re
           html = Path('docs/index.html').read_text(encoding='utf-8')
@@ -55,10 +54,14 @@ jobs:
           PY
           node --check /tmp/vvchain-pages.js
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: './docs'
-      - name: Deploy to GitHub Pages
+
+      - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

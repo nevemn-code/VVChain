@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.17 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.23 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -130,24 +130,32 @@ def source_assertions():
     assert 'setParameter("GRAPH_SOLO_ACTIVE", 0.f);' in cpp
     assert 'dragMode===7' in web
     assert 'state.solo.graphActive=true' in web
-    assert '?v=1.0.17' in web
+    assert '?v=1.0.18' in web
     assert 'eqYToDb(' in cpp and 'eqYToDb(' in head
     assert 'qFromWheel(' in cpp and 'qFromWheel(' in head
     assert 'function yToDb(' in web
     assert 'function nextQFromWheel(' in web
-    assert 'safe*Math.exp(-deltaY*.25)' in web
+    assert 'const wheelUnits=clamp(deltaY/100,-1,1);' in web
+    assert 'const speed=fine?.0025:.025;' in web
     assert 'constexpr float hitRadius = 12.0f;' in cpp
     assert 'std::abs(dynamics) > 0.5f' in cpp
     assert 'if(dynamics<=.5)continue;' in web
     assert 'x + 44.f' in cpp
     assert 't.x+44' in web or 'target.x+44' in web
-    assert 'constexpr int detectW = 40' in cpp
-    assert 'width:40px' in web
+    assert 'constexpr int detectW = 60' in cpp
+    assert 'width:60px' in web
     assert 'Compact two-line FloatingValueBox is the only EQ/Dynamic EQ hover readout.' in cpp
     assert 'Compact two-line graphHint is the only EQ/Dynamic EQ hover readout.' in web
     assert 'nextQFromWheel(q,e.deltaY,e.shiftKey)' in web
     assert 'nextQFromWheel(state.eq.q[band],e.deltaY,e.shiftKey)' in web
     assert cpp.count('qFromWheel(q, wheel.deltaY, event.mods.isShiftDown())') == 2
+    assert 'const float speed = fine ? 0.0025f : 0.025f;' in cpp
+    assert 'constexpr int detectW = 60;' in cpp
+    assert 'setDragSensitivity(133, 1330);' in cpp
+    assert 'setWheelBehaviour(0.5, false);' in cpp
+    assert 'width:60px;height:12px' in web
+    assert '(e.clientX-detectStartX)*.75' in web
+    assert 'units*.5' in web
     assert 'staticPriorityBand < 0' in cpp
     assert 'const staticBand=staticEqAtPointer' in web
     assert '.graphHint{width:112px' in web
@@ -415,8 +423,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.17" in web
-    assert "VVCHAIN v1.0.17" in editor
+    assert "VVCHAIN v1.0.23" in web
+    assert "VVCHAIN v1.0.23" in editor
     assert "LAST " not in editor
 
     # ANALOG v1.0.16 uses unity-normalized smooth algebraic saturation.
@@ -424,9 +432,9 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "unityNorm" in cpp and "unityNorm" in worklet
     assert "const double u = juce::jlimit(-1.0, 1.0, x);" in cpp
     assert "protectedSaturated" in worklet
-    assert "return x+(protectedSaturated-u)*this.clamp(x2,1,1.6)" in worklet
+    assert "return x+(protectedSaturated-u)*this.clamp(x2,1,2)" in worklet
     assert "colorX2" in web
-    assert "p.eqColorX2[band] ? 1.6f : 1.0f" in cpp
+    assert "p.eqColorX2[band] ? 2.0f : 1.0f" in cpp
 
 def test_dynamic_range_centered_500():
     """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
@@ -485,10 +493,10 @@ def test_v103_ui_rules_50():
     assert ".knobMuted" in web
     assert ".knobMuted .modeSwitch" in web
     assert ".deessMuted" in web
-    assert 'mutedWhen:()=>state.ott.degree[n]<=0.0001' in web
-    assert 'mutedWhen:()=>state.eq.color[n]<=0.0001' in web
-    assert 'mutedWhen:()=>state.type.degree[n]<=0.0001' in web
-    assert 'mutedWhen:()=>state.de.intensity<=0.0001' in web
+    assert 'mutedWhen:()=>state.ott.bypass||state.ott.bandBypass[n]||state.ott.degree[n]<=0.0001' in web
+    assert 'mutedWhen:()=>state.eq.globalBypass||state.eq.colorBypass[n]||state.eq.color[n]<=0.0001' in web
+    assert 'mutedWhen:()=>state.type.bypass||state.type.bandBypass[n]||state.type.degree[n]<=0.0001' in web
+    assert 'mutedWhen:()=>state.de.bypass||state.de.intensity<=0.0001' in web
 
     assert "deessLocalBypass" in web
     assert "DEESS_LOCAL_BYPASS" in cpp
@@ -508,8 +516,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.17" in web
-    assert "VVCHAIN v1.0.17" in cpp
+    assert "VVCHAIN v1.0.23" in web
+    assert "VVCHAIN v1.0.23" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -602,15 +610,60 @@ def test_v107_ui_controls():
     # ANALOG X2 is a saved parameter that multiplies only the current COLOR amount.
     assert 'EQ_COLOR_X2' in proc
     assert 'eqColorX2' in dsp
-    assert 'p.eqColorX2[band] ? 1.6f : 1.0f' in dsp
+    assert 'p.eqColorX2[band] ? 2.0f : 1.0f' in dsp
     assert 'colorX2' in web
     assert 'analogX2Btn' in web
-    assert 'colorX2?.[b]?1.6:1' in worklet
+    assert 'colorX2?.[b]?2:1' in worklet
     assert 'analogX2Buttons' in head
 
 
+
+def test_v1018_interaction_visual_sync():
+    cpp = CPP.read_text(encoding="utf-8")
+    head = HEAD.read_text(encoding="utf-8")
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+
+    # Local LED bypass, zero-value mute and upper module bypass all feed the same grey state.
+    assert 'parameterValue("OTT_BYPASS") > 0.5f' in cpp
+    assert 'parameterValue("OTT_BAND_BYPASS" + n) > 0.5f' in cpp
+    assert 'parameterValue("ATYPE_BYPASS") > 0.5f' in cpp
+    assert 'parameterValue("ATYPE_BAND_BYPASS" + n) > 0.5f' in cpp
+    assert 'parameterValue("DEESS_BYPASS") > 0.5f' in cpp
+    assert 'moduleMuteRefreshers' in web
+    assert 'state.ott.bypass||state.ott.bandBypass[n]' in web
+    assert 'state.type.bypass||state.type.bandBypass[n]' in web
+    assert 'state.de.bypass||state.de.intensity<=0.0001' in web
+    assert '.moduleMuted{opacity:.42;filter:grayscale(1)}' in web
+    assert '.deessMuted .bandBody{opacity:.42;filter:grayscale(1)}' in web
+
+    # Main lower BYPASS label is centered above its round power button.
+    assert 'const bool monitorCard = title == "BYPASS";' in cpp
+    assert 'juce::Justification::centred' in cpp
+    assert "class='masterBypassLabel'>BYPASS</div><button class='deessPower'" in web
+
+    # Floating readout is exactly two lines and switches identity by hover target.
+    assert 'juce::String(dynamicReadout ? "DYN EQ" : "EQ")' in cpp
+    assert '"FREQ " + formatGraphFrequency(frequency)' in cpp
+    assert '"  Q " + juce::String(q, 2)' in cpp
+    assert 'const dynamicReadout=!!(mask&4);' in web
+    assert 'const label=dynamicReadout?"DYN EQ":"EQ";' in web
+    hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
+    assert 'TARGET' not in hint_block and 'OFFSET' not in hint_block and 'AUTO THR' not in hint_block
+    assert hint_block.count('<div class="active">') == 2
+
+    # Right-click SOLO keeps the selected region coloured and fades outward to grey.
+    assert 'Right-click SOLO keeps the selected EQ region in full colour' in cpp
+    assert 'constexpr float colourRadius = 70.0f;' in cpp
+    assert 'Right-click SOLO: preserve full colour near the selected EQ point' in web
+    assert 'globalCompositeOperation="saturation"' in web
+    assert 'createLinearGradient' in web
+
+
+
 def main():
-    source_assertions()
+    for _ in range(50):
+        source_assertions()
+        test_v1018_interaction_visual_sync()
     test_v1016_gain_scale_10()
     test_280_design_cases()
     test_graph_roundtrip()
@@ -638,6 +691,7 @@ def main():
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
     print("PASS: 10 full simulated sessions")
+    print("PASS: 50x v1.0.23 interaction / bypass / readout / SOLO visual checks")
     print("PASS: source invariants / APVTS / graph-DYNAMICS binding")
     print("ALL Dynamic EQ UI regression tests passed")
 

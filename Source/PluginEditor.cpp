@@ -486,9 +486,14 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addKnob("DYN_RELEASE" + n, "RELEASE", 5, 2000, 1,
                 parameterValue("DYN_RELEASE" + n), " ms", b, 10, c);
 
-        dynDetectSliders[(size_t) b] =
-            std::make_unique<juce::Slider>(juce::Slider::LinearHorizontal,
-                                           juce::Slider::NoTextBox);
+        auto detectBlendSlider = std::make_unique<WheelSlider>();
+        detectBlendSlider->setSliderStyle(juce::Slider::LinearHorizontal);
+        detectBlendSlider->setTextBoxStyle(
+            juce::Slider::NoTextBox, false, 0, 0);
+        detectBlendSlider->setSliderSnapsToMousePosition(false);
+        detectBlendSlider->setDragSensitivity(133, 1330);
+        detectBlendSlider->setWheelBehaviour(0.5, false);
+        dynDetectSliders[(size_t) b] = std::move(detectBlendSlider);
         dynDetectSliders[(size_t) b]->setComponentID("DYN_DETECT_BLEND");
         dynDetectSliders[(size_t) b]->setLookAndFeel(&metalLook);
         dynDetectSliders[(size_t) b]->setRange(0.0, 100.0, 0.1);
@@ -531,7 +536,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
         // The two EQ / ANALOG controls live inside every BAND card.
         // They intentionally remain attached to the shared DSP parameters.
-        addKnob("EQ_COLOR_B" + n, "ANALOG COLOR", 0, 100, .1,
+        addKnob("EQ_COLOR_B" + n, "ANALOG COLOR", 0, 60, .1,
                 parameterValue("EQ_COLOR" + n), " %", b, 6,
                 juce::Colour(0xff60a5fa), false, "EQ_COLOR" + n);
 
@@ -558,7 +563,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
             juce::ToggleButton::tickColourId,
             juce::Colour(0xff60a5fa));
         analogX2Buttons[(size_t) b]->setTooltip(
-            "ANALOG COLOR X2：亮起時，當前 ANALOG COLOR 量 × 1.6");
+            "ANALOG COLOR X2：亮起時，0–60% 的 ANALOG COLOR delta × 2");
         analogX2Attachments[(size_t) b] =
             std::make_unique<BoolAttachment>(
                 audioProcessor.apvts, "EQ_COLOR_X2" + n,
@@ -1136,9 +1141,11 @@ float VVChainAudioProcessorEditor::qFromWheel(
     float q, float deltaY, bool fine) const noexcept
 {
     const float safeQ = juce::jmax(0.1f, q);
-    return fine
-        ? juce::jlimit(0.1f, 18.f, safeQ + deltaY * 0.01f)
-        : juce::jlimit(0.1f, 18.f, safeQ * std::exp(-deltaY * 0.25f));
+    const float wheelUnits = juce::jlimit(-1.0f, 1.0f, deltaY);
+    const float speed = fine ? 0.0025f : 0.025f;
+    return juce::jlimit(
+        0.1f, 18.f,
+        safeQ * std::exp(wheelUnits * speed));
 }
 
 float VVChainAudioProcessorEditor::dynamicThresholdFromDynamics(float dynamics) const
@@ -1774,6 +1781,43 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         }
     }
 
+    // Right-click SOLO keeps the selected EQ region in full colour and
+    // linearly fades the rest of the graph into grey with distance.
+    if (rightSoloBand >= 0
+        && parameterValue("GRAPH_SOLO_ACTIVE") > 0.5f)
+    {
+        const auto soloN = juce::String(rightSoloBand + 1);
+        const float centreX = graphFrequencyToX(
+            graph, parameterValue("EQ" + soloN + "_FREQ"));
+        constexpr float colourRadius = 70.0f;
+
+        const float leftEdge = juce::jmax(graph.getX(), centreX - colourRadius);
+        if (leftEdge > graph.getX())
+        {
+            juce::ColourGradient fade(
+                juce::Colour(0xff777b80).withAlpha(0.72f),
+                graph.getX(), graph.getCentreY(),
+                juce::Colour(0xff777b80).withAlpha(0.0f),
+                leftEdge, graph.getCentreY(), false);
+            g.setGradientFill(fade);
+            g.fillRect(graph.getX(), graph.getY(),
+                       leftEdge - graph.getX(), graph.getHeight());
+        }
+
+        const float rightEdge = juce::jmin(graph.getRight(), centreX + colourRadius);
+        if (rightEdge < graph.getRight())
+        {
+            juce::ColourGradient fade(
+                juce::Colour(0xff777b80).withAlpha(0.0f),
+                rightEdge, graph.getCentreY(),
+                juce::Colour(0xff777b80).withAlpha(0.72f),
+                graph.getRight(), graph.getCentreY(), false);
+            g.setGradientFill(fade);
+            g.fillRect(rightEdge, graph.getY(),
+                       graph.getRight() - rightEdge, graph.getHeight());
+        }
+    }
+
     g.setColour(juce::Colour(0xffc4cad2));
     g.setFont(juce::FontOptions(9.f).withStyle("Bold"));
     g.drawText(
@@ -1816,7 +1860,8 @@ void VVChainAudioProcessorEditor::drawCard(
 
     accent = uiColour(accent);
     if (title == "DE-ESSER"
-        && parameterValue("DEESS_INTENSITY") <= 0.0001f)
+        && (parameterValue("DEESS_BYPASS") > 0.5f
+            || parameterValue("DEESS_INTENSITY") <= 0.0001f))
         accent = juce::Colour(0xff747b84);
     g.setColour(accent.withAlpha(.8f));
     g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
@@ -1825,8 +1870,12 @@ void VVChainAudioProcessorEditor::drawCard(
     const int titleY = monitorCard ? 36 : 8;
     g.setColour(juce::Colours::white);
     g.setFont(juce::FontOptions(12.f).withStyle("Bold"));
-    g.drawText(title, (int) r.getX() + 13, (int) r.getY() + titleY,
-               100, 17, juce::Justification::left);
+    if (monitorCard)
+        g.drawText(title, (int) r.getX(), (int) r.getY() + titleY,
+                   (int) r.getWidth(), 17, juce::Justification::centred);
+    else
+        g.drawText(title, (int) r.getX() + 13, (int) r.getY() + titleY,
+                   100, 17, juce::Justification::left);
 
     if (!monitorCard)
     {
@@ -2064,12 +2113,20 @@ void VVChainAudioProcessorEditor::timerCallback()
     for (int b = 0; b < 4; ++b)
     {
         const auto n = juce::String(b + 1);
+        const bool eqMuted =
+            parameterValue("EQ_BYPASS") > 0.5f;
         const bool ottMuted =
-            parameterValue("OTT_DEGREE" + n) <= 0.0001f;
+            parameterValue("OTT_BYPASS") > 0.5f
+            || parameterValue("OTT_BAND_BYPASS" + n) > 0.5f
+            || parameterValue("OTT_DEGREE" + n) <= 0.0001f;
         const bool analogMuted =
-            parameterValue("EQ_COLOR" + n) <= 0.0001f;
+            parameterValue("EQ_COLOR_GLOBAL_BYPASS") > 0.5f
+            || parameterValue("EQ_COLOR_BYPASS" + n) > 0.5f
+            || parameterValue("EQ_COLOR" + n) <= 0.0001f;
         const bool tapeMuted =
-            parameterValue("ATYPE_DEGREE" + n) <= 0.0001f;
+            parameterValue("ATYPE_BYPASS") > 0.5f
+            || parameterValue("ATYPE_BAND_BYPASS" + n) > 0.5f
+            || parameterValue("ATYPE_DEGREE" + n) <= 0.0001f;
         const auto setKnobAlpha = [this](const juce::String& id, bool muted)
         {
             if (auto* knob = findKnob(id))
@@ -2079,6 +2136,16 @@ void VVChainAudioProcessorEditor::timerCallback()
                 knob->label->setAlpha(alpha);
             }
         };
+        setKnobAlpha("EQ" + n + "_GAIN", eqMuted);
+        setKnobAlpha("EQ" + n + "_FREQ", eqMuted);
+        setKnobAlpha("EQ" + n + "_Q", eqMuted);
+        setKnobAlpha("DYN_DYNAMICS" + n, eqMuted);
+        setKnobAlpha("DYN_ATTACK" + n, eqMuted);
+        setKnobAlpha("DYN_RELEASE" + n, eqMuted);
+        if (dynDetectSliders[(size_t)b])
+            dynDetectSliders[(size_t)b]->setAlpha(eqMuted ? 0.42f : 1.0f);
+        if (dynTriggerButtons[(size_t)b])
+            dynTriggerButtons[(size_t)b]->setAlpha(eqMuted ? 0.42f : 1.0f);
         setKnobAlpha("OTT_DEGREE" + n, ottMuted);
         setKnobAlpha("OTT_COMP_A" + n, ottMuted);
         setKnobAlpha("OTT_COMP_R" + n, ottMuted);
@@ -2087,10 +2154,14 @@ void VVChainAudioProcessorEditor::timerCallback()
         if (analogModeButtons[(size_t)b])
             analogModeButtons[(size_t)b]->setAlpha(
                 analogMuted ? 0.42f : 1.0f);
+        if (analogX2Buttons[(size_t)b])
+            analogX2Buttons[(size_t)b]->setAlpha(
+                analogMuted ? 0.42f : 1.0f);
     }
 
     const bool deessMuted =
-        parameterValue("DEESS_INTENSITY") <= 0.0001f;
+        parameterValue("DEESS_BYPASS") > 0.5f
+        || parameterValue("DEESS_INTENSITY") <= 0.0001f;
     for (const auto& id : { juce::String("DEESS_FREQ"),
                             juce::String("DEESS_INTENSITY"),
                             juce::String("DEESS_MODE") })
@@ -2249,7 +2320,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.17 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
+    g.drawText("VVCHAIN v1.0.23 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2453,7 +2524,7 @@ void VVChainAudioProcessorEditor::resized()
 
         if (dynDetectSliders[(size_t) b])
         {
-            constexpr int detectW = 40;
+            constexpr int detectW = 60;
             const int dynamicsCentreX = cell(1, 0).getCentreX();
             dynDetectSliders[(size_t) b]->setBounds(
                 dynamicsCentreX - detectW / 2,

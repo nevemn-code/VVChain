@@ -187,7 +187,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const denominator=Math.sqrt(Math.sqrt(1+alpha*u*u));
     const saturated=(u/denominator)*unityNorm;
     const protectedSaturated=Math.sign(u||1)*Math.max(Math.abs(saturated),Math.abs(u));
-    return x+(protectedSaturated-u)*this.clamp(x2,1,1.6);
+    return x+(protectedSaturated-u)*this.clamp(x2,1,2);
   }
   deessSample(x,c,coef){
     const st=this.s.de;
@@ -237,9 +237,9 @@ class VVChainWorklet extends AudioWorkletProcessor {
     if(!s.eq.globalBypass){
       for(let b=0;b<4;b++){
         if(s.eq.colorBypass[b])continue;
-        const amount=this.clamp(Number(s.eq.color[b]||0)/100,0,1);
+        const amount=this.clamp(Number(s.eq.color[b]||0),0,60)/100;
         if(amount<=1e-6)continue;
-        const x2=s.eq.colorX2?.[b]?1.6:1;
+        const x2=s.eq.colorX2?.[b]?2:1;
         y=this.analog(y,amount,!!s.eq.mode[b],c,b,x2);
       }
     }

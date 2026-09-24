@@ -16,7 +16,7 @@ INPUT
 - 上方顯示 EQ response 與 Shared X-Over，不再使用即時 FFT analyzer。
 - 3 條可拖曳 Shared X-Over 線，分成 4 個頻段；線上滾輪調整 OVERLAP。
 - BAND 1–4：FREQ / GAIN / Q / ANALOG COLOR / OTT % / ATTACK / RELEASE / TAPE-A +。
-- 每個頻段的 ANALOG COLOR 完全獨立；0% = 區域透明，100% = 約 30% 透明。
+- 每個頻段的 ANALOG COLOR 完全獨立；使用者範圍 0–60%，0% = exact dry；X2 只把目前 ANALOG delta 放大為 ×2。
 - ANALOG COLOR 上方有 TT / SS 撥桿：TT = Tube Saturation；SS = Solid-State Saturation。
 - 各 BAND 的 OTT / TAPE-A BYPASS 小燈固定位於對應旋鈕右上方；亮 = 啟用，暗 = BYPASS。
 - DE-ESSER 框內四顆旋鈕垂直排列：DE-ESS FREQ / MAXIMUM REDUCTION / MIX / OUT。
@@ -27,7 +27,7 @@ INPUT
 ## DSP
 - Native De-Esser 使用固定 8192-sample PDC。
 - HP / CORNER 不參與聲音計算。
-- ANALOG COLOR 自 v1.0.16 起使用 unity-normalized smooth algebraic saturation + hard no-shrink guard：0% exact dry；奇對稱、無額外濾波相位；|x|=1 維持 unity；COLOR 增加不得讓 shaping domain 內 sample 絕對值縮小；X2 仍只放大該段產生的 ANALOG delta ×1.6。
+- ANALOG COLOR 自 v1.0.16 起使用 unity-normalized smooth algebraic saturation + hard no-shrink guard：0% exact dry；奇對稱、無額外濾波相位；|x|=1 維持 unity；COLOR 增加不得讓 shaping domain 內 sample 絕對值縮小；X2 仍只放大該段產生的 ANALOG delta，v1.0.18 起為 ×2。
 - Master BYPASS 保持固定 PDC，完全旁通時輸出延遲乾聲。
 - AAX 目標受 VVCHAIN_ENABLE_AAX 控制，需合法 AAX SDK / 開發環境。
 
@@ -83,7 +83,7 @@ https://nevemn-code.github.io/VVChain/
 > Regression tests are not a substitute for final DAW pluginval or AAX certification.
   
 ### Analog Color / TT / SS
-Analog Color uses the v1.0.16 unity-normalized smooth algebraic transfer with a hard no-shrink guard. Zero amount is exact dry, |x|=1 is normalized to unity, TT/SS use separate saturation depths, and X2 multiplies only the generated Analog Color delta by 1.6.
+Analog Color uses the v1.0.16 unity-normalized smooth algebraic transfer with a hard no-shrink guard. Zero amount is exact dry, |x|=1 is normalized to unity, TT/SS use separate saturation depths, and The user control is capped at 60%, and X2 multiplies only the generated Analog Color delta by 2.
 
 PSP's published ClassicQ documentation describes SIM as Class-A plus transformer simulation, with the Class-A stage before output level and the transformer followed by SAT; PSP does not publish the proprietary transfer curve. VVChain therefore uses that documented topology as a design reference rather than claiming a code-level clone. PSP describes its analog EQ/preamp coloration as gentle/subtle, and McQ describes SAT as a smooth overdrive stage.
 
@@ -99,6 +99,27 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 ## 版本規則
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
+
+## v1.0.23
+
+- CI/CD 改成 Fast Deploy 預設路徑：一般 PR 只跑必要同步、版本、JS syntax、Web smoke、UI/互動 regression。
+- 一般 PR 不再安裝 Linux audio/X11 開發套件、不再每次完整 Linux VST3 build、不再每次安裝 numpy/scipy。
+- 500-case ANALOG matrix 與 5 次 DSP stress 移至手動 Full Validation。
+- Windows VST3 Release 改為 main push / 手動 workflow 才建置，並加入 incremental build cache。
+- GitHub Pages 改為 docs-only sparse checkout，與 Windows/Native CI 平行，Fast Gate 與 Pages 都以 3 分鐘執行時間為上限。
+- GitHub hosted runner 排隊不受 repo 控制；若要保證從 push 到完成的牆鐘時間低於 3 分鐘，需要 self-hosted runner。
+
+## v1.0.18
+
+- 上方 EQ 點的一般滾輪與右鍵 SOLO 滾輪統一回到慢速、連續 Q 調整；Web 以每標準滾輪單位約 2.5% 比例變化，避免直接撞 0.1 / 18 上下限。
+- ANALOG COLOR 使用者範圍由 0–100% 改為 0–60%；DSP 仍以百分比 /100 轉成 amount，因此 60% 對應原演算法 0.60 強度。
+- ANALOG X2 改成真正將目前產生的 Analog delta ×2；不改原始乾聲。
+- PEAK ↔ ONSETS 寬度 40 px → 60 px；拖曳改為相對式慢速 0.3×，並加入慢速滾輪控制。
+- OTT %、TAPE-A +、DE-ESSER 的局部 LED BYPASS 與 0 值灰階連動；右上五個模組 BYPASS 也同步灰階其對應元件。
+- 下區塊最右側主 BYPASS 文字改為置中在圓形主 BYPASS 按鈕正上方。
+- 上方浮動值框固定兩行：EQ 或 DYN EQ 的 GAIN；第二行只顯示 FREQ + Q，依實際 hover 目標切換。
+- 右鍵 SOLO EQ 點時，SOLO 中心保持原彩色，往左右頻率距離增加時線性淡入灰階。
+- Native VST3 / Web Preview / AudioWorklet / Regression / Windows artifact 同步升至 v1.0.18。
 
 ## v1.0.17
 

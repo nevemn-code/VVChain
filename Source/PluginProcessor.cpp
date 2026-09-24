@@ -64,7 +64,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     for (int i = 0; i < 4; ++i)
     {
         const auto n = juce::String(i + 1);
-        f("EQ_COLOR" + n, "EQ " + n + " Analog Color", 0.f, 100.f, 35.f);
+        f("EQ_COLOR" + n, "EQ " + n + " Analog Color", 0.f, 60.f, 35.f);
         p.push_back(std::make_unique<juce::AudioParameterBool>(
             "EQ_COLOR_BYPASS" + n, "EQ " + n + " Analog Color Bypass", false));
         p.push_back(std::make_unique<juce::AudioParameterBool>(
