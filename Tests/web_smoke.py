@@ -27,7 +27,7 @@ node = subprocess.run(
 )
 assert node.returncode == 0, node.stderr
 
-# Current v1.0.22 Web architecture smoke gates only.
+# Current v1.0.23 Web architecture smoke gates only.
 required_html = [
     "LOAD AUDIO",
     "AudioWorkletNode",
@@ -64,4 +64,4 @@ for forbidden in [
 ]:
     assert forbidden not in text, f"legacy/forbidden remains: {forbidden}"
 
-print("PASS Web smoke: current external Worklet + v1.0.22 UI structure")
+print("PASS Web smoke: current external Worklet + v1.0.23 UI structure")
