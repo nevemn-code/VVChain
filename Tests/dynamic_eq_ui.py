@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.28 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.31 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -132,7 +132,7 @@ def source_assertions():
     assert 'setParameter("GRAPH_SOLO_ACTIVE", 0.f);' in cpp
     assert 'dragMode===7' in web
     assert 'state.solo.graphActive=true' in web
-    assert '?v=1.0.18' in web
+    assert 'vvchain-worklet.js",document.baseURI).href+"?v=' in web
     assert 'eqYToDb(' in cpp and 'eqYToDb(' in head
     assert 'qFromWheel(' in cpp and 'qFromWheel(' in head
     assert 'function yToDb(' in web
@@ -425,8 +425,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.30" in web
-    assert "VVCHAIN v1.0.30" in editor
+    assert "VVCHAIN v1.0.31" in web
+    assert "VVCHAIN v1.0.31" in editor
     assert "LAST " not in editor
 
     # ANALOG v1.0.16 uses unity-normalized smooth algebraic saturation.
@@ -518,8 +518,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.30" in web
-    assert "VVCHAIN v1.0.30" in cpp
+    assert "VVCHAIN v1.0.31" in web
+    assert "VVCHAIN v1.0.31" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -768,8 +768,8 @@ def main():
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
     print("PASS: 10 full simulated sessions")
-    print("PASS: 50x v1.0.30 compact EQ/DYN EQ readout identity + format checks")
-    print("PASS: v1.0.30 Q wheel 3x continuous / shared-path check")
+    print("PASS: 50x v1.0.31 compact EQ/DYN EQ readout identity + format checks")
+    print("PASS: v1.0.31 Q wheel 3x continuous / shared-path check")
     print("PASS: source invariants / APVTS / graph-DYNAMICS binding")
     print("ALL Dynamic EQ UI regression tests passed")
 
