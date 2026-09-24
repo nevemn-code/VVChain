@@ -3,8 +3,20 @@ name: VVChain CI/CD
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - "CMakeLists.txt"
+      - "Source/**"
+      - "Tests/**"
+      - "docs/**"
+      - ".github/workflows/build.yml"
   pull_request:
     branches: [ "main" ]
+    paths:
+      - "CMakeLists.txt"
+      - "Source/**"
+      - "Tests/**"
+      - "docs/**"
+      - ".github/workflows/build.yml"
   workflow_dispatch:
     inputs:
       full_stress:
@@ -37,13 +49,29 @@ jobs:
         restore-keys: |
           vvchain-linux-
 
-    - name: Setup CMake, Ninja and ccache
+    - name: Setup native build dependencies (install only when missing)
+      shell: bash
       run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake ninja-build ccache libasound2-dev libjack-jackd2-dev \
-          libcurl4-openssl-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev \
-          libx11-dev libxi-dev libxcomposite-dev libxcursor-dev libxext-dev \
+        set -euo pipefail
+        deps=(
+          cmake ninja-build ccache
+          libasound2-dev libjack-jackd2-dev
+          libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev
+          libx11-dev libxi-dev libxcomposite-dev libxcursor-dev libxext-dev
           libxinerama-dev libxrandr-dev libxrender-dev
+        )
+        missing=()
+        for pkg in "${deps[@]}"; do
+          if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q 'install ok installed'; then
+            missing+=("$pkg")
+          fi
+        done
+        if ((${#missing[@]})); then
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends "${missing[@]}"
+        else
+          echo "All native build dependencies are already present on the runner."
+        fi
 
     - name: Setup Python
       uses: actions/setup-python@v7
@@ -121,8 +149,11 @@ jobs:
     - name: Build VST3/DSP
       run: cmake --build build --config Release --parallel
 
-    - name: Install Python test dependencies
-      run: python -m pip install --upgrade numpy scipy
+    - name: Install Python test dependency only when missing
+      shell: bash
+      run: |
+        python -c "import numpy" 2>/dev/null || \
+          python -m pip install --disable-pip-version-check --only-binary=:all: numpy
 
     - name: Dynamic EQ UI/control regression matrix
       run: python Tests/dynamic_eq_ui.py
