@@ -269,12 +269,16 @@ void VVChainDSP::processChebyshevAnalog(
     const float safeColourMultiplier =
         juce::jlimit(1.0f, 1.6f, colourMultiplier);
 
-    // Deploy VVChain Web Preview #443 transfer function.
-    // drive <= 1.0 = TT; drive > 1.0 = SS. The dry fundamental remains 1:1;
-    // only the generated Chebyshev harmonic colour is mixed back.
+    // v1.0.15 smooth zero-phase algebraic saturation.
+    // Raw y=x/(1+alpha*x^2)^(1/4) attenuates full-scale samples, so normalize
+    // at |x|=1.0 before mixing the delta back. This keeps 0% bit-transparent,
+    // preserves odd symmetry/DC=0, and prevents ANALOG amount from shrinking
+    // the signal simply because the saturation curve bends.
     const bool solidState = drive > 1.0f;
-    const float h3 = solidState ? 0.020f : 0.014f;
-    const float h5 = solidState ? 0.006f : 0.004f;
+    const double modeAlpha = solidState ? 1.80 : 1.55;
+    const double alpha =
+        static_cast<double>(safeAmount) * modeAlpha;
+    const double unityNorm = std::pow(1.0 + alpha, 0.25);
 
     for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
     {
@@ -282,23 +286,20 @@ void VVChainDSP::processChebyshevAnalog(
 
         for (size_t i = 0; i < numSamples; ++i)
         {
-            const float x = channelData[i];
-            const float u = juce::jlimit(-1.0f, 1.0f, x);
-            const float u2 = u * u;
-            const float t3 = 4.0f * u * u2 - 3.0f * u;
-            const float t5 =
-                16.0f * u * u2 * u2 - 20.0f * u * u2 + 5.0f * u;
+            const double x = static_cast<double>(channelData[i]);
+            const double u = juce::jlimit(-1.0, 1.0, x);
+            const double denominator =
+                std::sqrt(std::sqrt(1.0 + alpha * u * u));
+            const double saturated =
+                (u / denominator) * unityNorm;
 
-            const float shaped =
-                u
-                + safeAmount
-                    * (h3 * (t3 - u) + h5 * (t5 - u));
-
-            const float delta =
-                0.90f * (shaped - u);
-
+            // The shaping domain is exactly the documented -1..+1 range.
+            // Outside it the delta naturally becomes zero at the clamp edge,
+            // so oversampled/intermediate peaks are never attenuated.
             channelData[i] =
-                x + (delta * safeColourMultiplier);
+                static_cast<float>(
+                    x + (saturated - u)
+                        * static_cast<double>(safeColourMultiplier));
         }
     }
 }
@@ -917,9 +918,9 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     }
 
-    // ANALOG COLOR baseline = Deploy VVChain Web Preview #443.
-    // Preserve #443 processing order / transfer function. X2 scales only
-    // the generated ANALOG COLOR delta for the selected band.
+    // ANALOG COLOR v1.0.15: keep the same processing order and controls,
+    // but use unity-normalized smooth algebraic saturation so increasing
+    // ANALOG does not reduce full-scale level. X2 increases saturation depth.
     for (size_t band = 0; band < 4; ++band)
     {
         if (p.eqColorGlobalBypass || p.eqColorBypass[band])

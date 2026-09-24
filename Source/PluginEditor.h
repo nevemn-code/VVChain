@@ -407,6 +407,7 @@ private:
     float dynamicAverageGainChangeDb(int band) const;
     float dynamicMidGainChangeDb(int band) const;
     float dynamicSideGainChangeDb(int band) const;
+    float gainDragDeltaDb(float deltaY, float graphHeight) const noexcept;
 
     FloatingValueBox floatingValueBox;
     VVChainAudioProcessor& audioProcessor;

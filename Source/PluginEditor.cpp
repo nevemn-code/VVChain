@@ -1098,6 +1098,25 @@ float VVChainAudioProcessorEditor::eqDbToY(
     return graph.getBottom() - t * graph.getHeight();
 }
 
+float VVChainAudioProcessorEditor::gainDragDeltaDb(
+    float deltaY, float graphHeight) const noexcept
+{
+    const float halfH = juce::jmax(1.f, graphHeight * 0.5f);
+    const float t = juce::jlimit(0.f, 1.f, std::abs(deltaY) / halfH);
+
+    float magnitude = 0.f;
+    if (t <= 0.34f)
+        magnitude = 3.f * (t / 0.34f);
+    else if (t <= 0.56f)
+        magnitude = 3.f + 3.f * ((t - 0.34f) / 0.22f);
+    else if (t <= 0.80f)
+        magnitude = 6.f + 6.f * ((t - 0.56f) / 0.24f);
+    else
+        magnitude = 12.f + 6.f * ((t - 0.80f) / 0.20f);
+
+    return deltaY <= 0.f ? magnitude : -magnitude;
+}
+
 float VVChainAudioProcessorEditor::dynamicThresholdFromDynamics(float dynamics) const
 {
     const float signedDynamics =
@@ -1173,8 +1192,8 @@ juce::Point<float> VVChainAudioProcessorEditor::dynamicTargetPoint(int band) con
 bool VVChainAudioProcessorEditor::pointNearDynamicNode(
     juce::Point<float> p, int& band) const
 {
-    constexpr float hitRadius = 18.0f;
-    constexpr float staticNodeRadius = 5.5f;
+    constexpr float hitRadius = 12.0f;
+    constexpr float staticNodeRadius = 7.0f;
 
     band = -1;
     float best = hitRadius;
@@ -1190,10 +1209,12 @@ bool VVChainAudioProcessorEditor::pointNearDynamicNode(
             juce::jlimit(-100.0f, 100.0f,
                          parameterValue("DYN_DYNAMICS" + juce::String(b + 1)));
 
-        // Keep the actual EQ node's inner hit circle reserved for EQ,
-        // even when DYNAMICS is only a few percent away from zero.
+        // At/near 0% Dynamics the EQ point owns the whole central area;
+        // Dynamics is then adjusted with the separate arrow handle.
         const bool hit =
-            d >= staticNodeRadius && d < hitRadius;
+            std::abs(dynamics) > 0.5f
+            && d >= staticNodeRadius
+            && d < hitRadius;
 
         if (hit && d < best)
         {
@@ -1562,7 +1583,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
-                         x + 20.f);
+                         x + 30.f);
         const float handleY = targetY;
 
         if (dynamicsEnabled)
@@ -1617,74 +1638,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.strokePath(
             sideRing, juce::PathStrokeType(2.3f));
 
-        const bool hovered =
-            hoverDynamicBand == band;
-
-        if (hovered)
-        {
-            const float dynamics =
-                parameterValue("DYN_DYNAMICS" + n);
-            const float threshold =
-                dynamicThresholdFromDynamics(dynamics);
-            const float q =
-                parameterValue("EQ" + n + "_Q");
-
-            const bool onsets =
-                parameterValue(
-                    "DYN_DETECT_ONSETS" + n) > .5f;
-            const bool below =
-                parameterValue(
-                    "DYN_TRIGGER_BELOW" + n) > .5f;
-
-            const juce::String text =
-                "B" + n
-                + "   " + formatGraphFrequency(f0)
-                + "   Q " + juce::String(q, 2)
-                + "   TARGET " + juce::String(target, 1)
-                + " dB   OFFSET " + juce::String(offset, 1)
-                + " dB   LIVE " + juce::String(liveGain, 1)
-                + " dB   DYN " + juce::String(dynamics, 0)
-                + "% "
-                + (dynamics > 0.f ? "EXPAND" : dynamics < 0.f ? "COMPRESS" : "STATIC")
-                + "   AUTO THR " + juce::String(threshold, 1)
-                + " dB   "
-                + (onsets ? "ONSETS" : "PEAK")
-                + " / " + (below ? "BELOW" : "ABOVE");
-
-            const float boxW =
-                juce::jmin(510.f, graph.getWidth() - 12.f);
-            const float boxH = 30.f;
-            float bx = x - boxW * .5f;
-            float by = juce::jmin(
-                liveY, targetY, offsetY) - 46.f;
-
-            if (by < graph.getY() + 22.f)
-                by = juce::jmax(
-                    liveY, targetY, offsetY) + 20.f;
-
-            bx = juce::jlimit(
-                graph.getX() + 6.f,
-                graph.getRight() - boxW - 6.f,
-                bx);
-
-            g.setColour(
-                juce::Colours::black.withAlpha(.93f));
-            g.fillRoundedRectangle(
-                bx, by, boxW, boxH, 5.f);
-            g.setColour(
-                c.withAlpha(.96f));
-            g.drawRoundedRectangle(
-                bx, by, boxW, boxH, 5.f, 1.f);
-
-            g.setColour(juce::Colours::white);
-            g.setFont(
-                juce::FontOptions(8.6f).withStyle("Bold"));
-            g.drawText(
-                text,
-                (int)bx + 8, (int)by + 8,
-                (int)boxW - 16, 14,
-                juce::Justification::centred);
-        }
+        // Compact two-line FloatingValueBox is the only EQ/Dynamic EQ hover readout.
 
         if (expandedDynamicBand == band)
         {
@@ -1788,7 +1742,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             g.setFont(
                 juce::FontOptions(8.3f).withStyle("Bold"));
             g.drawText(
-                "RIGHT CLICK + WHEEL = MID / SIDE",
+                "DRAG BAR = MID / SIDE",
                 (int)popup.getX() + 12,
                 (int)popup.getBottom() - 18,
                 (int)popup.getWidth() - 24, 12,
@@ -2271,7 +2225,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.14 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
+    g.drawText("VVCHAIN v1.0.15 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2474,8 +2428,14 @@ void VVChainAudioProcessorEditor::resized()
         const int halfW = (innerW - 8) / 2;
 
         if (dynDetectSliders[(size_t) b])
+        {
+            const int detectW = juce::jmax(42, halfW / 2);
+            const int dynamicsCentreX = cell(1, 0).getCentreX();
             dynDetectSliders[(size_t) b]->setBounds(
-                innerX, modeY + 6, halfW, 14);
+                dynamicsCentreX - detectW / 2,
+                cell(1, 0).getY() - 9,
+                detectW, 12);
+        }
 
         if (dynTriggerButtons[(size_t) b])
         {
@@ -2711,7 +2671,7 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
-                         x + 20.f);
+                         x + 30.f);
         const float handleDistance =
             position.getDistanceFrom({ handleX, targetY });
 
@@ -2891,6 +2851,9 @@ void VVChainAudioProcessorEditor::mouseDown(
             dragDynamicMsBand = -1;
             dragBand = -1;
             dragOffsetBand = -1;
+            dynamicGainDragStartY = pos.y;
+            dynamicGainDragStartOffset =
+                parameterValue("EQ" + n + "_GAIN");
             setParameter("GRAPH_SOLO_FREQ", parameterValue("EQ" + n + "_FREQ"));
             setParameter("GRAPH_SOLO_Q", parameterValue("EQ" + n + "_Q"));
             setParameter("GRAPH_SOLO_ACTIVE", 1.f);
@@ -2965,12 +2928,12 @@ void VVChainAudioProcessorEditor::mouseDown(
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
-                         x + 20.f);
+                         x + 30.f);
         const float targetY =
             eqDbToY(graph, dynamicEffectiveTargetGain(b));
         const auto handleRect =
-            juce::Rectangle<float>(handleX - 6.f, targetY - 9.f,
-                                   12.f, 18.f);
+            juce::Rectangle<float>(handleX - 4.f, targetY - 8.f,
+                                   8.f, 16.f);
 
         if (event.mods.isLeftButtonDown() && handleRect.contains(pos))
         {
@@ -3062,7 +3025,7 @@ void VVChainAudioProcessorEditor::mouseDown(
             graph, parameterValue("EQ" + n + "_GAIN"));
 
         if (event.mods.isLeftButtonDown()
-            && pos.getDistanceFrom({ x, y }) < 4.5f)
+            && pos.getDistanceFrom({ x, y }) < 7.0f)
         {
             dragOffsetBand = b;
             dragBand = -1;
@@ -3203,8 +3166,10 @@ void VVChainAudioProcessorEditor::mouseDrag(
         const float hz = graphXToFrequency(graph, x);
         const float gain = juce::jlimit(
             -18.f, 18.f,
-            18.f - (event.position.y - graph.getY())
-                / juce::jmax(1.f, graph.getHeight()) * 36.f);
+            dynamicGainDragStartOffset
+                + gainDragDeltaDb(
+                    event.position.y - dynamicGainDragStartY,
+                    graph.getHeight()));
         setGraphControlMoving(true);
         setParameter("EQ" + n + "_FREQ", hz);
         setParameter("EQ" + n + "_GAIN", gain);
@@ -3262,16 +3227,17 @@ void VVChainAudioProcessorEditor::mouseDrag(
     if (dragOffsetBand >= 0)
     {
         const auto n = juce::String(dragOffsetBand + 1);
-        // Absolute cursor mapping: no accumulated Y delta and no grab offset.
+        // Cursor-anchored, non-accumulating gain drag.
+        // ±3 dB is slowest, then ±3–6, ±6–12, and ±12–18 accelerate.
         const float correctedX =
             juce::jlimit(graph.getX(), graph.getRight(), event.position.x);
         const float hz =
             graphXToFrequency(graph, correctedX);
         const float gainAtCursor =
-            18.f
-            - (event.position.y - graph.getY())
-                / juce::jmax(1.f, graph.getHeight())
-                * 36.f;
+            dynamicGainDragStartOffset
+            + gainDragDeltaDb(
+                event.position.y - dynamicGainDragStartY,
+                graph.getHeight());
         const float offset =
             juce::jlimit(-18.f, 18.f, gainAtCursor);
 
@@ -3547,7 +3513,7 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
         || std::abs(wheel.deltaY) < 0.0001f)
         return;
 
-    // Right-button + wheel adjusts the selected EQ point Q while auditioning it.
+    // Right-button + wheel uses the exact same Q direction/speed as normal EQ wheel while auditioning it.
     if (event.mods.isRightButtonDown())
     {
         int band = rightSoloBand;
