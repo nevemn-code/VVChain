@@ -25,6 +25,10 @@ public:
         std::array<float, 4> freq { 80.f, 350.f, 2500.f, 10000.f };
         std::array<float, 4> gain { 0.f, 0.f, 0.f, 0.f };
         std::array<float, 4> q { 0.707f, 0.707f, 0.707f, 0.707f };
+        // 0 Peak, 1 Peak analog, 2/3 Band-shelf A/B, 4/5 Shelf,
+        // 6/7 resonant Shelf, 8/9 Slope, 10 BP, 11 Notch,
+        // 12/13 resonant 72 dB/oct LP/HP.
+        std::array<int, 4> eqType { 0, 0, 0, 0 };
 
         // Four independent Dynamic EQ bands. Each detector is frequency-selective
         // and stereo-linked so L/R dynamics cannot wander independently.
@@ -172,6 +176,83 @@ private:
         }
     };
 
+    struct EqFilter
+    {
+        TPTBell peak {};
+        std::array<Biquad, 12> stages {};
+        int stageCount = 0;
+        int configuredType = -1;
+        bool useTptPeak = true;
+        bool parallelBandShelf = false;
+        double parallelMix = 0.0;
+        double outputGain = 1.0;
+        float lastOutput = 0.0f;
+        float transitionStart = 0.0f;
+        float transition = 1.0f;
+
+        void reset() noexcept
+        {
+            peak.reset();
+            for (auto& s : stages) s.reset();
+            stageCount = 0;
+            configuredType = -1;
+            useTptPeak = true;
+            parallelBandShelf = false;
+            parallelMix = 0.0;
+            outputGain = 1.0;
+            lastOutput = 0.0f;
+            transitionStart = 0.0f;
+            transition = 1.0f;
+        }
+
+        void beginType(int type) noexcept
+        {
+            if (configuredType == type)
+                return;
+
+            transitionStart = lastOutput;
+            transition = 0.0f;
+            peak.reset();
+            for (auto& s : stages) s.reset();
+            configuredType = type;
+        }
+
+        inline float process(float input) noexcept
+        {
+            float filtered = input;
+
+            if (useTptPeak)
+            {
+                filtered = peak.process(input);
+            }
+            else
+            {
+                for (int i = 0; i < stageCount; ++i)
+                    filtered = stages[(size_t)i].process(filtered, false);
+
+                if (parallelBandShelf)
+                    filtered = static_cast<float>(
+                        static_cast<double>(input)
+                        + parallelMix * static_cast<double>(filtered));
+                else
+                    filtered = static_cast<float>(
+                        static_cast<double>(filtered) * outputGain);
+            }
+
+            if (transition < 1.0f)
+            {
+                // Click-safe parameter-type transition. This does not delay audio:
+                // it is only a short value crossfade, not a lookahead/buffer.
+                transition = juce::jmin(1.0f, transition + 1.0f / 64.0f);
+                filtered = transitionStart * (1.0f - transition)
+                         + filtered * transition;
+            }
+
+            lastOutput = filtered;
+            return filtered;
+        }
+    };
+
     struct Crossover4th
     {
         Biquad lp1, lp2, hp1, hp2;
@@ -248,6 +329,9 @@ private:
                                  double gainDb, double q);
     static void updateDynamicPeak(TPTBell& filter, double fs, double f0,
                                   double gainDb, double q);
+    static void updateEqFilter(EqFilter& filter, int type,
+                               double fs, double f0,
+                               double gainDb, double q);
     static void updateDynamicDetector(Biquad& filter, double fs, double f0,
                                       double q);
     static void updateAnalogHighPass(Biquad& filter, double fs, double f0, double q);
@@ -300,8 +384,8 @@ private:
     void alignDryBuffer(int numSamples);
 
     std::array<Biquad, 4> eq {};
-    std::array<TPTBell, 4> dynMidEq {};
-    std::array<TPTBell, 4> dynSideEq {};
+    std::array<EqFilter, 4> dynMidEq {};
+    std::array<EqFilter, 4> dynSideEq {};
     std::array<Biquad, 4> dynMidDetectors {};
     std::array<Biquad, 4> dynSideDetectors {};
 
