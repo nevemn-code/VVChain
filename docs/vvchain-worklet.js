@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.14
+// VVChain Web AudioWorklet DSP module · v1.0.15
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -175,17 +175,17 @@ class VVChainWorklet extends AudioWorkletProcessor {
     if(stereo)return[(mid+side)*invSqrt2,(mid-side)*invSqrt2];
     return[mid,r];
   }
-  // VVCHAIN ANALOG BASELINE #443
-  analog(x,a,ss,ch,b){
+  // v1.0.15 unity-normalized smooth zero-phase algebraic saturation.
+  analog(x,a,ss,ch,b,x2=1){
     a=this.clamp(a,0,1);
     ch.analogPrev[b]=x; ch.analogDc[b]=0; ch.analogPower[b]=0;
-    if(a<=0)return x;
-    const u=this.clamp(x,-1,1),u2=u*u;
-    const t3=4*u*u2-3*u,u5=u*u2*u2;
-    const t5=16*u*u2*u2-20*u*u2+5*u;
-    const h3=ss?0.020:0.014,h5=ss?0.006:0.004;
-    const shaped=u+a*(h3*(t3-u)+h5*(t5-u));
-    return x+0.90*(shaped-u);
+    if(a<=1e-6)return x;
+    const modeAlpha=ss?1.80:1.55;
+    const alpha=a*modeAlpha*this.clamp(x2,1,1.6);
+    const unityNorm=Math.pow(1+alpha,.25);
+    const denominator=Math.sqrt(Math.sqrt(1+alpha*x*x));
+    const saturated=(x/denominator)*unityNorm;
+    return x+(saturated-x);
   }
   deessSample(x,c,coef){
     const st=this.s.de;
@@ -230,17 +230,15 @@ class VVChainWorklet extends AudioWorkletProcessor {
         y=this.tptBell(y,c.eq[b],sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]);
       }
     }
-    // ANALOG COLOR baseline = Deploy VVChain Web Preview #443.
-    // X2 scales only the generated ANALOG COLOR delta for the selected band.
+    // ANALOG COLOR v1.0.15: unity-normalized smooth saturation.
+    // X2 increases saturation depth without applying an extra output attenuation.
     if(!s.eq.globalBypass){
       for(let b=0;b<4;b++){
         if(s.eq.colorBypass[b])continue;
         const amount=this.clamp(Number(s.eq.color[b]||0)/100,0,1);
         if(amount<=1e-6)continue;
         const x2=s.eq.colorX2?.[b]?1.6:1;
-        const before=y;
-        const processed=this.analog(y,amount,!!s.eq.mode[b],c,b);
-        y=before+(processed-before)*x2;
+        y=this.analog(y,amount,!!s.eq.mode[b],c,b,x2);
       }
     }
     if(!s.ott.bypass){
