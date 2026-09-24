@@ -1860,7 +1860,8 @@ void VVChainAudioProcessorEditor::drawCard(
 
     accent = uiColour(accent);
     if (title == "DE-ESSER"
-        && parameterValue("DEESS_INTENSITY") <= 0.0001f)
+        && (parameterValue("DEESS_BYPASS") > 0.5f
+            || parameterValue("DEESS_INTENSITY") <= 0.0001f))
         accent = juce::Colour(0xff747b84);
     g.setColour(accent.withAlpha(.8f));
     g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
@@ -2152,6 +2153,9 @@ void VVChainAudioProcessorEditor::timerCallback()
         setKnobAlpha("ATYPE_DEGREE" + n, tapeMuted);
         if (analogModeButtons[(size_t)b])
             analogModeButtons[(size_t)b]->setAlpha(
+                analogMuted ? 0.42f : 1.0f);
+        if (analogX2Buttons[(size_t)b])
+            analogX2Buttons[(size_t)b]->setAlpha(
                 analogMuted ? 0.42f : 1.0f);
     }
 
