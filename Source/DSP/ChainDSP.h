@@ -29,8 +29,9 @@ public:
         // 4/5 Shelf, 6/7 resonant Shelf, 8/9 Contour,
         // 10 Focus Pass, 11 Deep Reject, 12/13 72 dB/oct roll-off.
         std::array<int, 4> eqType { 0, 0, 0, 0 };
-        // Roll-off slope index: 0..5 = 12..72 dB/oct.
-        std::array<int, 4> eqSlope { 5, 5, 5, 5 };
+        // Roll-off slope index:
+        // 0 = 6 dB/oct, 1 = 12 dB/oct, 2..6 = 24..72 dB/oct.
+        std::array<int, 4> eqSlope { 1, 1, 1, 1 };
 
         // Four independent Dynamic EQ bands. Each detector is frequency-selective
         // and stereo-linked so L/R dynamics cannot wander independently.
