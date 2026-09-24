@@ -25,7 +25,7 @@ INPUT
 - +ADV 開啟後，點視窗外即可關閉。
 
 ## DSP
-- Native De-Esser 使用固定 8192-sample PDC。
+- Native De-Esser 為 sample-domain split-band 處理；本身不再使用舊 8192-sample FFT/block PDC。
 - HP / CORNER 不參與聲音計算。
 - ANALOG COLOR 自 v1.0.16 起使用 unity-normalized smooth algebraic saturation + hard no-shrink guard：0% exact dry；奇對稱、無額外濾波相位；|x|=1 維持 unity；COLOR 增加不得讓 shaping domain 內 sample 絕對值縮小；X2 仍只放大該段產生的 ANALOG delta，v1.0.18 起為 ×2。
 - Master BYPASS 保持固定 PDC，完全旁通時輸出延遲乾聲。
@@ -34,7 +34,7 @@ INPUT
 ## Web Preview
 - LOAD AUDIO：選取音檔後解碼，再 PLAY / STOP / RESET。
 - Master BYPASS 會切至原始輸入並將整個介面灰階化。
-- DE-ESSER 強度為 0 dB 時直接跳過其 8192-sample block path；大於 0 dB 才啟用。
+- DE-ESSER 強度為 0 dB 時直接 bypass；大於 0 dB 時啟用 sample-domain split-band reduction。
 - Worklet 發生處理錯誤時，狀態列顯示 DSP ERROR。
 - DE-ESSER 的 MIX / OUT 與 Native UI 同樣放在 DE-ESSER 框內。
 
@@ -77,7 +77,7 @@ https://nevemn-code.github.io/VVChain/
 - ANALOG 正式基準自 v1.0.16 起為 unity-normalized smooth algebraic saturation + hard no-shrink guard；TT/SS/X2 各段獨立，不得重新引入 V1/V2/V3 選擇頁。
 
 ## Validation
-- Tests/reference_stress.py：DSP / 參數空間 deterministic regression，包含 500 組 TT/SS 與 1,200 組頻率／振幅染色掃描，共 3,685 組案例。
+- Tests/reference_stress.py：僅在手動 Full Validation 使用的 DSP stress helper；一般 PR 不執行。
 - Tests/web_smoke.py：Web Preview JavaScript 語法、UI 結構、音檔載入 / 播放、BYPASS、DE-ESSER、MIX / OUT regression。
 
 > Regression tests are not a substitute for final DAW pluginval or AAX certification.
@@ -99,6 +99,28 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 ## 版本規則
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
+
+## v1.0.31
+
+- 修正 Dynamic EQ regression 仍硬寫舊 `?v=1.0.18` 的問題；版本/cache 真正一致性改由通用 parity audit 驗證，不再每版維護舊常數。
+- 本版不改 DSP 聲音公式；延續 v1.0.30 的專案清理、真實 stress test 與 Fast Deploy 優化。
+
+## v1.0.30
+
+- 第二輪專案除錯：Native EQ / DYN 不再維護舊 `graphHintBand / graphHintAutoHideAt` 狀態；舊 graph hint 只保留給 XOVER 拖曳，EQ / DYN 一律走兩行浮動框。
+- `reference_stress.py` 移除永遠會 PASS 的 `tone - tone` 假 null test，改成 Analog odd/no-shrink/dry、TAPE-A unity、Q 連續性與 envelope coefficient 的真實數學檢查。
+- Full Validation 移除 SciPy 依賴，只安裝 NumPy，縮短重型驗證準備時間。
+- Fast Gate 新增 whole-project static audit，連跑 10 次檢查版本同步、Worklet cache、死碼、規則、CI cache 與部署設定。
+- Analog 核心舊函式名稱 `processChebyshevAnalog` 改為 `processAnalogColor`；Web 標籤同步移除 CHEBYSHEV，DSP 公式完全不變。
+
+## v1.0.29
+
+- 專案第一輪除錯／清理：移除未使用 Analog scratch buffers、舊 Gyraf prototype、永遠無法執行的舊橫向 graph hint renderer 與假的 CMake echo test。
+- 修正 Web 顯示版本已更新、但 AudioWorklet cache query 仍停在 v1.0.18 的問題；現在 CMake / Web / Worklet cache 版本會互相驗證。
+- `PROJECT_RULES.md` 改為只指向 `.github/VVCHAIN_RULES.md`，避免兩套規則互相衝突。
+- main push 不再重跑 PR Fast Gate；Pages 與 Windows VST3 獨立執行。
+- Windows CI 只建 `VVChain_VST3` target、關閉 runner 本機 plugin copy，並改用穩定 incremental cache key，避免每次重新建立大型 cache。
+- 更新 Architecture / Test Plan / Test Report / Third-Party notes，使文件與目前 DSP 架構一致。
 
 ## v1.0.28
 

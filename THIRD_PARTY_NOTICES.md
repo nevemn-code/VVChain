@@ -1,40 +1,19 @@
-# Third-Party Reference Notes
+# Third-Party / Historical Reference Notes
 
-## IgorKhramtsov/DeEsser
+## Current source tree
 
-VVChain's De-Esser is an independent C++/JavaScript reimplementation of the publicly visible processing structure in the referenced project:
+The current VVChain DSP is independently implemented in this repository. No source files from the historical projects below are incorporated into the active Native or Web DSP.
 
-- adjacent-sample difference thresholding / sibilance-area detection
-- 8192-sample processing blocks
-- FFT
-- frequency-dependent suppression around a male/female target frequency
-- inverse FFT
-- Male Vocal / Female Vocal target selection
-- Intensity control
-- Average Offset control
+## Historical De-Esser reference
 
-The referenced repository branch inspected for this implementation did not contain a license file. VVChain therefore does **not** copy its source files verbatim; it reimplements the observable algorithm and interface behavior.
+An earlier design investigation looked at IgorKhramtsov/DeEsser. The current VVChain De-Esser no longer uses that project's FFT/block structure; it is a sample-domain split-band envelope design implemented independently in VVChain.
 
 Reference:
 https://github.com/IgorKhramtsov/DeEsser
 
-## xmikos/qspectrumanalyzer
+## Historical spectrum-analyzer reference
 
-The referenced QSpectrumAnalyzer repository is GPL-3.0. VVChain does **not** include its GPL source code.
-
-VVChain instead implements the requested analyzer behavior natively with JUCE's FFT and an equivalent spectrum/waterfall presentation:
-
-- FFT spectrum
-- dB scale
-- frequency scale
-- waterfall history
-- averaging
-- peak hold
-- persistence
-- smoothing
+An earlier design investigation looked at xmikos/qspectrumanalyzer. The current VVChain editor intentionally has no realtime FFT spectrum/waterfall analyzer and does not include that project's GPL source code.
 
 Reference:
 https://github.com/xmikos/qspectrumanalyzer
-
-License of the reference project:
-GPL-3.0

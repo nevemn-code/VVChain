@@ -255,7 +255,7 @@ float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
     return std::exp(-1.0f / (0.001f * std::max(ms, 0.1f) * static_cast<float>(sampleRate)));
 }
 
-void VVChainDSP::processChebyshevAnalog(
+void VVChainDSP::processAnalogColor(
     juce::dsp::AudioBlock<float>& block,
     float drive,
     float amount,
@@ -320,10 +320,6 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     const int maxBlock = juce::jmax(1, samplesPerBlock);
     dryBuffer.setSize(channels, maxBlock, false, true, true);
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
-    analogTempBuffer.setSize(1, maxBlock * 4, false, true, true);
-    analogSourceBuffer.setSize(channels, maxBlock * 4, false, true, true);
-    for (auto& bandBuffer : analogBandBuffers)
-        bandBuffer.setSize(channels, maxBlock * 4, false, true, true);
     dynamicDetectorInput.setSize(channels, maxBlock * 4, false, true, true);
 
     eqOversampler.reset();
@@ -452,7 +448,6 @@ void VVChainDSP::reset()
     dryBuffer.clear();
     alignedDryBuffer.clear();
     dynamicDetectorInput.clear();
-    analogTempBuffer.clear();
 }
 
 float VVChainDSP::rmsDetectPDR(float input,
@@ -944,7 +939,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         const float x2Multiplier =
             p.eqColorX2[band] ? 2.0f : 1.0f;
 
-        processChebyshevAnalog(
+        processAnalogColor(
             osBlock, drive, amount, x2Multiplier);
     }
 

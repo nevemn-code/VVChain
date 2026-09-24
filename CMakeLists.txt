@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(VVChain VERSION 1.0.28 LANGUAGES C CXX)
+project(VVChain VERSION 1.0.31 LANGUAGES C CXX)
 
 include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(VVCHAIN_ENABLE_AAX "Build AAX target when the local environment provides the SDK" OFF)
 option(VVCHAIN_BUILD_STANDALONE "Build standalone target" ON)
+option(VVCHAIN_COPY_PLUGIN_AFTER_BUILD "Copy plugin to the local plugin folder after build" ON)
 
 FetchContent_Declare(
     JUCE
@@ -33,7 +34,7 @@ juce_add_plugin(VVChain
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS TRUE
-    COPY_PLUGIN_AFTER_BUILD TRUE
+    COPY_PLUGIN_AFTER_BUILD ${VVCHAIN_COPY_PLUGIN_AFTER_BUILD}
     PLUGIN_MANUFACTURER_CODE VVCn
     PLUGIN_CODE VvCh
     FORMATS ${VVCHAIN_FORMATS}
@@ -62,6 +63,3 @@ target_link_libraries(VVChain PRIVATE
 
 juce_generate_juce_header(VVChain)
 
-enable_testing()
-add_test(NAME vvchain_reference_stress
-    COMMAND ${CMAKE_COMMAND} -E echo "Run Tests/reference_stress.py with Python 3.11+")

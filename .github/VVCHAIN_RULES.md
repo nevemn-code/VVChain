@@ -107,12 +107,12 @@ ANALOG COLOR 正式基準自 **v1.0.16** 起為 unity-normalized smooth algebrai
 ## 壓力測試與部署檢查
 
 ### Fast Deploy 規則（v1.0.23 起，最高優先）
-- 一般 PR / main push 的預設驗證路徑必須以 **3 分鐘內完成工作執行** 為目標。
-- Fast Gate 只保留會直接阻止錯版上線的必要項目：Native/Web 同步規則、版本規則、Web/Worklet JavaScript syntax、Web smoke、UI/互動 regression。
+- 一般 PR 的 Fast Gate 與 GitHub Pages 必須以 **3 分鐘內完成工作執行** 為目標；main push 不重跑已在 PR 通過的 Fast Gate。
+- Fast Gate 只保留會直接阻止錯版上線的必要項目：Native/Web 同步規則、版本規則、Web/Worklet JavaScript syntax、Web smoke、whole-project static audit ×10、UI/互動 regression。
 - 一般 PR **不得**再安裝整套 Linux audio/X11 開發套件，也不得每次重新跑 Linux VST3 全編譯、numpy/scipy 安裝、500-case ANALOG matrix 或 DSP stress。
-- 完整 Linux Native build、500-case ANALOG matrix、5 次 DSP stress 移至 `workflow_dispatch -> full_validation=true`，需要深度驗證時才執行。
+- 完整 Linux Native build、500-case ANALOG matrix、5 次 DSP stress 移至 `workflow_dispatch -> full_validation=true`；DSP stress 不得使用永遠自我抵銷的假 null test，且避免非必要 SciPy 依賴。
 - Windows VST3 正式 artifact 只在 **main push / 手動 workflow** 建置；PR 階段不重複做 Windows Release build。
-- Windows VST3 必須使用可恢復的 incremental build cache，避免每次從零編譯 JUCE。
+- Windows VST3 必須使用穩定、可重用的 incremental build cache；cache key 不得使用每次都變動的 `run_id`。正式建置只建 `VVChain_VST3` target，CI 不做本機 plugin copy。
 - GitHub Pages 必須獨立於重型 Native CI，使用 docs-only sparse checkout + 最少必要 syntax/structure 驗證，不能等待 VST3 build 才部署。
 - Pages workflow 設定 `timeout-minutes: 3`；Fast Gate 也設定 `timeout-minutes: 3`。若超時視為流程設計需要再優化，而不是把 timeout 往上放寬。
 - GitHub hosted runner 的「排隊等待時間」不受 repository workflow 控制，因此 3 分鐘目標指 workflow 實際開始執行後；若要保證牆鐘時間，需改用常駐 self-hosted runner。
@@ -125,6 +125,6 @@ ANALOG COLOR 正式基準自 **v1.0.16** 起為 unity-normalized smooth algebrai
 
 ## CI/CD
 - Fast Gate 為一般 PR 的必要 gate。
-- main push 後，Web Pages 與 Windows VST3 應平行執行，互不等待。
+- main push 後，Web Pages 與 Windows VST3 應平行執行，互不等待；Fast Gate 只在 PR / 手動驗證執行，避免 merge 後重複跑一次。
 - 只有需要比較完整 commit 範圍的 sync gate 使用 `fetch-depth: 0`；Pages / Windows artifact 使用淺層 checkout。
 - CI verification branch: workflow changes must validated by an actual PR run before merge.

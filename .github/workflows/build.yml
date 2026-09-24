@@ -3,8 +3,20 @@ name: VVChain Fast CI/CD
 on:
   pull_request:
     branches: [ "main" ]
+    paths:
+      - "Source/**"
+      - "docs/**"
+      - "Tests/**"
+      - "CMakeLists.txt"
+      - "PROJECT_RULES.md"
+      - ".github/VVCHAIN_RULES.md"
+      - ".github/workflows/build.yml"
   push:
     branches: [ "main" ]
+    paths:
+      - "Source/**"
+      - "CMakeLists.txt"
+      - ".github/workflows/build.yml"
   workflow_dispatch:
     inputs:
       full_validation:
@@ -20,6 +32,7 @@ concurrency:
 jobs:
   fast_checks:
     name: Fast Gate
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -32,9 +45,7 @@ jobs:
       shell: bash
       run: |
         set -euo pipefail
-        if [ "${{ github.event_name }}" = "push" ]           && [ -n "${{ github.event.before }}" ]           && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
-          changed="$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")"
-        elif [ "${{ github.event_name }}" = "pull_request" ]; then
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
           changed="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}")"
         elif git rev-parse --verify HEAD^ >/dev/null 2>&1; then
           changed="$(git diff --name-only HEAD^ HEAD)"
@@ -70,11 +81,17 @@ jobs:
         grep -RIn 'VVCHAIN v1\.' Source docs README.md Tests/dynamic_eq_ui.py >/dev/null
         echo "Fast static gate: PASS"
 
-    - name: JavaScript syntax
-      shell: bash
+    - name: JavaScript / Web smoke
       run: |
         node --check docs/vvchain-worklet.js
         python3 Tests/web_smoke.py
+
+    - name: Whole-project static audit x10
+      shell: bash
+      run: |
+        for i in {1..10}; do
+          python3 Tests/project_static_audit.py
+        done
 
     - name: UI / interaction regression
       run: python3 Tests/dynamic_eq_ui.py
@@ -94,7 +111,7 @@ jobs:
       uses: actions/cache@v6
       with:
         path: build-vst3
-        key: vvchain-win-vst3-${{ github.run_id }}
+        key: vvchain-win-vst3-juce-9.0.2-vs2026-v1
         restore-keys: |
           vvchain-win-vst3-
 
@@ -105,26 +122,27 @@ jobs:
           -G "Visual Studio 18 2026" `
           -A x64 `
           -DVVCHAIN_BUILD_STANDALONE=OFF `
-          -DVVCHAIN_ENABLE_AAX=OFF
+          -DVVCHAIN_ENABLE_AAX=OFF `
+          -DVVCHAIN_COPY_PLUGIN_AFTER_BUILD=OFF
 
-    - name: Incremental Windows VST3 build
+    - name: Build only Windows VST3 target
       shell: pwsh
-      run: cmake --build build-vst3 --config Release --parallel
+      run: cmake --build build-vst3 --config Release --target VVChain_VST3 --parallel
 
     - name: Verify and package
       shell: pwsh
       run: |
         $plugin = Get-ChildItem -Path build-vst3 -Recurse -Directory -Filter "VVChain.vst3" | Select-Object -First 1
         if ($null -eq $plugin) { Write-Error "VVChain.vst3 was not produced." }
-        $zip = Join-Path $env:GITHUB_WORKSPACE "VVChain-v1.0.28-Windows-VST3.zip"
+        $zip = Join-Path $env:GITHUB_WORKSPACE "VVChain-v1.0.31-Windows-VST3.zip"
         Compress-Archive -Path $plugin.FullName -DestinationPath $zip -Force
         if (-not (Test-Path $zip)) { Write-Error "VST3 ZIP was not created." }
 
     - name: Upload Windows VST3
       uses: actions/upload-artifact@v4
       with:
-        name: VVChain-v1.0.28-Windows-VST3
-        path: VVChain-v1.0.28-Windows-VST3.zip
+        name: VVChain-v1.0.31-Windows-VST3
+        path: VVChain-v1.0.31-Windows-VST3.zip
         if-no-files-found: error
 
   full_validation:
@@ -145,20 +163,29 @@ jobs:
           build
           ~/.ccache
           ~/.cache/pip
-        key: vvchain-linux-full-${{ github.run_id }}
+        key: vvchain-linux-full-juce-9.0.2-v1
         restore-keys: |
           vvchain-linux-full-
 
     - name: Install native dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake ninja-build ccache libasound2-dev libjack-jackd2-dev           libcurl4-openssl-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev           libx11-dev libxi-dev libxcomposite-dev libxcursor-dev libxext-dev           libxinerama-dev libxrandr-dev libxrender-dev
-        python3 -m pip install --upgrade numpy scipy
+        sudo apt-get install -y cmake ninja-build ccache libasound2-dev libjack-jackd2-dev \
+          libcurl4-openssl-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev \
+          libx11-dev libxi-dev libxcomposite-dev libxcursor-dev libxext-dev \
+          libxinerama-dev libxrandr-dev libxrender-dev
+        python3 -m pip install --disable-pip-version-check --no-input --upgrade numpy
 
     - name: Configure and build native VST3/DSP
       run: |
-        cmake -B build -G Ninja           -DCMAKE_BUILD_TYPE=Release           -DVVCHAIN_BUILD_STANDALONE=OFF           -DVVCHAIN_ENABLE_AAX=OFF           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache           -DCMAKE_CXX_FLAGS="-O3 -ffast-math -mavx2 -D JUCE_WEB_BROWSER=0 -D JUCE_USE_CURL=0 -D JUCE_HEADLESS_PLUGIN_CLIENT=1"
-        cmake --build build --config Release --parallel
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DVVCHAIN_BUILD_STANDALONE=OFF \
+          -DVVCHAIN_ENABLE_AAX=OFF \
+          -DVVCHAIN_COPY_PLUGIN_AFTER_BUILD=OFF \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_CXX_FLAGS="-O3 -ffast-math -mavx2 -D JUCE_WEB_BROWSER=0 -D JUCE_USE_CURL=0 -D JUCE_HEADLESS_PLUGIN_CLIENT=1"
+        cmake --build build --config Release --target VVChain_VST3 --parallel
 
     - name: Full DSP validation
       run: |

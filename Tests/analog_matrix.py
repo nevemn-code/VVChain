@@ -28,7 +28,7 @@ def static_native_guard():
     from pathlib import Path
 
     source = Path("Source/DSP/ChainDSP.cpp").read_text(encoding="utf-8")
-    start = source.index("void VVChainDSP::processChebyshevAnalog")
+    start = source.index("void VVChainDSP::processAnalogColor")
     end = source.index("void VVChainDSP::prepare", start)
     core = source[start:end]
 
@@ -48,7 +48,7 @@ def static_native_guard():
     apply_start = source.index("void VVChainDSP::applyEq")
     apply_end = source.index("void VVChainDSP::applyOtt", apply_start)
     apply = source[apply_start:apply_end]
-    assert apply.count("processChebyshevAnalog(") == 1
+    assert apply.count("processAnalogColor(") == 1
     assert "p.eqColorSolidState[band] ? 1.15f : 0.95f" in apply
     assert "juce::jlimit(0.f, 60.f, p.eqColor[band]) / 100.f" in apply
     assert "p.eqColorX2[band] ? 2.0f : 1.0f" in apply
