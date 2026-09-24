@@ -330,7 +330,7 @@ function setGraphControls(ids,moving=false){
 }
 function clearGraphControls(){document.querySelectorAll(".knob.graphActive").forEach(el=>el.classList.remove("graphActive","graphMoving"))}
 const cols=["#ef4444","#facc15","#3b82f6","#22c55e"],bg=$("#bandGrid");
-function hz(v){return v>=1000?fmt(v/1000,2)+" kHz":fmt(v,0)+" Hz"}function graphFrequencyText(v){return fmt(v,0)+" Hz"}function tape(v){return "+"+fmt(v*.06,1)+" dB"}function effectiveCompAttackMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(.1,Math.min(120,Number(state.udmbc.compA[b]||0)));const k=Math.max(0,(120-base)/.49);return Math.max(b===0?15:(b===1?8:1),base+k*(amount*amount))}function effectiveCompReleaseMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(10,Math.min(2500,Number(state.udmbc.compR[b]||0)));return Math.max(20,base+amount*100)}
+function hz(v){return v>=1000?fmt(v/1000,2)+" kHz":fmt(v,0)+" Hz"}function graphFrequencyText(v){return fmt(v,0)+" Hz"}function tape(v,max){return fmt(clamp(v/Math.max(1,max),0,1)*10,1)}function effectiveCompAttackMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(.1,Math.min(120,Number(state.udmbc.compA[b]||0)));const k=Math.max(0,(120-base)/.49);return Math.max(b===0?15:(b===1?8:1),base+k*(amount*amount))}function effectiveCompReleaseMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(10,Math.min(2500,Number(state.udmbc.compR[b]||0)));return Math.max(20,base+amount*100)}
 for(let b=0;b<4;b++){
 const n=b,card=document.createElement("div");
 card.className="band";card.style.setProperty("--accent",cols[n]);
@@ -379,11 +379,11 @@ makeKnob(udmbcGrid,{label:"ATTACK",get:()=>state.udmbc.compA[n],set:v=>state.udm
 makeKnob(udmbcGrid,{label:"RELEASE",get:()=>state.udmbc.compR[n],set:v=>state.udmbc.compR[n]=v,min:10,max:2500,suffix:" ms",accent:"#facc15",formatDigits:0,formatValue:()=>fmt(effectiveCompReleaseMs(n),0)+" ms",mutedWhen:()=>state.udmbc.bypass||state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001});
 
 // ANALOG COLOR v1.0.16 unity-normalized smooth saturation.
-const analogKnob=makeKnob(bottomGrid,{label:"ANALOG COLOR",get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:60,suffix:" %",accent:"#60a5fa",mutedWhen:()=>state.eq.globalBypass||state.eq.colorBypass[n]||state.eq.color[n]<=0.0001});
+const analogKnob=makeKnob(bottomGrid,{label:"ANALOG COLOR",get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:60,accent:"#60a5fa",formatValue:v=>fmt(v/6,1),mutedWhen:()=>state.eq.globalBypass||state.eq.colorBypass[n]||state.eq.color[n]<=0.0001});
 analogKnob.classList.add("analogKnob");
 let syncTapeLed=()=>{};
 const typeMax=[50,60,70,90][n];
-const typeKnob=makeKnob(bottomGrid,{label:"TAPE COLOR +",get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:typeMax,accent:cols[n],formatValue:tape,mutedWhen:()=>state.type.bypass||state.type.bandBypass[n]||state.type.degree[n]<=0.0001,afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed();knobRefreshers.forEach(fn=>fn())}});
+const typeKnob=makeKnob(bottomGrid,{label:"TAPE COLOR +",get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:typeMax,accent:cols[n],formatValue:v=>tape(v,typeMax),mutedWhen:()=>state.type.bypass||state.type.bandBypass[n]||state.type.degree[n]<=0.0001,afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed();knobRefreshers.forEach(fn=>fn())}});
 const mode=document.createElement("button");mode.className="modeSwitch";mode.title="TT = Tube Saturation；SS = Solid-State Saturation";mode.innerHTML="<span>TT</span><i></i><span>SS</span>";
 const syncMode=()=>{mode.classList.toggle("ss",!!state.eq.mode[n]);mode.classList.toggle("muted",state.eq.color[n]<=0.0001)};mode.onclick=()=>{state.eq.mode[n]=!state.eq.mode[n];syncMode();sendParams();drawEQ()};syncMode();analogKnob.appendChild(mode);
 const x2=document.createElement("button");x2.className="analogX2Btn";x2.textContent="X2";x2.title="ANALOG COLOR X2：0–60% 的 ANALOG COLOR delta × 2";
