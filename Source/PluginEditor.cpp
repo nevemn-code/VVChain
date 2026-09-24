@@ -1819,6 +1819,62 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         // without covering the EQ / Dynamic node itself.
         g.setColour(juce::Colours::white.withAlpha(0.16f));
         g.drawEllipse(cx - 46.0f, cy - 46.0f, 92.0f, 92.0f, 1.2f);
+
+        // SOLO dimming must never reduce the reference grid/readability.
+        // Redraw only the frequency/dB standard lines + axis labels above
+        // the spotlight overlay; EQ/Dynamic content remains dimmed.
+        for (int db = -18; db <= 18; db += 3)
+        {
+            const float y = eqDbToY(graph, static_cast<float>(db));
+            const bool centre = (db == 0);
+            g.setColour(centre
+                ? juce::Colour(0xffffd84d).withAlpha(.45f)
+                : juce::Colour(0xff69717c).withAlpha(.34f));
+            g.drawHorizontalLine((int)y, graph.getX(), graph.getRight());
+        }
+
+        for (const auto f : frequencyTicks)
+        {
+            const float x = graphFrequencyToX(graph, f);
+            g.setColour(juce::Colour(0xff68727d).withAlpha(.28f));
+            g.drawVerticalLine((int)x, graph.getY(), graph.getBottom());
+        }
+
+        g.setFont(juce::FontOptions(7.0f).withStyle("Bold"));
+        g.setColour(juce::Colour(0xffb8bec6));
+
+        for (int db = 18; db >= -18; db -= 3)
+        {
+            if (db == 15 || db == -15)
+                continue;
+
+            const float y = eqDbToY(graph, static_cast<float>(db));
+            const auto label = (db > 0 ? "+" : "") + juce::String(db) + " dB";
+            const int labelY = juce::jlimit(
+                (int)graph.getY(),
+                (int)graph.getBottom() - 11,
+                (int)std::lround(y - 5.0f));
+
+            g.drawText(label,
+                       (int)graph.getX() + 5, labelY,
+                       42, 11, juce::Justification::left);
+        }
+
+        for (const auto& tick : frequencyLabels)
+        {
+            const float x = graphFrequencyToX(graph, tick.first);
+            const int width = 28;
+            int left = (int)std::lround(x - width * 0.5f);
+
+            if (tick.first == 20.f)
+                left = (int)graph.getX() + 1;
+            else if (tick.first == 20000.f)
+                left = (int)graph.getRight() - width - 1;
+
+            g.drawText(tick.second,
+                       left, (int)graph.getBottom() - 13,
+                       width, 10, juce::Justification::centred);
+        }
     }
 
 
