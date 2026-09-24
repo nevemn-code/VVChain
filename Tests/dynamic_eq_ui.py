@@ -113,6 +113,7 @@ def source_assertions():
     assert 'setParameter("GRAPH_SOLO_ACTIVE", 0.f);' in cpp
     assert 'dragMode===7' in web
     assert 'state.solo.graphActive=true' in web
+    assert '?v=1.0.14' in web
 
 def test_280_design_cases():
     # 280 deterministic absolute-cursor combinations:
