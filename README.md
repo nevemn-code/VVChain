@@ -100,6 +100,12 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.17
+
+- 修正 GitHub Pages 部署驗證仍硬檢查舊 `ANALOG #443` 的問題。
+- Pages 現改為驗證目前 `ANALOG COLOR` 與 `unity-normalized smooth saturation` 標記，不再因舊基準字串阻擋 Web Preview。
+- 本版不改 v1.0.16 已完成的 EQ / Dynamic EQ / ANALOG DSP 行為，只同步部署規則、Native/Web 顯示版本與 CI artifact 至 v1.0.17。
+
 ## v1.0.16
 
 - 右鍵 + 滾輪與一般 EQ 滾輪共用同一個 Q 計算函式，方向與速度不再可能分岔。
