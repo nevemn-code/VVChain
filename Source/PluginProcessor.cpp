@@ -147,8 +147,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         juce::StringArray { "Male Vocal", "Female Vocal" }, 0));
     f("DEESS_FREQ", "DeEsser Frequency", 6000.f, 18000.f, 7500.f);
     p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "DEESS_INTENSITY", "DeEsser Maximum Reduction",
-        juce::NormalisableRange<float>(0.f, 8.f, 0.1f), 4.f));
+        "DEESS_THRESHOLD", "DeEsser Threshold",
+        juce::NormalisableRange<float>(-36.f, 0.f, 0.1f), -6.f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(
         "DEESS_MODE", "DeEsser Response",
         juce::NormalisableRange<float>(1.f, 4.f, 1.f), 2.f));
@@ -259,7 +259,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.graphSoloQ = value("GRAPH_SOLO_Q");
 
     p.deessReferenceHz = value("DEESS_FREQ");
-    p.deessIntensity = value("DEESS_INTENSITY");
+    p.deessThresholdDb = value("DEESS_THRESHOLD");
     p.deessMode = value("DEESS_MODE");
     p.deessAverageOffset = value("DEESS_OFFSET");
     p.deltaMonitor = value("DELTA_MONITOR") > 0.5f;
