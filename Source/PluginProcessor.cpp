@@ -53,9 +53,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
                 "High Contour",
                 "Focus Pass",
                 "Deep Reject",
-                "HF Roll-Off 72",
-                "LF Roll-Off 72"
+                "HF Roll-Off",
+                "LF Roll-Off"
             }, 0));
+        p.push_back(std::make_unique<juce::AudioParameterChoice>(
+            "EQ" + n + "_SLOPE", "EQ " + n + " Roll-Off Slope",
+            juce::StringArray {
+                "12 dB/oct", "24 dB/oct", "36 dB/oct",
+                "48 dB/oct", "60 dB/oct", "72 dB/oct"
+            }, 5));
 
         const float dynTargetDefaults[4] = { 18.f, 18.f, 18.f, 18.f };
         const float dynDynamicsDefaults[4] = { 0.f, 0.f, 0.f, 0.f };
@@ -224,6 +230,9 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.eqType[(size_t)i] = juce::jlimit(
             0, 13,
             juce::roundToInt(value("EQ" + n + "_TYPE")));
+        p.eqSlope[(size_t)i] = juce::jlimit(
+            0, 5,
+            juce::roundToInt(value("EQ" + n + "_SLOPE")));
         // Bands 2/3 intentionally do not expose LP/HP cut modes.
         if ((i == 1 || i == 2) && p.eqType[(size_t)i] >= 12)
             p.eqType[(size_t)i] = 0;
