@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.9
+// VVChain Web AudioWorklet DSP module · v1.0.10
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
