@@ -100,6 +100,12 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.13
+
+- 修正 EQ 上方曲線的頻率響應計算：Native / Web Graph 現在直接依目前 TPT Bell 拓撲計算，不再使用錯誤的舊複數響應公式。
+- 修正正增益曲線反向、S 型與單一 Band 響應形狀異常；EQ 聲音處理核心保持 v1.0.12 不變。
+- Native 與 Web Graph 使用相同的 TPT Bell state-space transfer evaluation。
+
 ## v1.0.12
 
 - 修正 Web AudioWorklet Dynamic EQ 的 TPT Bell state 初始化缺漏：`ic1/ic2` 現在與 Native TPTBell 一樣明確初始化為 0。
