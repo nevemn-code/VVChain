@@ -100,7 +100,7 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
-## v1.0.22
+## v1.0.23
 
 - CI/CD 改成 Fast Deploy 預設路徑：一般 PR 只跑必要同步、版本、JS syntax、Web smoke、UI/互動 regression。
 - 一般 PR 不再安裝 Linux audio/X11 開發套件、不再每次完整 Linux VST3 build、不再每次安裝 numpy/scipy。
