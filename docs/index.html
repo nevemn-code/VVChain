@@ -829,17 +829,16 @@ function showGraphHint(e,text){
 }
 function hideGraphHint(){graphHint.hidden=true;}
 function graphHintBandHtml(b,mask){
-  // GAIN / FREQ / Q only; the first row identifies EQ or DYN EQ.
+  // Compact graph readout: no EQ / DYN EQ / GAIN labels.
   const dynamicReadout=!!(mask&4);
   const gain=dynamicReadout
     ? dynamicEffectiveTargetGain(b)
     : Number(state.eq.gain[b]||0);
   const signed=(gain>=0?"+":"")+fmt(gain,2)+" dB";
-  const label=dynamicReadout?"DYN EQ":"EQ";
   const freq=Number(state.eq.freq[b]||20);
   const freqText=freq>=1000?fmt(freq/1000,2)+" kHz":fmt(freq,2)+" Hz";
-  return '<div class="active">'+label+"  "+freqText
-    +'</div><div class="active">GAIN '+signed
+  return '<div class="active">'+signed
+    +'</div><div class="active">'+freqText
     +'</div><div class="active">Q '+fmt(state.eq.q[b],3)+"</div>";
 }
 
