@@ -78,11 +78,12 @@ public:
         float atypeInputGainDb = 0.f;
         float atypeOutputGainDb = 0.f;
 
-        // Reference-based DeEsser controls. Defaults preserve the reference behaviour.
-        float deessReferenceHz = 12500.f;
-        float deessIntensity = 0.f;
+        // Hybrid mastering DeEsser controls.
+        // Frequency selects the LR4 split point; intensity is the maximum
+        // reduction in dB; mode selects the tuned response profile.
+        float deessReferenceHz = 7500.f;
+        float deessIntensity = 4.f;
         float deessAverageOffset = 0.f;
-        // 1..4 selects the four tuned DeEsser attack/release/ratio profiles.
         float deessMode = 2.f;
 
         int soloBand = -1;
@@ -234,9 +235,11 @@ private:
 
     struct DeEssState
     {
-        Biquad sidechainHP {};
-        float fastEnv = 0.f;
-        float slowEnv = 0.f;
+        // Hybrid De-Esser detector state:
+        // broadband envelope + two high-frequency envelopes.
+        float broadbandEnv = 0.f;
+        float hfFastEnv = 0.f;
+        float hfSlowEnv = 0.f;
         float gainDb = 0.f;
     };
 
@@ -359,6 +362,7 @@ private:
 
     std::array<DeEssState, 2> deess {};
     Crossover4th deessSplit {};
+    float deessLinkedGainDb = 0.f;
     juce::dsp::Oversampling<float> eqOversampler
     {
         2, 2,
