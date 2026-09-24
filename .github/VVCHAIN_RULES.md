@@ -37,7 +37,7 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 
 ## ANALOG 規則
 
-ANALOG COLOR 自 **v1.0.45** 起以「既有 unity-normalized smooth algebraic saturation + analytical first-order ADAA」為正式基準。
+ANALOG COLOR 自 **v1.0.46** 起以「既有 unity-normalized smooth algebraic saturation + analytical first-order ADAA」為正式基準。
 
 - Native VST3 在既有 EQ 4x Oversampling 內執行 ADAA；Web AudioWorklet 使用相同 transfer、解析 antiderivative 與一階 ADAA 核心。
 - 核心 transfer：`f(x)=x/(1+alpha*x^2)^(1/4)`，並乘 `(1+alpha)^(1/4)` 做 `|x|=1` unity normalization。

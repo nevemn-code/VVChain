@@ -52,6 +52,6 @@ def run():
     for ss in (False,True):
         amount=.60;alpha=amount*(1.80 if ss else 1.55);norm=(1+alpha)**.25;x=.437;direct=x/(1+alpha*x*x)**.25*norm;assert abs(adaa_reference(np.array([x]),amount,ss)[0]-direct)<1e-12
     assert min_tt_ss>1e-7
-    print(f"PASS ANALOG v1.0.45 500-case matrix: cases=500, min_tt_ss_delta={min_tt_ss:.3e}, max_output={max_out:.6f}")
+    print(f"PASS ANALOG v1.0.46 500-case matrix: cases=500, min_tt_ss_delta={min_tt_ss:.3e}, max_output={max_out:.6f}")
 
 if __name__=="__main__":run()

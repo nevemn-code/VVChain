@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.45
+// VVChain Web AudioWorklet DSP module · v1.0.46
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -185,7 +185,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     if(stereo)return[(mid+side)*invSqrt2,(mid-side)*invSqrt2];
     return[mid,r];
   }
-  // v1.0.45 analytical first-order ADAA over the same
+  // v1.0.46 analytical first-order ADAA over the same
   // unity-normalized algebraic transfer used by Native.
   analog(x,alpha,ch,b,x2=1){
     alpha=this.clamp(Number(alpha||0),0,1.25);
@@ -215,7 +215,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     }
     st.prevX=u;
     return this.finite(saturated)
-      ? u+(saturated-u)*this.clamp(x2,1,2)
+      ? x+(saturated-u)*this.clamp(x2,1,2)
       : x;
   }
   deessStereo(l,r,stereo,coef){
@@ -326,14 +326,22 @@ class VVChainWorklet extends AudioWorkletProcessor {
         y=this.tptBell(y,c.eq[b],sampleRate,s.eq.freq[b],s.eq.q[b],s.eq.gain[b]);
       }
     }
-    // ANALOG COLOR v1.0.45: shared smoothed alpha + analytical ADAA.
-    if(!s.eq.globalBypass){
-      for(let b=0;b<4;b++){
-        if(s.eq.colorBypass[b])continue;
+    // ANALOG COLOR v1.0.46: true four-band routing.
+    // Shared X1/X2/X3 positions define four bands before independent COLOR/ADAA.
+    const analogBands=this.zoneBands(y,c,"analogLp",s.udmbc.x);
+    let analogReconstructed=0;
+    for(let b=0;b<4;b++){
+      const bandInput=analogBands[b];
+      if(s.eq.globalBypass||s.eq.colorBypass[b]||analogAlpha[b]<=1e-6){
+        analogReconstructed+=bandInput;
+      }else{
         const x2=s.eq.colorX2?.[b]?2:1;
-        y=this.analog(y,analogAlpha[b],c,b,x2);
+        analogReconstructed+=this.analog(
+          bandInput,analogAlpha[b],c,b,x2
+        );
       }
     }
+    y=analogReconstructed;
     if(!s.udmbc.bypass){
       const original=y,inputGain=this.db2g(this.clamp(s.udmbc.input,-24,24)),xs=s.udmbc.x,z=original*inputGain;
       c.lp[0]+=(1-Math.exp(-2*Math.PI*xs[0]/sampleRate))*(z-c.lp[0]);const h0=z-c.lp[0];

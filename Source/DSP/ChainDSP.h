@@ -259,10 +259,6 @@ private:
     static float dbToGain(float db) noexcept;
     static float gainToDb(float gain) noexcept;
     static float timeCoeff(double sampleRate, float ms) noexcept;
-    void processAnalogColor(juce::dsp::AudioBlock<float>& block,
-                                float drive, float amount,
-                                float colourMultiplier,
-                                size_t band);
 
     static float rmsDetectPDR(float input,
                                float& fastPower,

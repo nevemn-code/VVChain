@@ -41,6 +41,10 @@ assert "x1.6" not in (rules + root_rules).lower()
 assert "delta ×2" in root_rules
 assert "analytical first-order ADAA" in rules
 assert "ADAA state" in rules
+assert "X1/X2/X3" in rules
+assert "analogXover1.low" in dsp
+assert "analogXover2.low" in dsp
+assert "analogXover3.low" in dsp
 
 assert "github.run_id" not in build
 assert "vvchain-win-vst3-juce-9.0.2-vs2026-v1" in build

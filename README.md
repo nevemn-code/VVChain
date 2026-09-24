@@ -27,7 +27,7 @@ INPUT
 ## DSP
 - Native De-Esser 為 sample-domain split-band 處理；本身不再使用舊 8192-sample FFT/block PDC。
 - HP / CORNER 不參與聲音計算。
-- ANALOG COLOR 自 v1.0.45 起使用 unity-normalized smooth algebraic transfer + analytical first-order ADAA：0% exact dry；TT/SS 純奇對稱；Native 在 EQ 4x oversampling 內執行；ADAA state 逐 band/channel 隔離；shaping domain 限制 -1..+1；|x|=1 維持 unity；X2 仍只放大該段產生的 ANALOG delta ×2。
+- ANALOG COLOR 自 v1.0.46 起使用 unity-normalized smooth algebraic transfer + analytical first-order ADAA：0% exact dry；TT/SS 純奇對稱；Native 在 EQ 4x oversampling 內執行；ADAA state 逐 band/channel 隔離；shaping domain 限制 -1..+1；|x|=1 維持 unity；X2 仍只放大該段產生的 ANALOG delta ×2。
 - Master BYPASS 保持固定 PDC，完全旁通時輸出延遲乾聲。
 - AAX 目標受 VVCHAIN_ENABLE_AAX 控制，需合法 AAX SDK / 開發環境。
 
@@ -48,13 +48,13 @@ https://nevemn-code.github.io/VVChain/
 
 ## 版本日誌
 
-### v1.0.45
+### v1.0.46
 - ANALOG COLOR 換入 VVChain 專用 analytical first-order ADAA，保留原 unity-normalized algebraic transfer 與 TT/SS 1.55 / 1.80 曲率差異。
 - Native ADAA 放在既有 EQ 4x oversampling 內；每一頻段、每一聲道獨立 previous shaping-domain state。
 - Web AudioWorklet 同步採相同 transfer / antiderivative / ADAA 核心，並加入相同 0.25 ms control smoothing。
 - 0% COLOR / BYPASS 即時 exact dry；X2 仍只乘 Analog delta；超過 ±1 的 peak 不會由 Analog 額外縮小。
 - 移除固定 beta*x² 偶次注入，避免 SS 人為 DC 偏移；TT / SS 維持純奇對稱。
-- 新增 ADAA regression / static guards，版本與 Windows VST3 artifact 統一至 v1.0.45。
+- 新增 ADAA regression / static guards，版本與 Windows VST3 artifact 統一至 v1.0.46。
 
 ### v1.0.44
 - 清理未使用的第三方參考殘留檔案與文字。
@@ -87,7 +87,7 @@ https://nevemn-code.github.io/VVChain/
 ## GitHub 開發規則
 - 強制規則文件：`.github/VVCHAIN_RULES.md`
 - 任何 `docs/*.html` 修改，都必須同步更新頁面版本號；不使用日期／時間碼作為版本識別。
-- ANALOG 正式基準自 v1.0.45 起為 unity-normalized smooth algebraic transfer + analytical first-order ADAA；TT/SS/X2 各段獨立，不得重新引入 V1/V2/V3 選擇頁。
+- ANALOG 正式基準自 v1.0.46 起為 unity-normalized smooth algebraic transfer + analytical first-order ADAA；TT/SS/X2 各段獨立，不得重新引入 V1/V2/V3 選擇頁。
 
 ## Validation
 - Tests/reference_stress.py：僅在手動 Full Validation 使用的 DSP stress helper；一般 PR 不執行。
@@ -96,7 +96,7 @@ https://nevemn-code.github.io/VVChain/
 > Regression tests are not a substitute for final DAW pluginval or AAX certification.
   
 ### Analog Color / TT / SS
-Analog Color uses the v1.0.45 unity-normalized algebraic transfer with analytical first-order ADAA. Zero amount is exact dry, TT/SS are odd-symmetric with separate saturation depths, the shaping domain is -1..+1, the user control is capped at 60%, and X2 multiplies only the generated Analog Color delta by 2.
+Analog Color uses the v1.0.46 unity-normalized algebraic transfer with analytical first-order ADAA. Zero amount is exact dry, TT/SS are odd-symmetric with separate saturation depths, the shaping domain is -1..+1, the user control is capped at 60%, and X2 multiplies only the generated Analog Color delta by 2.
 
 
 ## 開發同步規則（重要）
