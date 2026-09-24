@@ -215,8 +215,8 @@ private:
 
         // Dedicated detector-blend interaction:
         // vertical drag while the visual remains a horizontal PEAK/ONSETS bar.
-        // Up = lower value (toward PEAK/left), down = higher value
-        // (toward ONSETS/right).
+        // Up = higher value (toward ONSETS/right), down = lower value
+        // (toward PEAK/left).
         void setVerticalValueDrag(bool enabled, double pixelsForFullRange = 133.0)
         {
             verticalValueDrag = enabled;
@@ -266,12 +266,12 @@ private:
                 const double deltaY =
                     static_cast<double>(e.position.y - verticalDragStartY);
 
-                // Deliberately non-standard direction requested by the UI:
-                // moving UP reduces value -> visual blend moves LEFT/PEAK.
-                // moving DOWN increases value -> visual blend moves RIGHT/ONSETS.
+                // Requested mapping:
+                // moving UP increases value -> visual blend moves RIGHT/ONSETS.
+                // moving DOWN decreases value -> visual blend moves LEFT/PEAK.
                 const double next =
                     verticalDragStartValue
-                    + deltaY / verticalPixelsForFullRange
+                    - deltaY / verticalPixelsForFullRange
                         * range * fineScale;
 
                 setValue(
