@@ -139,7 +139,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     z.tpt={g:0,k:1,a1:1,a2:0,a3:0,m1:0,ic1:0,ic2:0};
     z.stages.forEach(s=>{s.z1=0;s.z2=0});
   }
-  eqFilter(x,z,type,f,q,gainDb){
+  eqFilter(x,z,type,f,q,gainDb,slopeIndex=5){
     type=this.clamp(Math.round(Number(type)||0),0,13);
     this.resetEqFilter(z,type);
     const sf=this.clamp(Number(f)||1000,20,sampleRate*.45);
@@ -177,10 +177,11 @@ class VVChainWorklet extends AudioWorkletProcessor {
       }else if(type===11){
         coefs=[this.notch(sf,qq)];
       }else{
-        const butter=[.5043144803,.5411961001,.630236207,.8213398159,1.3065629649,3.8306487878];
-        const scale=this.clamp(qq/.7071067811865476,.35,2.5);
-        for(let i=0;i<6;i++){
-          const rq=this.clamp(butter[i]*scale,.25,12);
+        const sections=this.clamp(Math.round(Number(slopeIndex)||0)+1,1,6);
+        const order=sections*2;
+        for(let i=0;i<sections;i++){
+          const angle=(2*i+1)*Math.PI/(2*order);
+          const rq=1/(2*Math.cos(angle));
           coefs.push(type===12?this.lp(sf,rq):this.hp(sf,rq));
         }
       }
@@ -205,6 +206,9 @@ class VVChainWorklet extends AudioWorkletProcessor {
       if(s.bandBypass?.[b])continue;
       const f=this.clamp(Number(s.eq.freq[b]||1000),20,20000);
       const baseQ=this.clamp(Number(s.eq.q[b]||.707),.1,18);
+      let eqType=this.clamp(Math.round(Number(s.eq.type?.[b]||0)),0,13);
+      if((b===1||b===2)&&eqType>=12)eqType=0;
+      const detectorQ=eqType>=12?.70710678:baseQ;
       const offset=this.clamp(Number(s.eq.gain[b]||0),-18,18);
       const dynamicRangeDb=18;
       const dynamicsSigned=this.clamp(Number(s.dyn.dynamics[b]??0),-100,100)/100;
@@ -217,7 +221,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const ac=this.tc(attack),rc=this.tc(release);
       const ms=this.clamp(Number(s.dyn.ms[b]??50),0,100);
       const mw=this.clamp(ms/50,0,1),sw=this.clamp((100-ms)/50,0,1);
-      const bpCoef=this.bp(f,baseQ);
+      const bpCoef=this.bp(f,detectorQ);
       const md=c.dynMid[b],sd=c.dynSide[b];
       const dm=this.biquad(mid,bpCoef,md.det);
       const ds=stereo?this.biquad(side,bpCoef,sd.det):0;
@@ -273,10 +277,9 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const sGain=this.clamp(offset+s.dyn.gainSide[b],-18,18);
       const mDynamicGain=mGain-offset;
       const sDynamicGain=sGain-offset;
-      let eqType=this.clamp(Math.round(Number(s.eq.type?.[b]||0)),0,13);
-      if((b===1||b===2)&&eqType>=12)eqType=0;
-      mid=this.eqFilter(mid,md.eq,eqType,f,baseQ,mGain);
-      if(stereo)side=this.eqFilter(side,sd.eq,eqType,f,baseQ,sGain);
+      const slopeIndex=this.clamp(Math.round(Number(s.eq.slope?.[b]??5)),0,5);
+      mid=this.eqFilter(mid,md.eq,eqType,f,baseQ,mGain,slopeIndex);
+      if(stereo)side=this.eqFilter(side,sd.eq,eqType,f,baseQ,sGain,slopeIndex);
     }
     if(stereo)return[(mid+side)*invSqrt2,(mid-side)*invSqrt2];
     return[mid,r];
