@@ -2305,6 +2305,107 @@ void VVChainAudioProcessorEditor::timerCallback()
         };
         setKnobAlpha("EQ" + n + "_GAIN", eqMuted);
         setKnobAlpha("EQ" + n + "_FREQ", eqMuted);
+
+        if (auto* qKnob = findKnob("EQ" + n + "_Q"))
+        {
+            const int filterType = juce::jlimit(
+                0, 13,
+                juce::roundToInt(
+                    parameterValue("EQ" + n + "_TYPE")));
+            const bool wantsSlope = filterType >= 12;
+
+            if (qKnob->slopeMode != wantsSlope)
+            {
+                qKnob->attachment.reset();
+
+                if (wantsSlope)
+                {
+                    qKnob->label->setText(
+                        "OCT", juce::dontSendNotification);
+                    qKnob->slider->setRange(0.0, 5.0, 1.0);
+                    qKnob->slider->setNumDecimalPlacesToDisplay(0);
+                    qKnob->slider->setDoubleClickReturnValue(true, 5.0);
+                    qKnob->slider->textFromValueFunction =
+                        [](double value)
+                        {
+                            const int slope =
+                                (juce::jlimit(
+                                     0, 5,
+                                     juce::roundToInt(value))
+                                 + 1) * 12;
+                            return juce::String(slope) + " dB/oct";
+                        };
+                    qKnob->slider->valueFromTextFunction =
+                        [](const juce::String& text)
+                        {
+                            const double slope =
+                                text.retainCharacters(
+                                        "0123456789.")
+                                    .getDoubleValue();
+                            return static_cast<double>(
+                                juce::jlimit(
+                                    0, 5,
+                                    juce::roundToInt(
+                                        slope / 12.0) - 1));
+                        };
+
+                    if (auto* wheel =
+                            dynamic_cast<WheelSlider*>(
+                                qKnob->slider.get()))
+                    {
+                        wheel->setDragSensitivity(90, 900);
+                        wheel->setWheelBehaviour(1.0, false);
+                    }
+
+                    qKnob->attachment =
+                        std::make_unique<Attachment>(
+                            audioProcessor.apvts,
+                            "EQ" + n + "_SLOPE",
+                            *qKnob->slider);
+                }
+                else
+                {
+                    qKnob->label->setText(
+                        "Q", juce::dontSendNotification);
+                    qKnob->slider->setRange(0.10, 18.0, 0.01);
+                    qKnob->slider->setNumDecimalPlacesToDisplay(2);
+                    qKnob->slider->setDoubleClickReturnValue(true, 0.707);
+                    qKnob->slider->textFromValueFunction =
+                        [](double value)
+                        {
+                            return juce::String(value, 2);
+                        };
+                    qKnob->slider->valueFromTextFunction =
+                        [](const juce::String& text)
+                        {
+                            return text.retainCharacters(
+                                           "0123456789.-")
+                                .getDoubleValue();
+                        };
+
+                    if (auto* wheel =
+                            dynamic_cast<WheelSlider*>(
+                                qKnob->slider.get()))
+                    {
+                        wheel->setDragSensitivity(225, 2250);
+                        wheel->setWheelBehaviour(0.016, false);
+                    }
+
+                    qKnob->attachment =
+                        std::make_unique<Attachment>(
+                            audioProcessor.apvts,
+                            "EQ" + n + "_Q",
+                            *qKnob->slider);
+                }
+
+                qKnob->slopeMode = wantsSlope;
+                if (auto* wheel =
+                        dynamic_cast<WheelSlider*>(
+                            qKnob->slider.get()))
+                    wheel->refreshDisplayedText();
+            }
+        }
+
         setKnobAlpha("EQ" + n + "_Q", eqMuted);
         setKnobAlpha("DYN_DYNAMICS" + n, eqMuted);
         setKnobAlpha("DYN_ATTACK" + n, eqMuted);
@@ -2821,7 +2922,19 @@ void VVChainAudioProcessorEditor::showFloatingValueBoxForBand(
         : juce::String(frequency, 2) + " Hz";
     const juce::String line1 = signedDb;
     const juce::String line2 = shortFrequency;
-    const juce::String line3 = "Q " + juce::String(q, 3);
+    const int filterType = juce::jlimit(
+        0, 13,
+        juce::roundToInt(parameterValue("EQ" + n + "_TYPE")));
+    const juce::String line3 =
+        filterType >= 12
+            ? juce::String(
+                  (juce::jlimit(
+                       0, 5,
+                       juce::roundToInt(
+                           parameterValue("EQ" + n + "_SLOPE")))
+                   + 1) * 12)
+                  + " dB/oct"
+            : "Q " + juce::String(q, 3);
 
     floatingValueBox.updateInfo(
         line1, line2, line3, position.toInt(), getLocalBounds());
@@ -3095,8 +3208,8 @@ void VVChainAudioProcessorEditor::showEqTypeMenu(
         "High Contour",
         "Focus Pass",
         "Deep Reject",
-        "HF Roll-Off 72",
-        "LF Roll-Off 72"
+        "HF Roll-Off",
+        "LF Roll-Off"
     }};
 
     // Original VVChain presentation order.  Parameter IDs/types stay unchanged
@@ -3173,9 +3286,15 @@ void VVChainAudioProcessorEditor::beginRightSolo(
     setParameter(
         "GRAPH_SOLO_FREQ",
         parameterValue("EQ" + n + "_FREQ"));
+    const int filterType = juce::jlimit(
+        0, 13,
+        juce::roundToInt(
+            parameterValue("EQ" + n + "_TYPE")));
     setParameter(
         "GRAPH_SOLO_Q",
-        parameterValue("EQ" + n + "_Q"));
+        filterType >= 12
+            ? 0.70710678f
+            : parameterValue("EQ" + n + "_Q"));
     setParameter("GRAPH_SOLO_ACTIVE", 1.f);
 
     if (auto* pFreq =
@@ -3947,12 +4066,39 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
                 juce::jlimit(graph.getY(), graph.getBottom(), event.position.y)
             };
             const auto n = juce::String(band + 1);
-            const float q = juce::jmax(0.1f, parameterValue("EQ" + n + "_Q"));
-            const float nextQ =
-                qFromWheel(q, wheel.deltaY, event.mods.isShiftDown());
-            setParameter("EQ" + n + "_Q", nextQ);
+            const int filterType = juce::jlimit(
+                0, 13,
+                juce::roundToInt(
+                    parameterValue("EQ" + n + "_TYPE")));
+
+            float graphSoloQ = 0.70710678f;
+            if (filterType >= 12)
+            {
+                const int slope = juce::jlimit(
+                    0, 5,
+                    juce::roundToInt(
+                        parameterValue("EQ" + n + "_SLOPE")));
+                const int delta = wheel.deltaY > 0.0f ? 1 : -1;
+                setParameter(
+                    "EQ" + n + "_SLOPE",
+                    static_cast<float>(
+                        juce::jlimit(0, 5, slope + delta)));
+            }
+            else
+            {
+                const float q = juce::jmax(
+                    0.1f,
+                    parameterValue("EQ" + n + "_Q"));
+                const float nextQ =
+                    qFromWheel(
+                        q, wheel.deltaY,
+                        event.mods.isShiftDown());
+                setParameter("EQ" + n + "_Q", nextQ);
+                graphSoloQ = nextQ;
+            }
+
             setParameter("GRAPH_SOLO_FREQ", parameterValue("EQ" + n + "_FREQ"));
-            setParameter("GRAPH_SOLO_Q", nextQ);
+            setParameter("GRAPH_SOLO_Q", graphSoloQ);
             setParameter("GRAPH_SOLO_ACTIVE", 1.f);
             if (rightSoloBand < 0)
                 rightSoloBand = band;
@@ -4047,28 +4193,49 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
 
     const auto n =
         juce::String(band + 1);
-    const float q =
-        juce::jmax(
-            0.1f,
-            parameterValue(
-                "EQ" + n + "_Q"));
-
-    const float nextQ =
-        qFromWheel(q, wheel.deltaY, event.mods.isShiftDown());
+    const int filterType = juce::jlimit(
+        0, 13,
+        juce::roundToInt(
+            parameterValue("EQ" + n + "_TYPE")));
 
     juce::StringArray qGraphIds;
     qGraphIds.add("EQ" + n + "_Q");
     setGraphControlState(qGraphIds, false);
     showGraphDragHint = false;
     graphDragHint.clear();
-    setParameter(
-        "EQ" + n + "_Q", nextQ);
 
-    if (auto* knob =
-            findKnob("EQ" + n + "_Q"))
-        knob->slider->setValue(
-            nextQ,
-            juce::dontSendNotification);
+    if (filterType >= 12)
+    {
+        const int slope = juce::jlimit(
+            0, 5,
+            juce::roundToInt(
+                parameterValue("EQ" + n + "_SLOPE")));
+        const int delta = wheel.deltaY > 0.0f ? 1 : -1;
+        setParameter(
+            "EQ" + n + "_SLOPE",
+            static_cast<float>(
+                juce::jlimit(0, 5, slope + delta)));
+    }
+    else
+    {
+        const float q =
+            juce::jmax(
+                0.1f,
+                parameterValue(
+                    "EQ" + n + "_Q"));
+        const float nextQ =
+            qFromWheel(
+                q, wheel.deltaY,
+                event.mods.isShiftDown());
+        setParameter(
+            "EQ" + n + "_Q", nextQ);
+
+        if (auto* knob =
+                findKnob("EQ" + n + "_Q"))
+            knob->slider->setValue(
+                nextQ,
+                juce::dontSendNotification);
+    }
 
     showFloatingValueBoxForBand(
         band,
