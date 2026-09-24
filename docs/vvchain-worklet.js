@@ -104,6 +104,16 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const a0=1+a,a1=-2*cc,a2=1-a;
     return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0]
   }
+  lp1(f){
+    const sf=this.clamp(f,10,sampleRate*.45);
+    const K=Math.tan(Math.PI*sf/sampleRate),inv=1/(1+K);
+    return[K*inv,K*inv,0,(K-1)*inv,0]
+  }
+  hp1(f){
+    const sf=this.clamp(f,10,sampleRate*.45);
+    const K=Math.tan(Math.PI*sf/sampleRate),inv=1/(1+K);
+    return[inv,-inv,0,(K-1)*inv,0]
+  }
 
   notch(f,q=.707){
     const w=2*Math.PI*this.clamp(f,10,sampleRate*.45)/sampleRate;
@@ -139,7 +149,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     z.tpt={g:0,k:1,a1:1,a2:0,a3:0,m1:0,ic1:0,ic2:0};
     z.stages.forEach(s=>{s.z1=0;s.z2=0});
   }
-  eqFilter(x,z,type,f,q,gainDb,slopeIndex=5){
+  eqFilter(x,z,type,f,q,gainDb,slopeIndex=1){
     type=this.clamp(Math.round(Number(type)||0),0,13);
     if(type===3)type=2;
     else if(type===1||type===10||type===11)type=0;
@@ -179,12 +189,16 @@ class VVChainWorklet extends AudioWorkletProcessor {
       }else if(type===11){
         coefs=[this.notch(sf,qq)];
       }else{
-        const sections=this.clamp(Math.round(Number(slopeIndex)||0)+1,1,6);
-        const order=sections*2;
-        for(let i=0;i<sections;i++){
-          const angle=(2*i+1)*Math.PI/(2*order);
-          const rq=1/(2*Math.cos(angle));
-          coefs.push(type===12?this.lp(sf,rq):this.hp(sf,rq));
+        const idx=this.clamp(Math.round(Number(slopeIndex)??1),0,6);
+        if(idx===0){
+          coefs=[type===12?this.lp1(sf):this.hp1(sf)];
+        }else{
+          const sections=this.clamp(idx,1,6),order=sections*2;
+          for(let i=0;i<sections;i++){
+            const angle=(2*i+1)*Math.PI/(2*order);
+            const rq=1/(2*Math.cos(angle));
+            coefs.push(type===12?this.lp(sf,rq):this.hp(sf,rq));
+          }
         }
       }
       for(let i=0;i<coefs.length;i++)y=this.biquad(y,coefs[i],z.stages[i]);
@@ -281,7 +295,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const sGain=this.clamp(offset+s.dyn.gainSide[b],-18,18);
       const mDynamicGain=mGain-offset;
       const sDynamicGain=sGain-offset;
-      const slopeIndex=this.clamp(Math.round(Number(s.eq.slope?.[b]??5)),0,5);
+      const slopeIndex=this.clamp(Math.round(Number(s.eq.slope?.[b]??1)),0,6);
       mid=this.eqFilter(mid,md.eq,eqType,f,baseQ,mGain,slopeIndex);
       if(stereo)side=this.eqFilter(side,sd.eq,eqType,f,baseQ,sGain,slopeIndex);
     }
