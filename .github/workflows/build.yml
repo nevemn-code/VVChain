@@ -86,6 +86,13 @@ jobs:
         node --check docs/vvchain-worklet.js
         python3 Tests/web_smoke.py
 
+    - name: Whole-project static audit x10
+      shell: bash
+      run: |
+        for i in {1..10}; do
+          python3 Tests/project_static_audit.py
+        done
+
     - name: UI / interaction regression
       run: python3 Tests/dynamic_eq_ui.py
 
@@ -127,15 +134,15 @@ jobs:
       run: |
         $plugin = Get-ChildItem -Path build-vst3 -Recurse -Directory -Filter "VVChain.vst3" | Select-Object -First 1
         if ($null -eq $plugin) { Write-Error "VVChain.vst3 was not produced." }
-        $zip = Join-Path $env:GITHUB_WORKSPACE "VVChain-v1.0.29-Windows-VST3.zip"
+        $zip = Join-Path $env:GITHUB_WORKSPACE "VVChain-v1.0.30-Windows-VST3.zip"
         Compress-Archive -Path $plugin.FullName -DestinationPath $zip -Force
         if (-not (Test-Path $zip)) { Write-Error "VST3 ZIP was not created." }
 
     - name: Upload Windows VST3
       uses: actions/upload-artifact@v4
       with:
-        name: VVChain-v1.0.29-Windows-VST3
-        path: VVChain-v1.0.29-Windows-VST3.zip
+        name: VVChain-v1.0.30-Windows-VST3
+        path: VVChain-v1.0.30-Windows-VST3.zip
         if-no-files-found: error
 
   full_validation:
@@ -167,7 +174,7 @@ jobs:
           libcurl4-openssl-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev \
           libx11-dev libxi-dev libxcomposite-dev libxcursor-dev libxext-dev \
           libxinerama-dev libxrandr-dev libxrender-dev
-        python3 -m pip install --upgrade numpy scipy
+        python3 -m pip install --disable-pip-version-check --no-input --upgrade numpy
 
     - name: Configure and build native VST3/DSP
       run: |
