@@ -92,7 +92,7 @@ ANALOG COLOR 自 **v1.0.47** 起以「既有 unity-normalized smooth algebraic s
 
 規則：
 1. Native 端的 Source/DSP/* 為正式 VST3 DSP 實作。
-2. Web 端 docs/index.html 的 AudioWorklet DSP 必須同步實作同一版核心邏輯，不得使用簡化版、舊版或臨時替代演算法冒充同步。
+2. Web 端 `docs/vvchain-worklet.js` 的 AudioWorklet DSP 與 `docs/index.html` 的控制及狀態傳遞須同步實作對應核心邏輯，不得使用舊版或臨時替代演算法冒充同步。
 3. 每次 DSP 改版至少要同時檢查兩邊的公式、參數範圍、state、processing order 與 bypass 行為。
 4. 只有 UI 文字或排版可以單獨改；只要可能改變聲音結果，就視為 DSP 改版，必須 Native + Web 一起改。
 5. 未完成其中一端時，不得宣稱該版本已完成、已同步或可發版。
@@ -102,6 +102,7 @@ ANALOG COLOR 自 **v1.0.47** 起以「既有 unity-normalized smooth algebraic s
 ### 同步驗收
 發版前必須確認：
 - Native VST3 與 Web Preview 核心 DSP 使用相同公式。
+- Native 在 EQ 4× oversampling、Web 在 Worklet 取樣率執行；須分別量測延遲及音訊輸出，不能把相同公式誤寫成逐 sample 相同。
 - 兩端的頻段 crossover / phase / detector / smoothing / gain 結構一致。
 - 四頻段與左右聲道 state 定義一致。
 - 不得再出現「Native 已更新，但 Web 還在跑舊演算法」的情況。
