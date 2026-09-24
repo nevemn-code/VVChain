@@ -1263,7 +1263,7 @@ bool VVChainAudioProcessorEditor::pointNearDynamicNode(
         const bool onStaticNode =
             p.getDistanceFrom({ staticX, staticY }) < staticNodeRadius;
         const bool hit =
-            std::abs(dynamics) > 0.5f
+            std::abs(dynamics) > 0.05f
             && !onStaticNode
             && d < hitRadius;
 
@@ -1658,7 +1658,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         // is still coincident with the EQ point (DYNAMICS ~= 0). Once the
         // target is pulled out, the target circle itself becomes the control.
         const bool showDynamicsArrow =
-            std::abs(parameterValue("DYN_DYNAMICS" + n)) <= 0.5f;
+            std::abs(parameterValue("DYN_DYNAMICS" + n)) <= 0.05f;
         const float handleX =
             juce::jlimit(graph.getX() + 18.f,
                          graph.getRight() - 12.f,
@@ -2804,7 +2804,7 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
 
         // At 0% the Dynamic target sits on the Static EQ point, so the
         // target itself is intentionally disabled; the arrow remains available.
-        if (std::abs(dynamics) > 0.5f)
+        if (std::abs(dynamics) > 0.05f)
         {
             const float d = position.getDistanceFrom({ x, targetY });
             const float staticY = eqDbToY(graph, parameterValue("EQ" + n + "_GAIN"));
@@ -2817,7 +2817,7 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
 
         const float handleX = juce::jlimit(
             graph.getX() + 18.f, graph.getRight() - 12.f, x + 44.f);
-        if (std::abs(dynamics) <= 0.5f
+        if (std::abs(dynamics) <= 0.05f
             && std::abs(position.x - handleX) <= handleHitX
             && std::abs(position.y - targetY) <= handleHitY)
         {
@@ -2862,10 +2862,34 @@ void VVChainAudioProcessorEditor::mouseDoubleClick(
     };
 
     constexpr float staticHitRadius = 8.0f;
+    constexpr float dynamicHitRadius = 13.0f;
+
+    int dynamicBand = -1;
+    float dynamicDistance = dynamicHitRadius;
+
+    // An already-pulled Dynamic target owns its own double-click, even when it
+    // is still visually close to the EQ node. DYNAMICS=0 has no separate
+    // target point, so the static EQ point naturally wins in that state.
+    for (int b = 0; b < 4; ++b)
+    {
+        const auto n = juce::String(b + 1);
+        const float dynamics =
+            juce::jlimit(-100.0f, 100.0f,
+                         parameterValue("DYN_DYNAMICS" + n));
+        if (std::abs(dynamics) <= 0.05f)
+            continue;
+
+        const auto target = dynamicTargetPoint(b);
+        const float d = event.position.getDistanceFrom(target);
+        if (d <= dynamicDistance)
+        {
+            dynamicDistance = d;
+            dynamicBand = b;
+        }
+    }
+
     int staticBand = -1;
     float staticDistance = staticHitRadius;
-
-    // Static EQ GAIN node has priority when a double-click lands on it.
     for (int b = 0; b < 4; ++b)
     {
         const auto n = juce::String(b + 1);
@@ -2882,6 +2906,17 @@ void VVChainAudioProcessorEditor::mouseDoubleClick(
         }
     }
 
+    if (dynamicBand >= 0
+        && (staticBand < 0 || dynamicDistance <= staticDistance))
+    {
+        const auto n = juce::String(dynamicBand + 1);
+        resetParameter("DYN_DYNAMICS" + n, 0.0f);
+        clearGraphControlState();
+        updateFloatingValueBoxAt(event.position);
+        repaint();
+        return;
+    }
+
     if (staticBand >= 0)
     {
         const auto n = juce::String(staticBand + 1);
@@ -2890,50 +2925,6 @@ void VVChainAudioProcessorEditor::mouseDoubleClick(
         updateFloatingValueBoxAt(event.position);
         repaint();
         return;
-    }
-
-    constexpr float dynamicHitRadius = 13.0f;
-    int dynamicBand = -1;
-    float dynamicDistance = dynamicHitRadius;
-
-    // Dynamic EQ has no separate stored GAIN: its target is
-    // static EQ GAIN + DYNAMICS-derived offset. Double-click means
-    // DYNAMICS = 0, so the Dynamic target rejoins the CURRENT static EQ GAIN
-    // position rather than returning to absolute 0 dB.
-    for (int b = 0; b < 4; ++b)
-    {
-        const auto n = juce::String(b + 1);
-        const float dynamics =
-            juce::jlimit(-100.0f, 100.0f,
-                         parameterValue("DYN_DYNAMICS" + n));
-
-        // At 0% the target is coincident with the static EQ node.
-        if (std::abs(dynamics) <= 0.5f)
-            continue;
-
-        const float x = graphFrequencyToX(
-            graph, parameterValue("EQ" + n + "_FREQ"));
-        const float targetY = eqDbToY(
-            graph, dynamicEffectiveTargetGain(b));
-        const float distance = event.position.getDistanceFrom({ x, targetY });
-        const float staticY = eqDbToY(
-            graph, parameterValue("EQ" + n + "_GAIN"));
-
-        if (distance <= dynamicDistance
-            && event.position.getDistanceFrom({ x, staticY }) > staticHitRadius)
-        {
-            dynamicDistance = distance;
-            dynamicBand = b;
-        }
-    }
-
-    if (dynamicBand >= 0)
-    {
-        const auto n = juce::String(dynamicBand + 1);
-        resetParameter("DYN_DYNAMICS" + n, 0.0f);
-        clearGraphControlState();
-        updateFloatingValueBoxAt(event.position);
-        repaint();
     }
 }
 
@@ -3139,7 +3130,7 @@ void VVChainAudioProcessorEditor::mouseDown(
                                    6.f, 14.f);
 
         if (event.mods.isLeftButtonDown()
-            && std::abs(dynamicsValue) <= 0.5f
+            && std::abs(dynamicsValue) <= 0.05f
             && handleRect.contains(pos))
         {
             dragDynamicHandleBand = b;
