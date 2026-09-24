@@ -1828,13 +1828,6 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         }
     }
 
-    g.setColour(juce::Colour(0xffc4cad2));
-    g.setFont(juce::FontOptions(9.f).withStyle("Bold"));
-    g.drawText(
-        "OXFORD-STYLE DYNAMIC EQ · OFFSET / TARGET / LIVE GAIN · 20 Hz — 20 kHz",
-        (int)graph.getX() + 12,
-        (int)graph.getY() + 9,
-        470, 14, juce::Justification::left);
 
     // Mirror the per-band BYPASS state in the upper frequency zone.
     for (int band = 0; band < 4; ++band)
@@ -2242,14 +2235,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.setFont(juce::FontOptions(22.f).withStyle("Bold"));
     g.drawText("VVCHAIN", 18, 8, 240, 27, juce::Justification::left);
 
-    g.setColour(juce::Colour(0xff8b949f));
-    g.setFont(juce::FontOptions(8.f));
-    g.drawText("4-BAND DYNAMIC EQ · UDMBC · ANALOG · TAPE COLOR · DE-ESSER", 20, 37, 430, 13,
-               juce::Justification::left);
-    g.setColour(juce::Colour(0xff7f8893));
-    g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.47 · TAPE SHARED XOVER + ANALOG 4-BAND + DEESS THRESHOLD",
-               510, 38, 700, 12, juce::Justification::left);
+    // VVCHAIN v1.0.48 — internal version parity; descriptive header text intentionally hidden.
 
     const auto graph = eqGraphBounds();
     drawEqGraph(g, graph);
