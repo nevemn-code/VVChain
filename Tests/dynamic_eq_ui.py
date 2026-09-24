@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.24 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.25 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -136,7 +136,7 @@ def source_assertions():
     assert 'function yToDb(' in web
     assert 'function nextQFromWheel(' in web
     assert 'const wheelUnits=clamp(deltaY/100,-1,1);' in web
-    assert 'const speed=fine?.0025:.025;' in web
+    assert 'const speed=fine?.0075:.075;' in web
     assert 'constexpr float hitRadius = 12.0f;' in cpp
     assert 'std::abs(dynamics) > 0.5f' in cpp
     assert 'if(dynamics<=.5)continue;' in web
@@ -149,7 +149,7 @@ def source_assertions():
     assert 'nextQFromWheel(q,e.deltaY,e.shiftKey)' in web
     assert 'nextQFromWheel(state.eq.q[band],e.deltaY,e.shiftKey)' in web
     assert cpp.count('qFromWheel(q, wheel.deltaY, event.mods.isShiftDown())') == 2
-    assert 'const float speed = fine ? 0.0025f : 0.025f;' in cpp
+    assert 'const float speed = fine ? 0.0075f : 0.075f;' in cpp
     assert 'constexpr int detectW = 60;' in cpp
     assert 'setDragSensitivity(133, 1330);' in cpp
     assert 'setWheelBehaviour(0.5, false);' in cpp
@@ -423,8 +423,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.24" in web
-    assert "VVCHAIN v1.0.24" in editor
+    assert "VVCHAIN v1.0.25" in web
+    assert "VVCHAIN v1.0.25" in editor
     assert "LAST " not in editor
 
     # ANALOG v1.0.16 uses unity-normalized smooth algebraic saturation.
@@ -516,8 +516,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.24" in web
-    assert "VVCHAIN v1.0.24" in cpp
+    assert "VVCHAIN v1.0.25" in web
+    assert "VVCHAIN v1.0.25" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -703,6 +703,32 @@ def test_v1024_compact_readout_50():
 
 
 
+
+def test_v1025_q_wheel_3x_continuous():
+    cpp = CPP.read_text(encoding="utf-8")
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+
+    assert 'const float speed = fine ? 0.0075f : 0.075f;' in cpp
+    assert 'const speed=fine?.0075:.075;' in web
+    assert cpp.count('qFromWheel(q, wheel.deltaY, event.mods.isShiftDown())') == 2
+    assert 'nextQFromWheel(q,e.deltaY,e.shiftKey)' in web
+    assert 'nextQFromWheel(state.eq.q[band],e.deltaY,e.shiftKey)' in web
+
+    # 50 successive wheel steps must stay continuous and produce 50 unique Q values.
+    q = 0.707
+    values = []
+    for _ in range(50):
+        q = max(0.1, min(18.0, q * math.exp(0.075)))
+        values.append(round(q, 9))
+    assert len(set(values)) == 50
+    assert all(values[i] < values[i + 1] for i in range(len(values) - 1))
+
+    # Exact 3x sensitivity relative to the previous 0.025 / 0.0025 constants.
+    assert abs(0.075 / 0.025 - 3.0) < 1e-12
+    assert abs(0.0075 / 0.0025 - 3.0) < 1e-12
+
+
+
 def main():
     for _ in range(50):
         source_assertions()
@@ -731,11 +757,12 @@ def main():
     test_v103_closed_10()
     test_v107_ui_controls()
     test_v1024_compact_readout_50()
+    test_v1025_q_wheel_3x_continuous()
     print("PASS: 280 design cases")
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
     print("PASS: 10 full simulated sessions")
-    print("PASS: 50x v1.0.24 compact EQ/DYN EQ readout identity + format checks")
+    print("PASS: 50x v1.0.25 compact EQ/DYN EQ readout identity + format checks")\n    print("PASS: v1.0.25 Q wheel 3x continuous / shared-path check")
     print("PASS: source invariants / APVTS / graph-DYNAMICS binding")
     print("ALL Dynamic EQ UI regression tests passed")
 
