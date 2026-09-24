@@ -100,6 +100,14 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.30
+
+- 第二輪專案除錯：Native EQ / DYN 不再維護舊 `graphHintBand / graphHintAutoHideAt` 狀態；舊 graph hint 只保留給 XOVER 拖曳，EQ / DYN 一律走兩行浮動框。
+- `reference_stress.py` 移除永遠會 PASS 的 `tone - tone` 假 null test，改成 Analog odd/no-shrink/dry、TAPE-A unity、Q 連續性與 envelope coefficient 的真實數學檢查。
+- Full Validation 移除 SciPy 依賴，只安裝 NumPy，縮短重型驗證準備時間。
+- Fast Gate 新增 whole-project static audit，連跑 10 次檢查版本同步、Worklet cache、死碼、規則、CI cache 與部署設定。
+- Analog 核心舊函式名稱 `processChebyshevAnalog` 改為 `processAnalogColor`；Web 標籤同步移除 CHEBYSHEV，DSP 公式完全不變。
+
 ## v1.0.29
 
 - 專案第一輪除錯／清理：移除未使用 Analog scratch buffers、舊 Gyraf prototype、永遠無法執行的舊橫向 graph hint renderer 與假的 CMake echo test。
