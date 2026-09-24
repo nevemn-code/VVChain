@@ -231,10 +231,37 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
         const float cy = r.getCentreY();
         const float ledD = 9.0f;
         const float ledX = r.getX() + 7.0f;
-        g.setColour(juce::Colours::black.withAlpha(.75f));
-        g.fillEllipse(ledX - 1.5f, cy - ledD * 0.5f - 1.5f, ledD + 3.0f, ledD + 3.0f);
-        g.setColour(active ? accent : juce::Colour(0xff5d636b));
+        const auto ledBody = active
+            ? accent.darker(0.22f)
+            : juce::Colour(0xff34383e);
+
+        // Analog panel LED: metal bezel + glass body + internal highlight.
+        // No outer glow/halo is drawn.
+        g.setColour(juce::Colour(0xff07090b));
+        g.fillEllipse(
+            ledX - 2.0f, cy - ledD * 0.5f - 2.0f,
+            ledD + 4.0f, ledD + 4.0f);
+        g.setColour(juce::Colour(0xff555b63));
+        g.drawEllipse(
+            ledX - 1.5f, cy - ledD * 0.5f - 1.5f,
+            ledD + 3.0f, ledD + 3.0f, 1.0f);
+
+        juce::ColourGradient ledGradient(
+            active ? accent.brighter(0.18f) : juce::Colour(0xff555b61),
+            ledX + ledD * 0.32f, cy - ledD * 0.22f,
+            ledBody,
+            ledX + ledD * 0.72f, cy + ledD * 0.35f,
+            false);
+        g.setGradientFill(ledGradient);
         g.fillEllipse(ledX, cy - ledD * 0.5f, ledD, ledD);
+
+        g.setColour(
+            active ? juce::Colours::white.withAlpha(.58f)
+                   : juce::Colours::white.withAlpha(.18f));
+        g.fillEllipse(
+            ledX + ledD * 0.22f,
+            cy - ledD * 0.5f + ledD * 0.18f,
+            ledD * 0.24f, ledD * 0.18f);
 
         g.setColour(juce::Colour(0xffe2e7ec));
         g.setFont(juce::FontOptions(8.0f).withStyle("Bold"));
@@ -361,28 +388,57 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
 
     if (button.getWidth() <= 36 && button.getHeight() <= 36)
     {
-        const float d = juce::jmin(button.getWidth(), button.getHeight()) - 10.f;
+        const float d =
+            juce::jmax(5.0f,
+                       juce::jmin(button.getWidth(), button.getHeight()) - 10.f);
         const float cx = button.getLocalBounds().getCentreX();
         const float cy = button.getLocalBounds().getCentreY();
         const auto accent = monochrome
-            ? button.findColour(juce::ToggleButton::tickColourId).withSaturation(0.0f)
+            ? button.findColour(
+                  juce::ToggleButton::tickColourId).withSaturation(0.0f)
             : button.findColour(juce::ToggleButton::tickColourId);
         const bool active = !button.getToggleState();
 
-        g.setColour(juce::Colours::black.withAlpha(.8f));
-        g.fillEllipse(cx - d * .5f - 3.f, cy - d * .5f - 3.f, d + 6.f, d + 6.f);
+        // Recessed analog LED bezel.  Deliberately no shadow outside the LED.
+        g.setColour(juce::Colour(0xff060708));
+        g.fillEllipse(
+            cx - d * .5f - 2.5f, cy - d * .5f - 2.5f,
+            d + 5.0f, d + 5.0f);
+        g.setColour(juce::Colour(0xff555b62));
+        g.drawEllipse(
+            cx - d * .5f - 1.7f, cy - d * .5f - 1.7f,
+            d + 3.4f, d + 3.4f, 1.0f);
 
-        juce::ColourGradient glow(active ? accent.withAlpha(.95f)
-                                          : juce::Colour(0xff4b5058),
-                                  cx, cy - d * .5f,
-                                  active ? accent.withAlpha(.18f)
-                                         : juce::Colour(0xff17191d),
-                                  cx, cy + d * .5f, false);
-        g.setGradientFill(glow);
+        const auto bottom =
+            active ? accent.darker(0.42f)
+                   : juce::Colour(0xff25292e);
+        const auto top =
+            active ? accent.brighter(0.20f)
+                   : juce::Colour(0xff555b62);
+
+        juce::ColourGradient bulb(
+            top,
+            cx - d * .16f, cy - d * .26f,
+            bottom,
+            cx + d * .25f, cy + d * .34f,
+            false);
+        g.setGradientFill(bulb);
         g.fillEllipse(cx - d * .5f, cy - d * .5f, d, d);
 
-        g.setColour(active ? accent : juce::Colour(0xff666b74));
-        g.drawEllipse(cx - d * .5f, cy - d * .5f, d, d, 1.2f);
+        // Small resin/glass reflection, contained inside the bulb.
+        g.setColour(
+            active ? juce::Colours::white.withAlpha(.62f)
+                   : juce::Colours::white.withAlpha(.16f));
+        g.fillEllipse(
+            cx - d * .27f, cy - d * .30f,
+            d * .24f, d * .17f);
+
+        g.setColour(
+            active ? accent.darker(0.18f)
+                   : juce::Colour(0xff4b5057));
+        g.drawEllipse(
+            cx - d * .5f, cy - d * .5f,
+            d, d, 0.9f);
         return;
     }
 
