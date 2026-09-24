@@ -597,7 +597,7 @@ function filterShapeDb(type,f,q,gain,hz){
     return gd/(1+Math.pow(Math.abs(lr)/width,p));
   }
   if(type===4||type===5||type===8||type===9){
-    const high=type===5||type===9,exp=type===8||type===9?.8:2;
+    const high=type===5||type===9,exp=(type===8||type===9)?0.8:2;
     const shape=high?1/(1+Math.pow(1/ratio,exp)):1/(1+Math.pow(ratio,exp));
     return gd*shape;
   }
