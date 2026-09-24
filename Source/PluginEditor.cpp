@@ -2240,7 +2240,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                juce::Justification::left);
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.32 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
+    g.drawText("VVCHAIN v1.0.33 · TYPE-A SHARED XOVER + ANALOG 4-BAND + DEESS PRESETS",
                510, 38, 700, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2654,7 +2654,7 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
         return;
     }
 
-    // v1.0.32: explicit hit priority.
+    // v1.0.33: explicit hit priority.
     // 1) Static EQ point always wins when the pointer is actually on it.
     // 2) Only the Dynamic target or its dedicated arrow can produce DYN EQ.
     // The live gain marker is visual only and never steals the value box.
