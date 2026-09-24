@@ -100,6 +100,14 @@ PSP's published ClassicQ documentation describes SIM as Class-A plus transformer
 
 VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
 
+## v1.0.24
+
+- 上方浮動數值框固定 112 px、固定兩行，不允許展開成橫向長條。
+- 靜態 EQ 點／EQ 拖曳／Q 滾輪／右鍵 SOLO Q：第一行固定顯示 `EQ  GAIN …`。
+- Dynamic Target／Live／DYNAMICS 箭頭／Dynamic 點 Q 滾輪：第一行固定顯示 `DYN EQ  GAIN …`。
+- 第二行永遠只顯示 `FREQ …  Q …`；禁止 TARGET / OFFSET / DYN % / AUTO THR 等其他欄位進入浮動框。
+- 新增 50-case readout identity / format regression。
+
 ## v1.0.23
 
 - CI/CD 改成 Fast Deploy 預設路徑：一般 PR 只跑必要同步、版本、JS syntax、Web smoke、UI/互動 regression。

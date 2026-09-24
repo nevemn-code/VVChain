@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.23 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.24 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared Type-A/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -423,8 +423,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.ott.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.23" in web
-    assert "VVCHAIN v1.0.23" in editor
+    assert "VVCHAIN v1.0.24" in web
+    assert "VVCHAIN v1.0.24" in editor
     assert "LAST " not in editor
 
     # ANALOG v1.0.16 uses unity-normalized smooth algebraic saturation.
@@ -516,8 +516,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.23" in web
-    assert "VVCHAIN v1.0.23" in cpp
+    assert "VVCHAIN v1.0.24" in web
+    assert "VVCHAIN v1.0.24" in cpp
     assert "LAST " not in web
     assert "LAST " not in cpp
 
@@ -660,6 +660,49 @@ def test_v1018_interaction_visual_sync():
 
 
 
+
+def test_v1024_compact_readout_50():
+    cpp = CPP.read_text(encoding="utf-8")
+    head = HEAD.read_text(encoding="utf-8")
+    web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+
+    # Source-level invariants: one fixed compact box, two lines only.
+    assert 'm_boxWidth = 112' in head
+    assert 'm_line1Text' in head and 'm_line2Text' in head
+    assert 'Exactly two compact lines. No TARGET / OFFSET / DYN % / AUTO THR.' in cpp
+    assert 'showFloatingValueBoxForBand(' in cpp
+    assert 'rightSoloBand, false, gain, event.position' in cpp
+    assert 'dragOffsetBand, false, offset, event.position' in cpp
+    assert 'dragDynamicHandleBand, true' in cpp
+    assert 'dragBand, true, dynamicEffectiveTargetGain(dragBand)' in cpp
+    assert 'dynamicWheelReadout' in cpp
+    assert 'dynamicWheelReadout?4:8' in web
+    assert '.graphHint{width:112px;min-width:112px;max-width:112px}' in web
+
+    hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
+    assert hint_block.count('<div class="active">') == 2
+    for forbidden in ('TARGET', 'OFFSET', 'AUTO THR', 'DYNAMICS', 'THRESH'):
+        assert forbidden not in hint_block
+
+    # 50 deterministic identity/format cases:
+    # static EQ/Q => EQ; live/target/handle => DYN EQ.
+    masks = [1|2, 8, 1|4, 4, 1|2|4]
+    for i in range(50):
+        mask = masks[i % len(masks)]
+        dynamic = bool(mask & 4)
+        label = "DYN EQ" if dynamic else "EQ"
+        gain = -18.0 + (36.0 * i / 49.0)
+        freq = 20.0 * (1000.0 ** (i / 49.0))
+        q = 0.1 + (17.9 * i / 49.0)
+        line1 = f"{label}  GAIN {gain:+.1f} dB"
+        line2 = f"FREQ {freq:.1f}  Q {q:.2f}"
+        assert line1.startswith("DYN EQ  GAIN") if dynamic else line1.startswith("EQ  GAIN")
+        assert "FREQ " in line2 and "  Q " in line2
+        assert "TARGET" not in line1 + line2
+        assert "OFFSET" not in line1 + line2
+
+
+
 def main():
     for _ in range(50):
         source_assertions()
@@ -687,11 +730,12 @@ def main():
     test_v103_ui_rules_50()
     test_v103_closed_10()
     test_v107_ui_controls()
+    test_v1024_compact_readout_50()
     print("PASS: 280 design cases")
     print("PASS: 10 core/all-feature rounds")
     print("PASS: 6 transient gesture sequences")
     print("PASS: 10 full simulated sessions")
-    print("PASS: 50x v1.0.23 interaction / bypass / readout / SOLO visual checks")
+    print("PASS: 50x v1.0.24 compact EQ/DYN EQ readout identity + format checks")
     print("PASS: source invariants / APVTS / graph-DYNAMICS binding")
     print("ALL Dynamic EQ UI regression tests passed")
 

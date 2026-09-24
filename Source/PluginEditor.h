@@ -77,23 +77,23 @@ private:
             setVisible(false);
         }
 
-        void updateInfo(const juce::String& freqText,
-                        const juce::String& gainText,
+        void updateInfo(const juce::String& line1Text,
+                        const juce::String& line2Text,
                         juce::Point<int> mousePos,
                         juce::Rectangle<int> parentBounds)
         {
             const bool textChanged =
-                m_freqText != freqText || m_gainText != gainText;
+                m_line1Text != line1Text || m_line2Text != line2Text;
 
             if (!textChanged && m_lastPos == mousePos && isVisible())
                 return;
 
-            m_freqText = freqText;
-            m_gainText = gainText;
+            m_line1Text = line1Text;
+            m_line2Text = line2Text;
             m_lastPos = mousePos;
 
-            // Fixed width avoids repeated font-metric work on every mouse move.
-            // The box is deliberately compact but wide enough for frequency + signed dB.
+            // v1.0.24: this readout is intentionally a compact two-line box.
+            // Never auto-expand into a long one-row strip.
             if (textChanged || m_boxWidth <= 0)
                 m_boxWidth = 112;
 
@@ -122,8 +122,8 @@ private:
             if (isVisible())
                 setVisible(false);
             m_lastPos = { -1, -1 };
-            m_freqText.clear();
-            m_gainText.clear();
+            m_line1Text.clear();
+            m_line2Text.clear();
         }
 
         void paint(juce::Graphics& g) override
@@ -138,16 +138,16 @@ private:
             g.setColour(juce::Colours::white);
             g.setFont(m_font);
             g.drawText(
-                m_freqText, 5, 3, getWidth() - 10, 14,
+                m_line1Text, 5, 3, getWidth() - 10, 14,
                 juce::Justification::centredLeft);
             g.drawText(
-                m_gainText, 5, 19, getWidth() - 10, 14,
+                m_line2Text, 5, 19, getWidth() - 10, 14,
                 juce::Justification::centredLeft);
         }
 
     private:
-        juce::String m_freqText;
-        juce::String m_gainText;
+        juce::String m_line1Text;
+        juce::String m_line2Text;
         juce::Font m_font;
         juce::Point<int> m_lastPos { -1, -1 };
         int m_boxWidth = 0;
@@ -404,6 +404,9 @@ private:
     juce::Point<float> dynamicTargetPoint(int band) const;
     bool pointNearDynamicNode(juce::Point<float>, int& band) const;
     void updateFloatingValueBoxAt(juce::Point<float> position);
+    void showFloatingValueBoxForBand(
+        int band, bool dynamicReadout, float displayedGain,
+        juce::Point<float> position);
     float dynamicAverageGainChangeDb(int band) const;
     float dynamicMidGainChangeDb(int band) const;
     float dynamicSideGainChangeDb(int band) const;
