@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(VVChain VERSION 1.0.49 LANGUAGES C CXX)
+project(VVChain VERSION 1.0.50 LANGUAGES C CXX)
 
 include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
@@ -46,11 +46,25 @@ target_sources(VVChain PRIVATE
     Source/PluginProcessor.h
     Source/PluginEditor.cpp
     Source/PluginEditor.h
+    Source/SettingsPanel.cpp
+    Source/SettingsPanel.h
     Source/DSP/ChainDSP.cpp
     Source/DSP/ChainDSP.h
 )
 
+execute_process(
+    COMMAND git rev-parse --short=8 HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE VVCHAIN_GIT_COMMIT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+if(NOT VVCHAIN_GIT_COMMIT)
+    set(VVCHAIN_GIT_COMMIT "unknown")
+endif()
+
 target_compile_definitions(VVChain PRIVATE
+    VVCHAIN_GIT_COMMIT="${VVCHAIN_GIT_COMMIT}"
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0

@@ -1,4 +1,4 @@
-# VVChain Architecture（v1.0.49）
+# VVChain Architecture（v1.0.50）
 
 > 以下以目前程式實際執行為準；本次封閉測試的失敗和限制見 `TEST_REPORT.md`。
 
@@ -67,3 +67,12 @@ Native lookahead 約 3 ms。`process` 若收到比 `prepareToPlay` 配置更大�
 ## Release gate
 
 A fast PR gate protects Source/Web synchronization, JavaScript syntax and interaction regressions. Windows VST3 compilation runs on main push. Heavy Linux Native / Analog / stress validation remains manual.
+
+
+## Settings overlay (v1.0.50)
+
+- Native JUCE and Web Preview both append a vector SETTINGS gear after the existing DE-ESS status area.
+- The overlay is UI-only: opening/closing it never writes APVTS, never sends automation, never changes DSP state, latency, plugin bounds, or audio.
+- Panel geometry is 330 px wide and at most 480 px high. Overflow scrolls inside the panel only.
+- INTERFACE, CONTROL, ANALYZER / GRAPH and SYSTEM / ABOUT are scaffolded. AUDIO / QUALITY is reserved only.
+- Any future behavior-affecting setting requires explicit persistence design before it can be enabled. Audio settings belong in APVTS only when host automation is actually required; UI preferences must remain outside APVTS.

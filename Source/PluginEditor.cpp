@@ -414,6 +414,26 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     setLookAndFeel(&metalLook);
     setResizable(false, false);
     setSize(1500, 930);
+    setWantsKeyboardFocus(true);
+
+    settingsDismissOverlay = std::make_unique<SettingsDismissOverlay>();
+    settingsDismissOverlay->onDismiss = [this]
+    {
+        setSettingsPanelVisible(false);
+    };
+    addAndMakeVisible(*settingsDismissOverlay);
+    settingsDismissOverlay->setVisible(false);
+
+    settingsButton = std::make_unique<SettingsGearButton>();
+    settingsButton->onClick = [this]
+    {
+        setSettingsPanelVisible(!settingsPanelVisible);
+    };
+    addAndMakeVisible(*settingsButton);
+
+    settingsPanel = std::make_unique<SettingsPanel>();
+    addAndMakeVisible(*settingsPanel);
+    settingsPanel->setVisible(false);
 
     const std::array<juce::String, 5> bypassIds
     {
@@ -2633,7 +2653,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.49", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.50", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2757,6 +2777,43 @@ void VVChainAudioProcessorEditor::setExpandedBand(int band)
     repaint();
 }
 
+void VVChainAudioProcessorEditor::setSettingsPanelVisible(bool visible)
+{
+    settingsPanelVisible = visible;
+
+    if (settingsDismissOverlay)
+        settingsDismissOverlay->setVisible(visible);
+    if (settingsPanel)
+        settingsPanel->setVisible(visible);
+    if (settingsButton)
+        settingsButton->setPanelOpen(visible);
+
+    if (visible)
+    {
+        if (settingsDismissOverlay)
+            settingsDismissOverlay->toFront(false);
+        if (settingsPanel)
+            settingsPanel->toFront(false);
+        if (settingsButton)
+            settingsButton->toFront(false);
+        grabKeyboardFocus();
+    }
+
+    repaint();
+}
+
+bool VVChainAudioProcessorEditor::keyPressed(const juce::KeyPress& key)
+{
+    if (settingsPanelVisible
+        && key.getKeyCode() == juce::KeyPress::escapeKey)
+    {
+        setSettingsPanelVisible(false);
+        return true;
+    }
+
+    return false;
+}
+
 void VVChainAudioProcessorEditor::resized()
 {
     const int w = getWidth();
@@ -2776,8 +2833,25 @@ void VVChainAudioProcessorEditor::resized()
     constexpr int soloModeW = 68;
     total += topGap + soloModeW;
 
-    const int topX = w - 18 - total;
+    constexpr int settingsW = 28;
+    constexpr int settingsRight = 10;
+    constexpr int settingsGap = 5;
     constexpr int topY = 17;
+    const int settingsX = w - settingsRight - settingsW;
+    const int topX = settingsX - settingsGap - total;
+
+    if (settingsDismissOverlay)
+        settingsDismissOverlay->setBounds(getLocalBounds());
+    if (settingsButton)
+        settingsButton->setBounds(settingsX, topY - 1, settingsW, settingsW);
+    if (settingsPanel)
+    {
+        constexpr int panelW = 330;
+        const int panelY = topY + settingsW + 7;
+        const int panelH = juce::jmin(480, getHeight() - panelY - 10);
+        settingsPanel->setBounds(settingsX + settingsW - panelW,
+                                 panelY, panelW, panelH);
+    }
     if (masterBypassButton)
         masterBypassButton->setBounds(topX, topY, masterW, 25);
     if (soloModeButton)

@@ -1,4 +1,4 @@
-# VVChain Test Plan（v1.0.49）
+# VVChain Test Plan（v1.0.50）
 
 目前五個現有測試腳本在十輪本機封閉測試均未通過；詳見 `TEST_REPORT.md`。下列 CI 觸發描述的是配置，不代表驗證已成功。
 
@@ -59,3 +59,13 @@ Still required when preparing a distributable release:
 - NaN / infinity / denormal behavior
 - AAX SDK build/signing when AAX is enabled
 - 超過 prepare block 容量的 host buffer，以及 Analog 0% 的全鏈 null／分頻重建，必須獨立量測。
+
+
+## Settings overlay regression (v1.0.50)
+
+- Confirm top-row order remains BYPASS / SOLO PRE / EQ / UDMBC / ANALOG / TAPE COLOR / DE-ESS / SETTINGS.
+- Confirm SETTINGS is 28×28 px, vector-rendered, right-aligned, and opens a 330 px panel toward the left/bottom.
+- Confirm second gear click, outside click and Escape close the overlay.
+- Confirm panel overflow is internal and the plugin/page itself never gains a scrollbar.
+- Confirm opening/closing the overlay does not write APVTS, send Web Worklet parameters, change DSP state, latency, or plugin dimensions.
+- Confirm all not-yet-implemented settings are visibly RESERVED / DISABLED rather than interactive no-op controls.

@@ -1,6 +1,6 @@
 # VVChain
 
-## 目前實際狀態（v1.0.49）
+## 目前實際狀態（v1.0.50）
 
 目前 `main` 的五個測試腳本在本機各重跑十輪均提前失敗，包含 `web_smoke.py` 的 Python 語法錯誤；完整位置和驗證限制見 [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md)。歷史版本日誌描述當時修改，現行行為請以 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 與實際程式為準。本次只更新說明，未更改 DSP。
 
@@ -55,6 +55,14 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
+
+### v1.0.50
+- Native JUCE 與 Web Preview 右上角在 DE-ESS 後新增 28×28 SETTINGS vector gear；既有 BYPASS / SOLO PRE / EQ / UDMBC / ANALOG / TAPE COLOR / DE-ESS 順序不變。
+- Settings Panel 從齒輪左下展開，寬 330 px、最高 480 px；內容超出時僅面板內捲動。再次點齒輪、點面板外或 Esc 均可關閉。
+- 建立 INTERFACE / CONTROL / ANALYZER / GRAPH / AUDIO / QUALITY / SYSTEM / ABOUT section 架構；尚未定義 persistence 或 DSP 行為的項目明確標示 RESERVED / DISABLED，不提供假控制。
+- AUDIO / QUALITY 僅保留分類，不接 Oversampling / HQ / ECO / nonlinear quality；開關 Settings Overlay 不寫 APVTS、不送 automation、不修改 DSP、latency 或聲音。
+- Native About 顯示版本、build code 與 Git commit；CMake 在可用時將目前短 commit 注入 UI。
+- Web 使用 inline SVG vector gear，不使用 Unicode emoji；Native 使用 JUCE vector drawing，不依賴字型齒輪。
 
 ### v1.0.49
 - 文件更新：同步整理目前實際訊號流程、Native／Web 差異及十輪封閉測試結果與限制。

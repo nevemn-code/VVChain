@@ -7,6 +7,7 @@
 #include <vector>
 #include <tuple>
 #include "PluginProcessor.h"
+#include "SettingsPanel.h"
 
 class VVChainAudioProcessorEditor final : public juce::AudioProcessorEditor,
                                                   private juce::Timer
@@ -25,6 +26,7 @@ public:
     void mouseDoubleClick(const juce::MouseEvent&) override;
     void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
     void timerCallback() override;
+    bool keyPressed(const juce::KeyPress&) override;
 
 private:
     using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
@@ -568,6 +570,7 @@ private:
 
     void addBypass(int index, const juce::String& parameterId,
                    const juce::String& tooltip, juce::Colour accent);
+    void setSettingsPanelVisible(bool visible);
 
     Knob* findKnob(const juce::String& id);
     void placeKnob(const juce::String& id, juce::Rectangle<int> area);
@@ -652,6 +655,10 @@ private:
     std::array<std::unique_ptr<Attachment>, 4> dynDetectAttachments;
     std::array<std::unique_ptr<BoolAttachment>, 4> dynTriggerAttachments;
     std::unique_ptr<juce::ToggleButton> soloModeButton;
+    std::unique_ptr<SettingsDismissOverlay> settingsDismissOverlay;
+    std::unique_ptr<SettingsGearButton> settingsButton;
+    std::unique_ptr<SettingsPanel> settingsPanel;
+    bool settingsPanelVisible = false;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> tapeBandBypassButtons;
     std::array<std::unique_ptr<BoolAttachment>, 4> udmbcBandBypassAttachments;
     std::array<std::unique_ptr<BoolAttachment>, 4> analogModeAttachments;
