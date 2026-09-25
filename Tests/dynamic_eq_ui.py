@@ -243,7 +243,9 @@ def test_eq_xy_drag_math():
     assert 'GAIN / FREQ / Q' in cpp
     assert 'function graphHintBandHtml' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
-    assert 'GAIN' in hint_block and 'FREQ' in hint_block and 'Q' in hint_block
+    assert 'data-kind="gain"' in hint_block
+    assert 'data-kind="freq"' in hint_block
+    assert '"Q "+fmt(state.eq.q[b],3)' in hint_block
 
 
 def test_dynamic_target_preserves_eq_as_center():
@@ -579,11 +581,12 @@ def test_v107_ui_controls():
     assert 'deEssModeSwitch' in web
     assert 'state.de.mode=index+1' in web
 
-    # Graph readout is compact: EQ / DYN EQ + GAIN, FREQ, Q only.
+    # Graph readout is compact. Native keeps EQ/DYN identity; Web uses
+    # three direct-edit values (gain, frequency, Q/OCT) without label text.
     assert 'DYN EQ' in cpp
     assert 'm_boxWidth = 112' in head
     assert '.graphHint{width:112px' in web
-    assert 'DYN EQ' in web
+    assert 'data-kind="gain"' in web and 'data-kind="freq"' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
     assert ' | ' not in hint_block
 
@@ -633,10 +636,10 @@ def test_v1018_interaction_visual_sync():
     assert 'const juce::String line2 = "GAIN " + signedDb' in cpp
     assert 'const juce::String line3 = "Q " + juce::String(q, 3)' in cpp
     assert 'const dynamicReadout=!!(mask&4);' in web
-    assert 'const label=dynamicReadout?"DYN EQ":"EQ";' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
+    assert 'data-dyn="' in hint_block
     assert 'TARGET' not in hint_block and 'OFFSET' not in hint_block and 'AUTO THR' not in hint_block
-    assert hint_block.count('<div class="active">') == 3
+    assert hint_block.count('<div class="active graphEdit"') == 3
 
     # Right-click SOLO keeps the selected region coloured and fades outward to grey.
     assert 'Right-click SOLO keeps the selected EQ region in full colour' in cpp
@@ -667,7 +670,7 @@ def test_v1024_compact_readout_50():
     assert '.graphHint{width:112px;min-width:112px;max-width:112px}' in web
 
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
-    assert hint_block.count('<div class="active">') == 3
+    assert hint_block.count('<div class="active graphEdit"') == 3
     for forbidden in ('TARGET', 'OFFSET', 'AUTO THR', 'DYNAMICS', 'THRESH'):
         assert forbidden not in hint_block
 
