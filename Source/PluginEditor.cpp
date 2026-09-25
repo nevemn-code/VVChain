@@ -289,14 +289,16 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
         const auto r = button.getLocalBounds().toFloat().reduced(1.0f);
         const bool active = !button.getToggleState();
         drawFace(r, active, accent);
-        drawLed(r.getX() + 9.5f, r.getCentreY(), 8.5f, active, accent);
+        drawLed(r.getX() + 6.2f, r.getCentreY(), 6.6f, active, accent);
 
         g.setColour(tone(ivoryTheme ? juce::Colour(0xfff3eadc)
                                     : juce::Colour(0xffedf6f6)));
-        g.setFont(juce::FontOptions(8.6f).withStyle("Bold"));
+        const float moduleFont =
+            button.getWidth() <= 54 ? 7.4f : 7.8f;
+        g.setFont(juce::FontOptions(moduleFont).withStyle("Bold"));
         g.drawText(button.getButtonText(),
-                   juce::Rectangle<int>((int)r.getX() + 20, (int)r.getY(),
-                                        (int)r.getWidth() - 23,
+                   juce::Rectangle<int>((int)r.getX() + 13, (int)r.getY(),
+                                        (int)r.getWidth() - 15,
                                         (int)r.getHeight()),
                    juce::Justification::centred);
         return;
@@ -354,8 +356,9 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
 
     if (button.getWidth() <= 36 && button.getHeight() <= 36)
     {
-        const float d =
-            juce::jmin(button.getWidth(), button.getHeight()) - 10.0f;
+        const float d = juce::jmax(
+            5.0f,
+            (float)juce::jmin(button.getWidth(), button.getHeight()) - 10.0f);
         const float cx = button.getLocalBounds().getCentreX();
         const float cy = button.getLocalBounds().getCentreY();
         const bool forceLedOff = static_cast<bool>(
@@ -373,9 +376,15 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
 
     g.setColour(tone(ivoryTheme ? juce::Colour(0xfff3eadc)
                                 : juce::Colour(0xffeef6f6)));
-    g.setFont(juce::FontOptions(8.6f).withStyle("Bold"));
+    g.setFont(juce::FontOptions(8.4f).withStyle("Bold"));
+    auto textArea = r.toNearestInt().reduced(4, 1);
+    if (on && textArea.getWidth() > 30)
+    {
+        textArea.setX(textArea.getX() + 10);
+        textArea.setWidth(juce::jmax(8, textArea.getWidth() - 10));
+    }
     g.drawText(button.getButtonText(),
-               r.toNearestInt().reduced(on ? 17 : 4, 1),
+               textArea,
                juce::Justification::centred);
 }
 
