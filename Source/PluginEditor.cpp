@@ -775,6 +775,11 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
     // Hover value box sits above the graph but never intercepts the graph mouse.
     floatingValueBox.setAlwaysOnTop(true);
+    floatingValueBox.setCommitHandler(
+        [this](int line, const juce::String& text)
+        {
+            commitFloatingValueEdit(line, text);
+        });
     addAndMakeVisible(floatingValueBox);
     floatingValueBox.hideInstantly();
 
@@ -876,7 +881,9 @@ void VVChainAudioProcessorEditor::addKnob(
 
     k.slider->setLookAndFeel(&metalLook);
     k.slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-    k.slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 68, 17);
+    k.slider->setTextBoxStyle(
+        juce::Slider::TextBoxBelow, false, 68, 17);
+    k.slider->setTextBoxIsEditable(true);
     k.slider->setScrollWheelEnabled(true);
     k.slider->setRange(min, max, step);
     if (id.endsWith("_FREQ") || id.startsWith("UDMBC_X"))
@@ -988,6 +995,7 @@ void VVChainAudioProcessorEditor::addKnob(
         auto* slider = k.slider.get();
         k.slider->onValueChange = [this, band, slider]
         {
+            udmbcUiTouched[(size_t) band] = true;
             const float target =
                 slider->getValue() <= 0.0001 ? 1.0f : 0.0f;
             const auto bypassId =
@@ -1005,6 +1013,7 @@ void VVChainAudioProcessorEditor::addKnob(
         auto* slider = k.slider.get();
         k.slider->onValueChange = [this, band, slider]
         {
+            tapeUiTouched[(size_t) band] = true;
             const float target =
                 slider->getValue() <= 0.0001 ? 1.0f : 0.0f;
             const auto bypassId =
@@ -1014,6 +1023,14 @@ void VVChainAudioProcessorEditor::addKnob(
                 if (std::abs(parameter->getValue() - target) > 1.0e-6f)
                     parameter->setValueNotifyingHost(target);
             }
+        };
+    }
+    else if (id.startsWith("EQ_COLOR_B") && k.band >= 0)
+    {
+        const int band = k.band;
+        k.slider->onValueChange = [this, band]
+        {
+            analogUiTouched[(size_t) band] = true;
         };
     }
     addAndMakeVisible(*k.slider);
@@ -2316,16 +2333,19 @@ void VVChainAudioProcessorEditor::timerCallback()
             parameterValue("EQ_BYPASS") > 0.5f;
         const bool udmbcMuted =
             parameterValue("UDMBC_BYPASS") > 0.5f
-            || parameterValue("UDMBC_BAND_BYPASS" + n) > 0.5f
-            || parameterValue("UDMBC_DEGREE" + n) <= 0.0001f;
+            || (udmbcUiTouched[(size_t)b]
+                && (parameterValue("UDMBC_BAND_BYPASS" + n) > 0.5f
+                    || parameterValue("UDMBC_DEGREE" + n) <= 0.0001f));
         const bool analogMuted =
             parameterValue("EQ_COLOR_GLOBAL_BYPASS") > 0.5f
-            || parameterValue("EQ_COLOR_BYPASS" + n) > 0.5f
-            || parameterValue("EQ_COLOR" + n) <= 0.0001f;
+            || (analogUiTouched[(size_t)b]
+                && (parameterValue("EQ_COLOR_BYPASS" + n) > 0.5f
+                    || parameterValue("EQ_COLOR" + n) <= 0.0001f));
         const bool tapeMuted =
             parameterValue("TAPE_BYPASS") > 0.5f
-            || parameterValue("TAPE_BAND_BYPASS" + n) > 0.5f
-            || parameterValue("TAPE_DEGREE" + n) <= 0.0001f;
+            || (tapeUiTouched[(size_t)b]
+                && (parameterValue("TAPE_BAND_BYPASS" + n) > 0.5f
+                    || parameterValue("TAPE_DEGREE" + n) <= 0.0001f));
         const auto setKnobAlpha = [this](const juce::String& id, bool muted)
         {
             if (auto* knob = findKnob(id))
@@ -2945,6 +2965,9 @@ void VVChainAudioProcessorEditor::showFloatingValueBoxForBand(
         return;
     }
 
+    floatingValueBand = band;
+    floatingValueDynamic = dynamicReadout;
+
     const auto n = juce::String(band + 1);
     const float frequency = parameterValue("EQ" + n + "_FREQ");
     const float q = juce::jmax(0.1f, parameterValue("EQ" + n + "_Q"));
@@ -2981,13 +3004,123 @@ void VVChainAudioProcessorEditor::showFloatingValueBoxForBand(
         line1, line2, line3, position.toInt(), getLocalBounds());
 }
 
+void VVChainAudioProcessorEditor::commitFloatingValueEdit(
+    int line, const juce::String& rawText)
+{
+    if (floatingValueBand < 0 || floatingValueBand >= 4)
+        return;
+
+    const int band = floatingValueBand;
+    const auto n = juce::String(band + 1);
+    const auto text = rawText.trim().toLowerCase();
+
+    auto numericValue = [](const juce::String& valueText)
+    {
+        return valueText
+            .retainCharacters("0123456789.-")
+            .getDoubleValue();
+    };
+
+    if (line == 0)
+    {
+        const float gain =
+            juce::jlimit(
+                -18.0f, 18.0f,
+                static_cast<float>(numericValue(text)));
+
+        if (floatingValueDynamic)
+        {
+            const float offset =
+                parameterValue("EQ" + n + "_GAIN");
+            const float dynamics =
+                juce::jlimit(
+                    -100.0f, 100.0f,
+                    (gain - offset) / 18.0f * 100.0f);
+            setParameter("DYN_DYNAMICS" + n, dynamics);
+        }
+        else
+        {
+            setParameter("EQ" + n + "_GAIN", gain);
+        }
+    }
+    else if (line == 1)
+    {
+        double frequency = numericValue(text);
+        if (text.containsChar('k'))
+            frequency *= 1000.0;
+
+        setParameter(
+            "EQ" + n + "_FREQ",
+            static_cast<float>(
+                juce::jlimit(20.0, 20000.0, frequency)));
+    }
+    else if (line == 2)
+    {
+        const int filterType = juce::jlimit(
+            0, 13,
+            juce::roundToInt(
+                parameterValue("EQ" + n + "_TYPE")));
+
+        if (filterType >= 12)
+        {
+            const double requested = numericValue(text);
+            constexpr std::array<double, 7> slopes
+            {{ 6.0, 12.0, 24.0, 36.0, 48.0, 60.0, 72.0 }};
+
+            int best = 0;
+            double bestDistance =
+                std::abs(requested - slopes[0]);
+
+            for (int i = 1; i < (int) slopes.size(); ++i)
+            {
+                const double distance =
+                    std::abs(requested - slopes[(size_t) i]);
+                if (distance < bestDistance)
+                {
+                    best = i;
+                    bestDistance = distance;
+                }
+            }
+
+            setParameter(
+                "EQ" + n + "_SLOPE",
+                static_cast<float>(best));
+        }
+        else
+        {
+            setParameter(
+                "EQ" + n + "_Q",
+                static_cast<float>(
+                    juce::jlimit(
+                        0.10, 18.0,
+                        numericValue(text))));
+        }
+    }
+
+    repaint();
+}
+
 void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
     juce::Point<float> position)
 {
     const auto graph = eqGraphBounds();
+
+    const bool graphGestureActive =
+        rightSoloBand >= 0
+        || dragOffsetBand >= 0
+        || dragBand >= 0
+        || dragDynamicHandleBand >= 0;
+
+    if (!graphGestureActive
+        && (floatingValueBox.isEditing()
+            || floatingValueBox.isWithinInteractionZone(
+                position.toInt())))
+        return;
+
     if (!graph.contains(position))
     {
         floatingValueBox.hideInstantly();
+        floatingValueBand = -1;
         return;
     }
 
