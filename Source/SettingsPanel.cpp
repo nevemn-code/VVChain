@@ -74,7 +74,7 @@ void SettingsDismissOverlay::mouseDown(const juce::MouseEvent&)
 SettingsPanel::Content::Content()
 {
     setInterceptsMouseClicks(true, true);
-    setSize(310, 875);
+    setSize(310, 937);
 
     addAndMakeVisible(themeButton);
     addAndMakeVisible(analyzerButton);
@@ -207,9 +207,11 @@ void SettingsPanel::Content::paint(juce::Graphics& g)
           "EQ Node movement feedback|ON · RESERVED" }, false);
 
     drawSection(g, y, "ANALYZER / GRAPH",
-        { "Analyzer|OFF · RESERVED",
-          "Analyzer Speed|RESERVED",
-          "Spectrum Smoothing|RESERVED",
+        { "Main Spectrum|4096 FFT · HIGH",
+          "Main Smoothing|PRO-Q STYLE · MEDIUM",
+          "Contribution|ANALOG / UDMBC / TYPE-A",
+          "Contribution FFT|2048 · LOW CPU",
+          "Contribution Mode|ADDED DELTA",
           "Peak Hold|RESERVED",
           "Grid|ON · RESERVED",
           "Spectrum opacity|RESERVED" }, false);
@@ -265,7 +267,7 @@ void SettingsPanel::setAnalyzerEnabled(bool enabled)
 void SettingsPanel::resized()
 {
     viewport.setBounds(getLocalBounds().reduced(7, 34).withTrimmedBottom(1));
-    content.setSize(juce::jmax(286, viewport.getMaximumVisibleWidth()), 906);
+    content.setSize(juce::jmax(286, viewport.getMaximumVisibleWidth()), 968);
 }
 
 void SettingsPanel::paint(juce::Graphics& g)

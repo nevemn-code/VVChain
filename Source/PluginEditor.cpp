@@ -448,7 +448,9 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     };
     settingsPanel->setIvoryTheme(false);
     settingsPanel->setAnalyzerEnabled(true);
-    analyzerDb.fill(-100.0f);
+    analyzerDb.fill(-90.0f);
+    for (auto& curve : contributionGrowthDb)
+        curve.fill(0.0f);
     audioProcessor.setAnalyzerEnabled(true);
     addAndMakeVisible(*settingsPanel);
     settingsPanel->setVisible(false);
@@ -834,6 +836,10 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
 VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
 {
+    // Analyzer work is editor-only. Closing the editor removes all analyzer
+    // FIFO/FFT overhead from the realtime path.
+    audioProcessor.setAnalyzerEnabled(false);
+
     juce::Desktop::getInstance().removeGlobalMouseListener(
         &globalGraphMouseListener);
 
@@ -1379,10 +1385,124 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             : juce::Colour(0xffd5d8de).withAlpha(0.12f));
         g.fillPath(fill);
 
+        // Module contribution overlay. These are not absolute dBFS traces:
+        // each layer is the ADDED-only local Post-Pre Delta contribution,
+        // visually stacked upward from the main spectrum.
+        const std::array<juce::Colour, 3> contributionColours
+        {
+            ivoryTheme ? juce::Colour(0xffd88b1e) : juce::Colour(0xfff4a63a),
+            ivoryTheme ? juce::Colour(0xff2a9fd8) : juce::Colour(0xff4fc3ff),
+            ivoryTheme ? juce::Colour(0xffb35be0) : juce::Colour(0xffd97cff)
+        };
+
+        std::array<float, analyzerDisplayPoints> cumulativeDb {};
+        const float pixelsPerDb = graph.getHeight() / 90.0f;
+
+        for (int module = 0; module < 3; ++module)
+        {
+            std::array<juce::Point<float>, analyzerDisplayPoints> basePoints {};
+            std::array<juce::Point<float>, analyzerDisplayPoints> topPoints {};
+            bool anyVisible = false;
+
+            for (int p = 0; p < analyzerDisplayPoints; ++p)
+            {
+                const float x = graph.getX()
+                    + graph.getWidth()
+                        * static_cast<float>(p)
+                        / static_cast<float>(analyzerDisplayPoints - 1);
+
+                const float mainNorm = juce::jlimit(
+                    0.0f, 1.0f,
+                    (analyzerDb[(size_t)p] + 90.0f) / 90.0f);
+                const float mainY =
+                    graph.getBottom() - mainNorm * graph.getHeight();
+
+                float totalGrowth = 0.0f;
+                for (int m = 0; m < 3; ++m)
+                    totalGrowth += contributionGrowthDb[(size_t)m][(size_t)p];
+
+                const float stackScale =
+                    totalGrowth > 12.0f ? 12.0f / totalGrowth : 1.0f;
+
+                const float baseGrowth =
+                    cumulativeDb[(size_t)p] * stackScale;
+                const float moduleGrowth =
+                    contributionGrowthDb[(size_t)module][(size_t)p]
+                    * stackScale;
+
+                const float baseY = juce::jlimit(
+                    graph.getY(), graph.getBottom(),
+                    mainY - baseGrowth * pixelsPerDb);
+                const float topY = juce::jlimit(
+                    graph.getY(), graph.getBottom(),
+                    baseY - moduleGrowth * pixelsPerDb);
+
+                basePoints[(size_t)p] = { x, baseY };
+                topPoints[(size_t)p] = { x, topY };
+                cumulativeDb[(size_t)p] +=
+                    contributionGrowthDb[(size_t)module][(size_t)p];
+
+                anyVisible = anyVisible || moduleGrowth > 0.02f;
+            }
+
+            if (!anyVisible)
+                continue;
+
+            juce::Path area;
+            area.startNewSubPath(topPoints[0]);
+            for (int p = 1; p < analyzerDisplayPoints; ++p)
+                area.lineTo(topPoints[(size_t)p]);
+            for (int p = analyzerDisplayPoints - 1; p >= 0; --p)
+                area.lineTo(basePoints[(size_t)p]);
+            area.closeSubPath();
+
+            g.setColour(
+                contributionColours[(size_t)module].withAlpha(0.15f));
+            g.fillPath(area);
+
+            juce::Path topPath;
+            topPath.startNewSubPath(topPoints[0]);
+            for (int p = 1; p < analyzerDisplayPoints; ++p)
+            {
+                const auto previous = topPoints[(size_t)p - 1];
+                const auto current = topPoints[(size_t)p];
+                const auto mid = (previous + current) * 0.5f;
+                topPath.quadraticTo(previous, mid);
+            }
+            topPath.lineTo(topPoints.back());
+
+            g.setColour(
+                contributionColours[(size_t)module].withAlpha(0.82f));
+            g.strokePath(topPath, juce::PathStrokeType(1.0f));
+        }
+
+        // Keep the measured main spectrum edge readable under the colored
+        // additions.
         g.setColour(ivoryTheme
-            ? juce::Colour(0xff56585c).withAlpha(0.58f)
-            : juce::Colour(0xffd8dbe1).withAlpha(0.42f));
-        g.strokePath(analyzerPath, juce::PathStrokeType(1.05f));
+            ? juce::Colour(0xff56585c).withAlpha(0.62f)
+            : juce::Colour(0xffd8dbe1).withAlpha(0.48f));
+        g.strokePath(analyzerPath, juce::PathStrokeType(1.0f));
+
+        // Tiny fixed legend: module identity is color, not frequency-band color.
+        const std::array<juce::String, 3> names {
+            "ANALOG", "UDMBC", "TYPE-A"
+        };
+        g.setFont(juce::FontOptions(7.2f).withStyle("Bold"));
+        int legendX = (int)graph.getRight() - 181;
+        const int legendY = (int)graph.getY() + 7;
+        for (int module = 0; module < 3; ++module)
+        {
+            g.setColour(contributionColours[(size_t)module]);
+            g.fillEllipse(
+                static_cast<float>(legendX),
+                static_cast<float>(legendY + 3),
+                5.0f, 5.0f);
+            g.drawText(
+                names[(size_t)module],
+                legendX + 8, legendY, 48, 11,
+                juce::Justification::centredLeft);
+            legendX += module == 1 ? 61 : 58;
+        }
     }
 
     g.setColour(ivoryTheme ? juce::Colour(0xff9f9589) : juce::Colours::black.withAlpha(.95f));
@@ -2373,7 +2493,9 @@ void VVChainAudioProcessorEditor::pulseGraphControlMovement(
 
 void VVChainAudioProcessorEditor::timerCallback()
 {
+    audioProcessor.setAnalyzerEnabled(analyzerEnabled && isShowing());
     updateAnalyzer();
+    updateContributionAnalyzer();
     for (auto& k : knobs)
         if (auto* slider = dynamic_cast<WheelSlider*>(k.slider.get()))
             if (slider->isGraphControlActive())
@@ -2701,7 +2823,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(ivoryTheme ? juce::Colour(0xff6c675f) : juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.54", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.55", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2828,15 +2950,37 @@ void VVChainAudioProcessorEditor::setExpandedBand(int band)
 void VVChainAudioProcessorEditor::setAnalyzerEnabled(bool enabled)
 {
     analyzerEnabled = enabled;
-    audioProcessor.setAnalyzerEnabled(enabled);
+    audioProcessor.setAnalyzerEnabled(enabled && isShowing());
+
     if (settingsPanel)
         settingsPanel->setAnalyzerEnabled(enabled);
 
     if (!enabled)
     {
         analyzerInputCount = 0;
+        contributionInputCount = 0;
+        contributionFrameCounter = 0;
         analyzerPath.clear();
-        analyzerDb.fill(-100.0f);
+        analyzerDb.fill(-90.0f);
+        for (auto& curve : contributionGrowthDb)
+            curve.fill(0.0f);
+
+        std::array<float, 4096> discard {};
+        while (audioProcessor.popAnalyzerSamples(
+                   discard.data(), static_cast<int>(discard.size())) > 0)
+        {
+        }
+
+        std::array<std::array<float, 2048>, 6> contributionDiscard {};
+        std::array<float*, 6> destinations {};
+        for (int stream = 0; stream < 6; ++stream)
+            destinations[(size_t)stream] =
+                contributionDiscard[(size_t)stream].data();
+
+        while (audioProcessor.popContributionSamples(
+                   destinations, 2048) > 0)
+        {
+        }
     }
 
     repaint(eqGraphBounds().toNearestInt());
@@ -2857,6 +3001,13 @@ void VVChainAudioProcessorEditor::updateAnalyzer()
     const double sr = audioProcessor.getSampleRate() > 1000.0
         ? audioProcessor.getSampleRate() : 48000.0;
 
+    const float frameSeconds =
+        static_cast<float>(analyzerHopSize / sr);
+    const float attackCoeff =
+        1.0f - std::exp(-frameSeconds / 0.035f);
+    const float releaseCoeff =
+        1.0f - std::exp(-frameSeconds / 0.180f);
+
     bool updated = false;
     int src = 0;
 
@@ -2864,6 +3015,7 @@ void VVChainAudioProcessorEditor::updateAnalyzer()
     {
         const int room = analyzerFftSize - analyzerInputCount;
         const int take = juce::jmin(room, received - src);
+
         std::copy_n(incoming.data() + src, take,
                     analyzerInput.data() + analyzerInputCount);
         analyzerInputCount += take;
@@ -2875,14 +3027,28 @@ void VVChainAudioProcessorEditor::updateAnalyzer()
         std::fill(analyzerFftData.begin(), analyzerFftData.end(), 0.0f);
         std::copy(analyzerInput.begin(), analyzerInput.end(),
                   analyzerFftData.begin());
+
         analyzerWindow.multiplyWithWindowingTable(
             analyzerFftData.data(), analyzerFftSize);
         analyzerFft.performFrequencyOnlyForwardTransform(
             analyzerFftData.data());
 
-        const float norm = 2.0f / static_cast<float>(analyzerFftSize);
         const int maxBin = analyzerFftSize / 2;
-        std::array<float, analyzerDisplayPoints> spectralDb {};
+        const float norm = 4.0f / static_cast<float>(analyzerFftSize);
+
+        analyzerPowerPrefix[0] = 0.0;
+        for (int bin = 0; bin <= maxBin; ++bin)
+        {
+            const double magnitude =
+                static_cast<double>(analyzerFftData[(size_t)bin] * norm);
+            const double power = magnitude * magnitude;
+            analyzerPower[(size_t)bin] = power;
+            analyzerPowerPrefix[(size_t)bin + 1] =
+                analyzerPowerPrefix[(size_t)bin] + power;
+        }
+
+        std::array<float, analyzerDisplayPoints> rawDb {};
+        std::array<float, analyzerDisplayPoints> frequencySmoothed {};
 
         for (int p = 0; p < analyzerDisplayPoints; ++p)
         {
@@ -2890,87 +3056,94 @@ void VVChainAudioProcessorEditor::updateAnalyzer()
                 / static_cast<float>(analyzerDisplayPoints - 1);
             const float centreHz = 20.0f * std::pow(1000.0f, t);
 
-            // Constant-fractional-octave energy smoothing.  A nominal 1/12
-            // octave window removes FFT-bin teeth without blurring broad EQ
-            // trends.  Keep at least a 3-bin window in the bass where linear
-            // FFT spacing is coarsest.
-            const float halfOctave = 1.0f / 24.0f;
+            // Narrow fractional-octave averaging retains useful resonances
+            // while the following display-space kernel removes pixel-scale
+            // FFT teeth. 4.5 dB/oct around 1 kHz matches the common natural
+            // analyzer presentation used by mastering EQs.
+            constexpr float smoothingOctaves = 1.0f / 24.0f;
+            const float halfOctave = smoothingOctaves * 0.5f;
             const float f0 = centreHz / std::pow(2.0f, halfOctave);
             const float f1 = centreHz * std::pow(2.0f, halfOctave);
 
+            const double binScale =
+                static_cast<double>(analyzerFftSize) / sr;
             int b0 = juce::jlimit(
                 1, maxBin,
-                static_cast<int>(std::floor(
-                    f0 * static_cast<float>(analyzerFftSize)
-                    / static_cast<float>(sr))));
+                static_cast<int>(std::floor(f0 * binScale)));
             int b1 = juce::jlimit(
                 b0, maxBin,
-                static_cast<int>(std::ceil(
-                    f1 * static_cast<float>(analyzerFftSize)
-                    / static_cast<float>(sr))));
+                static_cast<int>(std::ceil(f1 * binScale)));
 
-            if (b1 - b0 + 1 < 3)
+            // At very low frequencies interpolate neighboring FFT powers
+            // instead of forcing a wide low-frequency bucket.
+            double meanPower = 0.0;
+            if (b1 <= b0 + 1)
             {
-                const int centreBin = juce::jlimit(
-                    1, maxBin,
-                    static_cast<int>(std::lround(
-                        centreHz * static_cast<float>(analyzerFftSize)
-                        / static_cast<float>(sr))));
-                b0 = juce::jmax(1, centreBin - 1);
-                b1 = juce::jmin(maxBin, centreBin + 1);
+                const double centreBin = juce::jlimit(
+                    1.0, static_cast<double>(maxBin),
+                    static_cast<double>(centreHz) * binScale);
+                const int lo = juce::jlimit(
+                    1, maxBin, static_cast<int>(std::floor(centreBin)));
+                const int hi = juce::jmin(maxBin, lo + 1);
+                const double frac = centreBin - static_cast<double>(lo);
+                meanPower =
+                    analyzerPower[(size_t)lo] * (1.0 - frac)
+                    + analyzerPower[(size_t)hi] * frac;
+            }
+            else
+            {
+                const double sum =
+                    analyzerPowerPrefix[(size_t)b1 + 1]
+                    - analyzerPowerPrefix[(size_t)b0];
+                meanPower =
+                    sum / static_cast<double>(b1 - b0 + 1);
             }
 
-            double energy = 0.0;
-            int count = 0;
-            for (int b = b0; b <= b1; ++b)
-            {
-                const float mag = analyzerFftData[(size_t)b] * norm;
-                energy += static_cast<double>(mag) * mag;
-                ++count;
-            }
-
-            const float rms = count > 0
-                ? static_cast<float>(std::sqrt(energy / static_cast<double>(count)))
-                : 0.0f;
-            float db = juce::Decibels::gainToDecibels(rms, -96.0f);
-
-            // Pro-Q-style perceptual display tilt, pivoted at 1 kHz.
-            db += 4.5f * std::log2(juce::jmax(20.0f, centreHz) / 1000.0f);
-            spectralDb[(size_t)p] = juce::jlimit(-96.0f, 6.0f, db);
+            const float rms =
+                static_cast<float>(std::sqrt(juce::jmax(0.0, meanPower)));
+            float db = juce::Decibels::gainToDecibels(rms, -90.0f);
+            db += 4.5f
+                * std::log2(juce::jmax(20.0f, centreHz) / 1000.0f);
+            rawDb[(size_t)p] = juce::jlimit(-90.0f, 0.0f, db);
         }
 
-        // Gentle five-point Gaussian pass in log-frequency display space.
-        std::array<float, analyzerDisplayPoints> frequencySmoothed {};
+        constexpr std::array<float, 7> kernel
+        {
+            1.0f / 64.0f, 6.0f / 64.0f, 15.0f / 64.0f,
+            20.0f / 64.0f,
+            15.0f / 64.0f, 6.0f / 64.0f, 1.0f / 64.0f
+        };
+
         for (int p = 0; p < analyzerDisplayPoints; ++p)
         {
-            auto sampleAt = [&spectralDb](int i)
+            float value = 0.0f;
+            for (int k = -3; k <= 3; ++k)
             {
-                return spectralDb[(size_t)juce::jlimit(
-                    0, analyzerDisplayPoints - 1, i)];
-            };
-
-            frequencySmoothed[(size_t)p] =
-                (sampleAt(p - 2)
-                 + 4.0f * sampleAt(p - 1)
-                 + 6.0f * sampleAt(p)
-                 + 4.0f * sampleAt(p + 1)
-                 + sampleAt(p + 2)) / 16.0f;
+                const int index =
+                    juce::jlimit(0, analyzerDisplayPoints - 1, p + k);
+                value += rawDb[(size_t)index]
+                    * kernel[(size_t)(k + 3)];
+            }
+            frequencySmoothed[(size_t)p] = value;
         }
 
-        // Fast attack / slower release, applied after frequency smoothing.
         for (int p = 0; p < analyzerDisplayPoints; ++p)
         {
             const float target = frequencySmoothed[(size_t)p];
             const float old = analyzerDb[(size_t)p];
-            const float coeff = target > old ? 0.46f : 0.13f;
-            analyzerDb[(size_t)p] = old + coeff * (target - old);
+            const float coeff =
+                target > old ? attackCoeff : releaseCoeff;
+            analyzerDb[(size_t)p] =
+                old + coeff * (target - old);
         }
 
-        // 75% overlap: retain the newest 3072 samples and advance by 1024.
+        // 50% overlap: High/4096 low-frequency resolution at roughly half
+        // the FFT work of the previous 75% overlap implementation.
         std::move(analyzerInput.begin() + analyzerHopSize,
                   analyzerInput.end(),
                   analyzerInput.begin());
-        analyzerInputCount = analyzerFftSize - analyzerHopSize;
+        analyzerInputCount =
+            analyzerFftSize - analyzerHopSize;
         updated = true;
     }
 
@@ -2986,36 +3159,355 @@ void VVChainAudioProcessorEditor::updateAnalyzer()
             + graph.getWidth()
                 * static_cast<float>(p)
                 / static_cast<float>(analyzerDisplayPoints - 1);
-        const float db = analyzerDb[(size_t)p];
-        const float yNorm = juce::jlimit(
-            0.0f, 1.0f, (db + 90.0f) / 96.0f);
-        const float y = juce::jlimit(
-            graph.getY(), graph.getBottom(),
-            graph.getBottom() - yNorm * graph.getHeight());
-        points[(size_t)p] = { x, y };
+        const float yNorm =
+            juce::jlimit(0.0f, 1.0f,
+                (analyzerDb[(size_t)p] + 90.0f) / 90.0f);
+        points[(size_t)p] = {
+            x,
+            graph.getBottom() - yNorm * graph.getHeight()
+        };
     }
 
-    // Catmull-Rom -> cubic Bezier.  This removes the last visible straight-line
-    // corners without changing the measured display points.
+    std::array<float, analyzerDisplayPoints - 1> slopes {};
+    std::array<float, analyzerDisplayPoints> tangents {};
+
+    for (int i = 0; i < analyzerDisplayPoints - 1; ++i)
+    {
+        const float dx = juce::jmax(
+            1.0e-6f,
+            points[(size_t)i + 1].x - points[(size_t)i].x);
+        slopes[(size_t)i] =
+            (points[(size_t)i + 1].y - points[(size_t)i].y) / dx;
+    }
+
+    tangents[0] = slopes[0];
+    tangents[(size_t)analyzerDisplayPoints - 1] =
+        slopes[(size_t)analyzerDisplayPoints - 2];
+
+    for (int i = 1; i < analyzerDisplayPoints - 1; ++i)
+    {
+        const float a = slopes[(size_t)i - 1];
+        const float b = slopes[(size_t)i];
+
+        tangents[(size_t)i] =
+            a * b <= 0.0f ? 0.0f : (2.0f * a * b / (a + b));
+    }
+
     analyzerPath.clear();
     analyzerPath.startNewSubPath(points[0]);
 
     for (int i = 0; i < analyzerDisplayPoints - 1; ++i)
     {
-        const auto p0 = points[(size_t)juce::jmax(0, i - 1)];
         const auto p1 = points[(size_t)i];
-        const auto p2 = points[(size_t)(i + 1)];
-        const auto p3 = points[(size_t)juce::jmin(analyzerDisplayPoints - 1, i + 2)];
+        const auto p2 = points[(size_t)i + 1];
+        const float dx = p2.x - p1.x;
 
-        auto c1 = p1 + (p2 - p0) * (1.0f / 6.0f);
-        auto c2 = p2 - (p3 - p1) * (1.0f / 6.0f);
+        juce::Point<float> c1 {
+            p1.x + dx / 3.0f,
+            p1.y + tangents[(size_t)i] * dx / 3.0f
+        };
+        juce::Point<float> c2 {
+            p2.x - dx / 3.0f,
+            p2.y - tangents[(size_t)i + 1] * dx / 3.0f
+        };
+
         c1.y = juce::jlimit(graph.getY(), graph.getBottom(), c1.y);
         c2.y = juce::jlimit(graph.getY(), graph.getBottom(), c2.y);
-
         analyzerPath.cubicTo(c1, c2, p2);
     }
 
     repaint(graph.toNearestInt());
+}
+
+void VVChainAudioProcessorEditor::updateContributionAnalyzer()
+{
+    if (!analyzerEnabled || !isShowing())
+        return;
+
+    std::array<std::array<float, contributionFftSize>, 6> incoming {};
+    std::array<float*, 6> destinations {};
+    for (int stream = 0; stream < 6; ++stream)
+        destinations[(size_t)stream] =
+            incoming[(size_t)stream].data();
+
+    const int received = audioProcessor.popContributionSamples(
+        destinations, contributionFftSize);
+
+    if (received <= 0)
+        return;
+
+    const double sr = audioProcessor.getSampleRate() > 1000.0
+        ? audioProcessor.getSampleRate() : 48000.0;
+
+    int src = 0;
+    bool updated = false;
+
+    while (src < received)
+    {
+        const int room = contributionFftSize - contributionInputCount;
+        const int take = juce::jmin(room, received - src);
+
+        for (int stream = 0; stream < 6; ++stream)
+        {
+            std::copy_n(
+                incoming[(size_t)stream].data() + src,
+                take,
+                contributionInput[(size_t)stream].data()
+                    + contributionInputCount);
+        }
+
+        contributionInputCount += take;
+        src += take;
+
+        if (contributionInputCount < contributionFftSize)
+            continue;
+
+        const bool calculateThisFrame =
+            (++contributionFrameCounter & 1) == 0;
+
+        if (calculateThisFrame)
+        {
+            for (int module = 0; module < 3; ++module)
+            {
+                bool moduleActive = false;
+
+                if (module == 0)
+                {
+                    moduleActive =
+                        parameterValue("EQ_COLOR_GLOBAL_BYPASS") < 0.5f;
+                    bool anyBand = false;
+                    for (int band = 0; band < 4; ++band)
+                    {
+                        const auto n = juce::String(band + 1);
+                        anyBand = anyBand
+                            || (parameterValue("EQ_COLOR_BYPASS" + n) < 0.5f
+                                && parameterValue("EQ_COLOR" + n) > 0.0001f);
+                    }
+                    moduleActive = moduleActive && anyBand;
+                }
+                else if (module == 1)
+                {
+                    moduleActive =
+                        parameterValue("UDMBC_BYPASS") < 0.5f
+                        && (parameterValue("UDMBC_CLIPPER") > 0.5f
+                            || std::abs(parameterValue("UDMBC_INPUT")) > 0.001f
+                            || std::abs(parameterValue("UDMBC_OUTPUT")) > 0.001f);
+
+                    for (int band = 0; band < 4 && !moduleActive; ++band)
+                    {
+                        const auto n = juce::String(band + 1);
+                        moduleActive =
+                            parameterValue("UDMBC_BYPASS") < 0.5f
+                            && parameterValue("UDMBC_BAND_BYPASS" + n) < 0.5f
+                            && parameterValue("UDMBC_DEGREE" + n) > 0.0001f;
+                    }
+                }
+                else
+                {
+                    moduleActive =
+                        parameterValue("TAPE_BYPASS") < 0.5f
+                        && (std::abs(parameterValue("TAPE_INPUT")) > 0.001f
+                            || std::abs(parameterValue("TAPE_OUTPUT")) > 0.001f);
+
+                    for (int band = 0; band < 4 && !moduleActive; ++band)
+                    {
+                        const auto n = juce::String(band + 1);
+                        moduleActive =
+                            parameterValue("TAPE_BYPASS") < 0.5f
+                            && parameterValue("TAPE_BAND_BYPASS" + n) < 0.5f
+                            && parameterValue("TAPE_DEGREE" + n) > 0.0001f;
+                    }
+                }
+
+                auto& destination =
+                    contributionGrowthDb[(size_t)module];
+
+                if (!moduleActive)
+                {
+                    for (auto& value : destination)
+                        value *= 0.55f;
+                    continue;
+                }
+
+                const int preStream = module * 2;
+                const int postStream = preStream + 1;
+
+                std::fill(
+                    contributionPreFft.begin(),
+                    contributionPreFft.end(), 0.0f);
+                std::fill(
+                    contributionPostFft.begin(),
+                    contributionPostFft.end(), 0.0f);
+                std::fill(
+                    contributionDeltaFft.begin(),
+                    contributionDeltaFft.end(), 0.0f);
+
+                for (int n = 0; n < contributionFftSize; ++n)
+                {
+                    const float pre =
+                        contributionInput[(size_t)preStream][(size_t)n];
+                    const float post =
+                        contributionInput[(size_t)postStream][(size_t)n];
+
+                    contributionPreFft[(size_t)n] = pre;
+                    contributionPostFft[(size_t)n] = post;
+                    contributionDeltaFft[(size_t)n] = post - pre;
+                }
+
+                contributionWindow.multiplyWithWindowingTable(
+                    contributionPreFft.data(), contributionFftSize);
+                contributionWindow.multiplyWithWindowingTable(
+                    contributionPostFft.data(), contributionFftSize);
+                contributionWindow.multiplyWithWindowingTable(
+                    contributionDeltaFft.data(), contributionFftSize);
+
+                contributionFft.performFrequencyOnlyForwardTransform(
+                    contributionPreFft.data());
+                contributionFft.performFrequencyOnlyForwardTransform(
+                    contributionPostFft.data());
+                contributionFft.performFrequencyOnlyForwardTransform(
+                    contributionDeltaFft.data());
+
+                std::array<float, contributionDisplayPoints> rawGrowth {};
+                std::array<float, contributionDisplayPoints> smoothGrowth {};
+
+                const int maxBin = contributionFftSize / 2;
+                const float norm =
+                    4.0f / static_cast<float>(contributionFftSize);
+
+                for (int p = 0; p < contributionDisplayPoints; ++p)
+                {
+                    const float t = static_cast<float>(p)
+                        / static_cast<float>(contributionDisplayPoints - 1);
+                    const float centreHz =
+                        20.0f * std::pow(1000.0f, t);
+
+                    // The colored Delta overlay intentionally has about half
+                    // the smoothing width of the main analyzer so harmonics
+                    // remain visible without reverting to raw FFT teeth.
+                    constexpr float smoothingOctaves = 1.0f / 24.0f;
+                    const float halfOctave = smoothingOctaves * 0.5f;
+                    const float f0 =
+                        centreHz / std::pow(2.0f, halfOctave);
+                    const float f1 =
+                        centreHz * std::pow(2.0f, halfOctave);
+                    const double binScale =
+                        static_cast<double>(contributionFftSize) / sr;
+
+                    const int b0 = juce::jlimit(
+                        1, maxBin,
+                        static_cast<int>(std::floor(f0 * binScale)));
+                    const int b1 = juce::jlimit(
+                        b0, maxBin,
+                        static_cast<int>(std::ceil(f1 * binScale)));
+
+                    double prePower = 0.0;
+                    double postPower = 0.0;
+                    double deltaPower = 0.0;
+                    int count = 0;
+
+                    for (int bin = b0; bin <= b1; ++bin)
+                    {
+                        const double pre =
+                            static_cast<double>(
+                                contributionPreFft[(size_t)bin] * norm);
+                        const double post =
+                            static_cast<double>(
+                                contributionPostFft[(size_t)bin] * norm);
+                        const double delta =
+                            static_cast<double>(
+                                contributionDeltaFft[(size_t)bin] * norm);
+
+                        prePower += pre * pre;
+                        postPower += post * post;
+                        deltaPower += delta * delta;
+                        ++count;
+                    }
+
+                    if (count <= 0)
+                        continue;
+
+                    prePower /= static_cast<double>(count);
+                    postPower /= static_cast<double>(count);
+                    deltaPower /= static_cast<double>(count);
+
+                    const float postDb =
+                        juce::Decibels::gainToDecibels(
+                            static_cast<float>(
+                                std::sqrt(juce::jmax(0.0, postPower))),
+                            -120.0f);
+
+                    // ADDED mode: Delta supplies the spectral shape, while
+                    // Post>Pre decides whether that local change represents
+                    // genuinely added energy. Removed/compressed energy is not
+                    // drawn upward.
+                    if (postDb < -82.0f
+                        || postPower <= prePower * 1.005)
+                    {
+                        rawGrowth[(size_t)p] = 0.0f;
+                        continue;
+                    }
+
+                    const double ratio =
+                        deltaPower / juce::jmax(1.0e-18, postPower);
+
+                    const float growth =
+                        1.7f * 10.0f
+                        * static_cast<float>(
+                            std::log10(1.0 + ratio));
+
+                    rawGrowth[(size_t)p] =
+                        juce::jlimit(0.0f, 8.0f, growth);
+                }
+
+                constexpr std::array<float, 5> deltaKernel
+                {
+                    1.0f / 16.0f,
+                    4.0f / 16.0f,
+                    6.0f / 16.0f,
+                    4.0f / 16.0f,
+                    1.0f / 16.0f
+                };
+
+                for (int p = 0; p < contributionDisplayPoints; ++p)
+                {
+                    float value = 0.0f;
+                    for (int k = -2; k <= 2; ++k)
+                    {
+                        const int index = juce::jlimit(
+                            0, contributionDisplayPoints - 1, p + k);
+                        value += rawGrowth[(size_t)index]
+                            * deltaKernel[(size_t)(k + 2)];
+                    }
+                    smoothGrowth[(size_t)p] = value;
+                }
+
+                // 2048-point frames are evaluated every other frame:
+                // ~11.7 visual updates/s at 48 kHz. Fast attack retains newly
+                // generated harmonics, slower release makes the information
+                // readable rather than flickery.
+                constexpr float attack = 0.78f;
+                constexpr float release = 0.34f;
+
+                for (int p = 0; p < contributionDisplayPoints; ++p)
+                {
+                    const float target = smoothGrowth[(size_t)p];
+                    const float old = destination[(size_t)p];
+                    const float coeff =
+                        target > old ? attack : release;
+                    destination[(size_t)p] =
+                        old + coeff * (target - old);
+                }
+            }
+
+            updated = true;
+        }
+
+        contributionInputCount = 0;
+    }
+
+    if (updated)
+        repaint(eqGraphBounds().toNearestInt());
 }
 
 void VVChainAudioProcessorEditor::setIvoryTheme(bool ivory)

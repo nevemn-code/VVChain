@@ -79,7 +79,7 @@ required_worklet = [
     "analog(x,alpha,ch,b,x2=1)",
     "analytical first-order ADAA",
     "analogReconstructed",
-    "zoneBands(y,c,"analogLp",s.udmbc.x)",
+    'zoneBands(y,c,"analogLp",s.udmbc.x)',
     "colorX2?.[b]?2:1",
 ]
 for token in required_worklet:
@@ -93,6 +93,20 @@ assert cmake_version.group(1) == shown_version.group(1) == cache_version.group(1
     cmake_version.group(1), shown_version.group(1), cache_version.group(1)
 )
 assert not (ROOT / "docs" / "legacy analog-copper.html").exists(), "obsolete legacy analog page must remain deleted"
+
+# Analyzer / module contribution smoke.
+for token in [
+    "analyserNode.fftSize=4096",
+    "analyserNode.smoothingTimeConstant=0",
+    "ContributionFFT",
+    "processContributionSamples",
+    "contributionCurves",
+    '["#f4a63a","#4fc3ff","#d97cff"]',
+    'type:"analysisEnabled"',
+    'type:"contributionSamples"',
+    "postP<=preP*1.005",
+]:
+    assert token in text or token in worklet, token
 
 assert "void VVChainAudioProcessorEditor::mouseDoubleClick" in source
 assert 'resetParameter("EQ" + n + "_GAIN", 0.0f)' in source
@@ -113,4 +127,4 @@ forbidden in [
 ]:
     assert forbidden not in text, f"legacy/forbidden remains: {forbidden}"
 
-print(f"PASS Web smoke: external Worklet + v{cmake_version.group(1)} version parity")
+print(f"PASS Web smoke: v{cmake_version.group(1)} parity + smooth main analyzer + 3 module contribution overlays")

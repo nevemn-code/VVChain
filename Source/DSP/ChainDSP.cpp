@@ -561,9 +561,16 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
     dynamicDetectorInput.setSize(channels, maxBlock * 4, false, true, true);
 
+    for (auto& stream : contributionStreams)
+        stream.setSize(1, maxBlock, false, true, true);
+    contributionPreAnalogBase.setSize(
+        channels, maxBlock, false, true, true);
+
     eqOversampler.reset();
+    contributionEqDownsampler.reset();
     limiterOversampler.reset();
     eqOversampler.initProcessing(static_cast<size_t>(maxBlock));
+    contributionEqDownsampler.initProcessing(static_cast<size_t>(maxBlock));
     limiterOversampler.initProcessing(static_cast<size_t>(maxBlock));
 
     eqLatencySamples =
@@ -667,6 +674,7 @@ void VVChainDSP::reset()
     deessSplit.reset();
 
     eqOversampler.reset();
+    contributionEqDownsampler.reset();
     limiterOversampler.reset();
     eqDryDelay.reset();
     limiterLookahead.reset();
@@ -696,6 +704,34 @@ void VVChainDSP::reset()
     dryBuffer.clear();
     alignedDryBuffer.clear();
     dynamicDetectorInput.clear();
+    contributionPreAnalogBase.clear();
+    for (auto& stream : contributionStreams)
+        stream.clear();
+    contributionPreAnalogReady = false;
+}
+
+void VVChainDSP::captureContributionMono(
+    int stream,
+    const juce::AudioBuffer<float>& source,
+    int numSamples) noexcept
+{
+    if (!contributionAnalysisEnabled
+        || stream < 0 || stream >= 6
+        || numSamples <= 0)
+        return;
+
+    auto& destination = contributionStreams[(size_t)stream];
+    const int count = juce::jmin(numSamples, destination.getNumSamples());
+    const int nCh = juce::jmax(1, source.getNumChannels());
+    auto* out = destination.getWritePointer(0);
+
+    for (int n = 0; n < count; ++n)
+    {
+        float mono = 0.0f;
+        for (int ch = 0; ch < nCh; ++ch)
+            mono += source.getReadPointer(ch)[n];
+        out[n] = mono / static_cast<float>(nCh);
+    }
 }
 
 float VVChainDSP::rmsDetectPDR(float input,
@@ -1184,6 +1220,8 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     }
 
+    contributionPreAnalogReady = false;
+
     // Shared BAND 1 floor: one zero-sample-latency 30 Hz / 12 dB/oct
     // Butterworth HPF for ANALOG -> UDMBC -> TAPE. EQ/Dynamics remain upstream.
     // Keeping this filter singular prevents the three processors from accumulating
@@ -1206,6 +1244,60 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         for (int sample = 0; sample < osSamples; ++sample)
             data[sample] =
                 bandProcessingHighPass.process(data[sample], right);
+    }
+
+    // Analyzer-only exact pre-Analog base-rate tap. The signal already passed
+    // the audible EQ oversampler's up path, so only an identical down path is
+    // required here. This block is never mixed back into the audio output.
+    bool analogContributionActive = false;
+    if (contributionAnalysisEnabled && !p.eqColorGlobalBypass)
+    {
+        for (size_t band = 0; band < 4; ++band)
+        {
+            if (!p.eqColorBypass[band]
+                && p.eqColor[band] > 0.0001f)
+            {
+                analogContributionActive = true;
+                break;
+            }
+        }
+    }
+
+    if (analogContributionActive)
+    {
+        const int baseSamples = buffer.getNumSamples();
+
+        for (int ch = 0; ch < contributionPreAnalogBase.getNumChannels(); ++ch)
+            contributionPreAnalogBase.clear(ch, 0, baseSamples);
+
+        juce::dsp::AudioBlock<const float> analysisBaseInput(
+            contributionPreAnalogBase);
+        auto analysisBaseSub =
+            analysisBaseInput.getSubBlock(0, static_cast<size_t>(baseSamples));
+        auto analysisOsBlock =
+            contributionEqDownsampler.processSamplesUp(analysisBaseSub);
+
+        const int copyChannels = juce::jmin(
+            osChannels, static_cast<int>(analysisOsBlock.getNumChannels()));
+        const int copySamples = juce::jmin(
+            osSamples, static_cast<int>(analysisOsBlock.getNumSamples()));
+
+        for (int ch = 0; ch < copyChannels; ++ch)
+            std::copy_n(
+                osBlock.getChannelPointer(static_cast<size_t>(ch)),
+                copySamples,
+                analysisOsBlock.getChannelPointer(static_cast<size_t>(ch)));
+
+        juce::dsp::AudioBlock<float> analysisBaseOutput(
+            contributionPreAnalogBase);
+        auto analysisBaseOutSub =
+            analysisBaseOutput.getSubBlock(
+                0, static_cast<size_t>(baseSamples));
+
+        contributionEqDownsampler.processSamplesDown(
+            analysisBaseOutSub);
+
+        contributionPreAnalogReady = true;
     }
 
     // ANALOG COLOR v1.0.46: true four-band routing.
@@ -2026,10 +2118,35 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     applyEq(buffer, p);
     alignDryBuffer(numSamples);
 
+    const bool captureContributions =
+        contributionAnalysisEnabled && !p.masterBypass;
+
+    if (captureContributions)
+    {
+        if (contributionPreAnalogReady)
+            captureContributionMono(
+                0, contributionPreAnalogBase, numSamples);
+        else
+            captureContributionMono(0, buffer, numSamples);
+
+        captureContributionMono(1, buffer, numSamples);
+        captureContributionMono(2, buffer, numSamples);
+    }
+
     if (!p.udmbcBypass)
         applyOtt(buffer, p);
+
+    if (captureContributions)
+    {
+        captureContributionMono(3, buffer, numSamples);
+        captureContributionMono(4, buffer, numSamples);
+    }
+
     if (!p.tapeBypass)
         applyAType(buffer, p);
+
+    if (captureContributions)
+        captureContributionMono(5, buffer, numSamples);
 
     processDeEsser(buffer, p);
 

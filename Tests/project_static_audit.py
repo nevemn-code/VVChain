@@ -50,7 +50,7 @@ assert "github.run_id" not in build
 assert "vvchain-win-vst3-juce-9.0.2-vs2026-v1" in build
 assert "--target VVChain_VST3" in build
 assert "VVCHAIN_COPY_PLUGIN_AFTER_BUILD=OFF" in build
-assert "github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'" in build
+assert "github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'" in build
 assert "scipy" not in build.lower()
 
 assert "enable_testing()" not in cmake
@@ -64,5 +64,30 @@ assert "tone - tone" not in stress
 assert "scipy" not in stress.lower()
 assert ".github/VVCHAIN_RULES.md" in root_rules
 assert "if (dragXover < 0 && dragOverlapXover < 0)" in editor
+
+processor_h = read("Source/PluginProcessor.h")
+processor = read("Source/PluginProcessor.cpp")
+settings = read("Source/SettingsPanel.cpp")
+
+# v1.0.55 analyzer / contribution invariants.
+assert "analyzerFftOrder = 12" in editor_h
+assert "analyzerHopSize = analyzerFftSize / 2" in editor_h
+assert "contributionFftOrder = 11" in editor_h
+assert "std::atomic<bool> analyzerEnabled { false }" in processor_h
+assert "popContributionSamples" in processor_h + processor
+assert "setContributionAnalysisEnabled" in dsp_h + processor
+assert "contributionStream" in dsp_h + processor
+assert "ANALOG / UDMBC / TYPE-A" in settings
+assert "ADDED DELTA" in settings
+assert "0xfff4a63a" in editor
+assert "0xff4fc3ff" in editor
+assert "0xffd97cff" in editor
+assert "postPower <= prePower * 1.005" in editor
+assert "postDb < -82.0f" in editor
+assert "totalGrowth > 12.0f" in editor
+assert "Monotone cubic" in editor
+assert "visibilitychange" in web
+assert 'type:"contributionSamples"' in read("docs/vvchain-worklet.js")
+assert "ContributionFFT" in web
 
 print(f"PASS project static audit v{version.group(1)}")

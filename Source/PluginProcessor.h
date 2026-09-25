@@ -43,13 +43,19 @@ public:
     void setAnalyzerEnabled(bool enabled) noexcept { analyzerEnabled.store(enabled, std::memory_order_relaxed); }
     bool isAnalyzerEnabled() const noexcept { return analyzerEnabled.load(std::memory_order_relaxed); }
     int popAnalyzerSamples(float* destination, int maxSamples) noexcept;
+    int popContributionSamples(
+        const std::array<float*, 6>& destinations,
+        int maxSamples) noexcept;
 
 private:
     static constexpr int analyzerCapacity = 16384;
+    static constexpr int contributionCapacity = 32768;
     VVChainDSP dsp;
     std::array<float, analyzerCapacity> analyzerBuffer {};
     juce::AbstractFifo analyzerFifo { analyzerCapacity };
-    std::atomic<bool> analyzerEnabled { true };
+    std::array<std::array<float, contributionCapacity>, 6> contributionBuffers {};
+    juce::AbstractFifo contributionFifo { contributionCapacity };
+    std::atomic<bool> analyzerEnabled { false };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VVChainAudioProcessor)
 };

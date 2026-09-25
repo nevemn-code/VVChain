@@ -1,8 +1,8 @@
 # VVChain
 
-## 目前實際狀態（v1.0.54）
+## 目前實際狀態（v1.0.55）
 
-目前 `main` 的五個測試腳本在本機各重跑十輪均提前失敗，包含 `web_smoke.py` 的 Python 語法錯誤；完整位置和驗證限制見 [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md)。歷史版本日誌描述當時修改，現行行為請以 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 與實際程式為準。本次只更新說明，未更改 DSP。
+v1.0.55 修復既有 Web smoke／UI regression 的過時 source guard，Fast Gate 改為 main push 也執行，並把 Web smoke、project static audit、UI/interaction regression 各重跑十輪。實際通過狀態以本版 GitHub Actions 結果為準；DAW／pluginval／AAX 仍屬獨立驗證。
 
 目前主鏈的實際順序：EQ／Dynamic EQ + 四段 Analog → UDMBC → TAPE COLOR → De-Esser → Mix／Out → Solo → true-peak limiter → 主 Bypass／Delta。X1／X2／X3 共用於 Analog、UDMBC、TAPE COLOR 和頻段 Solo；EQ 四個點各有自己的頻率。LF／HF Roll-Off 供 6–72 dB/oct 的離散選項，預設 12 dB/oct。
 
@@ -21,7 +21,8 @@ INPUT
 → OUTPUT
 
 ## Main UI
-- 上方顯示 EQ response 與 Shared X-Over，不再使用即時 FFT analyzer。
+- 上方顯示 EQ response、Shared X-Over 與即時 Spectrum Analyzer。
+- 主 Spectrum 使用 4096-point Hann FFT；其上方另外顯示三個 ADDED-DELTA contribution layers：ANALOG（橘）、UDMBC（青）、TYPE-A（紫）。
 - 3 條可拖曳 Shared X-Over 線，分成 4 個頻段；線上滾輪調整 OVERLAP。
 - BAND 1–4：FREQ / GAIN / Q / ANALOG COLOR / UDMBC % / ATTACK / RELEASE / TAPE COLOR +。
 - 每個頻段的 ANALOG COLOR 完全獨立；使用者範圍 0–60%，0% = exact dry；X2 只把目前 ANALOG delta 放大為 ×2。
@@ -55,6 +56,17 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
+
+### v1.0.55
+- 主 Spectrum 改為 4096-point Hann / 50% overlap / 256 log points，使用 power-domain fractional-octave averaging、7-tap binomial smoothing、約 35 ms attack / 180 ms release、4.5 dB/oct @ 1 kHz tilt 與 monotone cubic Hermite 顯示。
+- 新增三層模組 Contribution Analyzer：ANALOG=橘金、UDMBC=青藍、TYPE-A=紫粉；顏色代表模組來源，不再用 Band 顏色表示 contribution。
+- Contribution 的訊號形狀來自各模組局部 Delta（Post−Pre）；只有 Post power > Pre power 且高於約 −82 dBFS 時才向上畫，避免 downward compression／被移除訊號被誤解成「新增」。
+- 三層從主 Spectrum 頂端依 ANALOG → UDMBC → TYPE-A 往上堆；單模組視覺成長最多 8 dB，三層總高度最多 12 dB。
+- Contribution 使用 2048-point Hann、較窄的頻率平滑與較快時間反應，刻意保留 harmonic / excitation 細節；Analyzer 關閉或 Editor 不可見時停止分析資料收集。
+- Native 為 Analog 建立 analyzer-only oversampled pre/post tap；分析支線不回寫 audio path、不改 DSP、PDC、APVTS、automation 或聲音。
+- Web Worklet 同步提供六個 pre/post contribution streams；Web Preview 用可重用 radix-2 2048 FFT 計算三個 module Delta overlay。
+- 修復既有 Web smoke Python 引號錯誤、UI regression 過時固定版本／註解 guard；Fast Gate 改為 main push 也執行，Web smoke、靜態 audit、UI/interaction regression 各 ×10。
+- Windows artifact 名稱與 Native/Web/Worklet/CMake 統一為 v1.0.55。
 
 ### v1.0.54
 - Spectrum Analyzer 由 2048 升為 4096-point FFT，採 75% overlap（1024-sample hop），改善低頻解析度並降低 frame-to-frame 跳動。

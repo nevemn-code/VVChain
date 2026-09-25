@@ -1,4 +1,4 @@
-# VVChain Architecture（v1.0.54）
+# VVChain Architecture（v1.0.55）
 
 > 以下以目前程式實際執行為準；本次封閉測試的失敗和限制見 `TEST_REPORT.md`。
 
@@ -111,3 +111,22 @@ The analyzer display now separates measurement smoothing from curve rendering:
 7. Catmull-Rom converted to cubic Bezier for the final path.
 
 These steps affect only metering/visualization. Audio samples are never reconstructed from the smoothed spectrum and DSP output remains unchanged.
+
+
+## Pro-style main analyzer + module contribution layers (v1.0.55)
+
+Main spectrum is display-only and uses 4096-point Hann FFT, 50% overlap, 256 logarithmic display points, power-domain fractional-octave averaging, seven-tap binomial smoothing, asymmetric time ballistics, 4.5 dB/oct tilt around 1 kHz and monotone cubic Hermite rendering.
+
+Three separate contribution layers identify the module that created added spectral content:
+
+- ANALOG: orange/gold.
+- UDMBC: cyan/blue.
+- TYPE-A: purple/pink.
+
+For each module the analyzer taps Pre and Post signals and derives the spectral shape from `Delta = Post - Pre`. The overlay is ADDED-only: it grows upward only where Post power is greater than Pre power and the Post spectrum is above the silence gate. This prevents compression/removal Delta from being drawn as added energy.
+
+The three layers stack from the current main-spectrum edge in processing order ANALOG -> UDMBC -> TYPE-A. Each module is capped at 8 dB of visual growth; combined growth is normalized to a 12 dB visual maximum. These numbers are visualization scaling, not absolute dBFS output readings.
+
+Contribution analysis uses a separate 2048-point Hann FFT path with lighter frequency smoothing and faster ballistics so harmonics remain visible. Native carries six synchronized mono analysis streams (Analog pre/post, UDMBC pre/post, Type-A pre/post). Analog's pre-tap is converted from the existing 4x EQ/Analog domain by an analyzer-only companion downsampler; that signal never feeds the audible chain.
+
+Analyzer collection is disabled when the Analyzer is OFF or the Native editor is not showing. Web also suspends contribution traffic when the page is hidden. None of these analyzer taps write APVTS, host automation, latency, or audible samples.

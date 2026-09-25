@@ -112,7 +112,7 @@ def source_assertions():
     assert 'DYN_DYNAMICS" + n, dynamics' in cpp, \
         "graph drag must write DYN_DYNAMICS"
     assert cpp.count("juce::StringArray({") == 0, "no ambiguous JUCE StringArray brace initializers"
-    assert "Direct DYNAMICS target control takes priority" in cpp, "DYNAMICS point must be hit before static EQ"
+    assert "Static EQ point always wins when the pointer is actually on it." in cpp, "static/dynamic graph hit priority rule missing"
     assert "graphHintActiveMask" not in cpp, "dead Native graph hint mask must stay removed"
     assert "graphHintBand" not in cpp, "legacy Native graph hint band state must stay removed"
     assert "graphHintAutoHideAt" not in cpp, "legacy Native graph hint timer must stay removed"
@@ -427,8 +427,8 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "c.typeSlow[b]" not in worklet_tape
     assert "const xs=s.udmbc.x;" in worklet_tape
     assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
-    assert "VVCHAIN v1.0.44" in web
-    assert "VVCHAIN v1.0.44" in editor
+    assert re.search(r"VVCHAIN v\d+\.\d+\.\d+", web)
+    assert re.search(r"VVCHAIN v\d+\.\d+\.\d+", editor)
     assert "LAST " not in editor
 
     # ANALOG v1.0.16 uses unity-normalized smooth algebraic saturation.
@@ -520,8 +520,8 @@ def test_v103_ui_rules_50():
     assert "Restored graph axis labels" in cpp
     assert "20 Hz" in cpp and "20 kHz" in cpp
 
-    assert "VVCHAIN v1.0.44" in web
-    assert "VVCHAIN v1.0.44" in cpp
+    assert re.search(r"VVCHAIN v\d+\.\d+\.\d+", web)
+    assert re.search(r"VVCHAIN v\d+\.\d+\.\d+", cpp)
     assert "LAST " not in web
     assert "LAST " not in cpp
 

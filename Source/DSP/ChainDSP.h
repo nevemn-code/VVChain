@@ -115,6 +115,17 @@ public:
 
     int getLatencySamples() const noexcept { return totalLatencySamples; }
 
+    // UI-only analyzer taps. These never feed the audio path.
+    void setContributionAnalysisEnabled(bool enabled) noexcept
+    {
+        contributionAnalysisEnabled = enabled;
+    }
+
+    const juce::AudioBuffer<float>& contributionStream(int index) const noexcept
+    {
+        return contributionStreams[(size_t)juce::jlimit(0, 5, index)];
+    }
+
 private:
 
     struct Biquad
@@ -386,6 +397,9 @@ private:
 
     void processMasterLimiter(juce::AudioBuffer<float>& buffer, bool active);
     void alignDryBuffer(int numSamples);
+    void captureContributionMono(int stream,
+                                 const juce::AudioBuffer<float>& source,
+                                 int numSamples) noexcept;
 
     std::array<Biquad, 4> eq {};
     std::array<EqFilter, 4> dynMidEq {};
@@ -467,6 +481,17 @@ private:
         juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple,
         true, true
     };
+
+    // Analyzer-only companion downsampler. It is active only while the editor
+    // Analyzer is visible and Analog contribution is non-zero. It never feeds
+    // the audible signal; it converts the exact oversampled pre-Analog tap back
+    // to base rate so Post-Pre truly represents the Analog module delta.
+    juce::dsp::Oversampling<float> contributionEqDownsampler
+    {
+        2, 2,
+        juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple,
+        true, true
+    };
     juce::dsp::Oversampling<float> limiterOversampler
     {
         2, 2,
@@ -478,6 +503,13 @@ private:
     juce::dsp::DelayLine<float> masterDryDelay { 8192 };
     juce::AudioBuffer<float> dryBuffer;
     juce::AudioBuffer<float> alignedDryBuffer;
+
+    // Six mono base-rate streams:
+    // 0/1 ANALOG pre/post, 2/3 UDMBC pre/post, 4/5 TYPE-A pre/post.
+    std::array<juce::AudioBuffer<float>, 6> contributionStreams;
+    juce::AudioBuffer<float> contributionPreAnalogBase;
+    bool contributionAnalysisEnabled = false;
+    bool contributionPreAnalogReady = false;
 
     Crossover4th soloPreXover1 {}, soloPreXover2 {}, soloPreXover3 {};
     Crossover4th soloPostXover1 {}, soloPostXover2 {}, soloPostXover3 {};

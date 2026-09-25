@@ -1,10 +1,10 @@
-# VVChain Test Plan（v1.0.54）
+# VVChain Test Plan（v1.0.55）
 
-目前五個現有測試腳本在十輪本機封閉測試均未通過；詳見 `TEST_REPORT.md`。下列 CI 觸發描述的是配置，不代表驗證已成功。
+v1.0.55 已修正先前已知的 Web smoke Python 引號錯誤與 UI regression 過時固定版本／註解 guard。Fast Gate 現在在 PR、main push、手動執行三種情況都會跑；實際通過與否仍以本版 Actions 為準。
 
 ## Default Fast Gate
 
-Runs on pull requests and is intentionally lightweight:
+Runs on pull requests, main pushes and manual workflow dispatch, and is intentionally lightweight:
 
 - Source ↔ Web Preview synchronization rule.
 - Version-only rule.
@@ -21,7 +21,7 @@ The Fast Gate must not install the full Linux audio/X11 toolchain or rebuild Nat
 
 - GitHub Pages deploys independently from `docs/`.
 - Windows builds only the `VVChain_VST3` target.
-- The PR Fast Gate is not repeated after merge.
+- Fast Gate is repeated on the main push.
 - The Windows build reuses a stable incremental JUCE/MSVC build cache and does not copy the plugin into the runner's local plugin folder.
 
 ## Manual Full Validation
@@ -98,3 +98,16 @@ Still required when preparing a distributable release:
 - Final rendering must use a cubic path rather than raw line-to-line FFT vertices.
 - Analyzer ON/OFF must still leave APVTS, DSP output and reported latency unchanged.
 - Windows VST3 build must verify Analyzer fields live in the editor instance, not in MetalLookAndFeel.
+
+
+## Main + contribution analyzer regression (v1.0.55)
+
+- Main analyzer: 4096 Hann, 50% overlap / 2048 hop, 256 log display points.
+- Main display must use power averaging, seven-tap binomial smoothing, asymmetric attack/release, 4.5 dB/oct @ 1 kHz tilt and monotone cubic interpolation.
+- Module contribution identity is fixed: ANALOG orange/gold, UDMBC cyan/blue, TYPE-A purple/pink.
+- Contribution source is each module's local Post-Pre Delta, but upward drawing is allowed only where Post power > Pre power and Post is above the silence gate.
+- Native must expose synchronized Analog/UDMBC/TYPE-A pre/post analysis streams without feeding those streams back to audio.
+- Web Worklet must send contribution data only while analysis is enabled; hidden tabs must stop analyzer work.
+- Analyzer OFF / editor closed must remove contribution FFT/FIFO work while leaving DSP output, latency and parameters unchanged.
+- Visual growth is capped at 8 dB per module and 12 dB combined.
+- Fast Gate runs Web smoke x10, whole-project static audit x10 and UI/interaction regression x10 on the main push.

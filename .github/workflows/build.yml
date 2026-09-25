@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       full_validation:
-        description: "Run full native build + 500-case Analog + 5x DSP stress"
+        description: "Run full native build + 500-case Analog + 10x DSP stress"
         required: false
         default: false
         type: boolean
@@ -32,7 +32,7 @@ concurrency:
 jobs:
   fast_checks:
     name: Fast Gate
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -81,10 +81,13 @@ jobs:
         grep -RIn 'VVCHAIN v1\.' Source docs README.md Tests/dynamic_eq_ui.py >/dev/null
         echo "Fast static gate: PASS"
 
-    - name: JavaScript / Web smoke
+    - name: JavaScript / Web smoke x10
+      shell: bash
       run: |
         node --check docs/vvchain-worklet.js
-        python3 Tests/web_smoke.py
+        for i in {1..10}; do
+          python3 Tests/web_smoke.py
+        done
 
     - name: Whole-project static audit x10
       shell: bash
@@ -93,8 +96,19 @@ jobs:
           python3 Tests/project_static_audit.py
         done
 
-    - name: UI / interaction regression
-      run: python3 Tests/dynamic_eq_ui.py
+    - name: UI / interaction regression x10
+      shell: bash
+      run: |
+        for i in {1..10}; do
+          python3 Tests/dynamic_eq_ui.py
+        done
+
+    - name: Analyzer contribution matrix x10
+      shell: bash
+      run: |
+        for i in {1..10}; do
+          python3 Tests/analyzer_matrix.py
+        done
 
   windows_vst3:
     name: Windows VST3 Release
@@ -134,15 +148,15 @@ jobs:
       run: |
         $plugin = Get-ChildItem -Path build-vst3 -Recurse -Directory -Filter "VVChain.vst3" | Select-Object -First 1
         if ($null -eq $plugin) { Write-Error "VVChain.vst3 was not produced." }
-        $zip = Join-Path $env:GITHUB_WORKSPACE "VVChain-v1.0.49-Windows-VST3.zip"
+        $zip = Join-Path $env:GITHUB_WORKSPACE "VVChain-v1.0.55-Windows-VST3.zip"
         Compress-Archive -Path $plugin.FullName -DestinationPath $zip -Force
         if (-not (Test-Path $zip)) { Write-Error "VST3 ZIP was not created." }
 
     - name: Upload Windows VST3
       uses: actions/upload-artifact@v4
       with:
-        name: VVChain-v1.0.49-Windows-VST3
-        path: VVChain-v1.0.49-Windows-VST3.zip
+        name: VVChain-v1.0.55-Windows-VST3
+        path: VVChain-v1.0.55-Windows-VST3.zip
         if-no-files-found: error
 
   full_validation:
@@ -190,4 +204,4 @@ jobs:
     - name: Full DSP validation
       run: |
         python3 Tests/analog_matrix.py
-        python3 Tests/reference_stress.py --iterations 5
+        python3 Tests/reference_stress.py --iterations 10

@@ -1,4 +1,4 @@
-# VVChain Validation Status（v1.0.54；既有測試基準仍為 v1.0.48）
+# VVChain Validation Status（v1.0.55；歷史基準仍保留於下文）
 
 This document records what the repository actually verifies. It is not a claim of DAW certification.
 
@@ -71,3 +71,12 @@ Analyzer 新增的 Native FIFO tap / FFT 與 Web AnalyserNode branch 均為視�
 v1.0.53 Pages deployment passed, but Windows VST3 failed because Analyzer editor state was accidentally declared inside the nested MetalLookAndFeel class. v1.0.54 moves that state to VVChainAudioProcessorEditor and simultaneously upgrades visual smoothing to 4096 FFT, 75% overlap, fractional-octave RMS averaging, Gaussian display smoothing, asymmetric time smoothing and cubic rendering.
 
 The analyzer changes remain visualization-only; no DSP formula or audio parameter is changed.
+
+
+## v1.0.55 validation target
+
+本版修復先前已知的 `web_smoke.py` 引號語法錯誤、`dynamic_eq_ui.py` 的固定 v1.0.44 斷言與過時註解 guard，並讓 Fast Gate 在 main push 實際執行。CI 配置要求 Web smoke ×10、whole-project static audit ×10、UI/interaction regression ×10，再與 Windows VST3 build 和 Pages deployment 分別驗證。
+
+Analyzer 本版新增的 pre/post taps、Delta FFT 與彩色 contribution layer 均為 metering 支線。Native Analog 的 pre-tap 使用獨立 analyzer-only downsampling path，結果只送往 analyzer FIFO；不回寫 `buffer`。因此設計意圖是不改變 DSP / PDC，但是否成功編譯及所有 source guards 是否通過，必須以 v1.0.55 Actions 實際結果為準。
+
+DAW、pluginval、實際 CPU profiler、AAX 簽署與跨 sample-rate host 實測仍不由 source regression 取代。
