@@ -76,6 +76,9 @@ assert "std::atomic<bool> analyzerEnabled { false }" in processor_h
 assert "popContributionSamples" not in processor_h + processor
 assert "setContributionAnalysisEnabled" not in dsp_h + processor
 assert "contributionStream" not in dsp_h + processor
+assert "contribAnalog" not in web
+assert "contribUdmbc" not in web
+assert "contribType" not in web
 assert "analyzerPath.cubicTo" in editor
 assert "Nonlinear Analog ADAA v2 remains fixed at 4x" in dsp
 assert "eqOversampler.processSamplesUp" in dsp
