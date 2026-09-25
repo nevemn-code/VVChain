@@ -618,7 +618,7 @@ def test_v1018_interaction_visual_sync():
     # Main lower BYPASS label is centered above its round power button.
     assert 'const bool monitorCard = title == "MASTER";' in cpp
     assert 'juce::Justification::centred' in cpp
-    assert "class='masterBypassLabel'>BYPASS</div><button class='deessPower'" in web
+    assert "class='masterBypassLabel'>BYPASS</div><button class='masterPower'" in web
 
     # Floating readout has three short lines and switches identity by hover target.
     assert 'juce::String(dynamicReadout ? "DYN EQ" : "EQ")' in cpp
