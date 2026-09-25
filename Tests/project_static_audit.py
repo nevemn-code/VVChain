@@ -96,7 +96,7 @@ assert "transientAmount" in dsp_h + processor
 assert "vvFastLogPositive" in dsp
 assert "transientBand1SidechainHPF" in dsp_h + dsp
 assert "const float energySq" in dsp
-assert "const float bandSignal = bandsByChannel[ch][band] * transientGain[band]" in dsp
+assert "float bandSignal = bandsByChannel[ch][band] * transientGain[band]" in dsp
 for dead in ("DEESS_", "processDeEsser", "DeEssState", "deessStereo", "state.de.", "de:{"):
     assert dead not in editor_h + editor + processor_h + processor + dsp_h + dsp + web + read("docs/vvchain-worklet.js"), dead
 
