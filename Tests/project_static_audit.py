@@ -90,13 +90,20 @@ assert "if (analyzerOn && p.deltaMonitor)" in processor
 assert 'parameterValue("DELTA_MONITOR") > 0.5f' in editor
 assert "refreshAnalyzerTap" in web
 
-# TRANSIENT must precede Analog inside the shared audible split and De-Esser
-# must be physically absent from Native/Web realtime code.
+# TRANSIENT is base-rate, precedes Analog, uses a stereo-linked detector,
+# and injects only band deltas so it cannot add a second full-band crossover
+# phase rotation. It must not wake the Analog 4x path by itself.
 assert "transientAmount" in dsp_h + processor
+assert "void VVChainDSP::applyTransient" in dsp
+assert "applyTransient(buffer, p);" in dsp
 assert "vvFastLogPositive" in dsp
 assert "transientBand1SidechainHPF" in dsp_h + dsp
+assert "transientXover1" in dsp_h + dsp
 assert "const float energySq" in dsp
-assert "float bandSignal = bandsByChannel[ch][band] * transientGain[band]" in dsp
+assert "inputByChannel[ch] + delta" in dsp
+assert "bandsByChannel[ch][band] * (gains[band] - 1.0f)" in dsp
+assert "anyBandStageActive" not in dsp
+assert "transientGain[band]" not in dsp
 for dead in ("DEESS_", "processDeEsser", "DeEssState", "deessStereo", "state.de.", "de:{"):
     assert dead not in editor_h + editor + processor_h + processor + dsp_h + dsp + web + read("docs/vvchain-worklet.js"), dead
 
