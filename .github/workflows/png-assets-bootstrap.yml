@@ -1,0 +1,53 @@
+name: Build Real PNG UI Assets
+
+on:
+  push:
+    branches: [ "ui-real-png-v1.0.67-final" ]
+    paths:
+      - "Tools/generate_ui_png_assets.py"
+      - ".github/workflows/png-assets-bootstrap.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  render_png_assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install Pillow
+        run: python -m pip install --disable-pip-version-check --no-input pillow
+      - name: Render true raster PNG assets
+        run: python Tools/generate_ui_png_assets.py
+      - name: Verify PNG signature and required assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in             docs/assets/ui/png/ivory_knob_strip.png             docs/assets/ui/png/studio_knob_strip.png             docs/assets/ui/png/muted_knob_strip.png             docs/assets/ui/png/ivory_button_on.png             docs/assets/ui/png/bypass_led_red.png; do
+            test -s "$f"
+            python - "$f" <<'PY'
+import sys
+p=sys.argv[1]
+with open(p,'rb') as fh:
+    assert fh.read(8)==b'\x89PNG\r\n\x1a\n', p
+PY
+          done
+      - name: Commit rendered PNGs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "VVChain UI Asset Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/assets/ui/png
+          if git diff --cached --quiet; then
+            echo "PNG assets already current."
+            exit 0
+          fi
+          git commit -m "[v1.0.67] Assets: render real PNG hardware skin"
+          git push origin HEAD:ui-real-png-v1.0.67-final
