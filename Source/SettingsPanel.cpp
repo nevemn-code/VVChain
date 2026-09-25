@@ -97,9 +97,9 @@ SettingsPanel::Content::Content()
 void SettingsPanel::Content::setIvoryTheme(bool ivory)
 {
     ivoryTheme = ivory;
-    themeButton.setButtonText(ivoryTheme ? "THEME  IVORY" : "THEME  DARK");
+    themeButton.setButtonText(ivoryTheme ? "THEME  IVORY GOLD" : "THEME  STUDIO TEAL");
     themeButton.setColour(juce::TextButton::buttonColourId,
-        ivoryTheme ? juce::Colour(0xffddd3c5) : juce::Colour(0xff181c21));
+        ivoryTheme ? juce::Colour(0xffddd3c5) : juce::Colour(0xff142023));
     themeButton.setColour(juce::TextButton::buttonOnColourId,
         ivoryTheme ? juce::Colour(0xffd3c6b5) : juce::Colour(0xff242a31));
     themeButton.setColour(juce::TextButton::textColourOffId,
@@ -113,7 +113,7 @@ void SettingsPanel::Content::setAnalyzerEnabled(bool enabled)
     analyzerEnabled = enabled;
     analyzerButton.setButtonText(analyzerEnabled ? "ANALYZER  ON" : "ANALYZER  OFF");
     analyzerButton.setColour(juce::TextButton::buttonColourId,
-        ivoryTheme ? juce::Colour(0xffddd3c5) : juce::Colour(0xff181c21));
+        ivoryTheme ? juce::Colour(0xffddd3c5) : juce::Colour(0xff142023));
     analyzerButton.setColour(juce::TextButton::textColourOffId,
         ivoryTheme ? juce::Colour(0xff2a2d31) : juce::Colour(0xffd9e0e7));
     repaint();
@@ -131,7 +131,7 @@ void SettingsPanel::Content::drawRow(juce::Graphics& g, int y,
                                     bool enabled)
 {
     auto row = juce::Rectangle<int>(7, y, getWidth() - 14, 28);
-    g.setColour(ivoryTheme ? juce::Colour(0xffeee7dc) : juce::Colour(0xff181c21));
+    g.setColour(ivoryTheme ? juce::Colour(0xffeee7dc) : juce::Colour(0xff142023));
     g.fillRoundedRectangle(row.toFloat(), 3.0f);
     g.setColour(ivoryTheme ? juce::Colour(0xffc8bdaf) : juce::Colour(0xff343a42));
     g.drawRoundedRectangle(row.toFloat(), 3.0f, 1.0f);
@@ -178,7 +178,7 @@ void SettingsPanel::Content::drawSection(juce::Graphics& g, int& y,
 
 void SettingsPanel::Content::paint(juce::Graphics& g)
 {
-    g.fillAll(ivoryTheme ? juce::Colour(0xfff3eee4) : juce::Colour(0xff111419));
+    g.fillAll(ivoryTheme ? juce::Colour(0xfff3eee4) : juce::Colour(0xff101719));
     int y = 8;
 
     g.setFont(juce::FontOptions(9.5f).withStyle("Bold"));
@@ -271,9 +271,9 @@ void SettingsPanel::resized()
 void SettingsPanel::paint(juce::Graphics& g)
 {
     auto r = getLocalBounds().toFloat();
-    g.setColour(ivoryTheme ? juce::Colour(0xfff3eee4) : juce::Colour(0xff111419));
+    g.setColour(ivoryTheme ? juce::Colour(0xfff3eee4) : juce::Colour(0xff101719));
     g.fillRoundedRectangle(r, 7.0f);
-    g.setColour(ivoryTheme ? juce::Colour(0xffa99e91) : juce::Colour(0xff525a64));
+    g.setColour(ivoryTheme ? juce::Colour(0xffa99e91) : juce::Colour(0xff8d5a40));
     g.drawRoundedRectangle(r.reduced(0.5f), 7.0f, 1.0f);
 
     g.setColour(ivoryTheme ? juce::Colour(0xffe5dccf) : juce::Colour(0xff171b20));
