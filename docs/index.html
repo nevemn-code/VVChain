@@ -997,13 +997,10 @@ function drawEQ(){
     traceMain();eqCtx.lineTo(w,h);eqCtx.lineTo(0,h);eqCtx.closePath();
     eqCtx.fillStyle=tc("#d8dbe11f","#56585c1a");eqCtx.fill();
 
-    const moduleColors=ivoryTheme
-      ?["#d88b1e","#2a9fd8","#b35be0"]
-      :["#f4a63a","#4fc3ff","#d97cff"];
     eqCtx.strokeStyle=tc("#4b556044","#817a7044");
     eqCtx.lineWidth=1;
     eqCtx.stroke();
-  });
+  }
 
   eqCtx.fillStyle=tc("#b8bec6","#4f5358");
   eqCtx.font="bold 7px Consolas";
