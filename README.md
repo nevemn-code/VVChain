@@ -1,12 +1,12 @@
 # VVChain
 
-## 目前實際狀態（v1.0.57）
+## 目前實際狀態（v1.0.58）
 
 v1.0.55 修復既有 Web smoke／UI regression 的過時 source guard，Fast Gate 改為 main push 也執行，並把 Web smoke、project static audit、UI/interaction regression 各重跑十輪。實際通過狀態以本版 GitHub Actions 結果為準；DAW／pluginval／AAX 仍屬獨立驗證。
 
 目前主鏈的實際順序：EQ／Dynamic EQ + 四段 Analog → UDMBC → TAPE COLOR → De-Esser → Mix／Out → Solo → true-peak limiter → 主 Bypass／Delta。X1／X2／X3 共用於 Analog、UDMBC、TAPE COLOR 和頻段 Solo；EQ 四個點各有自己的頻率。LF／HF Roll-Off 供 6–72 dB/oct 的離散選項，預設 12 dB/oct。
 
-Analog 0% 的**非線性增量**為零；整條 EQ 路徑仍經過 oversampling 和分頻重建，未完成全鏈 bit-exact null 驗證。Native 的 Analog 在 4× EQ oversampling 內，Web 在 Worklet rate 運作，兩版不能視為逐 sample 相同。Windows VST3／DAW 實測尚未由這次封閉測試證實。
+Analog 全部 0% 或 Bypass 時，Native 不再執行 4× oversampling；Linear EQ / Dynamic EQ 固定在 host sample rate。只有實際啟用 Analog ADAA v2 時才進入 4×，48 kHz 專案即為 192 kHz nonlinear domain。Native 的 Analog 在 4× EQ oversampling 內，Web 在 Worklet rate 運作，兩版不能視為逐 sample 相同。Windows VST3／DAW 實測尚未由這次封閉測試證實。
 
 四段式音訊鏈結 VST3 / AAX 專案，主介面固定為單一 plugin 視窗。
 
@@ -57,12 +57,21 @@ https://nevemn-code.github.io/VVChain/
 
 ## 版本日誌
 
-### v1.0.57
+### v1.0.58
+- CPU/音質分流：Linear EQ / Dynamic EQ 從 Analog 4× domain 拆出，固定在 host rate；Analog ADAA v2 transfer、state、TT/SS、X2 與 4× oversampling 保持不變。
+- Analog 四段全部 0%／Bypass 時完全跳過 upsample → ADAA → downsample，以等延遲純 delay 維持固定 PDC；重新啟用時延遲狀態持續 warm。
+- Dynamic EQ 的 DYNAMICS=0% 增加 static fast path：相同固定係數只建立一次/block，不再每 sample 重建。
+- UDMBC 四段 Degree=0 / bypass 與 Type-A 四段 Degree=0 / bypass 時直接 lazy return，不執行 crossover、detector、envelope 或 waveshaper。
+- 移除 ANALOG / UDMBC / TYPE-A contribution Analyzer：Native 六條 pre/post FIFO、2048 FFT、額外 analyzer downsampler，以及 Web Worklet contribution stream 全部取消；主 4096-point Spectrum Analyzer 保留。
+- Analyzer OFF 或 Editor 關閉時主 Analyzer 仍停止 FIFO/FFT 工作；本版不以降低 ADAA oversampling 或改變 nonlinear transfer 換 CPU。
+
+
+### v1.0.58
 - DELTA 開啟時，Spectrum Analyzer 不再保留原始輸入波形：Native 改抓 `dsp.process()` 完成後的實際 Delta 輸出；Web 改把 Analyzer tap 從 source 切到 AudioWorklet 最終輸出。
 - DELTA 模式只顯示目前耳朵實際聽到的 `OUTPUT − aligned DRY` 頻譜；ANALOG / UDMBC / TYPE-A contribution layers 暫停並清空，避免又疊回原音參考。
 - DELTA 關閉後自動回到原本模式：灰色主 Spectrum = 原始／pre-DSP reference，三色 contribution layer 顯示各模組增加的頻譜內容。
 - 修正 #1254 Fast Gate 抓到的過時 Web smoke 斷言，並更新 project static audit 與 UI regression 為目前 source contracts。
-- 版本同步 Native / Web / Worklet / CMake / Windows VST3 artifact 至 v1.0.57。
+- 版本同步 Native / Web / Worklet / CMake / Windows VST3 artifact 至 v1.0.58。
 
 ### v1.0.56
 - 修正 v1.0.55 Fast Gate 在 Web smoke 的既有 Python 語法錯誤：遺漏的 `for forbidden in [...]` 已補回。
