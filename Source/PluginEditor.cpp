@@ -2277,6 +2277,30 @@ void VVChainAudioProcessorEditor::setGraphControlMoving(bool moving)
     }
 }
 
+void VVChainAudioProcessorEditor::pulseGraphControlMovement(
+    const juce::StringArray& ids)
+{
+    if (ids.isEmpty())
+    {
+        clearGraphControlState();
+        return;
+    }
+
+    setGraphControlState(ids, true);
+    const int generation = ++graphMovementPulseGeneration;
+    auto safeThis =
+        juce::Component::SafePointer<VVChainAudioProcessorEditor>(this);
+
+    juce::Timer::callAfterDelay(
+        110,
+        [safeThis, generation]
+        {
+            if (safeThis != nullptr
+                && safeThis->graphMovementPulseGeneration == generation)
+                safeThis->clearGraphControlState();
+        });
+}
+
 void VVChainAudioProcessorEditor::timerCallback()
 {
     for (auto& k : knobs)
@@ -3671,6 +3695,8 @@ void VVChainAudioProcessorEditor::mouseDown(
             && handleRect.contains(pos))
         {
             dragDynamicHandleBand = b;
+            graphLastDragPosition = pos;
+            clearGraphControlState();
             dragBand = -1;
             dragOffsetBand = -1;
             dragXover = -1;
@@ -3745,10 +3771,8 @@ void VVChainAudioProcessorEditor::mouseDown(
                 audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
             parameter->beginChangeGesture();
 
-        juce::StringArray graphIds;
-        graphIds.add("DYN_DYNAMICS" + n);
-        graphIds.add("EQ" + n + "_FREQ");
-        setGraphControlState(graphIds, false);
+        graphLastDragPosition = pos;
+        clearGraphControlState();
 
             showGraphDragHint = false;
             graphDragHint.clear();
@@ -3791,10 +3815,8 @@ void VVChainAudioProcessorEditor::mouseDown(
             if (auto* parameter = audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
                 parameter->beginChangeGesture();
 
-            juce::StringArray graphIds;
-            graphIds.add("EQ" + n + "_FREQ");
-            graphIds.add("EQ" + n + "_GAIN");
-            setGraphControlState(graphIds, false);
+            graphLastDragPosition = pos;
+            clearGraphControlState();
 
             showGraphDragHint = false;
             graphDragHint.clear();
@@ -3998,7 +4020,13 @@ void VVChainAudioProcessorEditor::mouseDrag(
             juce::jlimit(-100.f, 100.f,
                          dynamicHandleDragStartValue + deltaDynamics);
 
-        setGraphControlMoving(true);
+        if (std::abs(event.position.y - graphLastDragPosition.y) > 0.35f)
+        {
+            graphLastDragPosition = event.position;
+            juce::StringArray movingIds;
+            movingIds.add("DYN_DYNAMICS" + n);
+            pulseGraphControlMovement(movingIds);
+        }
         setParameter("DYN_DYNAMICS" + n, dynamics);
         if (auto* dynamicsKnob = findKnob("DYN_DYNAMICS" + n))
             dynamicsKnob->slider->setValue(
@@ -4030,16 +4058,39 @@ void VVChainAudioProcessorEditor::mouseDrag(
         const float offset =
             eqYToDb(graph, event.position.y);
 
-        setGraphControlMoving(true);
-        setParameter("EQ" + n + "_FREQ", hz);
-        setParameter("EQ" + n + "_GAIN", offset);
+        constexpr float movementThreshold = 0.35f;
+        const bool freqMoved =
+            std::abs(event.position.x - graphLastDragPosition.x)
+                > movementThreshold;
+        const bool gainMoved =
+            std::abs(event.position.y - graphLastDragPosition.y)
+                > movementThreshold;
 
-        if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
-            freqKnob->slider->setValue(
-                hz, juce::dontSendNotification);
-        if (auto* gainKnob = findKnob("EQ" + n + "_GAIN"))
-            gainKnob->slider->setValue(
-                offset, juce::dontSendNotification);
+        juce::StringArray movingIds;
+
+        if (freqMoved)
+        {
+            setParameter("EQ" + n + "_FREQ", hz);
+            movingIds.add("EQ" + n + "_FREQ");
+            if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
+                freqKnob->slider->setValue(
+                    hz, juce::dontSendNotification);
+        }
+
+        if (gainMoved)
+        {
+            setParameter("EQ" + n + "_GAIN", offset);
+            movingIds.add("EQ" + n + "_GAIN");
+            if (auto* gainKnob = findKnob("EQ" + n + "_GAIN"))
+                gainKnob->slider->setValue(
+                    offset, juce::dontSendNotification);
+        }
+
+        if (!movingIds.isEmpty())
+        {
+            graphLastDragPosition = event.position;
+            pulseGraphControlMovement(movingIds);
+        }
 
         showGraphDragHint = false;
         graphDragHint.clear();
@@ -4166,21 +4217,43 @@ void VVChainAudioProcessorEditor::mouseDrag(
                 -100.f, 100.f,
                 (targetGain - offset) / 18.f * 100.f);
 
-        setGraphControlMoving(true);
-        setParameter("EQ" + n + "_FREQ", hz);
-        setParameter("DYN_DYNAMICS" + n, dynamics);
+        constexpr float movementThreshold = 0.35f;
+        const bool freqMoved =
+            std::abs(event.position.x - graphLastDragPosition.x)
+                > movementThreshold;
+        const bool dynamicsMoved =
+            std::abs(event.position.y - graphLastDragPosition.y)
+                > movementThreshold;
 
-        if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
-            freqKnob->slider->setValue(
-                parameterValue("EQ" + n + "_FREQ"),
-                juce::sendNotificationSync);
+        juce::StringArray movingIds;
 
-        // APVTS is the source of truth; also refresh the visible knob
-        // synchronously so graph drag and lower DYNAMICS never visually diverge.
-        if (auto* dynamicsKnob = findKnob("DYN_DYNAMICS" + n))
-            dynamicsKnob->slider->setValue(
-                parameterValue("DYN_DYNAMICS" + n),
-                juce::sendNotificationSync);
+        if (freqMoved)
+        {
+            setParameter("EQ" + n + "_FREQ", hz);
+            movingIds.add("EQ" + n + "_FREQ");
+            if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
+                freqKnob->slider->setValue(
+                    parameterValue("EQ" + n + "_FREQ"),
+                    juce::sendNotificationSync);
+        }
+
+        if (dynamicsMoved)
+        {
+            setParameter("DYN_DYNAMICS" + n, dynamics);
+            movingIds.add("DYN_DYNAMICS" + n);
+
+            if (auto* dynamicsKnob =
+                    findKnob("DYN_DYNAMICS" + n))
+                dynamicsKnob->slider->setValue(
+                    parameterValue("DYN_DYNAMICS" + n),
+                    juce::sendNotificationSync);
+        }
+
+        if (!movingIds.isEmpty())
+        {
+            graphLastDragPosition = event.position;
+            pulseGraphControlMovement(movingIds);
+        }
 
         showGraphDragHint = false;
         graphDragHint.clear();
@@ -4283,7 +4356,9 @@ void VVChainAudioProcessorEditor::mouseUp(
             parameter->endChangeGesture();
     }
 
+    ++graphMovementPulseGeneration;
     clearGraphControlState();
+    graphLastDragPosition = { -1.0f, -1.0f };
 
     dragBand = -1;
     dragOffsetBand = -1;
