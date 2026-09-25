@@ -37,39 +37,6 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
         : slider.findColour(juce::Slider::rotarySliderFillColourId);
     const float angle = juce::jmap(sliderPosProportional, rotaryStartAngle, rotaryEndAngle);
 
-    if (slider.getComponentID() == "DEESS_MODE")
-    {
-        static constexpr std::array<const char*, 4> labels { "I", "II", "III", "IV" };
-        const float labelRadius = radius + 12.0f;
-
-        for (size_t i = 0; i < labels.size(); ++i)
-        {
-            const float t = static_cast<float>(i)
-                / static_cast<float>(labels.size() - 1);
-            const float tickAngle =
-                juce::jmap(t, rotaryStartAngle, rotaryEndAngle);
-            const float screenAngle =
-                tickAngle - juce::MathConstants<float>::halfPi;
-
-            const float inner = radius + 5.0f;
-            const float outer = radius + 9.0f;
-            const float x1 = cx + std::cos(screenAngle) * inner;
-            const float y1 = cy + std::sin(screenAngle) * inner;
-            const float x2 = cx + std::cos(screenAngle) * outer;
-            const float y2 = cy + std::sin(screenAngle) * outer;
-
-            g.setColour(accent.withAlpha(0.92f));
-            g.drawLine(x1, y1, x2, y2, 1.4f);
-
-            const float tx = cx + std::cos(screenAngle) * labelRadius - 7.0f;
-            const float ty = cy + std::sin(screenAngle) * labelRadius - 5.0f;
-            g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-            g.drawText(labels[i],
-                       juce::Rectangle<float>(tx, ty, 14.0f, 10.0f).toNearestInt(),
-                       juce::Justification::centred);
-        }
-    }
-
     g.setColour(ivoryTheme ? juce::Colour(0xffa89f93)
                            : juce::Colours::black.withAlpha(0.92f));
     g.fillEllipse(cx - radius - 3.f, cy - radius - 3.f,
@@ -164,51 +131,6 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
         return;
     }
 
-    if (slider.getComponentID() == "DEESS_MODE_SWITCH")
-    {
-        juce::ignoreUnused(sliderPosProportional, sliderAsymmetry,
-                           sliderStart, style);
-        auto r = juce::Rectangle<float>(
-            static_cast<float>(x), static_cast<float>(y),
-            static_cast<float>(width), static_cast<float>(height)).reduced(1.0f);
-        const auto accent = monochrome
-            ? slider.findColour(juce::Slider::thumbColourId).withSaturation(0.0f)
-            : slider.findColour(juce::Slider::thumbColourId);
-        g.setColour(ivoryTheme ? juce::Colour(0xffeee7dc) : juce::Colours::black.withAlpha(.78f));
-        g.fillRoundedRectangle(r, 5.0f);
-        g.setFont(juce::FontOptions(8.0f).withStyle("Bold"));
-        g.setColour(ivoryTheme ? juce::Colour(0xff34383d) : juce::Colour(0xffcfd5dc));
-        g.drawText("DE-ESS MODE", r.withHeight(14.0f).toNearestInt(),
-                   juce::Justification::left);
-        const auto track = r.withY(r.getY() + 17.0f).withHeight(31.0f);
-        g.setColour(ivoryTheme ? juce::Colour(0xffe4dbcf) : juce::Colour(0xff0c0f13));
-        g.fillRoundedRectangle(track, 5.0f);
-        g.setColour(accent.withAlpha(.45f));
-        g.drawRoundedRectangle(track, 5.0f, 1.0f);
-        static constexpr std::array<const char*, 4> labels { "I", "II", "III", "IV" };
-        const int selected = juce::jlimit(
-            1, 4, static_cast<int>(std::lround(slider.getValue()))) - 1;
-        const float segW = track.getWidth() / 4.0f;
-        for (int i = 0; i < 4; ++i)
-        {
-            auto seg = track.withX(track.getX() + segW * static_cast<float>(i))
-                            .withWidth(segW);
-            if (i == selected)
-            {
-                g.setColour(accent.withAlpha(.28f));
-                g.fillRoundedRectangle(seg.reduced(2.0f), 4.0f);
-                g.setColour(accent);
-                g.drawRoundedRectangle(seg.reduced(2.0f), 4.0f, 1.1f);
-            }
-            g.setFont(juce::FontOptions(8.5f).withStyle("Bold"));
-            g.setColour(i == selected
-                ? (ivoryTheme ? juce::Colour(0xff202327) : juce::Colours::white)
-                : (ivoryTheme ? juce::Colour(0xff716b64) : juce::Colour(0xffaeb5bd)));
-            g.drawText(labels[i], seg.toNearestInt(),
-                       juce::Justification::centred);
-        }
-        return;
-    }
     juce::LookAndFeel_V4::drawLinearSlider(
         g, x, y, width, height,
         sliderPosProportional, sliderAsymmetry,
@@ -295,48 +217,6 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
         g.setColour(ss ? juce::Colour(0xffedf1f5) : accent);
         g.drawText("SS", r.withX(r.getX() + half).withWidth(half).toNearestInt(),
                    juce::Justification::centred);
-        return;
-    }
-
-    if (button.getComponentID() == "DEESS_ROUND_BYPASS")
-    {
-        const auto r = button.getLocalBounds().toFloat().reduced(1.f);
-        const float d = juce::jmin(r.getWidth(), r.getHeight()) - 6.f;
-        const float cx = r.getCentreX();
-        const float cy = r.getCentreY();
-        const auto accent = monochrome
-            ? button.findColour(juce::ToggleButton::tickColourId).withSaturation(0.0f)
-            : button.findColour(juce::ToggleButton::tickColourId);
-        const bool active = !button.getToggleState();
-
-        g.setColour(juce::Colours::black.withAlpha(.92f));
-        g.fillEllipse(cx - d * .5f - 5.f, cy - d * .5f - 5.f,
-                      d + 10.f, d + 10.f);
-
-        juce::ColourGradient glow(active ? accent.withAlpha(.95f)
-                                          : juce::Colour(0xff4b5058),
-                                  cx, cy - d * .5f,
-                                  active ? accent.withAlpha(.16f)
-                                         : juce::Colour(0xff15181c),
-                                  cx, cy + d * .5f, false);
-        g.setGradientFill(glow);
-        g.fillEllipse(cx - d * .5f, cy - d * .5f, d, d);
-        g.setColour(active ? accent : juce::Colour(0xff626870));
-        g.drawEllipse(cx - d * .5f, cy - d * .5f, d, d, 1.8f);
-
-        g.setColour(active ? juce::Colours::white
-                           : juce::Colour(0xff8b929a));
-
-        g.drawLine(cx, cy - d * .27f,
-                   cx, cy - d * .02f, 3.f);
-
-        juce::Path powerArc;
-        const float pi = juce::MathConstants<float>::pi;
-        powerArc.addCentredArc(
-            cx, cy + d * .01f,
-            d * .22f, d * .22f, 0.f,
-            pi * 0.23f, pi * 1.77f, true);
-        g.strokePath(powerArc, juce::PathStrokeType(3.f));
         return;
     }
 
