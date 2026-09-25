@@ -537,7 +537,8 @@ private:
         bool monochrome = false;
         bool ivoryTheme = false;
 
-        void drawPanelSurface(juce::Graphics&, juce::Rectangle<float>) const;
+        void drawPanelSurface(juce::Graphics&, juce::Rectangle<float>,
+                              bool localMuted = false) const;
         void drawGraphSurface(juce::Graphics&, juce::Rectangle<float>) const;
 
         void drawRotarySlider(juce::Graphics&, int x, int y, int width, int height,
@@ -550,21 +551,37 @@ private:
         void drawToggleButton(juce::Graphics&, juce::ToggleButton&,
                               bool shouldDrawButtonAsHighlighted,
                               bool shouldDrawButtonAsDown) override;
+        void drawButtonBackground(juce::Graphics&, juce::Button&,
+                                  const juce::Colour& backgroundColour,
+                                  bool shouldDrawButtonAsHighlighted,
+                                  bool shouldDrawButtonAsDown) override;
+        void drawButtonText(juce::Graphics&, juce::TextButton&,
+                            bool shouldDrawButtonAsHighlighted,
+                            bool shouldDrawButtonAsDown) override;
 
     private:
         struct HardwareAssets
         {
-            std::unique_ptr<juce::Drawable> panel, graph;
-            std::unique_ptr<juce::Drawable> knobSmall, knobLarge;
-            std::unique_ptr<juce::Drawable> buttonOff, buttonOn;
-            std::unique_ptr<juce::Drawable> ledOff, ledOn;
-            std::unique_ptr<juce::Drawable> powerOff, powerOn;
-            std::unique_ptr<juce::Drawable> screw;
+            juce::Image panel;
+            juce::Image graph;
+            juce::Image knobStrip;
+            juce::Image buttonOff, buttonOn, buttonPressed;
+            juce::Image ledOff, ledOn;
+            juce::Image powerOff, powerOn;
+            juce::Image screw;
+            juce::Image slider;
         };
+
         HardwareAssets studioAssets, ivoryAssets, mutedAssets;
+        juce::Image bypassLedRed;
+
         const HardwareAssets& assets(bool localMuted = false) const noexcept;
-        static std::unique_ptr<juce::Drawable> loadDrawable(const void* data, int size);
-        static void drawDrawable(juce::Graphics&, const juce::Drawable*, juce::Rectangle<float>, float opacity = 1.0f);
+        static juce::Image loadImage(const void* data, int size);
+        static void drawImage(juce::Graphics&, const juce::Image&,
+                              juce::Rectangle<float>, float opacity = 1.0f);
+        static void drawKnobFrame(juce::Graphics&, const juce::Image& strip,
+                                  int frameIndex, juce::Rectangle<float>,
+                                  float opacity = 1.0f);
     };
 
     struct Knob

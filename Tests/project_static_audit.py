@@ -98,12 +98,17 @@ assert '"moduleMuted"' in editor
 assert "UI IVORY" in editor and "UI STUDIO" in editor
 assert 'id="uiThemeQuick"' in web
 assert "vvchain-v1064-dual-hardware-skins" in web
-assert "vvchain-v1065-real-image-assets" in web
+assert "vvchain-v1067-real-png-assets" in web
 assert "juce_add_binary_data(VVChainAssets" in cmake
 assert "VVChainAssets.h" in editor
-for asset in ("studio_teal_knob_small.svg","ivory_gold_knob_small.svg","studio_teal_button_on.svg","ivory_gold_led_on.svg","muted_knob_small.svg"):
-    assert (ROOT / "docs" / "assets" / "ui" / asset).is_file(), asset
-assert ".globalBypass{filter:grayscale(1) saturate(0)!important}" in web
+assert "studio_knob_strip_png" in editor
+assert "drawKnobFrame" in editor
+for asset in ("studio_knob_strip.png","ivory_knob_strip.png","studio_button_on.png","ivory_led_on.png","muted_knob_strip.png","bypass_led_red.png"):
+    p = ROOT / "docs" / "assets" / "ui" / "png" / asset
+    assert p.is_file(), asset
+    assert p.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n", asset
+assert 'background-image:url("assets/ui/png/muted_panel.png")' in web
+assert "filter:grayscale(1)" not in web
 assert "refreshAnalyzerTap" in web
 
 # TRANSIENT is base-rate, precedes Analog, uses a stereo-linked detector,
