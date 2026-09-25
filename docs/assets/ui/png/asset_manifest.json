@@ -1,0 +1,371 @@
+{
+  "theme": "Obsidian Luxury × Industrial Pro × Deep Purple",
+  "background": "1500x930",
+  "knob_matrix": "8x8 / 64",
+  "assets": [
+    {
+      "path": "backgrounds/panel_bg.png",
+      "width": 1500,
+      "height": 930,
+      "mode": "RGB",
+      "alpha": false
+    },
+    {
+      "path": "components/buttons/button_capsule_off.png",
+      "width": 320,
+      "height": 104,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_capsule_on.png",
+      "width": 320,
+      "height": 104,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_capsule_pressed.png",
+      "width": 320,
+      "height": 104,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_power_off.png",
+      "width": 160,
+      "height": 160,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_power_on.png",
+      "width": 160,
+      "height": 160,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_power_pressed.png",
+      "width": 160,
+      "height": 160,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_rect_large_off.png",
+      "width": 340,
+      "height": 120,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_rect_large_on.png",
+      "width": 340,
+      "height": 120,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_rect_large_pressed.png",
+      "width": 340,
+      "height": 120,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_rect_small_off.png",
+      "width": 220,
+      "height": 84,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_rect_small_on.png",
+      "width": 220,
+      "height": 84,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_rect_small_pressed.png",
+      "width": 220,
+      "height": 84,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_square_large_off.png",
+      "width": 160,
+      "height": 160,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_square_large_on.png",
+      "width": 160,
+      "height": 160,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_square_large_pressed.png",
+      "width": 160,
+      "height": 160,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_square_small_off.png",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_square_small_on.png",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_square_small_pressed.png",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_toggle_off.png",
+      "width": 240,
+      "height": 104,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/buttons/button_toggle_on.png",
+      "width": 240,
+      "height": 104,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_line_amber_off.png",
+      "width": 180,
+      "height": 44,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_line_amber_on.png",
+      "width": 180,
+      "height": 44,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_line_purple_off.png",
+      "width": 180,
+      "height": 44,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_line_purple_on.png",
+      "width": 180,
+      "height": 44,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_round_amber_off.png",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_round_amber_on.png",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_round_purple_off.png",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_round_purple_on.png",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_square_amber_off.png",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_square_amber_on.png",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_square_purple_off.png",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_square_purple_on.png",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_tiny_amber_off.png",
+      "width": 48,
+      "height": 48,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_tiny_amber_on.png",
+      "width": 48,
+      "height": 48,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_tiny_purple_off.png",
+      "width": 48,
+      "height": 48,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/leds/led_tiny_purple_on.png",
+      "width": 48,
+      "height": 48,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/screws/screw_hex.png",
+      "width": 128,
+      "height": 128,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/screws/screw_knurled.png",
+      "width": 128,
+      "height": 128,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/screws/screw_phillips.png",
+      "width": 128,
+      "height": 128,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/screws/screw_slot.png",
+      "width": 128,
+      "height": 128,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/screws/screw_torx.png",
+      "width": 128,
+      "height": 128,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/screws/screw_washer.png",
+      "width": 128,
+      "height": 128,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/sliders/slider_h_fill_amber.png",
+      "width": 512,
+      "height": 72,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/sliders/slider_h_fill_purple.png",
+      "width": 512,
+      "height": 72,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/sliders/slider_h_track.png",
+      "width": 512,
+      "height": 72,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/sliders/slider_thumb_rect.png",
+      "width": 104,
+      "height": 128,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/sliders/slider_thumb_round.png",
+      "width": 112,
+      "height": 112,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/sliders/slider_v_fill_amber.png",
+      "width": 72,
+      "height": 512,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/sliders/slider_v_fill_purple.png",
+      "width": 72,
+      "height": 512,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "components/sliders/slider_v_track.png",
+      "width": 72,
+      "height": 512,
+      "mode": "RGBA",
+      "alpha": true
+    },
+    {
+      "path": "knobs/knob_sprite_64.png",
+      "width": 1536,
+      "height": 1536,
+      "mode": "RGBA",
+      "alpha": true
+    }
+  ]
+}
