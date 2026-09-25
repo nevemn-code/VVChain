@@ -726,7 +726,9 @@ float VVChainDSP::rmsDetectPDR(float input,
                                   double sampleRate,
                                   float& programReleaseMs,
                                   float attackCoeffOverride,
-                                  float releaseCoeffOverride) noexcept
+                                  float releaseCoeffOverride,
+                                  float slowAttackCoeffOverride,
+                                  float slowReleaseCoeffOverride) noexcept
 {
     const float target = input * input;
 
@@ -739,9 +741,13 @@ float VVChainDSP::rmsDetectPDR(float input,
             ? juce::jlimit(0.0f, 1.0f, releaseCoeffOverride)
             : timeCoeff(sampleRate, juce::jmax(0.5f, releaseMs * 0.35f));
     const float slowAttack =
-        timeCoeff(sampleRate, juce::jmax(attackMs * 4.0f, 5.0f));
+        slowAttackCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, slowAttackCoeffOverride)
+            : timeCoeff(sampleRate, juce::jmax(attackMs * 4.0f, 5.0f));
     const float slowRelease =
-        timeCoeff(sampleRate, juce::jmax(releaseMs * 1.75f, 20.0f));
+        slowReleaseCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, slowReleaseCoeffOverride)
+            : timeCoeff(sampleRate, juce::jmax(releaseMs * 1.75f, 20.0f));
 
     fastPower = (target > fastPower ? fastAttack : fastRelease) * fastPower
               + (1.0f - (target > fastPower ? fastAttack : fastRelease)) * target;
@@ -771,7 +777,9 @@ float VVChainDSP::applyLifterFromDetectorDb(float input, float detectorDb,
                                              float& env, float thresholdDb,
                                              float attackMs, float releaseMs,
                                              float mix, double sampleRate,
-                                             float ratio)
+                                             float ratio,
+                                             float attackCoeffOverride,
+                                             float releaseCoeffOverride)
 {
     const float safeRatio = juce::jmax(1.0f, ratio);
     const float slope = 1.0f - (1.0f / safeRatio);
@@ -791,8 +799,14 @@ float VVChainDSP::applyLifterFromDetectorDb(float input, float detectorDb,
     const float targetGainDbClamped =
         juce::jmin(12.0f, juce::jmax(0.0f, targetGainDb));
     const float targetLinear = dbToGain(targetGainDbClamped);
-    const float attack = timeCoeff(sampleRate, attackMs);
-    const float release = timeCoeff(sampleRate, releaseMs);
+    const float attack =
+        attackCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, attackCoeffOverride)
+            : timeCoeff(sampleRate, attackMs);
+    const float release =
+        releaseCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, releaseCoeffOverride)
+            : timeCoeff(sampleRate, releaseMs);
     const float alpha = targetLinear > env ? attack : release;
     env = alpha * env + (1.0f - alpha) * targetLinear;
 
@@ -841,7 +855,9 @@ float VVChainDSP::applyCompressorFromDetectorDb(float input, float detectorDb,
 }
 
 float VVChainDSP::applyGate(float input, float& envDb, float thresholdDb,
-                            double sampleRate)
+                            double sampleRate,
+                            float attackCoeffOverride,
+                            float releaseCoeffOverride)
 {
     const float knee = kGateKneeDb;
     const float ratioSlope = kGateRatio - 1.f;
@@ -868,8 +884,14 @@ float VVChainDSP::applyGate(float input, float& envDb, float thresholdDb,
 
     targetGainDb = std::min(0.f, targetGainDb);
 
-    const float attack = timeCoeff(sampleRate, 100.f);
-    const float release = timeCoeff(sampleRate, 30.f);
+    const float attack =
+        attackCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, attackCoeffOverride)
+            : timeCoeff(sampleRate, 100.f);
+    const float release =
+        releaseCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, releaseCoeffOverride)
+            : timeCoeff(sampleRate, 30.f);
     const float alpha = targetGainDb < envDb ? attack : release;
     envDb = alpha * envDb + (1.f - alpha) * targetGainDb;
 
@@ -1613,6 +1635,15 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
     std::array<float, 4> lifterMix {};
     std::array<float, 4> liftThreshold {};
     std::array<float, 4> bandGain {};
+    std::array<float, 4> downSlowAttackCoef {};
+    std::array<float, 4> downSlowReleaseCoef {};
+    std::array<float, 4> upFastAttackCoef {};
+    std::array<float, 4> upFastReleaseCoef {};
+    std::array<float, 4> upSlowAttackCoef {};
+    std::array<float, 4> upSlowReleaseCoef {};
+    std::array<float, 4> lifterAttackCoef {};
+    const float gateAttackCoef = timeCoeff(sr, 100.0f);
+    const float gateReleaseCoef = timeCoeff(sr, 30.0f);
 
     for (size_t band = 0; band < 4; ++band)
     {
@@ -1672,6 +1703,24 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 juce::jlimit(
                     -24.f, 12.f,
                     p.udmbcBandLevelDb[band]));
+        downSlowAttackCoef[band] =
+            timeCoeff(sr, juce::jmax(finalAttackMs[band] * 4.0f, 5.0f));
+        downSlowReleaseCoef[band] =
+            timeCoeff(sr, juce::jmax(finalReleaseMs[band] * 1.75f, 20.0f));
+
+        const float upAttackMs =
+            juce::jlimit(1.0f, 500.0f, p.udmbcLifterAttack[band]);
+        const float upReleaseBaseMs =
+            juce::jlimit(10.0f, 2500.0f, p.udmbcLifterRelease[band]);
+
+        upFastAttackCoef[band] = timeCoeff(sr, upAttackMs);
+        upFastReleaseCoef[band] =
+            timeCoeff(sr, juce::jmax(0.5f, upReleaseBaseMs * 0.35f));
+        upSlowAttackCoef[band] =
+            timeCoeff(sr, juce::jmax(upAttackMs * 4.0f, 5.0f));
+        upSlowReleaseCoef[band] =
+            timeCoeff(sr, juce::jmax(upReleaseBaseMs * 1.75f, 20.0f));
+        lifterAttackCoef[band] = timeCoeff(sr, upAttackMs);
     }
 
     for (int ch = 0; ch < channels; ++ch)
@@ -1711,7 +1760,8 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
                 float v = applyGate(
                     bands[band], gateEnv,
-                    p.udmbcGateThresholdDb, sr);
+                    p.udmbcGateThresholdDb, sr,
+                    gateAttackCoef, gateReleaseCoef);
 
                 // Each stage has its own RMS detector state for this band/channel.
                 float downReleaseMs = p.udmbcCompRelease[(size_t) band];
@@ -1724,7 +1774,9 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     sr,
                     downReleaseMs,
                     attackCoef[(size_t) band],
-                    releaseCoef[(size_t) band]);
+                    releaseCoef[(size_t) band],
+                    downSlowAttackCoef[(size_t) band],
+                    downSlowReleaseCoef[(size_t) band]);
 
                 v = applyCompressorFromDetectorDb(
                     v, downDb, compEnv,
@@ -1743,14 +1795,19 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     p.udmbcLifterAttack[(size_t) band],
                     p.udmbcLifterRelease[(size_t) band],
                     sr,
-                    upReleaseMs);
+                    upReleaseMs,
+                    upFastAttackCoef[(size_t) band],
+                    upFastReleaseCoef[(size_t) band],
+                    upSlowAttackCoef[(size_t) band],
+                    upSlowReleaseCoef[(size_t) band]);
 
                 v = applyLifterFromDetectorDb(
                     v, upDb, lifterEnv,
                     liftThreshold[(size_t) band],
                     p.udmbcLifterAttack[(size_t) band],
                     upReleaseMs,
-                    lifterMix[(size_t) band], sr, upRatio[(size_t) band]);
+                    lifterMix[(size_t) band], sr, upRatio[(size_t) band],
+                    lifterAttackCoef[(size_t) band], -1.0f);
 
                 v *= bandGain[(size_t) band];
 
