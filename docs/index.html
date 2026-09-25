@@ -70,7 +70,7 @@ const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive
 const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],uiTouched={udmbc:[false,false,false,false],analog:[false,false,false,false],tape:[false,false,false,false]},clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.49
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.49"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.49"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -988,10 +988,28 @@ function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRa
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function showGraphHint(e,text){
   const r=eqCanvas.getBoundingClientRect();
-  graphHintAnchorX=e.clientX;
-  graphHintAnchorY=e.clientY;
   graphHint.innerHTML=text;graphHint.hidden=false;
-  const pad=6,gap=14,px=e.clientX-r.left,py=e.clientY-r.top;
+
+  const firstEdit=graphHint.querySelector(".graphEdit");
+  const b=Number(firstEdit?.dataset?.band);
+  const dyn=firstEdit?.dataset?.dyn==="1";
+
+  let px=e.clientX-r.left,py=e.clientY-r.top;
+
+  if(Number.isInteger(b)&&b>=0&&b<4){
+    const node=dynamicTargetPoint(b,r.width,r.height);
+    px=logX(state.eq.freq[b],r.width);
+    py=dyn?node.y:dbToY(state.eq.gain[b],r.height);
+
+    // At DYNAMICS=0 the distinct Dynamic target is the arrow handle.
+    if(dyn&&Math.abs(Number(state.dyn.dynamics[b]||0))<=.05)
+      px=clamp(node.x+31,18,r.width-12);
+  }
+
+  graphHintAnchorX=r.left+px;
+  graphHintAnchorY=r.top+py;
+
+  const pad=6,gap=14;
   const x=clamp(px-graphHint.offsetWidth/2,pad,Math.max(pad,r.width-graphHint.offsetWidth-pad));
   let y=py-graphHint.offsetHeight-gap;
   if(y<pad)y=py+gap;
@@ -1038,7 +1056,7 @@ function graphHintNear(clientX,clientY){
 
   // Slightly wider than the visual gap so the user can comfortably reach
   // the editable values, but sideways movement closes immediately.
-  return Math.hypot(clientX-cx,clientY-cy)<=22;
+  return Math.hypot(clientX-cx,clientY-cy)<=26;
 }
 function commitGraphHintEdit(el){
   const b=Number(el.dataset.band),kind=el.dataset.kind,dyn=el.dataset.dyn==="1";
@@ -1087,6 +1105,17 @@ graphHint.addEventListener("focusout",e=>{
   const el=e.target.closest?.(".graphEdit");if(!el)return;
   if(el.dataset.cancelEdit==="1"){delete el.dataset.cancelEdit;return}
   commitGraphHintEdit(el);
+});
+graphHint.addEventListener("mouseleave",e=>{
+  if(graphHint.contains(document.activeElement))return;
+  if(!graphHintNear(e.clientX,e.clientY))hideGraphHint();
+});
+document.addEventListener("mousemove",e=>{
+  if(graphHint.hidden||graphHint.contains(document.activeElement))return;
+  const target=e.target;
+  if(target===eqCanvas||target===graphHint
+    || (target instanceof Node&&graphHint.contains(target)))return;
+  if(!graphHintNear(e.clientX,e.clientY))hideGraphHint();
 });
 function graphHintBandHtml(b,mask){
   // Compact graph readout: no EQ / DYN EQ / GAIN labels.
@@ -1232,8 +1261,18 @@ eqCanvas.addEventListener("pointermove",e=>{
   if(hit.band>=0)showGraphHint(e,graphHintBandHtml(hit.band,hit.mask));else hideGraphHint();
   if(e.buttons)drawEQ();
 });
-eqCanvas.addEventListener("mouseleave",()=>{
-  hoverDynamicBand=-1;hoverXover=-1;hideGraphHint();drawEQ();
+eqCanvas.addEventListener("mouseleave",e=>{
+  hoverDynamicBand=-1;hoverXover=-1;
+
+  const next=e.relatedTarget;
+  const enteringHint=
+    next===graphHint
+    || (next instanceof Node && graphHint.contains(next));
+
+  if(!enteringHint&&!graphHintNear(e.clientX,e.clientY))
+    hideGraphHint();
+
+  drawEQ();
 });
 eqCanvas.addEventListener("wheel",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
