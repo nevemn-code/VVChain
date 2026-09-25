@@ -3407,7 +3407,7 @@ void VVChainAudioProcessorEditor::showEqTypeMenu(
     // so old presets and host automation retain the same DSP meaning.
     static constexpr std::array<int, 10> displayOrder
     {{
-        0, 4, 5, 6, 7, 8, 9, 2, 13, 12
+        0, 2, 4, 5, 6, 7, 8, 9, 13, 12
     }};
 
     const auto n = juce::String(band + 1);
