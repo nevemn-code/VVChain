@@ -326,6 +326,127 @@ private:
         }
     };
 
+    struct EqCoeffCache
+    {
+        double sampleRate = -1.0;
+        double frequency = -1.0;
+        double q = -1.0;
+        float gainDb = 9999.f;
+        int type = -1;
+        int slope = -1;
+
+        bool matches(double fs, double f, float g, double qq,
+                     int t, int s) const noexcept
+        {
+            return sampleRate == fs && frequency == f && q == qq
+                && gainDb == g && type == t && slope == s;
+        }
+
+        void set(double fs, double f, float g, double qq,
+                 int t, int s) noexcept
+        {
+            sampleRate = fs; frequency = f; gainDb = g; q = qq;
+            type = t; slope = s;
+        }
+
+        void invalidate() noexcept
+        {
+            sampleRate = frequency = q = -1.0;
+            gainDb = 9999.f; type = slope = -1;
+        }
+    };
+
+    struct DetectorCoeffCache
+    {
+        double sampleRate = -1.0;
+        double frequency = -1.0;
+        double q = -1.0;
+
+        bool matches(double fs, double f, double qq) const noexcept
+        {
+            return sampleRate == fs && frequency == f && q == qq;
+        }
+
+        void set(double fs, double f, double qq) noexcept
+        {
+            sampleRate = fs; frequency = f; q = qq;
+        }
+
+        void invalidate() noexcept
+        {
+            sampleRate = frequency = q = -1.0;
+        }
+    };
+
+    struct UdmbcBandCoeffCache
+    {
+        double sampleRate = -1.0;
+        float degree = -1.f;
+        float compAttack = -1.f;
+        float compRelease = -1.f;
+        float lifterAttack = -1.f;
+        float lifterRelease = -1.f;
+        float compMixParam = -1.f;
+        float lifterMixParam = -1.f;
+        float levelDb = 9999.f;
+
+        float depth = 0.f;
+        float downRatio = 1.f;
+        float upRatio = 1.f;
+        float compMix = 0.f;
+        float lifterMix = 0.f;
+        float bandGain = 1.f;
+        float finalAttackMs = 1.f;
+        float finalReleaseMs = 20.f;
+        float downFastAttack = 0.f;
+        float downFastRelease = 0.f;
+        float downSlowAttack = 0.f;
+        float downSlowRelease = 0.f;
+        float upFastAttack = 0.f;
+        float upFastRelease = 0.f;
+        float upSlowAttack = 0.f;
+        float upSlowRelease = 0.f;
+
+        bool matches(double fs, float d, float ca, float cr,
+                     float la, float lr, float cm, float lm,
+                     float level) const noexcept
+        {
+            return sampleRate == fs
+                && degree == d
+                && compAttack == ca
+                && compRelease == cr
+                && lifterAttack == la
+                && lifterRelease == lr
+                && compMixParam == cm
+                && lifterMixParam == lm
+                && levelDb == level;
+        }
+
+        void capture(double fs, float d, float ca, float cr,
+                     float la, float lr, float cm, float lm,
+                     float level) noexcept
+        {
+            sampleRate = fs;
+            degree = d;
+            compAttack = ca;
+            compRelease = cr;
+            lifterAttack = la;
+            lifterRelease = lr;
+            compMixParam = cm;
+            lifterMixParam = lm;
+            levelDb = level;
+        }
+
+        void invalidate() noexcept
+        {
+            sampleRate = -1.0;
+            degree = compAttack = compRelease = -1.f;
+            lifterAttack = lifterRelease = -1.f;
+            compMixParam = lifterMixParam = -1.f;
+            levelDb = 9999.f;
+        }
+    };
+
     struct XoverCache
     {
         double sampleRate = -1.0;
@@ -417,6 +538,10 @@ private:
     std::array<EqFilter, 4> dynSideEq {};
     std::array<Biquad, 4> dynMidDetectors {};
     std::array<Biquad, 4> dynSideDetectors {};
+    std::array<EqCoeffCache, 4> dynMidEqCoeffCache {};
+    std::array<EqCoeffCache, 4> dynSideEqCoeffCache {};
+    std::array<DetectorCoeffCache, 4> dynMidDetectorCoeffCache {};
+    std::array<DetectorCoeffCache, 4> dynSideDetectorCoeffCache {};
 
     std::array<float, 4> dynMidEnvelopeDb
     {
@@ -465,6 +590,10 @@ private:
     Crossover4th udmbcPhase3_B2 {};
 
     std::array<BandDynamics, 4> udmbcDynamics {};
+    std::array<UdmbcBandCoeffCache, 4> udmbcBandCoeffCache {};
+    double udmbcGateCoeffSampleRate = -1.0;
+    float udmbcGateAttackCoeff = 0.f;
+    float udmbcGateReleaseCoeff = 0.f;
 
     // Four independent TAPE exciter bands.
     // TAPE shares the exact same X1/X2/X3 crossover positions and

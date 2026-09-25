@@ -12,6 +12,12 @@ assert "float gateEnvDb = 0.f;" in hdr
 assert "std::array<float, 2> gateEnvDb" not in hdr
 assert "const float linkedInput" in cpp
 assert "std::sqrt(0.5f * (" in cpp
+assert "UdmbcBandCoeffCache" in hdr
+assert "udmbcBandCoeffCache[band]" in cpp
+assert "cache.matches(" in cpp
+assert "EqCoeffCache" in hdr
+assert "dynMidEqCoeffCache[band].matches" in cpp
+assert "dynMidDetectorCoeffCache[band].matches" in cpp
 assert "udLinked=Array.from" in web
 assert "Math.sqrt(.5*(dry[0][b]*dry[0][b]+dry[1][b]*dry[1][b]))" in web
 
@@ -23,7 +29,10 @@ assert "lp[0]+=" not in web
 
 # Fixed UDMBC time constants are computed outside the sample loop.
 ud = cpp[cpp.index("void VVChainDSP::applyUdmbc"):cpp.index("void VVChainDSP::applyAType")]
-sample_loop = ud[ud.index("for (int n = 0; n < buffer.getNumSamples(); ++n)"):]
+hot_anchor = "const bool stereo = nCh > 1;"
+assert hot_anchor in ud
+hot = ud[ud.index(hot_anchor):]
+sample_loop = hot[hot.index("for (int n = 0; n < buffer.getNumSamples(); ++n)"):]
 assert "std::exp(" not in sample_loop
 assert sample_loop.count("timeCoeff(") == 1  # only true programme-dependent lifter release remains dynamic
 assert "timeCoeff(sr, upReleasePdr)" in sample_loop

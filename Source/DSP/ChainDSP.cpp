@@ -684,6 +684,10 @@ void VVChainDSP::reset()
     for (auto& b : dynSideEq) b.reset();
     for (auto& b : dynMidDetectors) b.reset();
     for (auto& b : dynSideDetectors) b.reset();
+    for (auto& cache : dynMidEqCoeffCache) cache.invalidate();
+    for (auto& cache : dynSideEqCoeffCache) cache.invalidate();
+    for (auto& cache : dynMidDetectorCoeffCache) cache.invalidate();
+    for (auto& cache : dynSideDetectorCoeffCache) cache.invalidate();
     dynMidEnvelopeDb = { -120.f, -120.f, -120.f, -120.f };
     dynSideEnvelopeDb = { -120.f, -120.f, -120.f, -120.f };
     dynMidSlowDb = { -120.f, -120.f, -120.f, -120.f };
@@ -719,6 +723,9 @@ void VVChainDSP::reset()
         b.downRmsPower = 0.f;
         b.downSlowRmsPower = 0.f;
     }
+    for (auto& cache : udmbcBandCoeffCache)
+        cache.invalidate();
+    udmbcGateCoeffSampleRate = -1.0;
 
     for (auto& bandState : analogADAA)
         for (auto& channelState : bandState)
@@ -950,7 +957,6 @@ float VVChainDSP::applyGate(float input, float& envDb, float thresholdDb,
     return input * (0.90f * dbToGain(envDb) + 0.10f);
 }
 
-void VVChainDSP::applyTransient
 void VVChainDSP::applyTransient(
     juce::AudioBuffer<float>& buffer,
     const Parameters& p)
@@ -1152,10 +1158,22 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             const double baseQ = juce::jlimit(
                 0.1, 18.0, static_cast<double>(p.q[band]));
 
-            updateDynamicDetector(
-                dynMidDetectors[band], osSr, frequency, baseQ);
-            updateDynamicDetector(
-                dynSideDetectors[band], osSr, frequency, baseQ);
+            if (!dynMidDetectorCoeffCache[band].matches(
+                    osSr, frequency, baseQ))
+            {
+                updateDynamicDetector(
+                    dynMidDetectors[band], osSr, frequency, baseQ);
+                dynMidDetectorCoeffCache[band].set(
+                    osSr, frequency, baseQ);
+            }
+            if (!dynSideDetectorCoeffCache[band].matches(
+                    osSr, frequency, baseQ))
+            {
+                updateDynamicDetector(
+                    dynSideDetectors[band], osSr, frequency, baseQ);
+                dynSideDetectorCoeffCache[band].set(
+                    osSr, frequency, baseQ);
+            }
 
             // Single user-facing DYNAMICS macro:
             //   -100..0 = compression
@@ -1189,12 +1207,28 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 const int staticSlope =
                     juce::jlimit(0, 6, p.eqSlope[band]);
 
-                updateEqFilter(
-                    dynMidEq[band], staticEqType,
-                    osSr, frequency, offsetGain, baseQ, staticSlope);
-                updateEqFilter(
-                    dynSideEq[band], staticEqType,
-                    osSr, frequency, offsetGain, baseQ, staticSlope);
+                if (!dynMidEqCoeffCache[band].matches(
+                        osSr, frequency, offsetGain, baseQ,
+                        staticEqType, staticSlope))
+                {
+                    updateEqFilter(
+                        dynMidEq[band], staticEqType,
+                        osSr, frequency, offsetGain, baseQ, staticSlope);
+                    dynMidEqCoeffCache[band].set(
+                        osSr, frequency, offsetGain, baseQ,
+                        staticEqType, staticSlope);
+                }
+                if (!dynSideEqCoeffCache[band].matches(
+                        osSr, frequency, offsetGain, baseQ,
+                        staticEqType, staticSlope))
+                {
+                    updateEqFilter(
+                        dynSideEq[band], staticEqType,
+                        osSr, frequency, offsetGain, baseQ, staticSlope);
+                    dynSideEqCoeffCache[band].set(
+                        osSr, frequency, offsetGain, baseQ,
+                        staticEqType, staticSlope);
+                }
 
                 dynMidGainChangeDb[band].store(
                     0.0f, std::memory_order_relaxed);
@@ -1257,6 +1291,18 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             float& sideActivation = dynSideActivation[band];
 
             const float gainDeltaDb = dynamicDeltaDb;
+
+            int dynamicEqType = juce::jlimit(0, 13, p.eqType[band]);
+            if (dynamicEqType == 3)
+                dynamicEqType = 2;
+            else if (dynamicEqType == 1
+                  || dynamicEqType == 10
+                  || dynamicEqType == 11)
+                dynamicEqType = 0;
+            if ((band == 1 || band == 2) && dynamicEqType >= 12)
+                dynamicEqType = 0;
+            const int dynamicSlopeIndex =
+                juce::jlimit(0, 6, p.eqSlope[band]);
 
             for (int sample = 0; sample < osSamples; ++sample)
             {
@@ -1422,27 +1468,33 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 const double midQ = baseQ;
                 const double sideQ = baseQ;
 
-                // Update every sample. The detector gain movement is already
-                // attack/release smoothed, eliminating the old 4-sample zipper.
-                int eqType = juce::jlimit(0, 13, p.eqType[band]);
-                if (eqType == 3)
-                    eqType = 2;
-                else if (eqType == 1 || eqType == 10 || eqType == 11)
-                    eqType = 0;
-                if ((band == 1 || band == 2) && eqType >= 12)
-                    eqType = 0;
-
-                const int slopeIndex =
-                    juce::jlimit(0, 6, p.eqSlope[band]);
-
-                updateEqFilter(
-                    dynMidEq[band], eqType,
-                    osSr, frequency, safeMidTotalGain, midQ,
-                    slopeIndex);
-                updateEqFilter(
-                    dynSideEq[band], eqType,
-                    osSr, frequency, safeSideTotalGain, sideQ,
-                    slopeIndex);
+                // Dynamic gain can legitimately move sample-by-sample.
+                // Rebuild only when the exact coefficient inputs changed;
+                // settled detector regions reuse the previous coefficients.
+                if (!dynMidEqCoeffCache[band].matches(
+                        osSr, frequency, safeMidTotalGain, midQ,
+                        dynamicEqType, dynamicSlopeIndex))
+                {
+                    updateEqFilter(
+                        dynMidEq[band], dynamicEqType,
+                        osSr, frequency, safeMidTotalGain, midQ,
+                        dynamicSlopeIndex);
+                    dynMidEqCoeffCache[band].set(
+                        osSr, frequency, safeMidTotalGain, midQ,
+                        dynamicEqType, dynamicSlopeIndex);
+                }
+                if (!dynSideEqCoeffCache[band].matches(
+                        osSr, frequency, safeSideTotalGain, sideQ,
+                        dynamicEqType, dynamicSlopeIndex))
+                {
+                    updateEqFilter(
+                        dynSideEq[band], dynamicEqType,
+                        osSr, frequency, safeSideTotalGain, sideQ,
+                        dynamicSlopeIndex);
+                    dynSideEqCoeffCache[band].set(
+                        osSr, frequency, safeSideTotalGain, sideQ,
+                        dynamicEqType, dynamicSlopeIndex);
+                }
 
                 auto* left = osBlock.getChannelPointer(0);
                 const float leftIn = left[sample];
@@ -1747,60 +1799,95 @@ void VVChainDSP::applyUdmbc(juce::AudioBuffer<float>& buffer,
         amountCount > 0 ? amountSum / static_cast<float>(amountCount) : 0.0f;
     const float autoTrimGain = dbToGain(-2.5f * averageAmount);
 
-    std::array<float, 4> depth {}, downRatio {}, upRatio {};
-    std::array<float, 4> compMix {}, lifterMix {}, bandGain {};
-    std::array<float, 4> finalAttackMs {}, finalReleaseMs {};
-    std::array<float, 4> downFastAttack {}, downFastRelease {};
-    std::array<float, 4> downSlowAttack {}, downSlowRelease {};
-    std::array<float, 4> upFastAttack {}, upFastRelease {};
-    std::array<float, 4> upSlowAttack {}, upSlowRelease {};
-
     for (size_t band = 0; band < 4; ++band)
     {
-        const float degree = juce::jlimit(0.f, 100.f, p.udmbcDegree[band]);
-        depth[band] = degree / 100.f;
-        downRatio[band] =
-            1.f + depth[band] * ((band == 3 ? 100.f : kCompressorRatio) - 1.f);
-        upRatio[band] = 1.f + depth[band] * (kLifterRatio - 1.f);
-        compMix[band] = juce::jlimit(0.f, 100.f, p.udmbcCompMix[band]);
-        lifterMix[band] = juce::jlimit(0.f, 100.f, p.udmbcLifterMix[band]);
-        bandGain[band] = dbToGain(
-            juce::jlimit(-24.f, 12.f, p.udmbcBandLevelDb[band]));
+        auto& cache = udmbcBandCoeffCache[band];
+        if (!cache.matches(
+                sr,
+                p.udmbcDegree[band],
+                p.udmbcCompAttack[band],
+                p.udmbcCompRelease[band],
+                p.udmbcLifterAttack[band],
+                p.udmbcLifterRelease[band],
+                p.udmbcCompMix[band],
+                p.udmbcLifterMix[band],
+                p.udmbcBandLevelDb[band]))
+        {
+            const float degree =
+                juce::jlimit(0.f, 100.f, p.udmbcDegree[band]);
+            cache.depth = degree / 100.f;
+            cache.downRatio =
+                1.f + cache.depth
+                    * ((band == 3 ? 100.f : kCompressorRatio) - 1.f);
+            cache.upRatio =
+                1.f + cache.depth * (kLifterRatio - 1.f);
+            cache.compMix =
+                juce::jlimit(0.f, 100.f, p.udmbcCompMix[band]);
+            cache.lifterMix =
+                juce::jlimit(0.f, 100.f, p.udmbcLifterMix[band]);
+            cache.bandGain = dbToGain(
+                juce::jlimit(-24.f, 12.f, p.udmbcBandLevelDb[band]));
 
-        const float baseAttack =
-            juce::jlimit(0.1f, 120.f, p.udmbcCompAttack[band]);
-        const float k = juce::jmax(0.f, (120.f - baseAttack) / 0.49f);
-        const float dynamicAttack =
-            baseAttack + k * depth[band] * depth[band];
-        const float minAttack =
-            band == 0 ? 15.f : (band == 1 ? 8.f : 1.f);
-        finalAttackMs[band] = juce::jmax(minAttack, dynamicAttack);
+            const float baseAttack =
+                juce::jlimit(0.1f, 120.f, p.udmbcCompAttack[band]);
+            const float k =
+                juce::jmax(0.f, (120.f - baseAttack) / 0.49f);
+            const float dynamicAttack =
+                baseAttack + k * cache.depth * cache.depth;
+            const float minAttack =
+                band == 0 ? 15.f : (band == 1 ? 8.f : 1.f);
+            cache.finalAttackMs =
+                juce::jmax(minAttack, dynamicAttack);
 
-        const float baseRelease =
-            juce::jlimit(10.f, 2500.f, p.udmbcCompRelease[band]);
-        finalReleaseMs[band] =
-            juce::jmax(20.f, baseRelease + depth[band] * 100.f);
+            const float baseRelease =
+                juce::jlimit(10.f, 2500.f, p.udmbcCompRelease[band]);
+            cache.finalReleaseMs =
+                juce::jmax(
+                    20.f,
+                    baseRelease + cache.depth * 100.f);
 
-        downFastAttack[band] = timeCoeff(sr, finalAttackMs[band]);
-        downFastRelease[band] = timeCoeff(sr, finalReleaseMs[band]);
-        downSlowAttack[band] =
-            timeCoeff(sr, juce::jmax(finalAttackMs[band] * 4.f, 5.f));
-        downSlowRelease[band] =
-            timeCoeff(sr, juce::jmax(finalReleaseMs[band] * 1.75f, 20.f));
+            cache.downFastAttack =
+                timeCoeff(sr, cache.finalAttackMs);
+            cache.downFastRelease =
+                timeCoeff(sr, cache.finalReleaseMs);
+            cache.downSlowAttack =
+                timeCoeff(
+                    sr,
+                    juce::jmax(cache.finalAttackMs * 4.f, 5.f));
+            cache.downSlowRelease =
+                timeCoeff(
+                    sr,
+                    juce::jmax(cache.finalReleaseMs * 1.75f, 20.f));
 
-        const float upAttack = p.udmbcLifterAttack[band];
-        const float upRelease = p.udmbcLifterRelease[band];
-        upFastAttack[band] = timeCoeff(sr, upAttack);
-        upFastRelease[band] =
-            timeCoeff(sr, juce::jmax(0.5f, upRelease * 0.35f));
-        upSlowAttack[band] =
-            timeCoeff(sr, juce::jmax(upAttack * 4.f, 5.f));
-        upSlowRelease[band] =
-            timeCoeff(sr, juce::jmax(upRelease * 1.75f, 20.f));
+            const float upAttack = p.udmbcLifterAttack[band];
+            const float upRelease = p.udmbcLifterRelease[band];
+            cache.upFastAttack = timeCoeff(sr, upAttack);
+            cache.upFastRelease =
+                timeCoeff(sr, juce::jmax(0.5f, upRelease * 0.35f));
+            cache.upSlowAttack =
+                timeCoeff(sr, juce::jmax(upAttack * 4.f, 5.f));
+            cache.upSlowRelease =
+                timeCoeff(sr, juce::jmax(upRelease * 1.75f, 20.f));
+
+            cache.capture(
+                sr,
+                p.udmbcDegree[band],
+                p.udmbcCompAttack[band],
+                p.udmbcCompRelease[band],
+                p.udmbcLifterAttack[band],
+                p.udmbcLifterRelease[band],
+                p.udmbcCompMix[band],
+                p.udmbcLifterMix[band],
+                p.udmbcBandLevelDb[band]);
+        }
     }
 
-    const float gateAttackCoeff = timeCoeff(sr, 100.f);
-    const float gateReleaseCoeff = timeCoeff(sr, 30.f);
+    if (udmbcGateCoeffSampleRate != sr)
+    {
+        udmbcGateAttackCoeff = timeCoeff(sr, 100.f);
+        udmbcGateReleaseCoeff = timeCoeff(sr, 30.f);
+        udmbcGateCoeffSampleRate = sr;
+    }
     const int nCh = juce::jmin(channels, buffer.getNumChannels());
     const bool stereo = nCh > 1;
 
@@ -1842,6 +1929,7 @@ void VVChainDSP::applyUdmbc(juce::AudioBuffer<float>& buffer,
                 continue;
 
             auto& state = udmbcDynamics[band];
+            const auto& coeff = udmbcBandCoeffCache[band];
             const float linkedInput =
                 stereo
                     ? std::sqrt(0.5f * (
@@ -1851,35 +1939,35 @@ void VVChainDSP::applyUdmbc(juce::AudioBuffer<float>& buffer,
 
             const float gatedDetector = applyGate(
                 linkedInput, state.gateEnvDb, p.udmbcGateThresholdDb, sr,
-                gateAttackCoeff, gateReleaseCoeff);
+                udmbcGateAttackCoeff, udmbcGateReleaseCoeff);
             const float gateGain =
                 linkedInput > 1.0e-12f ? gatedDetector / linkedInput : 1.0f;
 
             for (int ch = 0; ch < nCh; ++ch)
                 workBands[ch][band] *= gateGain;
 
-            float downReleasePdr = finalReleaseMs[band];
+            float downReleasePdr = coeff.finalReleaseMs;
             const float downDb = rmsDetectPDR(
                 gatedDetector,
                 state.downRmsPower,
                 state.downSlowRmsPower,
-                finalAttackMs[band],
-                finalReleaseMs[band],
+                coeff.finalAttackMs,
+                coeff.finalReleaseMs,
                 sr,
                 downReleasePdr,
-                downFastAttack[band],
-                downFastRelease[band],
-                downSlowAttack[band],
-                downSlowRelease[band]);
+                coeff.downFastAttack,
+                coeff.downFastRelease,
+                coeff.downSlowAttack,
+                coeff.downSlowRelease);
 
             const float compGain = applyCompressorFromDetectorDb(
                 1.0f, downDb, state.compEnvDb,
                 p.udmbcCompThreshold[band],
-                finalAttackMs[band],
-                finalReleaseMs[band],
-                compMix[band], sr, downRatio[band],
-                downFastAttack[band],
-                downFastRelease[band]);
+                coeff.finalAttackMs,
+                coeff.finalReleaseMs,
+                coeff.compMix, sr, coeff.downRatio,
+                coeff.downFastAttack,
+                coeff.downFastRelease);
 
             for (int ch = 0; ch < nCh; ++ch)
                 workBands[ch][band] *= compGain;
@@ -1894,10 +1982,10 @@ void VVChainDSP::applyUdmbc(juce::AudioBuffer<float>& buffer,
                 p.udmbcLifterRelease[band],
                 sr,
                 upReleasePdr,
-                upFastAttack[band],
-                upFastRelease[band],
-                upSlowAttack[band],
-                upSlowRelease[band]);
+                coeff.upFastAttack,
+                coeff.upFastRelease,
+                coeff.upSlowAttack,
+                coeff.upSlowRelease);
 
             const float liftThreshold =
                 juce::jmax(p.udmbcLifterThreshold[band], -48.f);
@@ -1906,12 +1994,12 @@ void VVChainDSP::applyUdmbc(juce::AudioBuffer<float>& buffer,
                 liftThreshold,
                 p.udmbcLifterAttack[band],
                 upReleasePdr,
-                lifterMix[band], sr, upRatio[band],
-                upFastAttack[band],
+                coeff.lifterMix, sr, coeff.upRatio,
+                coeff.upFastAttack,
                 timeCoeff(sr, upReleasePdr));
 
             for (int ch = 0; ch < nCh; ++ch)
-                workBands[ch][band] *= liftGain * bandGain[band];
+                workBands[ch][band] *= liftGain * coeff.bandGain;
         }
 
         for (int ch = 0; ch < nCh; ++ch)

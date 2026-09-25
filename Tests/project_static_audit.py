@@ -90,6 +90,11 @@ assert "eqOversampler.processSamplesUp" in dsp
 assert "const double osSr = sr;" in dsp
 assert "std::array<float, 2> gateEnvDb" not in dsp_h
 assert "const float linkedInput" in dsp
+assert "UdmbcBandCoeffCache" in dsp_h
+assert "udmbcBandCoeffCache[band]" in dsp
+assert "EqCoeffCache" in dsp_h
+assert "dynMidEqCoeffCache[band].matches" in dsp
+assert "dynMidDetectorCoeffCache[band].matches" in dsp
 assert "dynamicsAmount <= 0.000001f" in dsp
 assert dsp.count("bool anyActiveBand = false;") >= 2
 assert "eqWetDelay" in dsp + dsp_h
