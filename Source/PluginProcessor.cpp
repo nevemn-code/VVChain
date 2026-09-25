@@ -206,6 +206,30 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     juce::ScopedNoDenormals noDenormals;
     juce::ignoreUnused(midi);
 
+    if (analyzerEnabled.load(std::memory_order_relaxed))
+    {
+        const int numSamples = buffer.getNumSamples();
+        const int numChannels = juce::jmax(1, buffer.getNumChannels());
+        const auto regions = analyzerFifo.write(numSamples);
+        int written = 0;
+
+        const auto writeRegion = [&](int start, int size)
+        {
+            for (int i = 0; i < size; ++i)
+            {
+                float mono = 0.0f;
+                for (int ch = 0; ch < numChannels; ++ch)
+                    mono += buffer.getReadPointer(ch)[written + i];
+                analyzerBuffer[(size_t)(start + i)] =
+                    mono / static_cast<float>(numChannels);
+            }
+            written += size;
+        };
+
+        writeRegion(regions.startIndex1, regions.blockSize1);
+        writeRegion(regions.startIndex2, regions.blockSize2);
+    }
+
     VVChainDSP::Parameters p;
 
     auto value = [this](const juce::String& id)
@@ -310,6 +334,31 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     dsp.process(buffer, p);
 
+}
+
+int VVChainAudioProcessor::popAnalyzerSamples(float* destination,
+                                               int maxSamples) noexcept
+{
+    if (destination == nullptr || maxSamples <= 0)
+        return 0;
+
+    const int available = juce::jmin(maxSamples, analyzerFifo.getNumReady());
+    const auto regions = analyzerFifo.read(available);
+    int copied = 0;
+
+    const auto copyRegion = [&](int start, int size)
+    {
+        if (size > 0)
+        {
+            std::copy_n(analyzerBuffer.data() + start, size,
+                        destination + copied);
+            copied += size;
+        }
+    };
+
+    copyRegion(regions.startIndex1, regions.blockSize1);
+    copyRegion(regions.startIndex2, regions.blockSize2);
+    return copied;
 }
 
 

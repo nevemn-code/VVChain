@@ -1,4 +1,4 @@
-# VVChain Test Plan（v1.0.52）
+# VVChain Test Plan（v1.0.53）
 
 目前五個現有測試腳本在十輪本機封閉測試均未通過；詳見 `TEST_REPORT.md`。下列 CI 觸發描述的是配置，不代表驗證已成功。
 
@@ -78,3 +78,13 @@ Still required when preparing a distributable release:
 - Theme switch must not call APVTS parameter writes or Web sendParams().
 - Parameter values, DSP output, latency, bypass state, Solo/Delta state and control geometry must remain unchanged across a theme switch.
 - Native and Web should preserve band/module accent colours while changing neutral surfaces/text to the ivory palette.
+
+
+## Spectrum / Web runtime regression (v1.0.53)
+
+- Web page load must complete without a runtime exception before `state` initialization; Theme default initialization must not call `drawEQ()` early.
+- Analyzer default is ON in Native and Web.
+- Native Analyzer uses a pre-DSP input tap, 2048-point Hann FFT and 220 display points; no FFT or allocation may run inside `processBlock()`.
+- Analyzer OFF must stop Native analysis writes/FFT and disconnect the Web analyzer branch/timer.
+- Web Analyzer branch must remain parallel to the source -> Worklet/fallback audio path and end in a zero-gain sink.
+- Switching Analyzer ON/OFF or DARK/IVORY must not change APVTS values, DSP output, latency, bypass/solo/delta state, or control geometry.

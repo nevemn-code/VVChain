@@ -86,7 +86,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.52</div></div><div class="sub"></div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.53</div></div><div class="sub"></div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · ANALOG COLOR · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -114,7 +114,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
       <div class="settingsRow" aria-disabled="true"><span>EQ Node movement feedback</span><span>ON · RESERVED</span></div>
     </section>
     <section class="settingsSection"><div class="settingsSectionTitle">ANALYZER / GRAPH</div>
-      <div class="settingsRow" aria-disabled="true"><span>Analyzer</span><span>OFF · RESERVED</span></div>
+      <button id="analyzerToggle" class="themeToggle" type="button">ANALYZER  ON</button>
       <div class="settingsRow" aria-disabled="true"><span>Analyzer Speed</span><span>RESERVED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Spectrum Smoothing</span><span>RESERVED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Peak Hold</span><span>RESERVED</span></div>
@@ -128,7 +128,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
       <div class="settingsRow" aria-disabled="true"><span>CPU / latency display</span><span>RESERVED</span></div>
     </section>
     <section class="settingsSection"><div class="settingsSectionTitle">SYSTEM / ABOUT</div>
-      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.52</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.53</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Build number / commit</span><span>GitHub build metadata</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset UI Settings</span><span>DISABLED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset All Settings</span><span>DISABLED</span></div>
@@ -148,17 +148,22 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 </div>
 <script>
 const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=null,workletNode=null,workletModuleUrl=null,playing=false,directFallback=false,workletHeartbeatSeen=false;
+let analyserNode=null,analyserSink=null,analyserData=null,analyzerInterval=null;
+let analyzerEnabled=true;
+const analyzerCurve=new Float32Array(220).fill(-96);
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
-const settingsGear=$("#settingsGear"),settingsPanel=$("#settingsPanel"),themeToggle=$("#themeToggle");
+const settingsGear=$("#settingsGear"),settingsPanel=$("#settingsPanel"),themeToggle=$("#themeToggle"),analyzerToggle=$("#analyzerToggle");
 let settingsPanelVisible=false,ivoryTheme=false;
 const tc=(dark,ivory)=>ivoryTheme?ivory:dark;
 function setIvoryTheme(ivory){
   ivoryTheme=!!ivory;
   document.querySelector(".app").classList.toggle("ivoryTheme",ivoryTheme);
   themeToggle.textContent=ivoryTheme?"THEME  IVORY":"THEME  DARK";
-  drawEQ();
 }
-themeToggle.addEventListener("click",()=>setIvoryTheme(!ivoryTheme));
+themeToggle.addEventListener("click",()=>{
+  setIvoryTheme(!ivoryTheme);
+  drawEQ();
+});
 setIvoryTheme(false);
 function setSettingsPanelVisible(visible){
   settingsPanelVisible=!!visible;
@@ -185,9 +190,71 @@ document.addEventListener("keydown",e=>{
 });
 const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive:false,graphFreq:1000,graphQ:.707},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],type:[0,0,0,0],slope:[1,1,1,1],color:[0,0,0,0],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[50,50,50,50],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},udmbc:{bypass:false,bandBypass:[false,false,false,false],degree:[0,0,0,0],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[0,0,0,0],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:7500,threshold:0,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
 const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],uiTouched={udmbc:[false,false,false,false],analog:[false,false,false,false],tape:[false,false,false,false]},clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.52
+function ensureWebAnalyser(){
+  if(!audioCtx)return;
+  if(!analyserNode){
+    analyserNode=audioCtx.createAnalyser();
+    analyserNode.fftSize=2048;
+    analyserNode.minDecibels=-96;
+    analyserNode.maxDecibels=0;
+    analyserNode.smoothingTimeConstant=.72;
+    analyserData=new Float32Array(analyserNode.frequencyBinCount);
+    analyserSink=audioCtx.createGain();
+    analyserSink.gain.value=0;
+    analyserNode.connect(analyserSink);
+    analyserSink.connect(audioCtx.destination);
+  }
+}
+function connectAnalyzerTap(){
+  if(!source||!audioCtx||!analyzerEnabled)return;
+  ensureWebAnalyser();
+  try{source.connect(analyserNode)}catch{}
+}
+function disconnectAnalyzerTap(){
+  if(source&&analyserNode){
+    try{source.disconnect(analyserNode)}catch{}
+  }
+}
+function startAnalyzerLoop(){
+  if(analyzerInterval||!analyzerEnabled)return;
+  analyzerInterval=setInterval(()=>{
+    if(!playing||!analyzerEnabled||!analyserNode||!analyserData)return;
+    analyserNode.getFloatFrequencyData(analyserData);
+    const sr=audioCtx?.sampleRate||48000,nyq=sr*.5,bins=analyserData.length;
+    for(let p=0;p<analyzerCurve.length;p++){
+      const t0=p/analyzerCurve.length,t1=(p+1)/analyzerCurve.length;
+      const f0=20*Math.pow(1000,t0),f1=20*Math.pow(1000,t1);
+      let b0=clamp(Math.floor(f0/nyq*bins),1,bins-1);
+      let b1=clamp(Math.ceil(f1/nyq*bins),b0,bins-1);
+      let peak=-96;
+      for(let b=b0;b<=b1;b++)peak=Math.max(peak,analyserData[b]);
+      const old=analyzerCurve[p],coeff=peak>old?.42:.16;
+      analyzerCurve[p]=old+coeff*(peak-old);
+    }
+    drawEQ();
+  },40);
+}
+function stopAnalyzerLoop(){
+  if(analyzerInterval){clearInterval(analyzerInterval);analyzerInterval=null}
+}
+function setAnalyzerEnabled(enabled){
+  analyzerEnabled=!!enabled;
+  analyzerToggle.textContent=analyzerEnabled?"ANALYZER  ON":"ANALYZER  OFF";
+  if(analyzerEnabled){
+    connectAnalyzerTap();
+    if(playing)startAnalyzerLoop();
+  }else{
+    disconnectAnalyzerTap();
+    stopAnalyzerLoop();
+    analyzerCurve.fill(-96);
+    drawEQ();
+  }
+}
+analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
+setAnalyzerEnabled(true);
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.53
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.52"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.53"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -870,6 +937,30 @@ function drawEQ(){
   eqCtx.clearRect(0,0,w,h);
   eqCtx.fillStyle=tc("#111318","#f0e9de");
   eqCtx.fillRect(0,0,w,h);
+
+  if(analyzerEnabled){
+    eqCtx.beginPath();
+    for(let p=0;p<analyzerCurve.length;p++){
+      const x=p/(analyzerCurve.length-1)*w;
+      const yn=clamp((analyzerCurve[p]+90)/90,0,1);
+      const y=h-yn*h;
+      if(p===0)eqCtx.moveTo(x,y); else eqCtx.lineTo(x,y);
+    }
+    eqCtx.lineTo(w,h);eqCtx.lineTo(0,h);eqCtx.closePath();
+    eqCtx.fillStyle=tc("#d8dbe11f","#56585c1a");
+    eqCtx.fill();
+
+    eqCtx.beginPath();
+    for(let p=0;p<analyzerCurve.length;p++){
+      const x=p/(analyzerCurve.length-1)*w;
+      const yn=clamp((analyzerCurve[p]+90)/90,0,1);
+      const y=h-yn*h;
+      if(p===0)eqCtx.moveTo(x,y); else eqCtx.lineTo(x,y);
+    }
+    eqCtx.strokeStyle=tc("#d8dbe16b","#56585c94");
+    eqCtx.lineWidth=1.05;
+    eqCtx.stroke();
+  }
 
   // Gain axis: the full usable range is exactly -18 .. +18 dB.
   // Every 3 dB is shown and the dB labels stay on the LEFT.
@@ -1748,7 +1839,9 @@ eqCanvas.addEventListener("pointercancel",e=>{
   ++graphMovementPulseToken;clearGraphControls();graphLastMoveX=graphLastMoveY=-1;
   dragMode=0;dragBand=-1;dragXover=-1;dragOverlapXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;dragDynamicHandleBand=-1;eqDragAxis=0;clearGraphControls();drawEQ();
 });
-function stopPlayback(){if(source){try{source.stop()}catch{}try{source.disconnect()}catch{}source=null}playing=false;$("#status").textContent="READY"}
+function stopPlayback(){
+  disconnectAnalyzerTap();
+  stopAnalyzerLoop();if(source){try{source.stop()}catch{}try{source.disconnect()}catch{}source=null}playing=false;$("#status").textContent="READY"}
 async function loadAudioFile(file){
   if(!file||!(file.type||"").startsWith("audio/")){$("#status").textContent="請拖入音訊檔";return}
   try{
@@ -1798,6 +1891,8 @@ async function startPlayback(){
   source.buffer=audioBuffer;
   source.loop=true;
   source.connect(directFallback?audioCtx.destination:workletNode);
+  connectAnalyzerTap();
+  startAnalyzerLoop();
   source.onended=()=>{if(playing){source=null;return}playing=false;$("#status").textContent="READY"};
   source.start();playing=true;$("#status").textContent="PLAYING · LOOP";
   // Give the worklet enough time to publish its ready heartbeat before any

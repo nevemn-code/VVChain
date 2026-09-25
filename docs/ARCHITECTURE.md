@@ -1,4 +1,4 @@
-# VVChain Architecture（v1.0.52）
+# VVChain Architecture（v1.0.53）
 
 > 以下以目前程式實際執行為準；本次封閉測試的失敗和限制見 `TEST_REPORT.md`。
 
@@ -85,3 +85,14 @@ A fast PR gate protects Source/Web synchronization, JavaScript syntax and intera
 - IVORY changes colours only: no bounds, hit areas, parameter values, DSP state, processing order, latency, or automation behavior may change.
 - Native uses the editor/theme-aware LookAndFeel and paint paths; Web uses the `.ivoryTheme` class plus theme-aware EQ canvas colours.
 - v1.0.52 is a visual trial build; theme persistence across a newly created plugin instance is intentionally not enabled yet.
+
+
+## Spectrum Analyzer (v1.0.53)
+
+Native analysis path is intentionally outside the audio processing chain:
+
+`input tap -> lock-free FIFO -> 2048 Hann FFT -> 220 log-frequency display points -> cached JUCE Path`.
+
+The audio callback only copies a mono analysis tap while Analyzer is enabled. FFT and path generation happen on the editor timer, so no FFT, allocation, drawing, or locks are added to the DSP path. Analyzer OFF disables FIFO writes and clears the display.
+
+Web Preview keeps the production audio path unchanged. A parallel source branch feeds a 2048-point AnalyserNode and zero-gain sink only while Analyzer is enabled. This branch is disconnected when disabled. Analyzer settings remain UI-only and outside APVTS / host automation.

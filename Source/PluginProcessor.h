@@ -40,8 +40,16 @@ public:
     float getDynamicSideGainChangeDb(int band) const noexcept { return dsp.dynamicSideGainChangeDb(band); }
     float getDynamicAverageGainChangeDb(int band) const noexcept { return dsp.dynamicAverageGainChangeDb(band); }
 
+    void setAnalyzerEnabled(bool enabled) noexcept { analyzerEnabled.store(enabled, std::memory_order_relaxed); }
+    bool isAnalyzerEnabled() const noexcept { return analyzerEnabled.load(std::memory_order_relaxed); }
+    int popAnalyzerSamples(float* destination, int maxSamples) noexcept;
+
 private:
+    static constexpr int analyzerCapacity = 16384;
     VVChainDSP dsp;
+    std::array<float, analyzerCapacity> analyzerBuffer {};
+    juce::AbstractFifo analyzerFifo { analyzerCapacity };
+    std::atomic<bool> analyzerEnabled { true };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VVChainAudioProcessor)
 };

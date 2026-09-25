@@ -535,6 +535,20 @@ private:
     public:
         bool monochrome = false;
         bool ivoryTheme = false;
+    bool analyzerEnabled = true;
+
+    static constexpr int analyzerFftOrder = 11;
+    static constexpr int analyzerFftSize = 1 << analyzerFftOrder;
+    static constexpr int analyzerDisplayPoints = 220;
+    juce::dsp::FFT analyzerFft { analyzerFftOrder };
+    juce::dsp::WindowingFunction<float> analyzerWindow {
+        analyzerFftSize, juce::dsp::WindowingFunction<float>::hann, false
+    };
+    std::array<float, analyzerFftSize> analyzerInput {};
+    std::array<float, analyzerFftSize * 2> analyzerFftData {};
+    std::array<float, analyzerDisplayPoints> analyzerDb {};
+    int analyzerInputCount = 0;
+    juce::Path analyzerPath;
 
         void drawRotarySlider(juce::Graphics&, int x, int y, int width, int height,
                               float sliderPosProportional, float rotaryStartAngle,
@@ -573,6 +587,8 @@ private:
                    const juce::String& tooltip, juce::Colour accent);
     void setSettingsPanelVisible(bool visible);
     void setIvoryTheme(bool ivory);
+    void setAnalyzerEnabled(bool enabled);
+    void updateAnalyzer();
 
     Knob* findKnob(const juce::String& id);
     void placeKnob(const juce::String& id, juce::Rectangle<int> area);

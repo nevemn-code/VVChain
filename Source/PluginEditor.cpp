@@ -442,7 +442,14 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     {
         setIvoryTheme(ivory);
     };
+    settingsPanel->onAnalyzerChanged = [this](bool enabled)
+    {
+        setAnalyzerEnabled(enabled);
+    };
     settingsPanel->setIvoryTheme(false);
+    settingsPanel->setAnalyzerEnabled(true);
+    analyzerDb.fill(-100.0f);
+    audioProcessor.setAnalyzerEnabled(true);
     addAndMakeVisible(*settingsPanel);
     settingsPanel->setVisible(false);
 
@@ -1359,6 +1366,24 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         graph.getRight(), graph.getBottom(), false);
     g.setGradientFill(bg);
     g.fillRoundedRectangle(graph, 8.f);
+
+    if (analyzerEnabled && !analyzerPath.isEmpty())
+    {
+        auto fill = analyzerPath;
+        fill.lineTo(graph.getRight(), graph.getBottom());
+        fill.lineTo(graph.getX(), graph.getBottom());
+        fill.closeSubPath();
+
+        g.setColour(ivoryTheme
+            ? juce::Colour(0xff5b5b5b).withAlpha(0.10f)
+            : juce::Colour(0xffd5d8de).withAlpha(0.12f));
+        g.fillPath(fill);
+
+        g.setColour(ivoryTheme
+            ? juce::Colour(0xff56585c).withAlpha(0.58f)
+            : juce::Colour(0xffd8dbe1).withAlpha(0.42f));
+        g.strokePath(analyzerPath, juce::PathStrokeType(1.05f));
+    }
 
     g.setColour(ivoryTheme ? juce::Colour(0xff9f9589) : juce::Colours::black.withAlpha(.95f));
     g.drawRoundedRectangle(graph, 8.f, 1.f);
@@ -2348,6 +2373,7 @@ void VVChainAudioProcessorEditor::pulseGraphControlMovement(
 
 void VVChainAudioProcessorEditor::timerCallback()
 {
+    updateAnalyzer();
     for (auto& k : knobs)
         if (auto* slider = dynamic_cast<WheelSlider*>(k.slider.get()))
             if (slider->isGraphControlActive())
@@ -2675,7 +2701,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(ivoryTheme ? juce::Colour(0xff6c675f) : juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.52", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.53", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2797,6 +2823,120 @@ void VVChainAudioProcessorEditor::setExpandedBand(int band)
 
     resized();
     repaint();
+}
+
+void VVChainAudioProcessorEditor::setAnalyzerEnabled(bool enabled)
+{
+    analyzerEnabled = enabled;
+    audioProcessor.setAnalyzerEnabled(enabled);
+    if (settingsPanel)
+        settingsPanel->setAnalyzerEnabled(enabled);
+
+    if (!enabled)
+    {
+        analyzerInputCount = 0;
+        analyzerPath.clear();
+        analyzerDb.fill(-100.0f);
+    }
+
+    repaint(eqGraphBounds().toNearestInt());
+}
+
+void VVChainAudioProcessorEditor::updateAnalyzer()
+{
+    if (!analyzerEnabled || !isShowing())
+        return;
+
+    std::array<float, 4096> incoming {};
+    const int received = audioProcessor.popAnalyzerSamples(
+        incoming.data(), static_cast<int>(incoming.size()));
+
+    if (received <= 0)
+        return;
+
+    const double sr = audioProcessor.getSampleRate() > 1000.0
+        ? audioProcessor.getSampleRate() : 48000.0;
+
+    bool updated = false;
+    int src = 0;
+
+    while (src < received)
+    {
+        const int room = analyzerFftSize - analyzerInputCount;
+        const int take = juce::jmin(room, received - src);
+        std::copy_n(incoming.data() + src, take,
+                    analyzerInput.data() + analyzerInputCount);
+        analyzerInputCount += take;
+        src += take;
+
+        if (analyzerInputCount == analyzerFftSize)
+        {
+            std::fill(analyzerFftData.begin(), analyzerFftData.end(), 0.0f);
+            std::copy(analyzerInput.begin(), analyzerInput.end(),
+                      analyzerFftData.begin());
+            analyzerWindow.multiplyWithWindowingTable(
+                analyzerFftData.data(), analyzerFftSize);
+            analyzerFft.performFrequencyOnlyForwardTransform(
+                analyzerFftData.data());
+
+            const float norm = 2.0f / static_cast<float>(analyzerFftSize);
+            const int maxBin = analyzerFftSize / 2;
+
+            for (int p = 0; p < analyzerDisplayPoints; ++p)
+            {
+                const float t0 = static_cast<float>(p)
+                    / static_cast<float>(analyzerDisplayPoints);
+                const float t1 = static_cast<float>(p + 1)
+                    / static_cast<float>(analyzerDisplayPoints);
+                const float f0 = 20.0f * std::pow(1000.0f, t0);
+                const float f1 = 20.0f * std::pow(1000.0f, t1);
+                int b0 = juce::jlimit(1, maxBin,
+                    static_cast<int>(std::floor(f0 * analyzerFftSize / sr)));
+                int b1 = juce::jlimit(b0, maxBin,
+                    static_cast<int>(std::ceil(f1 * analyzerFftSize / sr)));
+
+                float peak = 0.0f;
+                for (int b = b0; b <= b1; ++b)
+                    peak = juce::jmax(peak, analyzerFftData[(size_t)b] * norm);
+
+                const float db = juce::jlimit(
+                    -96.0f, 0.0f,
+                    juce::Decibels::gainToDecibels(peak, -96.0f));
+
+                const float old = analyzerDb[(size_t)p];
+                const float coeff = db > old ? 0.42f : 0.16f;
+                analyzerDb[(size_t)p] = old + coeff * (db - old);
+            }
+
+            analyzerInputCount = 0;
+            updated = true;
+        }
+    }
+
+    if (!updated)
+        return;
+
+    const auto graph = eqGraphBounds();
+    analyzerPath.clear();
+
+    for (int p = 0; p < analyzerDisplayPoints; ++p)
+    {
+        const float x = graph.getX()
+            + graph.getWidth()
+                * static_cast<float>(p)
+                / static_cast<float>(analyzerDisplayPoints - 1);
+        const float db = analyzerDb[(size_t)p];
+        const float yNorm = juce::jlimit(0.0f, 1.0f,
+            (db + 90.0f) / 90.0f);
+        const float y = graph.getBottom() - yNorm * graph.getHeight();
+
+        if (p == 0)
+            analyzerPath.startNewSubPath(x, y);
+        else
+            analyzerPath.lineTo(x, y);
+    }
+
+    repaint(graph.toNearestInt());
 }
 
 void VVChainAudioProcessorEditor::setIvoryTheme(bool ivory)

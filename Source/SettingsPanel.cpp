@@ -77,12 +77,20 @@ SettingsPanel::Content::Content()
     setSize(310, 875);
 
     addAndMakeVisible(themeButton);
+    addAndMakeVisible(analyzerButton);
     themeButton.setTooltip("UI THEME ONLY · DOES NOT CHANGE AUDIO");
+    analyzerButton.setTooltip("BACKGROUND SPECTRUM ANALYZER · UI ONLY");
     themeButton.onClick = [this]
     {
         setIvoryTheme(!ivoryTheme);
         if (onThemeChanged)
             onThemeChanged(ivoryTheme);
+    };
+    analyzerButton.onClick = [this]
+    {
+        setAnalyzerEnabled(!analyzerEnabled);
+        if (onAnalyzerChanged)
+            onAnalyzerChanged(analyzerEnabled);
     };
 }
 
@@ -96,12 +104,25 @@ void SettingsPanel::Content::setIvoryTheme(bool ivory)
         ivoryTheme ? juce::Colour(0xffd3c6b5) : juce::Colour(0xff242a31));
     themeButton.setColour(juce::TextButton::textColourOffId,
         ivoryTheme ? juce::Colour(0xff2a2d31) : juce::Colour(0xffd9e0e7));
+    setAnalyzerEnabled(analyzerEnabled);
+    repaint();
+}
+
+void SettingsPanel::Content::setAnalyzerEnabled(bool enabled)
+{
+    analyzerEnabled = enabled;
+    analyzerButton.setButtonText(analyzerEnabled ? "ANALYZER  ON" : "ANALYZER  OFF");
+    analyzerButton.setColour(juce::TextButton::buttonColourId,
+        ivoryTheme ? juce::Colour(0xffddd3c5) : juce::Colour(0xff181c21));
+    analyzerButton.setColour(juce::TextButton::textColourOffId,
+        ivoryTheme ? juce::Colour(0xff2a2d31) : juce::Colour(0xffd9e0e7));
     repaint();
 }
 
 void SettingsPanel::Content::resized()
 {
     themeButton.setBounds(7, 30, getWidth() - 14, 28);
+    analyzerButton.setBounds(7, 61, getWidth() - 14, 28);
 }
 
 void SettingsPanel::Content::drawRow(juce::Graphics& g, int y,
@@ -164,7 +185,7 @@ void SettingsPanel::Content::paint(juce::Graphics& g)
     g.setColour(ivoryTheme ? juce::Colour(0xff34383d) : juce::Colour(0xffe5eaf0));
     g.drawText("INTERFACE", 8, y, getWidth() - 16, 20,
                juce::Justification::centredLeft);
-    y = 61;
+    y = 92;
     for (const auto& row : juce::StringArray {
           "UI Scale|100% · RESERVED",
           "Animation|ON · RESERVED",
@@ -216,6 +237,11 @@ SettingsPanel::SettingsPanel()
         if (onThemeChanged)
             onThemeChanged(ivory);
     };
+    content.onAnalyzerChanged = [this](bool enabled)
+    {
+        if (onAnalyzerChanged)
+            onAnalyzerChanged(enabled);
+    };
     setInterceptsMouseClicks(true, true);
     setOpaque(true);
     viewport.setViewedComponent(&content, false);
@@ -231,10 +257,15 @@ void SettingsPanel::setIvoryTheme(bool ivory)
     repaint();
 }
 
+void SettingsPanel::setAnalyzerEnabled(bool enabled)
+{
+    content.setAnalyzerEnabled(enabled);
+}
+
 void SettingsPanel::resized()
 {
     viewport.setBounds(getLocalBounds().reduced(7, 34).withTrimmedBottom(1));
-    content.setSize(juce::jmax(286, viewport.getMaximumVisibleWidth()), 875);
+    content.setSize(juce::jmax(286, viewport.getMaximumVisibleWidth()), 906);
 }
 
 void SettingsPanel::paint(juce::Graphics& g)

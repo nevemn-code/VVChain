@@ -28,7 +28,9 @@ class SettingsPanel final : public juce::Component
 public:
     SettingsPanel();
     std::function<void(bool)> onThemeChanged;
+    std::function<void(bool)> onAnalyzerChanged;
     void setIvoryTheme(bool ivory);
+    void setAnalyzerEnabled(bool enabled);
     void resized() override;
     void paint(juce::Graphics&) override;
 
@@ -38,7 +40,9 @@ private:
     public:
         Content();
         std::function<void(bool)> onThemeChanged;
+        std::function<void(bool)> onAnalyzerChanged;
         void setIvoryTheme(bool ivory);
+        void setAnalyzerEnabled(bool enabled);
         void resized() override;
         void paint(juce::Graphics&) override;
 
@@ -48,7 +52,9 @@ private:
         void drawRow(juce::Graphics&, int y, const juce::String& name,
                      const juce::String& value, bool enabled);
         juce::TextButton themeButton { "THEME  DARK" };
+        juce::TextButton analyzerButton { "ANALYZER  ON" };
         bool ivoryTheme = false;
+        bool analyzerEnabled = true;
     };
 
     juce::Viewport viewport;

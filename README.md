@@ -1,6 +1,6 @@
 # VVChain
 
-## 目前實際狀態（v1.0.52）
+## 目前實際狀態（v1.0.53）
 
 目前 `main` 的五個測試腳本在本機各重跑十輪均提前失敗，包含 `web_smoke.py` 的 Python 語法錯誤；完整位置和驗證限制見 [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md)。歷史版本日誌描述當時修改，現行行為請以 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 與實際程式為準。本次只更新說明，未更改 DSP。
 
@@ -55,6 +55,14 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
+
+### v1.0.53
+- 修正 v1.0.52 Web Preview runtime 初始化順序：Theme 初始化不再於 state 建立前呼叫 drawEQ()，避免頁面載入後 UI 全空白。
+- Native 新增低負載背景 Spectrum Analyzer：Input tap → lock-free FIFO → 2048-point Hann FFT → 220 個 logarithmic display points → 30 Hz UI repaint。FFT 完全不進 DSP chain、不增加 plugin latency。
+- Web 新增平行 Analyzer tap：Audio source 額外分岔至 2048-point Web Audio AnalyserNode，再進 0-gain sink；主聲音路徑仍維持原 source → Worklet / fallback，不讓 Analyzer 介入聲音鏈。
+- SETTINGS / ANALYZER / GRAPH 的 Analyzer ON/OFF 正式啟用；預設 ON。OFF 時 Native 停止 FFT/FIFO 寫入，Web 斷開 Analyzer branch 並停止 40 ms UI timer。
+- Spectrum 以灰色細線 + 半透明填色畫在 EQ response / grid 後方；DARK 與 IVORY 均有對應中性色，不改四頻段功能色。
+- Analyzer 僅為 UI metering，不寫 APVTS、不送 automation、不改 preset 音訊參數、不更動 DSP、Delta、Solo、Dry/Wet 或 PDC。
 
 ### v1.0.52
 - SETTINGS / INTERFACE 新增真正可操作的 `THEME DARK / IVORY` UI-only 切換；預設仍為 DARK。

@@ -1,4 +1,4 @@
-# VVChain Validation Status（v1.0.52；既有測試基準仍為 v1.0.48）
+# VVChain Validation Status（v1.0.53；既有測試基準仍為 v1.0.48）
 
 This document records what the repository actually verifies. It is not a claim of DAW certification.
 
@@ -57,3 +57,10 @@ Repository source tests do not replace real host validation. Windows VST3 compil
 ## Historical TPT Bell reference
 
 The v1.0.9 independent reference run recorded very small transfer-function differences against its comparison implementation and no NaN/Inf in its modulation stress cases. Those figures are historical reference data, not a claim that every later release automatically reran the same external comparison.
+
+
+## v1.0.53 Analyzer / Web blank-page fix
+
+v1.0.52 的 Pages workflow 雖通過 JavaScript syntax gate，但 Theme 初始化在 `state` 建立前呼叫 `drawEQ()`，屬於 runtime ordering error，因此瀏覽器會中止後續 UI 初始化。v1.0.53 移除該 early draw，Theme click 才在完整 state 建立後 redraw。
+
+Analyzer 新增的 Native FIFO tap / FFT 與 Web AnalyserNode branch 均為視覺分析用途，不屬於聲音處理鏈。Windows VST3 build 與 Pages runtime/deployment 仍以 Actions 結果為最終驗證。
