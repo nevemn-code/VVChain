@@ -94,13 +94,11 @@ assert cmake_version.group(1) == shown_version.group(1) == cache_version.group(1
 assert not (ROOT / "docs" / "legacy analog-copper.html").exists(), "obsolete legacy analog page must remain deleted"
 
 # DELTA analyzer: original/input reference is disconnected and the final
-# Worklet output becomes the only main analyzer source. Contribution overlays
-# are suppressed in DELTA mode.
+# Worklet output becomes the only main analyzer source.
 for token in [
     "function refreshAnalyzerTap()",
     "state.delta&&!directFallback&&!workletFaulted&&workletNode",
     "workletNode.connect(analyserNode)",
-    "state.masterBypass||state.delta",
 ]:
     assert token in text, token
 # Main Spectrum remains; module contribution analyzer is removed.
