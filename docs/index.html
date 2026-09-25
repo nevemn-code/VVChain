@@ -86,7 +86,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.58</div></div><div class="sub"></div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.59</div></div><div class="sub"></div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · ANALOG COLOR · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -128,7 +128,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
       <div class="settingsRow" aria-disabled="true"><span>CPU / latency display</span><span>RESERVED</span></div>
     </section>
     <section class="settingsSection"><div class="settingsSectionTitle">SYSTEM / ABOUT</div>
-      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.58</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.59</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Build number / commit</span><span>GitHub build metadata</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset UI Settings</span><span>DISABLED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset All Settings</span><span>DISABLED</span></div>
@@ -281,38 +281,7 @@ function startAnalyzerLoop(){
     drawEQ();
   },42);
 }
-function processContributionSamples(buffer,frames){
-  if(!analyzerEnabled||state.masterBypass||state.delta||!buffer||frames<2048)return;
-  const data=new Float32Array(buffer),start=frames-2048,sr=audioCtx?.sampleRate||48000,binHz=(sr*.5)/1024;
-  const moduleActive=[
-    !state.eq.globalBypass&&state.eq.color.some((v,b)=>!state.eq.colorBypass[b]&&Number(v)>1e-4),
-    !state.udmbc.bypass&&(state.udmbc.clip||Math.abs(Number(state.udmbc.input||0))>.001||Math.abs(Number(state.udmbc.output||0))>.001||state.udmbc.degree.some((v,b)=>!state.udmbc.bandBypass[b]&&Number(v)>1e-4)),
-    !state.type.bypass&&(Math.abs(Number(state.type.input||0))>.001||Math.abs(Number(state.type.output||0))>.001||state.type.degree.some((v,b)=>!state.type.bandBypass[b]&&Number(v)>1e-4))
-  ];
-  for(let module=0;module<3;module++){
-    const curve=contributionCurves[module];
-    if(!moduleActive[module]){
-      for(let p=0;p<256;p++)curve[p]*=.55;
-      continue;
-    }
-    const preIndex=module*2,postIndex=preIndex+1;
-    for(let n=0;n<2048;n++){const base=(start+n)*6,pre=data[base+preIndex]||0,post=data[base+postIndex]||0;contributionPreTime[n]=pre;contributionPostTime[n]=post;contributionDeltaTime[n]=post-pre}
-    contributionFFT.magnitude(contributionPreTime,contributionPreMag);contributionFFT.magnitude(contributionPostTime,contributionPostMag);contributionFFT.magnitude(contributionDeltaTime,contributionDeltaMag);
-    for(let p=0;p<256;p++){
-      const t=p/255,centre=20*Math.pow(1000,t),halfOct=1/48,f0=centre/Math.pow(2,halfOct),f1=centre*Math.pow(2,halfOct),b0=clamp(Math.floor(f0/binHz),1,1023),b1=clamp(Math.ceil(f1/binHz),b0,1023);
-      let preP=0,postP=0,deltaP=0,count=0;
-      for(let b=b0;b<=b1;b++){const pre=contributionPreMag[b],post=contributionPostMag[b],delta=contributionDeltaMag[b];preP+=pre*pre;postP+=post*post;deltaP+=delta*delta;count++}
-      preP/=Math.max(1,count);postP/=Math.max(1,count);deltaP/=Math.max(1,count);
-      const postDb=postP>1e-24?10*Math.log10(postP):-120;
-      contributionRaw[p]=(postDb<-82||postP<=preP*1.005)?0:clamp(1.7*10*Math.log10(1+deltaP/Math.max(1e-18,postP)),0,8);
-    }
-    const cg=i=>contributionRaw[clamp(i,0,255)];
-    for(let p=0;p<256;p++)contributionSmooth[p]=(cg(p-2)+4*cg(p-1)+6*cg(p)+4*cg(p+1)+cg(p+2))/16;
-    const attack=.78,release=.34;
-    for(let p=0;p<256;p++){const target=contributionSmooth[p],old=curve[p];curve[p]=old+(target>old?attack:release)*(target-old)}
-  }
-  drawEQ();
-}
+function processContributionSamples(){ /* removed in v1.0.59 */ }
 function stopAnalyzerLoop(){
   if(analyzerInterval){clearInterval(analyzerInterval);analyzerInterval=null}
 }
@@ -326,9 +295,9 @@ function setAnalyzerEnabled(enabled){
 analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
 document.addEventListener("visibilitychange",()=>{workletNode?.port?.postMessage({type:"analysisEnabled",enabled:analyzerEnabled&&!document.hidden});if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
 setAnalyzerEnabled(true);
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.58
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.59
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.58"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.59"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -400,7 +369,6 @@ async function ensureAudioGraph(){
         drawEQ();
         return;
       }
-      if(e.data?.type==="contributionSamples"){workletHeartbeatSeen=true;processContributionSamples(e.data.data,Number(e.data.frames||0))}
     };
     workletNode.connect(audioCtx.destination);
     workletNode.port.postMessage({type:"analysisEnabled",enabled:analyzerEnabled&&!document.hidden});
