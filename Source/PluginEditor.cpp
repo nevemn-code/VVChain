@@ -3533,13 +3533,8 @@ void VVChainAudioProcessorEditor::beginRightSolo(
             pGain->beginChangeGesture();
     }
 
-    juce::StringArray graphIds;
-    graphIds.add("EQ" + n + "_FREQ");
-    graphIds.add(
-        dynamicTarget
-            ? "DYN_DYNAMICS" + n
-            : "EQ" + n + "_GAIN");
-    setGraphControlState(graphIds, false);
+    graphLastDragPosition = position;
+    clearGraphControlState();
     showGraphDragHint = false;
     graphDragHint.clear();
 }
@@ -3944,12 +3939,34 @@ void VVChainAudioProcessorEditor::mouseDrag(
         const float x =
             juce::jlimit(graph.getX(), graph.getRight(), event.position.x);
         const float hz = graphXToFrequency(graph, x);
-        setGraphControlMoving(true);
-        setParameter("EQ" + n + "_FREQ", hz);
 
-        float displayedGain = 0.0f;
+        constexpr float movementThreshold = 0.35f;
+        const bool freqMoved =
+            std::abs(event.position.x - graphLastDragPosition.x)
+                > movementThreshold;
+        const bool verticalMoved =
+            std::abs(event.position.y - graphLastDragPosition.y)
+                > movementThreshold;
 
-        if (rightSoloDynamic)
+        juce::StringArray movingIds;
+
+        if (freqMoved)
+        {
+            setParameter("EQ" + n + "_FREQ", hz);
+            setParameter("GRAPH_SOLO_FREQ", hz);
+            movingIds.add("EQ" + n + "_FREQ");
+
+            if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
+                freqKnob->slider->setValue(
+                    hz, juce::dontSendNotification);
+        }
+
+        float displayedGain =
+            rightSoloDynamic
+                ? dynamicEffectiveTargetGain(rightSoloBand)
+                : parameterValue("EQ" + n + "_GAIN");
+
+        if (verticalMoved && rightSoloDynamic)
         {
             const float targetGain = eqYToDb(graph, event.position.y);
             const float offset = parameterValue("EQ" + n + "_GAIN");
@@ -3959,6 +3976,7 @@ void VVChainAudioProcessorEditor::mouseDrag(
                     (targetGain - offset) / 18.f * 100.f);
 
             setParameter("DYN_DYNAMICS" + n, dynamics);
+            movingIds.add("DYN_DYNAMICS" + n);
             displayedGain =
                 dynamicEffectiveTargetGain(rightSoloBand);
 
@@ -3968,10 +3986,11 @@ void VVChainAudioProcessorEditor::mouseDrag(
                     parameterValue("DYN_DYNAMICS" + n),
                     juce::sendNotificationSync);
         }
-        else
+        else if (verticalMoved)
         {
             const float gain = eqYToDb(graph, event.position.y);
             setParameter("EQ" + n + "_GAIN", gain);
+            movingIds.add("EQ" + n + "_GAIN");
             displayedGain = gain;
 
             if (auto* gainKnob = findKnob("EQ" + n + "_GAIN"))
@@ -3979,7 +3998,16 @@ void VVChainAudioProcessorEditor::mouseDrag(
                     gain, juce::dontSendNotification);
         }
 
-        setParameter("GRAPH_SOLO_FREQ", hz);
+        if (!movingIds.isEmpty())
+        {
+            graphLastDragPosition = event.position;
+            pulseGraphControlMovement(movingIds);
+        }
+
+        if (!freqMoved)
+            setParameter(
+                "GRAPH_SOLO_FREQ",
+                parameterValue("EQ" + n + "_FREQ"));
         const int filterType = juce::jlimit(
             0, 13,
             juce::roundToInt(
@@ -3990,10 +4018,6 @@ void VVChainAudioProcessorEditor::mouseDrag(
                 ? 0.70710678f
                 : parameterValue("EQ" + n + "_Q"));
         setParameter("GRAPH_SOLO_ACTIVE", 1.f);
-
-        if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
-            freqKnob->slider->setValue(
-                hz, juce::dontSendNotification);
 
         showGraphDragHint = false;
         graphDragHint.clear();
