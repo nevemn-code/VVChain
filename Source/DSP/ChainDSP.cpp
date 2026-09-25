@@ -922,7 +922,9 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             auto* dst = dynamicDetectorInput.getWritePointer(ch);
             const auto* src =
                 osBlock.getChannelPointer(static_cast<size_t>(ch));
-            std::copy(src, src + osSamples, dst);
+            // JUCE maps this contiguous copy to the platform SIMD path
+            // where available; no arithmetic or sample value changes.
+            juce::FloatVectorOperations::copy(dst, src, osSamples);
         }
     }
 
