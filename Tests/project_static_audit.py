@@ -101,7 +101,7 @@ assert "vvchain-v1064-dual-hardware-skins" in web
 assert "vvchain-v1067-real-png-assets" in web
 assert "juce_add_binary_data(VVChainAssets" in cmake
 assert "VVChainAssets.h" in editor
-assert "studio_knob_strip_png" in editor
+assert "VV_IMG(studioAssets, studio, knobStrip, knob_strip)" in editor
 assert "drawKnobFrame" in editor
 for asset in ("studio_knob_strip.png","ivory_knob_strip.png","studio_button_on.png","ivory_led_on.png","muted_knob_strip.png","bypass_led_red.png"):
     p = ROOT / "docs" / "assets" / "ui" / "png" / asset
