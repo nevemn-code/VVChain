@@ -66,11 +66,11 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 <script>
 const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=null,workletNode=null,workletModuleUrl=null,playing=false,directFallback=false,workletHeartbeatSeen=false;
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
-const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive:false,graphFreq:1000,graphQ:.707},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],type:[0,0,0,0],slope:[1,1,1,1],color:[0,0,0,0],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[50,50,50,50],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},udmbc:{bypass:false,bandBypass:[false,false,false,false],degree:[0,0,0,0],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[0,0,0,0],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:7500,threshold:-6,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
+const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive:false,graphFreq:1000,graphQ:.707},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],type:[0,0,0,0],slope:[1,1,1,1],color:[0,0,0,0],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[50,50,50,50],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},udmbc:{bypass:false,bandBypass:[false,false,false,false],degree:[0,0,0,0],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[0,0,0,0],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:7500,threshold:0,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
 const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],uiTouched={udmbc:[false,false,false,false],analog:[false,false,false,false],tape:[false,false,false,false]},clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.49
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.49"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.49"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -486,7 +486,8 @@ makeKnob(udmbcGrid,{label:"ATTACK",get:()=>state.udmbc.compA[n],set:v=>state.udm
 makeKnob(udmbcGrid,{label:"RELEASE",get:()=>state.udmbc.compR[n],set:v=>state.udmbc.compR[n]=v,min:10,max:2500,suffix:" ms",accent:"#facc15",formatDigits:0,formatValue:()=>fmt(effectiveCompReleaseMs(n),0)+" ms",mutedWhen:()=>state.udmbc.bypass||(uiTouched.udmbc[n]&&(state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001))});
 
 // ANALOG COLOR v1.0.16 unity-normalized smooth saturation.
-const analogKnob=makeKnob(bottomGrid,{label:"ANALOG COLOR",get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:60,accent:"#60a5fa",markTouched:()=>uiTouched.analog[n]=true,formatValue:v=>fmt(v/6,1),parseValue:raw=>{const x=parseFloat(String(raw).replace(/[^0-9+\-.]/g,""));return Number.isFinite(x)?clamp(x,0,10)*6:NaN},mutedWhen:()=>state.eq.globalBypass||(uiTouched.analog[n]&&(state.eq.colorBypass[n]||state.eq.color[n]<=0.0001))});
+let syncAnalogLed=()=>{};
+const analogKnob=makeKnob(bottomGrid,{label:"ANALOG COLOR",get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:60,accent:"#60a5fa",markTouched:()=>uiTouched.analog[n]=true,formatValue:v=>fmt(v/6,1),parseValue:raw=>{const x=parseFloat(String(raw).replace(/[^0-9+\-.]/g,""));return Number.isFinite(x)?clamp(x,0,10)*6:NaN},mutedWhen:()=>state.eq.globalBypass||(uiTouched.analog[n]&&(state.eq.colorBypass[n]||state.eq.color[n]<=0.0001)),afterSet:()=>syncAnalogLed()});
 analogKnob.classList.add("analogKnob");
 let syncTapeLed=()=>{};
 const typeMax=[50,60,70,90][n];
@@ -502,7 +503,10 @@ const analogLed=document.createElement("button");
 analogLed.className="bandLed analog";
 analogLed.style.setProperty("--led","#60a5fa");
 analogLed.title="BAND "+(n+1)+" ANALOG COLOR：亮=啟用；按下=BYPASS";
-const syncAnalogLed=()=>analogLed.classList.toggle("on",!state.eq.colorBypass[n]);
+syncAnalogLed=()=>analogLed.classList.toggle(
+  "on",
+  !state.eq.colorBypass[n]&&Number(state.eq.color[n]||0)>0.0001
+);
 analogLed.onclick=()=>{
   state.eq.colorBypass[n]=!state.eq.colorBypass[n];
   syncAnalogLed();
@@ -517,10 +521,16 @@ analogKnob.appendChild(analogLed);
 syncModuleMute();
 
 const udmbcLed=document.createElement("button");udmbcLed.className="bandLed udmbc";udmbcLed.style.setProperty("--led","#facc15");udmbcLed.title="BAND "+(n+1)+" UDMBC：亮=啟用；按下=BYPASS";
-const syncOttBandLed=()=>udmbcLed.classList.toggle("on",!state.udmbc.bandBypass[n]);
+const syncOttBandLed=()=>udmbcLed.classList.toggle(
+  "on",
+  !state.udmbc.bandBypass[n]&&Number(state.udmbc.degree[n]||0)>0.0001
+);
 udmbcLed.onclick=()=>{state.udmbc.bandBypass[n]=!state.udmbc.bandBypass[n];syncOttBandLed();knobRefreshers.forEach(fn=>fn());syncModuleMute();sendParams()};syncOttBandLed();
 const typeLed=document.createElement("button");typeLed.className="bandLed type";typeLed.style.setProperty("--led","#f472b6");typeLed.title="BAND "+(n+1)+" TAPE：亮=啟用；按下=BYPASS";
-syncTapeLed=()=>typeLed.classList.toggle("on",!state.type.bandBypass[n]);
+syncTapeLed=()=>typeLed.classList.toggle(
+  "on",
+  !state.type.bandBypass[n]&&Number(state.type.degree[n]||0)>0.0001
+);
 typeLed.onclick=()=>{state.type.bandBypass[n]=!state.type.bandBypass[n];syncTapeLed();knobRefreshers.forEach(fn=>fn());sendParams()};syncTapeLed();
 const advBtn=card.querySelector(".advBtn");advBtn.title="UDMBC ADVANCED · BAND "+(n+1);advBtn.onclick=()=>openAdvanced(n);
  udmbcGrid.children[0]?.appendChild(udmbcLed);typeKnob.appendChild(typeLed);
@@ -535,11 +545,17 @@ bg.appendChild(card);
 const body=card.querySelector(".deessZone");
 const deessLocalBypass=document.createElement("button");deessLocalBypass.className="bandLed de deessLocal";deessLocalBypass.style.setProperty("--led","#67d3aa");deessLocalBypass.title="DE-ESSER：亮=啟用；按下=BYPASS";
 deessLocalBypass.onclick=()=>{state.de.bypass=!state.de.bypass;syncDeessLeds();syncDeessLocal();knobRefreshers.forEach(fn=>fn());sendParams()};card.appendChild(deessLocalBypass);
-const syncDeessLocal=()=>{deessLocalBypass.classList.toggle("on",!state.de.bypass);card.classList.toggle("deessMuted",state.de.bypass)};
+const syncDeessLocal=()=>{
+  deessLocalBypass.classList.toggle(
+    "on",
+    !state.de.bypass&&Number(state.de.threshold||0)<-0.0001
+  );
+  card.classList.toggle("deessMuted",state.de.bypass);
+};
 moduleMuteRefreshers.push(syncDeessLocal);
 syncDeessLeds();
 const deFreqKnob=makeKnob(body,{label:"DE-ESS FREQ",controlId:"DEESS_FREQ",get:()=>state.de.freq,set:v=>state.de.freq=v,min:6000,max:18000,suffix:" Hz",accent:"#67d3aa",formatValue:hz,sensitivity:.20,mutedWhen:()=>state.de.bypass});
-const deThresholdKnob=makeKnob(body,{label:"THRESHOLD",controlId:"DEESS_THRESHOLD",get:()=>state.de.threshold,set:v=>state.de.threshold=v,min:-36,max:0,suffix:" dB",accent:"#67d3aa",formatDigits:1,mutedWhen:()=>state.de.bypass});
+const deThresholdKnob=makeKnob(body,{label:"THRESHOLD",controlId:"DEESS_THRESHOLD",get:()=>state.de.threshold,set:v=>state.de.threshold=v,min:-36,max:0,suffix:" dB",accent:"#67d3aa",formatDigits:1,mutedWhen:()=>state.de.bypass,afterSet:()=>syncDeessLocal()});
 const deModeBox=document.createElement("div");deModeBox.className="deEssModeBox";
 deModeBox.innerHTML="<div class='deEssModeTitle'>DE-ESS MODE</div><button class='deEssModeSwitch' type='button'><span>I</span><span>II</span><span>III</span><span>IV</span></button>";
 body.appendChild(deModeBox);
