@@ -375,13 +375,17 @@ private:
                                double sampleRate,
                                float& programReleaseMs,
                                float attackCoeffOverride = -1.0f,
-                               float releaseCoeffOverride = -1.0f) noexcept;
+                               float releaseCoeffOverride = -1.0f,
+                               float slowAttackCoeffOverride = -1.0f,
+                               float slowReleaseCoeffOverride = -1.0f) noexcept;
 
     static float applyLifterFromDetectorDb(float input, float detectorDb,
                                             float& env, float thresholdDb,
                                             float attackMs, float releaseMs,
                                             float mix, double sampleRate,
-                                            float ratio = 4.f);
+                                            float ratio = 4.f,
+                                            float attackCoeffOverride = -1.0f,
+                                            float releaseCoeffOverride = -1.0f);
 
     static float applyCompressorFromDetectorDb(float input, float detectorDb,
                                                 float& envDb, float thresholdDb,
@@ -393,7 +397,9 @@ private:
 
 
     static float applyGate(float input, float& envDb, float thresholdDb,
-                           double sampleRate);
+                           double sampleRate,
+                           float attackCoeffOverride = -1.0f,
+                           float releaseCoeffOverride = -1.0f);
 
     static float applyLimiter(float input, float& envDb, double sampleRate);
 
