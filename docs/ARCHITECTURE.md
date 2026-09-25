@@ -1,4 +1,4 @@
-# VVChain Architecture（v1.0.58）
+# VVChain Architecture（v1.0.59）
 
 > 以下以目前程式實際執行為準；本次封閉測試的失敗和限制見 `TEST_REPORT.md`。
 
@@ -14,7 +14,17 @@ INPUT
 → master limiter
 → OUTPUT
 
-實際 Native 順序：EQ／Dynamic EQ 與四段 Analog Color（EQ 4× oversampling）→ UDMBC → TAPE COLOR → De-Esser → Mix／Out → Solo → 4× true-peak limiter → 主 Bypass／Delta。X1／X2／X3 與 OVERLAP 供 Analog、UDMBC、TAPE COLOR 及頻段 Solo 使用；四個 EQ 的頻率另由各自 FREQ 設定。
+實際 Native 順序：base-rate EQ／Dynamic EQ → conditional 4× Analog ADAA v2 → UDMBC → TAPE COLOR → De-Esser → Mix／Out → Solo → 4× true-peak limiter → 主 Bypass／Delta。X1／X2／X3 與 OVERLAP 供 Analog、UDMBC、TAPE COLOR 及頻段 Solo 使用；四個 EQ 的頻率另由各自 FREQ 設定。
+
+## CPU / Analyzer architecture（v1.0.59）
+
+- Linear EQ / Dynamic EQ 永遠以 host rate 處理，不進 Analog oversampler。
+- Static EQ 的 frequency/gain/Q/type/slope 未變時不重算係數；DYNAMICS=0 時不跑 detector/envelope。
+- Analog 的 4× oversampling 只在 nonlinear path 真正需要時工作；inactive band 不執行 ADAA transfer。
+- UDMBC Degree=0 / band bypass 不執行該 band detector / gain computer；固定 attack/release coefficient 與 ratio 在 block-level 預算。
+- TAPE COLOR 的 0% / bypass band 不執行 tanh；shared crossover 參數未變時不重建係數。
+- Main Spectrum Analyzer 保留 4096 FFT。ANALOG / UDMBC / TYPE-A contribution Analyzer 已完整移除，包括 Native pre/post taps、FIFO、2048 FFT、Analyzer-only resampling，以及 Web contribution transport。
+- Native Editor 關閉 / Analyzer OFF 時 processor analyzer FIFO 停止；Web hidden / Analyzer OFF 時 AnalyserNode 直接斷線。
 
 ## Parametric / Dynamic EQ
 
@@ -33,7 +43,7 @@ Each EQ band has an independent Analog Color amount, TT/SS mode, bypass and X2.
 - Core transfer: unity-normalized smooth algebraic saturation based on `x / (1 + alpha*x^2)^(1/4)`.
 - 靜態 transfer 在 shaping domain 的 ±1 歸一化；ADAA 是有狀態的一階差分，沒有逐 sample 的 hard no-shrink guard。
 - X2 doubles only the generated Analog delta; it does not multiply EQ / UDMBC / TAPE COLOR / De-Esser / Mix / Out.
-- ADAA 的 previous sample 依頻段和聲道獨立保存；每段 alpha 使用約 0.25 ms smoothing。即使 Color 為 0，整個 EQ 路徑仍經過分頻重建及 oversampling，不能把整鏈宣稱為 bit-exact dry。
+- ADAA 的 previous sample 依頻段和聲道獨立保存；每段 alpha 使用約 0.25 ms smoothing。任一 Analog band 啟用時維持 4× oversampling；全部 Color=0／Bypass 且 crossfade 回到 linear path 後，oversampler / Analog crossover / ADAA 完全停止。固定 PDC 由 base-rate delay path 維持。
 
 ## 參數與操作
 
