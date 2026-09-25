@@ -58,6 +58,8 @@ assert "VVCHAIN_COPY_PLUGIN_AFTER_BUILD" in cmake
 
 assert "timeout-minutes: 3" in pages
 assert "Web visible version and AudioWorklet cache version differ" in pages
+assert "grep -q 'TRANSIENT' docs/index.html" in pages
+assert "grep -q 'DE-ESSER' docs/index.html" not in pages
 
 assert "tone - tone" not in stress
 assert "scipy" not in stress.lower()
@@ -68,7 +70,7 @@ processor_h = read("Source/PluginProcessor.h")
 processor = read("Source/PluginProcessor.cpp")
 settings = read("Source/SettingsPanel.cpp")
 
-# v1.0.62 analyzer/transient invariants: main Spectrum only, no module contribution path.
+# v1.0.63 analyzer/transient invariants: main Spectrum only, no module contribution path.
 assert "analyzerFftOrder = 12" in editor_h
 assert "analyzerHopSize = analyzerFftSize / 2" in editor_h
 assert "contributionFftOrder" not in editor_h
