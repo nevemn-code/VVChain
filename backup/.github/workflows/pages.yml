@@ -1,0 +1,77 @@
+name: Deploy VVChain Web Preview
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "docs/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: vvchain-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout docs only
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          sparse-checkout: |
+            docs
+          sparse-checkout-cone-mode: true
+
+      - name: Fast Web validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s docs/index.html
+          test -s docs/vvchain-worklet.js
+          grep -q 'id="bandGrid"' docs/index.html
+          grep -q 'TRANSIENT' docs/index.html
+          grep -q 'ANALOG COLOR' docs/index.html
+          node --check docs/vvchain-worklet.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('docs/index.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, re.S | re.I)
+          if not scripts:
+              raise SystemExit('ERROR: no inline JavaScript found')
+          Path('/tmp/vvchain-pages.js').write_text('\n\n'.join(scripts), encoding='utf-8')
+          PY
+          node --check /tmp/vvchain-pages.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('docs/index.html').read_text(encoding='utf-8')
+          shown = re.search(r'VVCHAIN v(\d+\.\d+\.\d+)', html)
+          cache = re.search(r'vvchain-worklet\.js",document\.baseURI\)\.href\+"\?v=(\d+\.\d+\.\d+)"', html)
+          if not shown or not cache or shown.group(1) != cache.group(1):
+              raise SystemExit('ERROR: Web visible version and AudioWorklet cache version differ')
+          print('Web version/cache parity: PASS')
+          PY
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: './docs'
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

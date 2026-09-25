@@ -1,0 +1,1910 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VVChain — 4-Band Dynamic EQ + M/S Chain</title>
+<style>
+:root{--bg:#07090c;--text:#edf1f5;--muted:#7f8893;--blue:#38bdf8;--cyan:#22d3ee;--lime:#a3e635;--orange:#f97316;--yellow:#facc15;--pink:#f472b6;--green:#67d3aa;--out:#9ed85c}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:var(--text);font-family:Segoe UI,Arial,sans-serif}button,input,select{font:inherit}button{cursor:pointer}
+body{display:grid;place-items:center}.app{position:relative;width:min(1500px,calc(100vw - 10px));height:min(930px,calc(100vh - 10px));overflow:hidden;padding:7px;background:linear-gradient(180deg,#0b0d10,#050608);border:1px solid #23272d;box-shadow:0 18px 50px #000}
+.tiny{height:27px;padding:0 8px;border:1px solid #3a4048;border-radius:4px;background:#12151a;color:#cbd1d8;font:9px Consolas}.transport{height:32px;display:grid;grid-template-columns:110px 1fr 55px 55px 65px 75px;gap:5px;align-items:center;margin-bottom:5px}.file{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:9px Consolas;color:var(--muted);padding:0 6px}
+.header{height:56px;border:1px solid #08090b;border-radius:7px;padding:8px 12px;background:linear-gradient(180deg,#343840,#181b20);display:flex;align-items:center;box-shadow:inset 0 1px #fff2}.logo{font-size:21px;font-weight:900;letter-spacing:.32em}.brandLine{display:flex;align-items:baseline;gap:12px}.lastModified{font:700 8px Consolas;color:#7f8893;letter-spacing:.04em;white-space:nowrap}.sub{font:8px Consolas;color:#828b96;margin-top:2px}.headerControls{margin-left:auto;display:flex;align-items:center;gap:8px}
+.leds{display:flex;gap:8px;margin-left:0}.ledBox{display:grid;grid-template-columns:21px auto;gap:3px;align-items:center;cursor:pointer}.led{width:19px;height:19px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 2px 4px #000}.led.on{background:radial-gradient(circle at 36% 30%,#fff 0%,var(--led) 22%,#25272b 78%,#101216 100%);box-shadow:0 0 10px var(--led),inset 0 1px #fff5}.ledLabel{font:7px Consolas;color:#a9b0b9}
+.rowTop{height:315px;margin-top:5px;display:block}.rowTop>.panel{display:none}.panel,.band{border:1px solid #08090b;border-radius:7px;background:linear-gradient(180deg,#292c32,#13161a);box-shadow:0 9px 18px #0009,inset 0 1px #fff1}.panelHead{height:29px;padding:6px 10px;border-bottom:1px solid #06070a;font-size:10px;font-weight:900;letter-spacing:.08em}.panelSub{font:7px Consolas;color:#7f8790;margin-top:1px}.eqShared{display:none}.graph{height:315px;border:1px solid #06070a;border-radius:7px;background:#111318;overflow:hidden;position:relative}.graph canvas{width:100%;height:100%;display:block}.graphHint .active{font-weight:900;color:#fff}.graphHint .muted{font-weight:400;color:#9aa2ac}.graphHint{position:absolute;z-index:5;pointer-events:auto;padding:8px 10px;border:1px solid #fff9;border-radius:6px;background:#07090cf2;box-shadow:0 7px 20px #000b;color:#fff;font:700 10px/15px Consolas;white-space:normal;text-align:left}.graphHint .graphEdit{cursor:text;border-radius:3px;padding:0 2px;min-width:70px}.graphHint .graphEdit:hover{background:#ffffff12}.graphHint .graphEdit:focus{outline:1px solid #94a3b8;background:#1b2027}
+.eqTypeMenu{position:absolute;z-index:12;width:338px;max-height:290px;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:5px;border:1px solid #4b4b4b;border-radius:7px;background:#101010f8;box-shadow:0 14px 38px #000e}
+.eqTypeMenu[hidden]{display:none}.eqTypeItem{--shape:#d4d4d8;height:40px;display:grid;grid-template-columns:40px 1fr;align-items:center;gap:7px;padding:0 8px;border:1px solid #353535;border-left:3px solid var(--shape);border-radius:4px;background:linear-gradient(180deg,#252525,#191919);color:#d7d7da;text-align:left;font:9px/11px Segoe UI,Arial,sans-serif;opacity:.82}
+.eqTypeItem:hover{opacity:1;background:linear-gradient(180deg,#323232,#222);border-color:#696969;border-left-color:var(--shape);box-shadow:inset 0 0 0 1px #ffffff18}
+.eqTypeItem.on{opacity:1;border:2px solid var(--shape);border-left:6px solid var(--shape);padding-left:5px;background:linear-gradient(180deg,#454545,#292929);color:#fff;font-weight:800;box-shadow:0 0 9px var(--shape),inset 0 0 0 1px #ffffff55}
+.eqTypeIcon{width:36px;height:22px;display:block;color:var(--shape)}.eqTypeIcon .axis{stroke:#777;stroke-width:.75;opacity:.45}.eqTypeIcon .shape{fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.eqTypeItem.on .eqTypeIcon .shape{stroke-width:2.8;filter:drop-shadow(0 0 2px currentColor)}.eqTypeItem.on .eqTypeIcon .axis{opacity:.75}.eqTypeIcon .node{fill:currentColor;stroke:none}
+
+.bandsFrame{height:500px;margin-top:6px;padding:7px;border:1px solid #07080a;border-radius:7px;background:linear-gradient(180deg,#20242a,#101216);box-shadow:0 10px 22px #0009}.bandGrid{height:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) 1fr;gap:7px}.band{position:relative;padding:7px;overflow:hidden}.band:after{content:"";position:absolute;inset:2px;border:1px solid var(--accent);opacity:.16;border-radius:5px;pointer-events:none}.bandHead{height:25px;display:flex;justify-content:space-between;align-items:center;color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.08em}.bandLed{position:absolute;right:7px;width:14px;height:14px;border-radius:50%;border:1px solid #555b63;background:#171a1f;box-shadow:inset 0 2px 3px #000,0 1px 3px #000;z-index:3;padding:0}.bandLed.on{box-shadow:0 0 7px var(--led),inset 0 1px #fff5}.bandLed.udmbc{top:-9px;right:-3px}.bandLed.analog{top:-9px;right:-3px}.bandLed.type{top:-9px;right:-3px}.bandLed.udmbc.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#facc15 25%,#25272b 78%,#101216 100%)}.bandLed.analog.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#60a5fa 25%,#25272b 78%,#101216 100%)}.bandLed.type.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#f472b6 25%,#25272b 78%,#101216 100%)}.bandHeadBtns{display:flex;align-items:center;gap:3px}.soloBtn{height:21px;padding:0 6px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.soloBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.advBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #4a4f56;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn{height:21px;padding:0 7px;border-radius:4px;border:1px solid #555b63;background:#14171b;color:#d6dbe1;font:8px Consolas}.bypassBtn.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 8px #dfe7ef88}.band.bypassed{filter:grayscale(1)}.knob.graphActive .dial{box-shadow:0 0 0 2px #fff,0 0 11px #fff8,inset 0 1px 2px #fff2}.knob.graphMoving .dial{animation:vvGraphPulse .36s steps(2,end) infinite}@keyframes vvGraphPulse{0%,100%{box-shadow:0 0 0 2px #fff,0 0 12px #fff9,inset 0 1px 2px #fff2}50%{box-shadow:0 0 0 1px #fff4,0 0 4px #fff3,inset 0 1px 2px #fff2}}.udmbcAdvBtn{position:absolute;left:7px;top:6px;height:21px;padding:0 7px;border-radius:4px;border:1px solid #5b4c1d;background:#17150f;color:#ffdf62;font:8px Consolas;z-index:4}.bandBody{height:calc(100% - 25px)}.legacyRemovedZone{height:100%;display:grid;grid-template-columns:1fr;grid-template-rows:repeat(3,1fr);gap:6px;padding:12px 6px 8px}.bandLed.de{top:4px;right:7px;width:19px;height:19px}.bandLed.de.on{background:radial-gradient(circle at 36% 30%,#fff 0%,#67d3aa 25%,#25272b 78%,#101216 100%);box-shadow:0 0 10px #67d3aa,inset 0 1px #fff5}.eqBody{height:calc(100% - 25px);padding:11px 2px 0;display:grid;grid-template-rows:84px 119px 105px 128px;gap:5px}.knobGrid{height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr;gap:3px}.dynSection{height:119px;border:1px solid #30343a;border-radius:5px;background:#0c0f13;padding:8px 4px 2px;position:relative}.dynModeRow{height:21px;display:block;position:relative;margin:1px 0 4px}.dynModeBtn{height:21px;border:1px solid #444b55;border-radius:4px;background:#11151a;color:#cfd5dc;font:8.2px Consolas;font-weight:800}.dynModeRow .triggerBtn{position:absolute;right:0;top:0;width:31%}.dynDetectBlend{position:absolute;left:0;top:0;transform:none;width:31%;height:21px;border:1px solid #444b55;border-radius:4px;background:linear-gradient(to right,#60a5fa 0 var(--mix,50%),#11151a var(--mix,50%) 100%);overflow:hidden;color:#fff;font:8.2px Consolas;font-weight:800;display:flex;align-items:center;justify-content:space-between;padding:0 5px;cursor:ns-resize}.dynDetectBlend input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:.01;cursor:ns-resize}.dynDetectBlend span{pointer-events:none;z-index:1;text-shadow:0 1px 2px #000}.dynModeBtn.on{background:#e8edf2;color:#090b0e}.dynControls{height:84px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.staticGrid .knob .dial{width:50px;height:50px}.staticGrid .knob .dial:before{height:14px;transform-origin:50% 21px}.dynControls .knob .dial{width:50px;height:50px}.dynControls .knob .dial:before{height:14px;transform-origin:50% 21px}.udmbcGrid,.bottomGrid{height:100%;display:grid;position:relative;grid-template-columns:repeat(3,1fr);gap:3px;transform:translateY(8px)}.udmbcGrid .knob .dial,.bottomGrid .knob .dial{width:47px;height:47px}.udmbcGrid .knob .dial:before,.bottomGrid .knob .dial:before{height:13px;transform-origin:50% 20px}.knobTitle{height:12px}.knobValue{height:14px;line-height:12px;cursor:text;border-radius:3px;outline:none}.knobValue:hover{background:#ffffff0d}.knobValue:focus{background:#11161d;box-shadow:inset 0 0 0 1px #69717c;color:#fff}.bottomGrid{grid-template-columns:repeat(3,1fr);padding:0}.dynMuted{opacity:.45;filter:grayscale(1)}.moduleMuted{opacity:.42;filter:grayscale(1)}.knobMuted{opacity:.42;filter:grayscale(1)}.knobMuted .modeSwitch,.modeSwitch.muted{opacity:.42;filter:grayscale(1)}.legacyMutedRemoved .bandHead{color:#747b84}.legacyMutedRemoved .bandBody{opacity:.42;filter:grayscale(1)}.legacyMutedRemoved .bandLed.de{opacity:.42;filter:grayscale(1)}.legacyLocalRemoved{top:auto;right:7px;width:19px;height:19px}.graphAxis{fill:#aab0ba}.knob{text-align:center;font:7.7px Consolas;color:#bcc3cb;min-width:0;position:relative}.modeSwitch{position:absolute;left:50%;top:-25px;transform:translateX(-50%);width:36px;height:12px;padding:0;display:flex;align-items:center;justify-content:space-around;border:1px solid #4b525b;border-radius:4px;background:#0b0d10;color:#aeb5bd;font:10px Consolas;font-weight:900;z-index:4}.legacyModeDialRemoved{overflow:visible}.legacyModeTickRemoved{position:absolute;z-index:6;transform:translate(-50%,-50%);pointer-events:none;color:var(--accent);font:7px Consolas;font-weight:900;text-shadow:0 1px 2px #000}.analogX2Btn{position:absolute;left:2px;top:-12px;width:22px;height:12px;padding:0;border:1px solid #4b525b;border-radius:4px;background:#0b0d10;color:#7f8790;font:7px Consolas;font-weight:900;z-index:5}.analogX2Btn.on{color:#fff;border-color:#60a5fa;background:#193047;box-shadow:0 0 7px #60a5fa88}.modeSwitch i{position:absolute;top:2px;left:2px;width:14px;height:6px;border-radius:3px;background:#60a5fa;opacity:.85;transition:left .08s}.modeSwitch.ss i{left:18px}.modeSwitch span{position:relative;z-index:1}.modeSwitch.ss span:last-child,.modeSwitch:not(.ss) span:first-child{color:#fff}.dial{width:58px;height:58px;margin:0 auto 2px;border-radius:50%;border:2px solid #676c75;background:radial-gradient(circle at 34% 28%,#50545d,#2b2f35 58%,#15171b 100%);box-shadow:0 4px 9px #000c,inset 0 1px 2px #fff2;position:relative;touch-action:none;cursor:ns-resize}.dial:before{content:"";position:absolute;left:50%;top:4px;width:3px;height:18px;background:#fff;box-shadow:0 0 0 1px #0008;transform:translateX(-50%) rotate(var(--angle,-125deg));transform-origin:50% 25px;border-radius:2px}.dial{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 9px #000c,inset 0 1px 2px #fff2}.dial:after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;background:#eef2f7;transform:translate(-50%,-50%)}.knobTitle{height:13px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.knobValue{height:16px;line-height:14px;border:1px solid #050608;border-radius:3px;background:#07090b;color:#dce2e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:8.8px}
+.advPopup{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,calc(100% - 40px));height:330px;border:1px solid #facc15cc;border-radius:10px;background:linear-gradient(180deg,#28231a,#101216);z-index:50;padding:8px 12px;box-shadow:0 18px 44px #000c,0 0 0 1px #0009}.advPopupHead{height:34px;display:flex;align-items:center;justify-content:space-between;color:#facc15;font:10px Consolas;font-weight:900}.advPopupClose{height:21px;padding:0 8px;border:1px solid #5c4e1f;border-radius:4px;background:#17150f;color:#ffdf62;font:8px Consolas}.advPopupGrid{height:276px;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:1fr 1fr;gap:2px}.advPopupGrid .dial{width:50px;height:50px}.advPopupGrid .dial:before{height:14px;transform-origin:50% 22px}.advPopupGrid .knobTitle{font-size:6.82px;height:11px}.advPopupGrid .knobValue{font-size:7.7px;height:14px;line-height:12px}.advPopupGrid .tiny{height:22px;padding:0 3px;font-size:6.5px;margin:auto}
+.footer{display:none}.masterBypass{height:27px;min-width:72px;padding:0 9px;border:1px solid #69717b;border-radius:4px;background:#20242a;color:#e9eef3;font:9px Consolas;font-weight:900}.masterBypass.on{background:#e6edf4;color:#0a0c0f;box-shadow:0 0 12px #dfe7ef88}.app.globalBypass{filter:grayscale(1)}.app.audioDragOver{outline:2px solid #38bdf8;outline-offset:-3px;box-shadow:0 0 18px #38bdf855,0 18px 50px #000}.leds{margin-left:8px}.masterMonitor{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:22px 8px 8px;gap:7px}.masterBypassLabel{font:900 9px Consolas;color:#e5e7eb;letter-spacing:.08em;text-align:center}.monitorKnobRow{width:100%;height:224px;display:grid;grid-template-columns:1fr;grid-template-rows:1fr 1fr;gap:4px}.masterPower{width:72px;height:72px;border-radius:50%;border:2px solid #50565f;background:radial-gradient(circle at 35% 28%,#454a52,#171a1f 68%,#0b0d10 100%);color:#8b929a;font-size:28px;font-weight:800;line-height:1;box-shadow:0 7px 12px #000b,inset 0 1px 2px #fff2;cursor:pointer}.masterPower.on{border-color:#e5e7eb;color:#fff;box-shadow:0 0 18px #e5e7eb77,0 7px 12px #000b,inset 0 1px 2px #fff3}.deltaBtn{width:100%;height:30px;border:1px solid #555b63;border-radius:5px;background:#12161b;color:#dfe5eb;font:800 9px Consolas}.deltaBtn.on{border-color:#fff;background:#e6edf2;color:#090b0e;box-shadow:0 0 9px #fff6}.monitorHint{font:7px Consolas;color:#7e8791;text-align:center;line-height:1.4}.note{display:none}select{height:27px;background:#0f1115;color:#dce2e8;border:1px solid #3b4047;border-radius:4px;font-size:8px}
+@media(max-width:1100px){.chain{display:none}.ledLabel{display:none}.dial{width:57px;height:57px}.footer{grid-template-columns:1fr 245px}}
+.versionNav{display:flex;align-items:center;gap:4px;margin-right:8px}.versionNav a{height:27px;padding:0 7px;display:inline-flex;align-items:center;border:1px solid #3a4048;border-radius:4px;background:#101318;color:#9aa4ae;text-decoration:none;font:8px Consolas}.versionNav a:hover,.versionNav a.active{background:#e6edf4;color:#0a0c0f;border-color:#e6edf4}.labTag{font:8px Consolas;color:#facc15;margin-right:6px}
+.settingsGear{width:28px;height:28px;flex:0 0 28px;padding:0;border:1px solid #454b53;border-radius:4px;background:#171a1f;color:#8d96a0;display:grid;place-items:center;box-shadow:none}.settingsGear:hover,.settingsGear.open{border-color:#7d8792;background:#30353d;color:#edf2f7}.settingsGear svg{width:14px;height:14px;display:block}.settingsPanel{position:absolute;z-index:90;width:330px;max-height:480px;overflow-y:auto;overflow-x:hidden;border:1px solid #525a64;border-radius:7px;background:#111419;box-shadow:0 18px 42px #000d;color:#d9e0e7}.settingsPanel[hidden]{display:none}.settingsHead{position:sticky;top:0;z-index:2;height:34px;padding:0 12px;display:flex;align-items:center;background:#171b20;border-bottom:1px solid #30363e;font:900 10.5px Consolas;letter-spacing:.08em}.settingsSection{padding:8px 9px 2px}.settingsSectionTitle{height:21px;display:flex;align-items:center;color:#e5eaf0;font:900 9.5px Consolas}.settingsSection.reserved .settingsSectionTitle{color:#7f8790}.settingsRow{height:29px;margin-bottom:3px;padding:0 8px;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid #343a42;border-radius:3px;background:#181c21;font:800 9px Consolas;color:#7e8791}.settingsRow span:last-child{font-weight:400;font-size:8px;color:#626b75;text-align:right}.settingsNote{padding:7px 10px 10px;color:#69727d;font:8px/12px Consolas}</style>
+<style id="vvchain-v108-overrides">
+.transport{grid-template-columns:110px 75px minmax(0,1fr) 55px 55px 65px 75px}
+.graphHint{width:150px;min-width:150px;max-width:150px}
+.legacyModeBoxRemoved{text-align:center;font:7.7px Consolas;color:#bcc3cb;min-width:0;display:flex;flex-direction:column;gap:5px;justify-content:center}
+.legacyModeTitleRemoved{height:13px;color:#67d3aa;font-weight:900}
+.legacyModeSwitchRemoved{height:34px;padding:0 2px;display:grid;grid-template-columns:repeat(4,1fr);gap:2px;border:1px solid #4b525b;border-radius:5px;background:#0b0d10}
+.legacyModeSwitchRemoved span{border:1px solid transparent;border-radius:4px;color:#aeb5bd;font:9px Consolas;font-weight:900;display:flex;align-items:center;justify-content:center}
+.legacyModeSwitchRemoved span.on{color:#fff;border-color:#67d3aa;background:#173126;box-shadow:0 0 7px #67d3aa55}
+.monitorBand .bandHead{transform:translateY(29px)}
+.monitorBand .masterMonitor{padding-top:10px}
+.monitorBand .masterPower{width:58px;height:58px}
+.monitorBand .monitorKnobRow{transform:translateY(18px)}
+</style>
+<style id="vvchain-ivory-theme">
+.app.ivoryTheme{background:linear-gradient(180deg,#eee7dc,#e2d9cc);border-color:#a99e91;color:#2a2d31;box-shadow:0 18px 50px #0005}
+.app.ivoryTheme .tiny{border-color:#b7ada0;background:#eee7dc;color:#35393e}
+.app.ivoryTheme .file,.app.ivoryTheme .lastModified,.app.ivoryTheme .sub{color:#6b665f}
+.app.ivoryTheme .header{border-color:#b3a89b;background:linear-gradient(180deg,#f4eee5,#d8cec0);box-shadow:inset 0 1px #fff8}
+.app.ivoryTheme .logo{color:#25292d}
+.app.ivoryTheme .panel,.app.ivoryTheme .band{border-color:#aaa094;background:linear-gradient(180deg,#f2ece2,#ddd4c8);box-shadow:0 7px 16px #0004,inset 0 1px #fff9}
+.app.ivoryTheme .bandsFrame{border-color:#a99f93;background:linear-gradient(180deg,#e7dfd3,#d8cec0);box-shadow:0 8px 18px #0004}
+.app.ivoryTheme .graph{border-color:#a99f93;background:#eee7dc}
+.app.ivoryTheme .graphHint{border-color:#8c8378;background:#f5efe6f5;color:#25292d;box-shadow:0 7px 20px #0005}
+.app.ivoryTheme .graphHint .active{color:#202327}.app.ivoryTheme .graphHint .muted{color:#6d6861}
+.app.ivoryTheme .eqTypeMenu{border-color:#9f9487;background:#eee7dcf5}
+.app.ivoryTheme .eqTypeItem{border-color:#b7ada0;background:linear-gradient(180deg,#f5efe6,#ddd4c8);color:#34383d}
+.app.ivoryTheme .eqTypeItem:hover{background:linear-gradient(180deg,#fffaf2,#e7ded2);border-color:#887e72}
+.app.ivoryTheme .eqTypeItem.on{background:linear-gradient(180deg,#eadfce,#d5c8b7);color:#202327}
+.app.ivoryTheme .dynSection{border-color:#b8aea1;background:#e9e1d5}
+.app.ivoryTheme .dynModeBtn{border-color:#aaa095;background:#e5dccf;color:#35393e}
+.app.ivoryTheme .dynDetectBlend{border-color:#aaa095;background:linear-gradient(to right,#60a5fa 0 var(--mix,50%),#e5dccf var(--mix,50%) 100%);color:#202327}
+.app.ivoryTheme .knob{color:#4d5156}
+.app.ivoryTheme .dial{background:radial-gradient(circle at 34% 28%,#f6f0e7,#d8cfc2 58%,#b9afa2 100%);box-shadow:0 4px 8px #0005,inset 0 1px 2px #fff}
+.app.ivoryTheme .dial:before,.app.ivoryTheme .dial:after{background:#34383d}
+.app.ivoryTheme .knobValue{border-color:#b8aea1;background:#eee7dc;color:#2f3337}
+.app.ivoryTheme .modeSwitch,.app.ivoryTheme .analogX2Btn{border-color:#aaa095;background:#e8e0d4;color:#625d57}
+.app.ivoryTheme .masterBypass{border-color:#9d9387;background:#e8e0d4;color:#2b2f33}
+.app.ivoryTheme .soloBtn,.app.ivoryTheme .advBtn,.app.ivoryTheme .bypassBtn{border-color:#aaa095;background:#e8e0d4;color:#303438}
+.app.ivoryTheme .masterPower{border-color:#9e9488;background:radial-gradient(circle at 35% 28%,#f5efe6,#d1c7b9 68%,#aaa095 100%);color:#4f5358;box-shadow:0 6px 10px #0005,inset 0 1px 2px #fff}
+.app.ivoryTheme .deltaBtn{border-color:#aaa095;background:#e8e0d4;color:#303438}
+.app.ivoryTheme .masterBypassLabel{color:#303438}
+.app.ivoryTheme .settingsGear{border-color:#b8aea0;background:#eee7dc;color:#34383d}
+.app.ivoryTheme .settingsGear:hover,.app.ivoryTheme .settingsGear.open{border-color:#81786d;background:#d7cdbd;color:#25292d}
+.app.ivoryTheme .settingsPanel{border-color:#a99e91;background:#f3eee4;color:#2a2d31;box-shadow:0 18px 42px #0006}
+.app.ivoryTheme .settingsHead{background:#e5dccf;border-color:#c5b9aa}
+.app.ivoryTheme .settingsSectionTitle{color:#34383d}.app.ivoryTheme .settingsSection.reserved .settingsSectionTitle{color:#81796f}
+.app.ivoryTheme .settingsRow{border-color:#c8bdaf;background:#eee7dc;color:#68645f}.app.ivoryTheme .settingsRow span:last-child{color:#80796f}
+.app.ivoryTheme .settingsNote{color:#777168}
+.app.ivoryTheme .advPopup{background:linear-gradient(180deg,#f0e6d7,#d8cec0);box-shadow:0 18px 44px #0006,0 0 0 1px #fff6}
+.themeToggle{height:29px;width:100%;margin-bottom:3px;border:1px solid #4f5660;border-radius:3px;background:#20242a;color:#e5eaf0;font:800 9px Consolas}
+.app.ivoryTheme .themeToggle{border-color:#a99f93;background:#ddd3c5;color:#2a2d31}
+</style>
+</head>
+<body>
+<div class="app"><span hidden>NO PAGE SCROLL</span><span hidden>DELTA = OUTPUT − DRY · SOLO = SHARED X-OVER PRE/POST</span>
+  <div class="transport">
+    <label class="tiny"><input id="audioFileInput" type="file" accept="audio/*" hidden>LOAD AUDIO</label>
+    <span class="tiny" id="cursorTime">0:00.000</span>
+    <div class="file" id="fileName">未載入音檔</div>
+    <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
+  </div>
+  <div class="header">
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.65</div></div><div class="sub"></div></div>
+    <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · ANALOG COLOR · FULL CHAIN</span></div>
+      <button id="masterBypass" class="masterBypass">BYPASS</button>
+      <button id="soloMode" class="masterBypass">SOLO PRE</button>
+      <div class="leds" id="leds"></div>
+      <button id="settingsGear" class="settingsGear" type="button" aria-label="Settings" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="6.4"/><circle cx="12" cy="12" r="2.3"/><path d="M12 2.3v3M12 18.7v3M2.3 12h3M18.7 12h3M5.15 5.15l2.15 2.15M16.7 16.7l2.15 2.15M18.85 5.15L16.7 7.3M7.3 16.7l-2.15 2.15"/></g></svg>
+      </button>
+    </div>
+  </div>
+  <div class="settingsPanel" id="settingsPanel" hidden>
+    <div class="settingsHead">SETTINGS</div>
+    <section class="settingsSection"><div class="settingsSectionTitle">INTERFACE</div>
+      <button id="themeToggle" class="themeToggle" type="button">THEME  DARK</button>
+      <div class="settingsRow" aria-disabled="true"><span>UI Scale</span><span>100% · RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Animation</span><span>ON · RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>LED Brightness</span><span>100% · RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Value Popup</span><span>ON · RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Value Popup mouse tunnel</span><span>26 px · RESERVED</span></div>
+    </section>
+    <section class="settingsSection"><div class="settingsSectionTitle">CONTROL</div>
+      <div class="settingsRow" aria-disabled="true"><span>Knob Drag Sensitivity</span><span>DEFAULT · RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Mouse Wheel Sensitivity</span><span>DEFAULT · RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Shift Fine Adjust</span><span>0.10× · RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Double-click Reset</span><span>ON · RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>EQ Node movement feedback</span><span>ON · RESERVED</span></div>
+    </section>
+    <section class="settingsSection"><div class="settingsSectionTitle">ANALYZER / GRAPH</div>
+      <button id="analyzerToggle" class="themeToggle" type="button">ANALYZER  ON</button>
+      <div class="settingsRow" aria-disabled="true"><span>Analyzer Speed</span><span>RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Spectrum Smoothing</span><span>RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Peak Hold</span><span>RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Grid</span><span>ON · RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Spectrum opacity</span><span>RESERVED</span></div>
+    </section>
+    <section class="settingsSection reserved"><div class="settingsSectionTitle">AUDIO / QUALITY</div>
+      <div class="settingsRow" aria-disabled="true"><span>Oversampling</span><span>RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>HQ / ECO</span><span>RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Nonlinear processing quality</span><span>RESERVED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>CPU / latency display</span><span>RESERVED</span></div>
+    </section>
+    <section class="settingsSection"><div class="settingsSectionTitle">SYSTEM / ABOUT</div>
+      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.63</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Build number / commit</span><span>GitHub build metadata</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Reset UI Settings</span><span>DISABLED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Reset All Settings</span><span>DISABLED</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>Settings persistence</span><span>RESERVED</span></div>
+    </section>
+    <div class="settingsNote">Reserved controls are intentionally disabled until persistence and behavior are defined. Opening or closing this overlay never sends audio parameters.</div>
+  </div>
+  <div class="advPopup" id="advPopup" hidden>
+    <div class="advPopupHead"><span id="advPopupTitle">UDMBC ADVANCED</span><button class="advPopupClose" id="advPopupClose">CLOSE</button></div>
+    <div class="advPopupGrid" id="advPopupGrid"></div>
+  </div>
+  <div class="rowTop">
+    <div class="graph"><canvas id="eqCanvas"></canvas><div id="graphHint" class="graphHint" hidden></div><div id="eqTypeMenu" class="eqTypeMenu" hidden></div></div>
+  </div>
+  <div class="bandsFrame"><div class="bandGrid" id="bandGrid"></div></div>
+  
+</div>
+<script>
+const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=null,workletNode=null,workletModuleUrl=null,playing=false,directFallback=false,workletHeartbeatSeen=false;
+let analyserNode=null,analyserSink=null,analyserData=null,analyzerInterval=null;
+let analyzerPower=null,analyzerPrefix=null;
+let analyzerEnabled=true;
+const analyzerCurve=new Float32Array(256).fill(-90);
+const analyzerRaw=new Float32Array(256).fill(-90);
+const analyzerFreqSmooth=new Float32Array(256).fill(-90);
+const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
+const settingsGear=$("#settingsGear"),settingsPanel=$("#settingsPanel"),themeToggle=$("#themeToggle"),analyzerToggle=$("#analyzerToggle");
+let settingsPanelVisible=false,ivoryTheme=false;
+const tc=(dark,ivory)=>ivoryTheme?ivory:dark;
+function setIvoryTheme(ivory){
+  ivoryTheme=!!ivory;
+  document.querySelector(".app").classList.toggle("ivoryTheme",ivoryTheme);
+  themeToggle.textContent=ivoryTheme?"THEME  IVORY":"THEME  DARK";
+}
+themeToggle.addEventListener("click",()=>{
+  setIvoryTheme(!ivoryTheme);
+  drawEQ();
+});
+setIvoryTheme(false);
+function setSettingsPanelVisible(visible){
+  settingsPanelVisible=!!visible;
+  settingsPanel.hidden=!settingsPanelVisible;
+  settingsGear.classList.toggle("open",settingsPanelVisible);
+  settingsGear.setAttribute("aria-expanded",settingsPanelVisible?"true":"false");
+  if(!settingsPanelVisible)return;
+  const app=document.querySelector(".app");
+  const gr=settingsGear.getBoundingClientRect(),ar=app.getBoundingClientRect();
+  const panelW=330,pad=8;
+  const x=Math.max(pad,Math.min(ar.width-panelW-pad,gr.right-ar.left-panelW));
+  settingsPanel.style.left=x+"px";
+  settingsPanel.style.top=Math.min(gr.bottom-ar.top+7,ar.height-50)+"px";
+}
+settingsGear.addEventListener("click",e=>{e.stopPropagation();setSettingsPanelVisible(!settingsPanelVisible)});
+settingsPanel.addEventListener("pointerdown",e=>e.stopPropagation());
+document.addEventListener("pointerdown",e=>{
+  if(!settingsPanelVisible)return;
+  if(settingsPanel.contains(e.target)||settingsGear.contains(e.target))return;
+  setSettingsPanelVisible(false);
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&settingsPanelVisible){setSettingsPanelVisible(false);e.preventDefault()}
+});
+const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive:false,graphFreq:1000,graphQ:.707},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],type:[0,0,0,0],slope:[1,1,1,1],color:[0,0,0,0],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[50,50,50,50],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},udmbc:{bypass:false,bandBypass:[false,false,false,false],degree:[0,0,0,0],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[0,0,0,0],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},transient:[0,0,0,0],mix:{bypass:false,drywet:100,output:0}};
+const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],uiTouched={udmbc:[false,false,false,false],analog:[false,false,false,false],tape:[false,false,false,false]},clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
+function ensureWebAnalyser(){
+  if(!audioCtx)return;
+  if(!analyserNode){
+    analyserNode=audioCtx.createAnalyser();
+    analyserNode.fftSize=4096;
+    analyserNode.minDecibels=-90;
+    analyserNode.maxDecibels=0;
+    analyserNode.smoothingTimeConstant=0;
+    analyserData=new Float32Array(analyserNode.frequencyBinCount);
+    analyzerPower=new Float64Array(analyserNode.frequencyBinCount);
+    analyzerPrefix=new Float64Array(analyserNode.frequencyBinCount+1);
+    analyserSink=audioCtx.createGain();
+    analyserSink.gain.value=0;
+    analyserNode.connect(analyserSink);
+    analyserSink.connect(audioCtx.destination);
+  }
+}
+function refreshAnalyzerTap(){
+  if(!analyserNode)return;
+  if(source){try{source.disconnect(analyserNode)}catch{}}
+  if(workletNode){try{workletNode.disconnect(analyserNode)}catch{}}
+  if(!analyzerEnabled||!source||!audioCtx)return;
+
+  // Normal mode keeps the original/pre-DSP spectrum as the gray reference.
+  // DELTA mode must show only what is actually being heard: the final
+  // Worklet output after OUTPUT-dry subtraction. No original trace remains.
+  if(state.delta&&!directFallback&&!workletFaulted&&workletNode){
+    try{workletNode.connect(analyserNode)}catch{}
+  }else{
+    try{source.connect(analyserNode)}catch{}
+  }
+}
+function connectAnalyzerTap(){
+  if(!source||!audioCtx||!analyzerEnabled)return;
+  ensureWebAnalyser();
+  refreshAnalyzerTap();
+}
+function disconnectAnalyzerTap(){
+  if(source&&analyserNode){try{source.disconnect(analyserNode)}catch{}}
+  if(workletNode&&analyserNode){try{workletNode.disconnect(analyserNode)}catch{}}
+}
+function startAnalyzerLoop(){
+  if(analyzerInterval||!analyzerEnabled)return;
+  analyzerInterval=setInterval(()=>{
+    if(!playing||!analyzerEnabled||!analyserNode||!analyserData)return;
+    analyserNode.getFloatFrequencyData(analyserData);
+    const sr=audioCtx?.sampleRate||48000,nyq=sr*.5,bins=analyserData.length;
+    analyzerPrefix[0]=0;
+    for(let b=0;b<bins;b++){const power=Math.pow(10,analyserData[b]/10);analyzerPower[b]=power;analyzerPrefix[b+1]=analyzerPrefix[b]+power}
+    const binScale=bins/nyq;
+    for(let p=0;p<analyzerCurve.length;p++){
+      const t=p/(analyzerCurve.length-1),centre=20*Math.pow(1000,t),halfOct=1/48;
+      const f0=centre/Math.pow(2,halfOct),f1=centre*Math.pow(2,halfOct);
+      const b0=clamp(Math.floor(f0*binScale),1,bins-1),b1=clamp(Math.ceil(f1*binScale),b0,bins-1);
+      let meanPower=0;
+      if(b1<=b0+1){const cp=clamp(centre*binScale,1,bins-1),lo=clamp(Math.floor(cp),1,bins-1),hi=Math.min(bins-1,lo+1),frac=cp-lo;meanPower=analyzerPower[lo]*(1-frac)+analyzerPower[hi]*frac}
+      else meanPower=(analyzerPrefix[b1+1]-analyzerPrefix[b0])/(b1-b0+1);
+      const rms=Math.sqrt(Math.max(0,meanPower));let db=rms>1e-12?20*Math.log10(rms):-90;
+      db+=4.5*Math.log2(Math.max(20,centre)/1000);analyzerRaw[p]=clamp(db,-90,0);
+    }
+    const at=i=>analyzerRaw[clamp(i,0,analyzerRaw.length-1)];
+    for(let p=0;p<analyzerCurve.length;p++)analyzerFreqSmooth[p]=(at(p-3)+6*at(p-2)+15*at(p-1)+20*at(p)+15*at(p+1)+6*at(p+2)+at(p+3))/64;
+    const attack=.70,release=.21;
+    for(let p=0;p<analyzerCurve.length;p++){const target=analyzerFreqSmooth[p],old=analyzerCurve[p];analyzerCurve[p]=old+(target>old?attack:release)*(target-old)}
+    drawEQ();
+  },42);
+}
+function stopAnalyzerLoop(){
+  if(analyzerInterval){clearInterval(analyzerInterval);analyzerInterval=null}
+}
+function setAnalyzerEnabled(enabled){
+  analyzerEnabled=!!enabled;
+  analyzerToggle.textContent=analyzerEnabled?"ANALYZER  ON":"ANALYZER  OFF";
+  if(analyzerEnabled){connectAnalyzerTap();if(playing)startAnalyzerLoop()}
+  else{disconnectAnalyzerTap();stopAnalyzerLoop();analyzerCurve.fill(-90);drawEQ()}
+}
+analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
+document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
+setAnalyzerEnabled(true);
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.64
+function makeWorkletUrl(){
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.65"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
+}
+function switchToDirectAudioFallback(){
+  if(directFallback||!source||!audioCtx)return;
+  directFallback=true;
+  try{source.disconnect(workletNode)}catch{}
+  try{source.connect(audioCtx.destination)}catch{}
+  $("#status").textContent="PLAYING · DIRECT AUDIO FALLBACK";
+}
+async function ensureAudioGraph(){
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(!audioCtx.audioWorklet)throw new Error("AudioWorklet unsupported");
+  if(!workletNode){
+    await audioCtx.audioWorklet.addModule(makeWorkletUrl());
+    workletNode=new AudioWorkletNode(audioCtx,"vvchain-worklet",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});
+    workletFaulted=false;
+    workletNode.onprocessorerror=()=>{
+      const failedNode=workletNode;
+      workletFaulted=true;
+      workletNode=null;
+      try{failedNode?.disconnect()}catch{}
+      // Never stop the BufferSource here: keep playback alive and fail over
+      // the already-running source to direct output.
+      directFallback=true;
+      if(source&&audioCtx){
+        try{source.disconnect()}catch{}
+        try{source.connect(audioCtx.destination)}catch{}
+        $("#status").textContent="PLAYING · DIRECT AUDIO FALLBACK · processor error";
+      }else{
+        $("#status").textContent="DSP ERROR · AudioWorklet processor failed";
+      }
+    };
+    workletNode.port.onmessageerror=()=>{
+      const failedNode=workletNode;
+      workletFaulted=true;
+      workletNode=null;
+      try{failedNode?.disconnect()}catch{}
+      directFallback=true;
+      if(source&&audioCtx){
+        try{source.disconnect()}catch{}
+        try{source.connect(audioCtx.destination)}catch{}
+        $("#status").textContent="PLAYING · DIRECT AUDIO FALLBACK · message error";
+      }
+    };
+    workletNode.port.onmessage=e=>{
+      if(e.data?.type==="ready"){
+        workletHeartbeatSeen=true;
+        if(playing)$("#status").textContent="PLAYING · LOOP";
+        return;
+      }
+      if(e.data?.type==="error"){
+        const failedNode=workletNode;
+        workletFaulted=true;
+        workletNode=null;
+        directFallback=true;
+        try{failedNode?.disconnect()}catch{}
+        if(source&&audioCtx){
+          try{source.disconnect()}catch{}
+          try{source.connect(audioCtx.destination)}catch{}
+          $("#status").textContent="PLAYING · DIRECT AUDIO FALLBACK · "+(e.data.message||"worklet error");
+        }else{
+          $("#status").textContent="DSP ERROR · "+(e.data.message||"worklet error");
+        }
+        return;
+      }
+      if(e.data?.type==="dynMeters"){
+        workletHeartbeatSeen=true;
+        state.dyn.gainMid=Array.from(e.data.mid||[0,0,0,0]);
+        state.dyn.gainSide=Array.from(e.data.side||[0,0,0,0]);
+        drawEQ();
+        return;
+      }
+    };
+    workletNode.connect(audioCtx.destination);
+    refreshAnalyzerTap();
+    sendParams();
+  }
+}
+let workletFaulted=false;
+let paramSyncScheduled=false;
+let paramSyncRevision=0;
+function reconnectProcessingPath(){return false;}
+function sendParams(){
+  // Coalesce high-rate knob/graph events into one full-state transfer per UI frame.
+  // This prevents a MessagePort backlog from starving the realtime render thread.
+  if(!workletNode||directFallback||workletFaulted)return;
+  if(paramSyncScheduled)return;
+  paramSyncScheduled=true;
+  const flush=()=>{
+    paramSyncScheduled=false;
+    if(!workletNode||directFallback||workletFaulted)return;
+    try{
+      paramSyncRevision++;
+      workletNode.port.postMessage({
+        type:"params",
+        revision:paramSyncRevision,
+        state:structuredClone(state)
+      });
+    }catch(err){
+      workletFaulted=true;
+      directFallback=true;
+      if(source&&audioCtx){
+        try{source.disconnect()}catch{}
+        try{source.connect(audioCtx.destination)}catch{}
+        $("#status").textContent="PLAYING · DIRECT AUDIO FALLBACK · parameter error";
+      }else{
+        $("#status").textContent="DSP PARAM ERROR · "+(err?.message||"clone/post failed");
+      }
+    }
+  };
+  if(typeof requestAnimationFrame==="function")requestAnimationFrame(flush);
+  else setTimeout(flush,16);
+}
+const masterBypass=$("#masterBypass"),syncMaster=()=>{
+  masterBypass.classList.toggle("on",state.masterBypass);
+  document.querySelector(".app").classList.toggle("globalBypass",state.masterBypass);
+  const p=document.querySelector(".masterPower");
+  if(p)p.classList.toggle("on",!!state.masterBypass);
+  sendParams();
+};
+masterBypass.addEventListener("click",()=>{
+  state.masterBypass=!state.masterBypass;
+  syncMaster();
+  syncMonitor?.();
+});
+syncMaster();
+function bypassLed(label,obj,accent){
+  const box=document.createElement("div");box.className="ledBox";box.title=label+"：亮=運作，暗=BYPASS";
+  const led=document.createElement("div");led.className="led";led.style.setProperty("--led",accent);
+  const t=document.createElement("div");t.className="ledLabel";t.textContent=label;box.append(led,t);$("#leds").appendChild(box);
+  const sync=()=>led.classList.toggle("on",!obj.bypass);
+  box.onclick=()=>{obj.bypass=!obj.bypass;sync();knobRefreshers.forEach(fn=>fn());moduleMuteRefreshers.forEach(fn=>fn());sendParams()};
+  sync();
+}
+function bypassGlobalLed(label,get,set,accent){
+  const box=document.createElement("div");box.className="ledBox";box.title=label+"：亮=運作，暗=BYPASS";
+  const led=document.createElement("div");led.className="led";led.style.setProperty("--led",accent);
+  const t=document.createElement("div");t.className="ledLabel";t.textContent=label;box.append(led,t);$("#leds").appendChild(box);
+  const sync=()=>led.classList.toggle("on",!get());
+  box.onclick=()=>{set(!get());sync();knobRefreshers.forEach(fn=>fn());moduleMuteRefreshers.forEach(fn=>fn());sendParams()};
+  sync();
+}
+bypassLed("EQ",state.eq,"#38bdf8");
+bypassLed("UDMBC",state.udmbc,"#facc15");
+bypassGlobalLed("ANALOG",()=>state.eq.globalBypass,v=>state.eq.globalBypass=v,"#60a5fa");
+bypassLed("TAPE COLOR",state.type,"#f472b6");
+const soloMode=$("#soloMode");
+const syncSoloMode=()=>{soloMode.classList.toggle("on",!!state.solo.post);soloMode.textContent=state.solo.post?"SOLO POST":"SOLO PRE";sendParams()};
+soloMode.onclick=()=>{state.solo.post=!state.solo.post;syncSoloMode()};
+syncSoloMode();
+$("#advPopupClose").onclick=()=>openAdvanced(-1);
+function dialVisual(d,v,min,max,a){
+  d.style.setProperty("--accent",a);
+  const p=clamp((v-min)/Math.max(0.000001,max-min),0,1);
+  const angle=d.classList.contains("legacyModeDialRemoved")
+    ? (-60+120*p)
+    : (-125+250*p);
+  d.style.setProperty("--angle",angle+"deg");
+}
+function makeKnob(parent,cfg){
+  const{label,get,set,min,max,suffix="",accent="#38bdf8",formatDigits=1,formatValue=null}=cfg;
+  const curMin=()=>cfg.dynamicMin?cfg.dynamicMin():min;
+  const curMax=()=>cfg.dynamicMax?cfg.dynamicMax():max;
+  const curSensitivity=()=>cfg.dynamicSensitivity?cfg.dynamicSensitivity():(cfg.sensitivity??1);
+  const curWheelStep=()=>cfg.dynamicWheelStep?cfg.dynamicWheelStep():(cfg.wheelStep??null);
+  const curFineStep=()=>cfg.dynamicFineStep?cfg.dynamicFineStep():0.01;
+  const w=document.createElement("div");w.className="knob";w.style.setProperty("--accent",accent);if(cfg.controlId)w.dataset.controlId=cfg.controlId;
+  const d=document.createElement("div");d.className="dial";
+  const t=document.createElement("div");t.className="knobTitle";t.textContent=label;
+  const v=document.createElement("div");v.className="knobValue";
+  const discreteMode=false;
+  if(discreteMode){
+    d.classList.add("legacyModeDialRemoved");
+    ["I","II","III","IV"].forEach((labelText,index)=>{
+      const tick=document.createElement("span");
+      tick.className="legacyModeTickRemoved";
+      tick.textContent=labelText;
+      const a=(210+index*40)*Math.PI/180;
+      tick.style.left=(50+43*Math.cos(a))+"%";
+      tick.style.top=(50+43*Math.sin(a))+"%";
+      d.appendChild(tick);
+    });
+  }
+  v.contentEditable="true";
+  v.spellcheck=false;
+  v.setAttribute("inputmode","decimal");
+  w.append(d,t,v);parent.appendChild(w);
+  const def=get();
+  const render=()=>{
+    const n=get(),lo=curMin(),hi=curMax();
+    t.textContent=cfg.dynamicLabel?cfg.dynamicLabel():label;
+    if(document.activeElement!==v)
+      v.textContent=formatValue?formatValue(n):fmt(n,formatDigits)+suffix;
+    dialVisual(d,n,lo,hi,accent);
+    if(cfg.mutedWhen)w.classList.toggle("knobMuted",!!cfg.mutedWhen())
+  };
+  const apply=n=>{
+    const next=clamp(n,curMin(),curMax());
+    if(cfg.markTouched)cfg.markTouched();
+    set(next);
+    if(cfg.afterSet)cfg.afterSet(next);
+    render();
+    if(label==="UDMBC %"||label==="MAXIMUM REDUCTION")knobRefreshers.forEach(fn=>fn());
+    sendParams();drawEQ()
+  };
+  const logarithmic=cfg.logWheel??(/FREQ|X-OVER|XOVER/.test(label));
+  const defaultWheelStep=(
+    /Q$/.test(label)?0.02:
+    /GAIN|LEVEL|THRESH|OUT/.test(label)?0.5:
+    /ATTACK/.test(label)?1:
+    /RELEASE/.test(label)?5:
+    /DEGREE|MIX|COLOR/.test(label)?1:
+    discreteMode?1:
+    Math.max(0.1,(max-min)*0.01)
+  );
+  const freqSkew=5.02888112;
+  const freqToNorm=x=>Math.pow(clamp((x-20)/(20000-20),0,1),1/freqSkew);
+  const normToFreq=x=>20+(20000-20)*Math.pow(clamp(x,0,1),freqSkew);
+  let wheelRemainder=0,dragging=false,dragStartY=0,dragStartValue=0,dragStartNorm=0,dragFine=false;
+  const discreteFromPointer=e=>{
+    const r=d.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+    let a=Math.atan2(e.clientY-cy,e.clientX-cx);
+    if(a<0)a+=2*Math.PI;
+    const start=7*Math.PI/6,end=11*Math.PI/6;
+    a=clamp(a,start,end);
+    const index=Math.round((a-start)/(end-start)*3);
+    apply(min+index*(max-min)/3);
+  };
+  knobRefreshers.push(render);
+  const parseEnteredValue=raw=>{
+    if(cfg.parseValue)return cfg.parseValue(raw);
+    const s=String(raw??"").trim().toLowerCase();
+    let n=parseFloat(s.replace(/[^0-9+\-.]/g,""));
+    if(!Number.isFinite(n))return NaN;
+    if(/freq/i.test(label)&&s.includes("k"))n*=1000;
+    return n;
+  };
+  v.addEventListener("pointerdown",e=>e.stopPropagation());
+  v.addEventListener("focus",()=>{
+    v.dataset.original=v.textContent;
+    requestAnimationFrame(()=>{
+      const sel=window.getSelection(),range=document.createRange();
+      range.selectNodeContents(v);sel.removeAllRanges();sel.addRange(range);
+    });
+  });
+  v.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){e.preventDefault();v.blur()}
+    else if(e.key==="Escape"){
+      e.preventDefault();
+      v.textContent=v.dataset.original??"";
+      v.dataset.cancelEdit="1";
+      v.blur();
+    }
+  });
+  v.addEventListener("blur",()=>{
+    if(v.dataset.cancelEdit==="1"){
+      delete v.dataset.cancelEdit;render();return;
+    }
+    const parsed=parseEnteredValue(v.textContent);
+    if(Number.isFinite(parsed))apply(parsed);else render();
+  });
+  d.addEventListener("pointerdown",e=>{
+    d.setPointerCapture(e.pointerId);
+    dragging=true;dragFine=!!e.shiftKey;dragStartY=e.clientY;dragStartValue=get();
+    if(discreteMode){discreteFromPointer(e);return}
+    if(logarithmic)dragStartNorm=freqToNorm(dragStartValue);
+  });
+  d.addEventListener("pointermove",e=>{
+    if(!dragging)return;
+    if(discreteMode){discreteFromPointer(e);return}
+    const fineScale=dragFine?0.1:1;
+    if(logarithmic){
+      const norm=clamp(
+        dragStartNorm
+        + (dragStartY-e.clientY)/180
+            * (cfg.sensitivity??1) * fineScale,
+        0,1);
+      apply(normToFreq(norm));
+    }else{
+      const lo=curMin(),hi=curMax();
+      const mult=(hi-lo)/180*curSensitivity()*fineScale;
+      apply(dragStartValue+(dragStartY-e.clientY)*mult);
+    }
+  });
+  d.addEventListener("pointerup",()=>{dragging=false;dragFine=false});
+  d.addEventListener("pointercancel",()=>{dragging=false;dragFine=false});
+  d.addEventListener("wheel",e=>{
+    e.preventDefault();
+    let ticks=0;
+    if(cfg.singleStepWheel&&cfg.singleStepWheel()){
+      ticks=e.deltaY<0?1:-1;
+      wheelRemainder=0;
+    }else{
+      wheelRemainder-=clamp(e.deltaY,-4,4);
+      ticks=Math.trunc(wheelRemainder);if(ticks===0)return;
+      wheelRemainder-=ticks;
+    }
+    let next=get();
+    if(discreteMode)next=Math.round(next)+ticks;
+    else if(e.shiftKey)next+=ticks*curFineStep();
+    else if(logarithmic)next*=Math.pow(2,ticks/24);
+    else next+=ticks*(curWheelStep()??defaultWheelStep);
+    apply(next)
+  },{passive:false});
+  d.addEventListener("dblclick",()=>{
+    const dv=typeof cfg.doubleClickValue==="function"
+      ?cfg.doubleClickValue()
+      :(cfg.doubleClickValue??def);
+    apply(dv)
+  });
+  render();return w
+}
+let graphMovementPulseToken=0,graphLastMoveX=-1,graphLastMoveY=-1;
+function setGraphControls(ids,moving=false){
+  document.querySelectorAll(".knob.graphActive").forEach(el=>{
+    if(!ids.includes(el.dataset.controlId))el.classList.remove("graphActive","graphMoving")
+  });
+  ids.forEach(id=>{
+    const el=document.querySelector('.knob[data-control-id="'+id+'"]');
+    if(el){el.classList.add("graphActive");el.classList.toggle("graphMoving",!!moving)}
+  });
+}
+function clearGraphControls(){document.querySelectorAll(".knob.graphActive").forEach(el=>el.classList.remove("graphActive","graphMoving"))}
+function pulseGraphControls(ids){
+  if(!ids.length){clearGraphControls();return}
+  setGraphControls(ids,true);
+  const token=++graphMovementPulseToken;
+  setTimeout(()=>{if(token===graphMovementPulseToken)clearGraphControls()},110);
+}
+const cols=["#ef4444","#facc15","#3b82f6","#22c55e"],bg=$("#bandGrid");
+function hz(v){return v>=1000?fmt(v/1000,2)+" kHz":fmt(v,0)+" Hz"}function graphFrequencyText(v){return fmt(v,0)+" Hz"}function tape(v,max){return fmt(clamp(v/Math.max(1,max),0,1)*10,1)}
+function normalizedEqType(b){
+  let t=clamp(Math.round(Number(state.eq.type?.[b]||0)),0,13);
+  if(t===3)t=2;
+  else if(t===1||t===10||t===11)t=0;
+  if((b===1||b===2)&&t>=12)t=0;
+  return t;
+}
+function isRollOffType(b){return normalizedEqType(b)>=12}
+function slopeDbPerOct(b){const i=clamp(Math.round(Number(state.eq.slope?.[b]??1)),0,6);return i===0?6:i*12}function effectiveCompAttackMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(.1,Math.min(120,Number(state.udmbc.compA[b]||0)));const k=Math.max(0,(120-base)/.49);return Math.max(b===0?15:(b===1?8:1),base+k*(amount*amount))}function effectiveCompReleaseMs(b){const amount=clamp(Number(state.udmbc.degree[b]||0)/100,0,1);const base=Math.max(10,Math.min(2500,Number(state.udmbc.compR[b]||0)));return Math.max(20,base+amount*100)}
+for(let b=0;b<4;b++){
+const n=b,card=document.createElement("div");
+card.className="band";card.style.setProperty("--accent",cols[n]);
+card.innerHTML="<div class='bandHead'><span>BAND "+(n+1)+"</span><span class='bandHeadBtns'><button class='advBtn'>+ ADV</button><button class='soloBtn'>SOLO</button><button class='bypassBtn'>BYPASS</button></span></div><div class='bandBody eqBody'><div class='knobGrid staticGrid'></div><div class='dynSection'><div class='dynModeRow'><div class='dynDetectBlend'><span>PEAK</span><input class='detectBlend' type='range' min='0' max='100' step='0.1'><span>RMS</span></div><button class='dynModeBtn triggerBtn'>ABOVE</button></div><div class='dynControls'></div></div><div class='knobGrid udmbcGrid'></div><div class='knobGrid bottomGrid'></div></div>";
+bg.appendChild(card);
+const bypassBtn=card.querySelector(".bypassBtn");
+const syncBandBypass=()=>{const on=!!state.bandBypass[n];card.classList.toggle("bypassed",on);bypassBtn.classList.toggle("on",on)};
+bypassBtn.onclick=()=>{state.bandBypass[n]=!state.bandBypass[n];syncBandBypass();sendParams();drawEQ()};syncBandBypass();
+
+const staticGrid=card.querySelector(".staticGrid"),dynControls=card.querySelector(".dynControls"),udmbcGrid=card.querySelector(".udmbcGrid"),bottomGrid=card.querySelector(".bottomGrid"),dynSection=card.querySelector(".dynSection");
+const syncModuleMute=()=>{
+  const eqMuted=!!state.eq.bypass;
+  staticGrid.classList.toggle("moduleMuted",eqMuted);
+  dynSection.classList.toggle("moduleMuted",eqMuted);
+  const udmbcMuted=!!state.udmbc.bypass||(uiTouched.udmbc[n]&&(!!state.udmbc.bandBypass[n]||Number(state.udmbc.degree[n]||0)<=0.0001));
+  udmbcGrid.classList.toggle("moduleMuted",udmbcMuted);
+};
+moduleMuteRefreshers.push(syncModuleMute);
+const soloBtn=card.querySelector(".soloBtn");
+const syncSolo=()=>soloBtn.classList.toggle("on",Number(state.solo.band)===n);
+soloBtn.onclick=()=>{state.solo.band=Number(state.solo.band)===n?-1:n;document.querySelectorAll(".soloBtn").forEach((x,i)=>x.classList.toggle("on",i===state.solo.band));syncSolo();sendParams()};syncSolo();
+
+makeKnob(staticGrid,{label:"GAIN",controlId:"EQ"+(n+1)+"_GAIN",get:()=>state.eq.gain[n],set:v=>state.eq.gain[n]=v,min:-18,max:18,suffix:" dB",accent:cols[n],formatDigits:1,sensitivity:.70,wheelStep:.35});
+makeKnob(staticGrid,{label:"FREQ",controlId:"EQ"+(n+1)+"_FREQ",get:()=>state.eq.freq[n],set:v=>state.eq.freq[n]=v,min:20,max:20000,suffix:" Hz",accent:cols[n],formatDigits:0,sensitivity:.20});
+makeKnob(staticGrid,{
+  label:"Q",controlId:"EQ"+(n+1)+"_Q",
+  get:()=>isRollOffType(n)?Number(state.eq.slope[n]??1):state.eq.q[n],
+  set:v=>{if(isRollOffType(n))state.eq.slope[n]=clamp(Math.round(v),0,6);else state.eq.q[n]=v},
+  min:.1,max:18,accent:cols[n],formatDigits:2,
+  dynamicLabel:()=>isRollOffType(n)?"OCT":"Q",
+  dynamicMin:()=>isRollOffType(n)?0:.1,
+  dynamicMax:()=>isRollOffType(n)?6:18,
+  dynamicSensitivity:()=>isRollOffType(n)?.55:.80,
+  dynamicWheelStep:()=>isRollOffType(n)?1:.016,
+  dynamicFineStep:()=>isRollOffType(n)?1:.01,
+  singleStepWheel:()=>isRollOffType(n),
+  doubleClickValue:()=>isRollOffType(n)?1:.707,
+  parseValue:raw=>{
+    const x=parseFloat(String(raw).replace(/[^0-9+\-.]/g,""));
+    if(!Number.isFinite(x))return NaN;
+    if(!isRollOffType(n))return x;
+    const slopes=[6,12,24,36,48,60,72];
+    let best=0,dist=Math.abs(x-slopes[0]);
+    for(let i=1;i<slopes.length;i++){const d=Math.abs(x-slopes[i]);if(d<dist){best=i;dist=d}}
+    return best;
+  },
+  formatValue:v=>isRollOffType(n)?((i=>i===0?6:i*12)(clamp(Math.round(v),0,6)))+" dB/oct":fmt(v,2)
+});
+
+makeKnob(dynControls,{label:"DYNAMICS",controlId:"DYN_DYNAMICS"+(n+1),get:()=>state.dyn.dynamics[n],set:v=>state.dyn.dynamics[n]=v,min:-100,max:100,suffix:" %",accent:"#f8fafc",formatDigits:0,sensitivity:.70,wheelStep:.70,doubleClickValue:0});
+makeKnob(dynControls,{label:"ATTACK",get:()=>state.dyn.attack[n],set:v=>state.dyn.attack[n]=v,min:.1,max:200,suffix:" ms",accent:"#f8fafc",formatDigits:1});
+makeKnob(dynControls,{label:"RELEASE",get:()=>state.dyn.release[n],set:v=>state.dyn.release[n]=v,min:5,max:2000,suffix:" ms",accent:"#f8fafc",formatDigits:0});
+const detectBlend=card.querySelector(".detectBlend"),detectBlendWrap=card.querySelector(".dynDetectBlend"),triggerBtn=card.querySelector(".triggerBtn");
+const syncDynMode=()=>{const mix=clamp(Number(state.dyn.detectOnsets[n]??50),0,100);detectBlend.value=mix;detectBlendWrap.style.setProperty("--mix",mix+"%");triggerBtn.textContent=state.dyn.triggerBelow[n]?"BELOW":"ABOVE";triggerBtn.classList.toggle("on",!!state.dyn.triggerBelow[n]);};
+const applyDetectBlend=v=>{state.dyn.detectOnsets[n]=clamp(Number(v),0,100);detectBlend.value=state.dyn.detectOnsets[n];syncDynMode();sendParams();drawEQ()};
+detectBlend.oninput=()=>applyDetectBlend(detectBlend.value);
+detectBlend.style.pointerEvents="none";
+detectBlendWrap.style.cursor="ns-resize";
+let detectDragging=false,detectStartY=0,detectStartValue=50;
+detectBlendWrap.addEventListener("pointerdown",e=>{e.preventDefault();detectDragging=true;detectStartY=e.clientY;detectStartValue=Number(state.dyn.detectOnsets[n]??50);detectBlendWrap.setPointerCapture(e.pointerId)});
+detectBlendWrap.addEventListener("pointermove",e=>{if(!detectDragging)return;applyDetectBlend(detectStartValue-(e.clientY-detectStartY)*.75)});
+detectBlendWrap.addEventListener("pointerup",e=>{detectDragging=false;if(detectBlendWrap.hasPointerCapture(e.pointerId))detectBlendWrap.releasePointerCapture(e.pointerId)});
+detectBlendWrap.addEventListener("pointercancel",()=>{detectDragging=false});
+detectBlendWrap.addEventListener("wheel",e=>{e.preventDefault();const units=clamp(-e.deltaY/100,-1,1);applyDetectBlend(Number(state.dyn.detectOnsets[n]??50)+units*.5)},{passive:false});
+triggerBtn.onclick=()=>{state.dyn.triggerBelow[n]=!state.dyn.triggerBelow[n];syncDynMode();sendParams();drawEQ()};
+syncDynMode();
+
+makeKnob(udmbcGrid,{label:"UDMBC %",get:()=>state.udmbc.degree[n],set:v=>state.udmbc.degree[n]=v,min:0,max:100,suffix:" %",accent:"#facc15",markTouched:()=>uiTouched.udmbc[n]=true,mutedWhen:()=>state.udmbc.bypass||(uiTouched.udmbc[n]&&(state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001)),afterSet:v=>{state.udmbc.bandBypass[n]=v<=0.0001;syncOttBandLed?.();syncModuleMute()}});
+makeKnob(udmbcGrid,{label:"ATTACK",get:()=>state.udmbc.compA[n],set:v=>state.udmbc.compA[n]=v,min:.1,max:120,suffix:" ms",accent:"#facc15",formatDigits:1,formatValue:()=>fmt(effectiveCompAttackMs(n),1)+" ms",mutedWhen:()=>state.udmbc.bypass||(uiTouched.udmbc[n]&&(state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001))});
+makeKnob(udmbcGrid,{label:"RELEASE",get:()=>state.udmbc.compR[n],set:v=>state.udmbc.compR[n]=v,min:10,max:2500,suffix:" ms",accent:"#facc15",formatDigits:0,formatValue:()=>fmt(effectiveCompReleaseMs(n),0)+" ms",mutedWhen:()=>state.udmbc.bypass||(uiTouched.udmbc[n]&&(state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001))});
+
+// ANALOG COLOR v1.0.16 unity-normalized smooth saturation.
+let syncAnalogLed=()=>{};
+const analogKnob=makeKnob(bottomGrid,{label:"ANALOG COLOR",get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:60,accent:"#60a5fa",markTouched:()=>uiTouched.analog[n]=true,formatValue:v=>fmt(v/6,1),parseValue:raw=>{const x=parseFloat(String(raw).replace(/[^0-9+\-.]/g,""));return Number.isFinite(x)?clamp(x,0,10)*6:NaN},mutedWhen:()=>state.eq.globalBypass||(uiTouched.analog[n]&&(state.eq.colorBypass[n]||state.eq.color[n]<=0.0001)),afterSet:()=>syncAnalogLed()});
+analogKnob.classList.add("analogKnob");
+let syncTapeLed=()=>{};
+const typeMax=[50,60,70,90][n];
+const typeKnob=makeKnob(bottomGrid,{label:"TAPE COLOR +",get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:typeMax,accent:cols[n],markTouched:()=>uiTouched.tape[n]=true,formatValue:v=>tape(v,typeMax),parseValue:raw=>{const x=parseFloat(String(raw).replace(/[^0-9+\-.]/g,""));return Number.isFinite(x)?clamp(x,0,10)*typeMax/10:NaN},mutedWhen:()=>state.type.bypass||(uiTouched.tape[n]&&(state.type.bandBypass[n]||state.type.degree[n]<=0.0001)),afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed();knobRefreshers.forEach(fn=>fn())}});
+const transientKnob=makeKnob(bottomGrid,{label:"TRANSIENT",get:()=>state.transient[n],set:v=>state.transient[n]=v,min:-100,max:100,suffix:" %",accent:"#34c759",formatDigits:1});
+const mode=document.createElement("button");mode.className="modeSwitch";mode.title="TT = Tube Saturation；SS = Solid-State Saturation";mode.innerHTML="<span>TT</span><i></i><span>SS</span>";
+const syncMode=()=>{mode.classList.toggle("ss",!!state.eq.mode[n]);mode.classList.toggle("muted",uiTouched.analog[n]&&state.eq.color[n]<=0.0001)};mode.onclick=()=>{state.eq.mode[n]=!state.eq.mode[n];syncMode();sendParams();drawEQ()};syncMode();analogKnob.appendChild(mode);
+const x2=document.createElement("button");x2.className="analogX2Btn";x2.textContent="X2";x2.title="ANALOG COLOR X2：0–60% 的 ANALOG COLOR delta × 2";
+const syncX2=()=>x2.classList.toggle("on",!!state.eq.colorX2[n]);
+x2.onclick=()=>{state.eq.colorX2[n]=!state.eq.colorX2[n];syncX2();sendParams();drawEQ()};syncX2();
+analogKnob.appendChild(x2);
+
+const analogLed=document.createElement("button");
+analogLed.className="bandLed analog";
+analogLed.style.setProperty("--led","#60a5fa");
+analogLed.title="BAND "+(n+1)+" ANALOG COLOR：亮=啟用；按下=BYPASS";
+syncAnalogLed=()=>analogLed.classList.toggle(
+  "on",
+  !state.eq.colorBypass[n]&&Number(state.eq.color[n]||0)>0.0001
+);
+analogLed.onclick=()=>{
+  state.eq.colorBypass[n]=!state.eq.colorBypass[n];
+  syncAnalogLed();
+  knobRefreshers.forEach(fn=>fn());
+  syncMode();
+  syncModuleMute();
+  sendParams();
+  drawEQ();
+};
+syncAnalogLed();
+analogKnob.appendChild(analogLed);
+syncModuleMute();
+
+const udmbcLed=document.createElement("button");udmbcLed.className="bandLed udmbc";udmbcLed.style.setProperty("--led","#facc15");udmbcLed.title="BAND "+(n+1)+" UDMBC：亮=啟用；按下=BYPASS";
+const syncOttBandLed=()=>udmbcLed.classList.toggle(
+  "on",
+  !state.udmbc.bandBypass[n]&&Number(state.udmbc.degree[n]||0)>0.0001
+);
+udmbcLed.onclick=()=>{state.udmbc.bandBypass[n]=!state.udmbc.bandBypass[n];syncOttBandLed();knobRefreshers.forEach(fn=>fn());syncModuleMute();sendParams()};syncOttBandLed();
+const typeLed=document.createElement("button");typeLed.className="bandLed type";typeLed.style.setProperty("--led","#f472b6");typeLed.title="BAND "+(n+1)+" TAPE：亮=啟用；按下=BYPASS";
+syncTapeLed=()=>typeLed.classList.toggle(
+  "on",
+  !state.type.bandBypass[n]&&Number(state.type.degree[n]||0)>0.0001
+);
+typeLed.onclick=()=>{state.type.bandBypass[n]=!state.type.bandBypass[n];syncTapeLed();knobRefreshers.forEach(fn=>fn());sendParams()};syncTapeLed();
+const advBtn=card.querySelector(".advBtn");advBtn.title="UDMBC ADVANCED · BAND "+(n+1);advBtn.onclick=()=>openAdvanced(n);
+ udmbcGrid.children[0]?.appendChild(udmbcLed);typeKnob.appendChild(typeLed);
+
+
+}
+
+const monitor=document.createElement("div");monitor.className="band monitorBand";monitor.style.setProperty("--accent","#e5e7eb");
+monitor.innerHTML="<div class='bandHead'><span></span><span style='font:7px Consolas;color:#7f8790'>GLOBAL</span></div><div class='masterMonitor'><div class='masterBypassLabel'>BYPASS</div><button class='masterPower'>⏻</button><button class='deltaBtn'>DELTA</button><div class='monitorKnobRow'></div></div>";
+bg.appendChild(monitor);
+const masterPower=monitor.querySelector(".masterPower"),deltaBtn=monitor.querySelector(".deltaBtn"),monitorKnobs=monitor.querySelector(".monitorKnobRow");
+const syncMonitor=()=>{masterPower.classList.toggle("on",!!state.masterBypass);deltaBtn.classList.toggle("on",!!state.delta)};
+masterPower.onclick=()=>{state.masterBypass=!state.masterBypass;syncMaster();syncMonitor()};
+deltaBtn.onclick=()=>{
+  state.delta=!state.delta;
+  analyzerCurve.fill(-90);
+  refreshAnalyzerTap();
+  syncMonitor();
+  sendParams();
+  drawEQ();
+};
+makeKnob(monitorKnobs,{label:"MIX",controlId:"DRY_WET",get:()=>state.mix.drywet,set:v=>state.mix.drywet=v,min:0,max:100,suffix:" %",accent:"#38bdf8",formatDigits:0});
+makeKnob(monitorKnobs,{label:"OUT",controlId:"OUTPUT_LEVEL",get:()=>state.mix.output,set:v=>state.mix.output=v,min:-24,max:12,suffix:" dB",accent:"#9ed85c",formatDigits:1});
+syncMonitor();
+function buildAdvanced(b){const grid=$("#advPopupGrid");grid.innerHTML="";const mk=(label,key,min,max,suffix,d=1)=>({label,get:()=>state.udmbc[key][b],set:v=>state.udmbc[key][b]=v,min,max,suffix,accent:"#facc15",formatDigits:d,formatValue:key==="compA"?()=>fmt(effectiveCompAttackMs(b),1)+" ms":key==="compR"?()=>fmt(effectiveCompReleaseMs(b),0)+" ms":undefined});[mk("LIFT THRESH","liftT",-80,0," dB"),mk("LIFT ATT","liftA",1,500," ms"),mk("LIFT REL","liftR",10,2500," ms",0),mk("LIFT MIX","liftM",0,100," %"),mk("COMP THRESH","compT",-24,0," dB"),mk("COMP ATT","compA",0.1,120," ms",1),mk("COMP REL","compR",10,2500," ms",0),mk("COMP MIX","compM",0,100," %"),mk("BAND LEVEL","level",-24,12," dB"),{label:"XOVER 1",controlId:"UDMBC_X1",get:()=>state.udmbc.x[0],set:v=>state.udmbc.x[0]=v,min:80,max:600,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"XOVER 2",controlId:"UDMBC_X2",get:()=>state.udmbc.x[1],set:v=>state.udmbc.x[1]=v,min:750,max:3000,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"XOVER 3",controlId:"UDMBC_X3",get:()=>state.udmbc.x[2],set:v=>state.udmbc.x[2]=v,min:6000,max:12000,suffix:" Hz",formatDigits:0,accent:"#facc15"},{label:"OVERLAP",controlId:"XOVER_OVERLAP",get:()=>state.udmbc.overlap[0],set:v=>{for(let i=0;i<3;i++)state.udmbc.overlap[i]=v},min:0,max:100,suffix:" %",formatDigits:0,accent:"#facc15"},{label:"INPUT",controlId:"UDMBC_INPUT",get:()=>state.udmbc.input,set:v=>state.udmbc.input=v,min:-24,max:24,suffix:" dB",accent:"#facc15"},{label:"GATE",controlId:"UDMBC_GATE",get:()=>state.udmbc.gate,set:v=>state.udmbc.gate=v,min:-90,max:0,suffix:" dB",accent:"#facc15"},{label:"MASTER",get:()=>state.udmbc.mix,set:v=>state.udmbc.mix=v,min:0,max:100,suffix:" %",accent:"#facc15"},{label:"OUTPUT",get:()=>state.udmbc.output,set:v=>state.udmbc.output=v,min:-24,max:24,suffix:" dB",accent:"#facc15"}].forEach(c=>makeKnob(grid,c));const clip=document.createElement("button");clip.className="tiny";clip.textContent=state.udmbc.clip?"CLIP ON":"CLIP OFF";clip.onclick=()=>{state.udmbc.clip=!state.udmbc.clip;clip.textContent=state.udmbc.clip?"CLIP ON":"CLIP OFF";sendParams()};grid.appendChild(clip)}
+function openAdvanced(b){const popup=$("#advPopup");if(b<0){popup.hidden=true;return}buildAdvanced(b);popup.hidden=false;$("#advPopupTitle").textContent="UDMBC ADVANCED · BAND "+(b+1)}
+document.addEventListener("pointerdown",e=>{const popup=$("#advPopup");if(!popup.hidden&&!popup.contains(e.target)&&!e.target.closest(".advBtn"))openAdvanced(-1)});
+
+function dynamicNodePoint(b,w,h){
+  const change=(+state.dyn.gainMid[b]||0 + (+state.dyn.gainSide[b]||0))*0.5;
+  const db=state.eq.gain[b]+change;
+  return {x:logX(state.eq.freq[b],w),y:dbToY(db,h),change:change};
+}
+function dynamicTargetPoint(b,w,h){
+  const target=dynamicEffectiveTargetGain(b);
+  return {x:logX(state.eq.freq[b],w),y:dbToY(target,h)};
+}
+function dynamicThresholdFromDynamics(dynamics){
+  const d=clamp(Number(dynamics||0),-100,100);
+  // JUCE/Web parity: DYNAMICS uses a truly linear bipolar map.
+  // -100%=-24 dB, 0%=-12 dB, +100%=0 dB.
+  // Graph hit-testing remains axis-locked and uses APVTS-equivalent state as
+  // the single source of truth, matching the JUCE graph interaction model.
+  return clamp(-12+d*0.12,-60,0);
+}
+function dynamicEffectiveTargetGain(b){
+  const offset=clamp(state.eq.gain[b],-18,18);
+  const dynamicRangeDb=18;
+  const dynamics=clamp(Number(state.dyn.dynamics[b]??0),-100,100);
+  const amount=Math.abs(dynamics)/100;
+  const direction=dynamics<0?-1:1;
+  return clamp(offset+direction*dynamicRangeDb*amount,-18,18);
+}
+function dynamicBandAtPointer(x,y,w,h){
+  let best=22,band=-1;
+  for(let b=0;b<4;b++){
+    const n=dynamicNodePoint(b,w,h),t=dynamicTargetPoint(b,w,h);
+    const handleX=clamp(t.x+44,18,w-12),handleY=t.y;
+    const points=[
+      [n.x,n.y],
+      [n.x,dbToY(state.eq.gain[b],h)],
+      [t.x,t.y]
+    ];
+    if(Math.abs(Number(state.dyn.dynamics[b]||0))<=.05)
+      points.push([handleX,handleY]);
+    for(const [px,py] of points){
+      const d=Math.hypot(x-px,y-py);
+      if(d<best){best=d;band=b;}
+    }
+  }
+  return band;
+}
+function staticEqAtPointer(x,y,w,h){
+  let best=18,band=-1;
+  for(let b=0;b<4;b++){
+    const px=logX(state.eq.freq[b],w);
+    const py=dbToY(state.eq.gain[b],h);
+    const d=Math.hypot(x-px,y-py);
+    if(d<best){best=d;band=b;}
+  }
+  return band;
+}
+function dynamicTargetAtPointer(x,y,w,h){
+  let best=15,band=-1;
+  const staticRadius=7;
+  for(let b=0;b<4;b++){
+    const dynamics=Math.abs(Number(state.dyn.dynamics[b]||0));
+    if(dynamics<=.05)continue;
+    const n=dynamicTargetPoint(b,w,h);
+    const staticX=logX(state.eq.freq[b],w);
+    const staticY=dbToY(state.eq.gain[b],h);
+    const onStaticNode=Math.hypot(x-staticX,y-staticY)<staticRadius;
+    const d=Math.hypot(x-n.x,y-n.y);
+    // Full Dynamic target circle is draggable, including its centre.
+    // Static EQ priority is handled first when the two nodes overlap.
+    if(!onStaticNode&&d<best){best=d;band=b;}
+  }
+  return band;
+}
+function dbToY(db,h){
+  const v=clamp(Number(db)||0,-18,18),m=Math.abs(v);
+  let t=0;
+  if(m<=3)t=.34*(m/3);
+  else if(m<=6)t=.34+.22*((m-3)/3);
+  else if(m<=12)t=.56+.24*((m-6)/6);
+  else t=.80+.20*((m-12)/6);
+  return h*.5+(v>=0?-1:1)*t*h*.5;
+}
+function yToDb(y,h){
+  const half=Math.max(1,h*.5),sd=h*.5-y,t=clamp(Math.abs(sd)/half,0,1);
+  let m=0;
+  if(t<=.34)m=3*(t/.34);
+  else if(t<=.56)m=3+3*((t-.34)/.22);
+  else if(t<=.80)m=6+6*((t-.56)/.24);
+  else m=12+6*((t-.80)/.20);
+  return clamp(sd>=0?m:-m,-18,18);
+}
+function nextQFromWheel(q,deltaY,fine){
+  const safe=Math.max(.1,Number(q)||.707);
+  const wheelUnits=clamp(deltaY/100,-1,1);
+  const speed=fine?.0075:.075;
+  return clamp(safe*Math.exp(wheelUnits*speed),.1,18);
+}
+function tptBellMagnitudeDb(fs,f,q,g,hz){
+  // UI-only frequency response evaluator. This mirrors the Native TPT Bell
+  // graph math; it does not alter the AudioWorklet processing path.
+  const sr=fs>1000?fs:44100,cf=clamp(Number(f),20,sr*.45),fq=clamp(Number(q),.1,18),gd=clamp(Number(g),-18,18),xHz=clamp(Number(hz),10,sr*.45);
+  const A=Math.pow(10,gd/40),gt=Math.tan(Math.PI*cf/sr),k=1/(fq*A);
+  const a1=1/(1+gt*(gt+k)),a2=gt*a1,a3=gt*a2,m1=k*(A*A-1);
+  const A11=2*a1-1,A12=-2*a2,A21=2*a2,A22=1-2*a3;
+  const B1=2*a2,B2=2*a3,C1=m1*a1,C2=-m1*a2,D=1+m1*a2;
+  const w=2*Math.PI*xHz/sr,zr=Math.cos(w),zi=Math.sin(w);
+  const d11=zr-A11,d22=zr-A22;
+  const detR=d11*d22-A12*A21-zi*zi,detI=zi*(d11+d22);
+  const det2=Math.max(1e-30,detR*detR+detI*detI);
+  const n1R=d22*B1+A12*B2,n1I=zi*B1;
+  const n2R=A21*B1+d11*B2,n2I=zi*B2;
+  const h1R=(n1R*detR+n1I*detI)/det2,h1I=(n1I*detR-n1R*detI)/det2;
+  const h2R=(n2R*detR+n2I*detI)/det2,h2I=(n2I*detR-n2R*detI)/det2;
+  const outR=D+C1*h1R+C2*h2R,outI=C1*h1I+C2*h2I;
+  return 20*Math.log10(Math.max(Math.hypot(outR,outI),1e-12));
+}
+
+function filterShapeDb(type,f,q,gain,hz){
+  type=clamp(Math.round(Number(type)||0),0,13);
+  const fs=audioCtx?.sampleRate||44100;
+  const sf=clamp(Number(f)||1000,20,fs*.45);
+  const xHz=clamp(Number(hz)||sf,20,fs*.45);
+  const qq=clamp(Number(q)||.707,.1,18);
+  const gd=clamp(Number(gain)||0,-18,18);
+  if(type<=1)return tptBellMagnitudeDb(fs,sf,qq,gd,xHz);
+  const ratio=Math.max(1e-9,xHz/sf),lr=Math.log2(ratio);
+  if(type===2||type===3){
+    const width=clamp(.90/Math.sqrt(qq),.15,2.5),p=type===3?12:4;
+    return gd/(1+Math.pow(Math.abs(lr)/width,p));
+  }
+  if(type===4||type===5||type===8||type===9){
+    const high=type===5||type===9,exp=(type===8||type===9)?0.8:2;
+    const shape=high?1/(1+Math.pow(1/ratio,exp)):1/(1+Math.pow(ratio,exp));
+    return gd*shape;
+  }
+  if(type===6||type===7){
+    const high=type===7,shape=high?1/(1+Math.pow(1/ratio,2)):1/(1+Math.pow(ratio,2));
+    const rg=(gd>=0?1:-1)*Math.min(6,Math.abs(gd)*.35);
+    return gd*shape+tptBellMagnitudeDb(fs,sf,qq,rg,xHz);
+  }
+  if(type===10){
+    const width=clamp(.55/Math.sqrt(qq),.04,1.2);
+    return gd-10*Math.log10(1+Math.pow(Math.abs(lr)/width,4));
+  }
+  if(type===11){
+    const width=clamp(.16/Math.sqrt(qq),.015,.60),z=lr/width;
+    return -60*Math.exp(-.5*z*z);
+  }
+  const slopeIndex=clamp(Math.round(Number(arguments[5]??1)),0,6);
+  const order=slopeIndex===0?1:2*slopeIndex,exp=2*order;
+  if(type===12)return -10*Math.log10(1+Math.pow(ratio,exp));
+  return -10*Math.log10(1+Math.pow(1/ratio,exp));
+}
+function gainShapeDb(b,hz,gain){
+  const type=normalizedEqType(b);
+  return filterShapeDb(type,state.eq.freq[b],state.eq.q[b],gain,hz,state.eq.slope?.[b]??1);
+}
+function dynamicPopupBounds(b,w,h){
+  const n=dynamicNodePoint(b,w,h);
+  const pw=230,ph=96;
+  let x=n.x-pw/2,y=n.y-ph-34;
+  if(y<6)y=n.y+34;
+  return {x:clamp(x,6,w-pw-6),y:clamp(y,6,h-ph-6),w:pw,h:ph};
+}
+function drawEQ(){
+  const r=eqCanvas.getBoundingClientRect(),w=r.width,h=r.height;
+  eqCtx.clearRect(0,0,w,h);
+  eqCtx.fillStyle=tc("#111318","#f0e9de");
+  eqCtx.fillRect(0,0,w,h);
+
+  if(analyzerEnabled){
+    const points=Array.from(analyzerCurve,(db,p)=>{
+      const x=p/(analyzerCurve.length-1)*w;
+      const yn=clamp((db+90)/90,0,1);
+      return {x,y:h-yn*h};
+    });
+    const slopes=new Float32Array(points.length-1),tangents=new Float32Array(points.length);
+    for(let i=0;i<points.length-1;i++){
+      const dx=Math.max(1e-6,points[i+1].x-points[i].x);
+      slopes[i]=(points[i+1].y-points[i].y)/dx;
+    }
+    tangents[0]=slopes[0];tangents[tangents.length-1]=slopes[slopes.length-1];
+    for(let i=1;i<tangents.length-1;i++){
+      const a=slopes[i-1],b=slopes[i];
+      tangents[i]=a*b<=0?0:(2*a*b/(a+b));
+    }
+    const traceMain=()=>{
+      eqCtx.beginPath();eqCtx.moveTo(points[0].x,points[0].y);
+      for(let i=0;i<points.length-1;i++){
+        const p1=points[i],p2=points[i+1],dx=p2.x-p1.x;
+        eqCtx.bezierCurveTo(
+          p1.x+dx/3,clamp(p1.y+tangents[i]*dx/3,0,h),
+          p2.x-dx/3,clamp(p2.y-tangents[i+1]*dx/3,0,h),
+          p2.x,p2.y
+        );
+      }
+    };
+    traceMain();eqCtx.lineTo(w,h);eqCtx.lineTo(0,h);eqCtx.closePath();
+    eqCtx.fillStyle=tc("#d8dbe11f","#56585c1a");eqCtx.fill();
+
+    eqCtx.strokeStyle=tc("#4b556044","#817a7044");
+    eqCtx.lineWidth=1;
+    eqCtx.stroke();
+  }
+
+  // Gain axis: the full usable range is exactly -18 .. +18 dB.
+  // Every 3 dB is shown and the dB labels stay on the LEFT.
+  const dbTicks=[18,15,12,9,6,3,0,-3,-6,-9,-12,-15,-18];
+  dbTicks.forEach(db=>{
+    const y=dbToY(db,h);
+    eqCtx.beginPath();
+    eqCtx.moveTo(0,y);eqCtx.lineTo(w,y);
+    eqCtx.strokeStyle=db===0?"#facc1566":tc("#4b556044","#817a7044");
+    eqCtx.lineWidth=db===0?1.2:1;
+    eqCtx.stroke();
+  });
+
+  // Dense logarithmic frequency references for precise visual positioning.
+  const freqTicks=[
+    [20,"20"],[30,"30"],[40,"40"],[50,"50"],[70,"70"],[100,"100"],
+    [150,"150"],[200,"200"],[300,"300"],[500,"500"],[700,"700"],
+    [1000,"1k"],[2000,"2k"],[3000,"3k"],[5000,"5k"],[7000,"7k"],
+    [10000,"10k"],[15000,"15k"],[20000,"20k"]
+  ];
+  freqTicks.forEach(([hzv])=>{
+    const x=logX(hzv,w);
+    eqCtx.beginPath();
+    eqCtx.moveTo(x,0);eqCtx.lineTo(x,h);
+    eqCtx.strokeStyle=tc("#4b556044","#817a7044");
+    eqCtx.lineWidth=1;
+    eqCtx.stroke();
+  });
+
+  eqCtx.fillStyle=tc("#b8bec6","#4f5358");
+  eqCtx.font="bold 7px Consolas";
+  eqCtx.textAlign="left";
+  dbTicks.forEach(db=>{
+    if(db===15||db===-15)return;
+    const y=dbToY(db,h);
+    eqCtx.fillText((db>0?"+":"")+db+" dB",6,clamp(y+3,10,h-7));
+  });
+
+  eqCtx.textAlign="center";
+  freqTicks.forEach(([hzv,label])=>{
+    const x=logX(hzv,w);
+    eqCtx.fillText(label,clamp(x,16,w-16),h-4);
+  });
+  eqCtx.textAlign="left";
+
+  // X1 / X2 / X3 crossover lines + bottom continuous quadratic markers.
+  // The old middle crossover curve is gone; each X-over has one continuous
+  // figure-eight path at the very bottom, with OVERLAP changing its size.
+  for(let b=0;b<3;b++){
+    const x=logX(state.udmbc.x[b],w);
+    const ov=clamp((state.udmbc.overlap||[50,50,50])[b]||50,0,100);
+    const markerY=h-18;
+    const labelY=h-34;
+
+    eqCtx.strokeStyle="#facc15aa";
+    eqCtx.beginPath();eqCtx.moveTo(x,20);eqCtx.lineTo(x,h-28);eqCtx.stroke();
+
+    const hovered=hoverXover===b;
+    eqCtx.fillStyle=tc("#000c","#e2d8cbdd");eqCtx.fillRect(x-48,labelY,96,15);
+    eqCtx.fillStyle="#ffe36a";eqCtx.font="bold 8px Consolas";eqCtx.textAlign="center";
+    eqCtx.fillText("X"+(b+1)+" "+hz(state.udmbc.x[b]),x,labelY+11);
+
+    const eightWidth=5+ov*0.10;
+    const eightHeight=2.8+ov*0.055;
+    eqCtx.strokeStyle=hovered?"#fff3a8":"#ffe36acc";
+    eqCtx.lineWidth=hovered?2:1.45;
+    eqCtx.beginPath();
+    eqCtx.moveTo(x,markerY);
+    eqCtx.quadraticCurveTo(x-eightWidth,markerY-eightHeight,x,markerY-2*eightHeight);
+    eqCtx.quadraticCurveTo(x+eightWidth,markerY-eightHeight,x,markerY);
+    eqCtx.quadraticCurveTo(x-eightWidth,markerY+eightHeight,x,markerY+2*eightHeight);
+    eqCtx.quadraticCurveTo(x+eightWidth,markerY+eightHeight,x,markerY);
+    eqCtx.stroke();
+    eqCtx.textAlign="left";
+  }
+
+  // Static Offset response.
+  eqCtx.strokeStyle=tc("#ffffff55","#34383d66");
+  eqCtx.lineWidth=1.1;
+  eqCtx.beginPath();
+  for(let i=0;i<=420;i++){
+    const hzv=invLog(i/420);
+    let db=0;
+    for(let b=0;b<4;b++) db+=gainShapeDb(b,hzv,state.eq.gain[b]);
+    const x=logX(hzv,w),y=dbToY(db,h);
+    if(i===0)eqCtx.moveTo(x,y);else eqCtx.lineTo(x,y);
+  }
+  eqCtx.stroke();
+
+  // Target/Offset dynamic range.
+  for(let b=0;b<4;b++){
+    const c=cols[b];
+    const target=dynamicEffectiveTargetGain(b);
+    const offset=clamp(state.eq.gain[b],-18,18);
+    const upper=[],lower=[];
+    for(let i=0;i<=220;i++){
+      const hzv=invLog(i/220),x=logX(hzv,w);
+      upper.push([x,dbToY(gainShapeDb(b,hzv,offset),h)]);
+      lower.push([x,dbToY(gainShapeDb(b,hzv,target),h)]);
+    }
+    eqCtx.beginPath();
+    for(let i=0;i<upper.length;i++) i===0?eqCtx.moveTo(upper[i][0],upper[i][1]):eqCtx.lineTo(upper[i][0],upper[i][1]);
+    for(let i=lower.length-1;i>=0;i--) eqCtx.lineTo(lower[i][0],lower[i][1]);
+    eqCtx.closePath();
+    eqCtx.fillStyle=c+"28";
+    eqCtx.fill();
+
+    eqCtx.strokeStyle=c+"aa";
+    eqCtx.lineWidth=1;
+    eqCtx.beginPath();
+    for(let i=0;i<lower.length;i++) i===0?eqCtx.moveTo(lower[i][0],lower[i][1]):eqCtx.lineTo(lower[i][0],lower[i][1]);
+    eqCtx.stroke();
+  }
+
+  // Live Gain curve.
+  eqCtx.strokeStyle=tc("#ffffff","#34383d");
+  eqCtx.lineWidth=2.2;
+  eqCtx.beginPath();
+  for(let i=0;i<=420;i++){
+    const hzv=invLog(i/420);
+    let db=0;
+    for(let b=0;b<4;b++) db+=gainShapeDb(b,hzv,state.eq.gain[b]+((+state.dyn.gainMid[b]||0)+(+state.dyn.gainSide[b]||0))*0.5);
+    const x=logX(hzv,w),y=dbToY(db,h);
+    if(i===0)eqCtx.moveTo(x,y);else eqCtx.lineTo(x,y);
+  }
+  eqCtx.stroke();
+
+  // Nodes, live points, M/S rings and readable hover values.
+  for(let b=0;b<4;b++){
+    const c=cols[b],n=dynamicNodePoint(b,w,h),t=dynamicTargetPoint(b,w,h);
+    const offsetY=dbToY(state.eq.gain[b],h);
+    const hovered=hoverDynamicBand===b;
+
+    eqCtx.strokeStyle=c+"66";
+    eqCtx.lineWidth=2;
+    eqCtx.beginPath();eqCtx.moveTo(n.x,offsetY);eqCtx.lineTo(t.x,t.y);eqCtx.stroke();
+
+    // Offset handle.
+    eqCtx.fillStyle=c+"dd";
+    eqCtx.beginPath();eqCtx.arc(n.x,offsetY,5.5,0,Math.PI*2);eqCtx.fill();
+
+    // Target handle.
+    eqCtx.fillStyle=tc("#06080be8","#f4eee5ee");
+    eqCtx.beginPath();eqCtx.arc(t.x,t.y,7,0,Math.PI*2);eqCtx.fill();
+    eqCtx.strokeStyle=c;
+    eqCtx.lineWidth=1.6;
+    eqCtx.stroke();
+
+    // Live gain.
+    eqCtx.fillStyle=tc("#fff","#25292d");
+    eqCtx.beginPath();eqCtx.arc(n.x,n.y,6,0,Math.PI*2);eqCtx.fill();
+    // The arrow is only the "pull Dynamic out" affordance while
+    // DYNAMICS is at 0 and the Dynamic target is still on the EQ point.
+    // Once pulled out, the Dynamic target circle itself is the drag control.
+    const target=dynamicTargetPoint(b,w,h);
+    const handleX=clamp(target.x+31,18,w-12),handleY=target.y; // 30% closer than 44px
+    if(Math.abs(Number(state.dyn.dynamics[b]||0))<=.05){
+      eqCtx.strokeStyle=(hoverDynamicBand===b?c:"#f8fafc")+"ee";eqCtx.lineWidth=1.4;
+      eqCtx.beginPath();eqCtx.moveTo(handleX,handleY-8);eqCtx.lineTo(handleX,handleY+8);eqCtx.stroke();
+      eqCtx.lineWidth=1.6;
+      eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY-4);eqCtx.lineTo(handleX,handleY-8);eqCtx.lineTo(handleX+4,handleY-4);eqCtx.stroke();
+      eqCtx.beginPath();eqCtx.moveTo(handleX-4,handleY+4);eqCtx.lineTo(handleX,handleY+8);eqCtx.lineTo(handleX+4,handleY+4);eqCtx.stroke();
+    }
+
+    const mid=clamp(Math.abs(+state.dyn.gainMid[b]||0),0,18)/18;
+    const side=clamp(Math.abs(+state.dyn.gainSide[b]||0),0,18)/18;
+    eqCtx.strokeStyle=tc("#fff","#34383d");
+    eqCtx.lineWidth=2.5;
+    eqCtx.beginPath();eqCtx.arc(n.x,n.y,11,-Math.PI/2,-Math.PI/2+mid*Math.PI);eqCtx.stroke();
+    eqCtx.strokeStyle=tc("#747b85","#817a70");
+    eqCtx.beginPath();eqCtx.arc(n.x,n.y,11,-Math.PI/2+mid*Math.PI,-Math.PI/2+(mid+side)*Math.PI);eqCtx.stroke();
+
+    // Compact two-line graphHint is the only EQ/Dynamic EQ hover readout.
+
+    if(expandedDynamicBand===b){
+      const p=dynamicPopupBounds(b,w,h),ms=clamp(Number(state.dyn.ms[b]||50),0,100);
+      eqCtx.fillStyle=tc("#06090ef7","#f4eee5f7");eqCtx.strokeStyle=tc("#fff9","#817a7099");eqCtx.lineWidth=1;eqCtx.fillRect(p.x,p.y,p.w,p.h);eqCtx.strokeRect(p.x,p.y,p.w,p.h);
+      eqCtx.fillStyle=tc("#fff","#25292d");eqCtx.font="bold 11px Consolas";eqCtx.fillText("BAND "+(b+1)+" · DYNAMIC MID / SIDE",p.x+12,p.y+17);
+      eqCtx.font="bold 10px Consolas";eqCtx.fillStyle=c;eqCtx.fillText("MID "+fmt(ms,0)+"%",p.x+12,p.y+37);
+      eqCtx.textAlign="right";eqCtx.fillStyle="#e8edf2";eqCtx.fillText("SIDE "+fmt(100-ms,0)+"%",p.x+p.w-12,p.y+37);eqCtx.textAlign="left";
+      const bx=p.x+12,by=p.y+50,bw=p.w-24;
+      eqCtx.fillStyle=tc("#232830","#d9cfc2");eqCtx.fillRect(bx,by,bw,11);
+      eqCtx.fillStyle=tc("#f8fafc","#3f4449");eqCtx.fillRect(bx,by,bw*ms/100,11);
+      eqCtx.strokeStyle=tc("#707985","#8b8278");eqCtx.strokeRect(bx,by,bw,11);
+      eqCtx.fillStyle=tc("#c6ccd3","#58534d");eqCtx.font="bold 8px Consolas";eqCtx.fillText("DRAG BAR = MID / SIDE",bx,by+24);
+    }
+  }
+
+  // Right-click SOLO spotlight follows the exact mouse position.
+  // The focus stays bright while the rest of the upper graph is dimmed.
+  if(state.solo.graphActive){
+    const cx=clamp(soloSpotX,0,w),cy=clamp(soloSpotY,0,h),radius=155;
+    const spot=eqCtx.createRadialGradient(cx,cy,0,cx,cy,radius);
+    spot.addColorStop(0,"rgba(0,0,0,0)");
+    spot.addColorStop(.22,"rgba(0,0,0,0)");
+    spot.addColorStop(.52,"rgba(0,0,0,.126)");
+    spot.addColorStop(.76,"rgba(0,0,0,.336)");
+    spot.addColorStop(1,"rgba(0,0,0,.504)");
+    eqCtx.fillStyle=spot;
+    eqCtx.fillRect(0,0,w,h);
+    eqCtx.strokeStyle="rgba(255,255,255,.16)";
+    eqCtx.lineWidth=1.2;
+    eqCtx.beginPath();eqCtx.arc(cx,cy,46,0,Math.PI*2);eqCtx.stroke();
+
+    // SOLO never dims the reference grid or the frequency/dB labels.
+    dbTicks.forEach(db=>{
+      const y=dbToY(db,h);
+      eqCtx.beginPath();eqCtx.moveTo(0,y);eqCtx.lineTo(w,y);
+      eqCtx.strokeStyle=db===0?"#facc1566":tc("#4b556044","#817a7044");
+      eqCtx.lineWidth=db===0?1.2:1;
+      eqCtx.stroke();
+    });
+    freqTicks.forEach(([hzv])=>{
+      const x=logX(hzv,w);
+      eqCtx.beginPath();eqCtx.moveTo(x,0);eqCtx.lineTo(x,h);
+      eqCtx.strokeStyle=tc("#4b556044","#817a7044");
+      eqCtx.lineWidth=1;
+      eqCtx.stroke();
+    });
+
+    eqCtx.fillStyle=tc("#b8bec6","#4f5358");
+    eqCtx.font="bold 7px Consolas";
+    eqCtx.textAlign="left";
+    dbTicks.forEach(db=>{
+      if(db===15||db===-15)return;
+      const y=dbToY(db,h);
+      eqCtx.fillText((db>0?"+":"")+db+" dB",6,clamp(y+3,10,h-7));
+    });
+    eqCtx.textAlign="center";
+    freqTicks.forEach(([hzv,label])=>{
+      const x=logX(hzv,w);
+      eqCtx.fillText(label,clamp(x,16,w-16),h-4);
+    });
+    eqCtx.textAlign="left";
+  }
+
+  // Mirror each lower BAND BYPASS state in the upper frequency zone.
+  for(let b=0;b<4;b++){
+    if(!state.bandBypass[b])continue;
+    const leftX=b===0?0:logX(state.udmbc.x[b-1],w);
+    const rightX=b===3?w:logX(state.udmbc.x[b],w);
+    eqCtx.fillStyle=tc("#5b6066aa","#8d857baa");
+    eqCtx.fillRect(leftX,0,Math.max(0,rightX-leftX),h);
+  }
+
+}
+let expandedDynamicBand=-1,hoverDynamicBand=-1,hoverXover=-1,dragMode=0,dragBand=-1,dragXover=-1,dragOverlapXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dragDynamicHandleBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynFreqGrabOffsetX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0,dynHandleStartY=0,dynHandleStartValue=0,overlapDragStartY=0,overlapDragStartValue=50,soloSpotX=0,soloSpotY=0,pendingRightBand=-1,pendingRightDynamic=false,pendingRightX=0,pendingRightY=0,rightSoloDynamic=false,graphHintAnchorX=-1,graphHintAnchorY=-1;
+function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRatio||1;eqCanvas.width=Math.max(1,Math.round(r.width*d));eqCanvas.height=Math.max(1,Math.round(r.height*d));eqCtx.setTransform(d,0,0,d,0,0);drawEQ();}
+resizeCanvas();window.addEventListener("resize",resizeCanvas);
+function showGraphHint(e,text){
+  const r=eqCanvas.getBoundingClientRect();
+  graphHint.innerHTML=text;graphHint.hidden=false;
+
+  const firstEdit=graphHint.querySelector(".graphEdit");
+  const b=Number(firstEdit?.dataset?.band);
+  const dyn=firstEdit?.dataset?.dyn==="1";
+
+  let px=e.clientX-r.left,py=e.clientY-r.top;
+
+  if(Number.isInteger(b)&&b>=0&&b<4){
+    const node=dynamicTargetPoint(b,r.width,r.height);
+    px=logX(state.eq.freq[b],r.width);
+    py=dyn?node.y:dbToY(state.eq.gain[b],r.height);
+
+    // At DYNAMICS=0 the distinct Dynamic target is the arrow handle.
+    if(dyn&&Math.abs(Number(state.dyn.dynamics[b]||0))<=.05)
+      px=clamp(node.x+31,18,r.width-12);
+  }
+
+  graphHintAnchorX=r.left+px;
+  graphHintAnchorY=r.top+py;
+
+  const pad=6,gap=14;
+  const x=clamp(px-graphHint.offsetWidth/2,pad,Math.max(pad,r.width-graphHint.offsetWidth-pad));
+  let y=py-graphHint.offsetHeight-gap;
+  if(y<pad)y=py+gap;
+  y=clamp(y,pad,Math.max(pad,r.height-graphHint.offsetHeight-pad));
+  graphHint.style.left=x+"px";graphHint.style.top=y+"px";
+}
+function hideGraphHint(){
+  if(graphHint.contains(document.activeElement))return;
+  graphHint.hidden=true;
+  graphHintAnchorX=-1;graphHintAnchorY=-1;
+}
+function parseUiNumber(raw){
+  return parseFloat(String(raw??"").replace(/[^0-9+\-.]/g,""));
+}
+function graphHintNear(clientX,clientY){
+  if(graphHint.hidden)return false;
+  if(graphHint.contains(document.activeElement))return true;
+
+  const r=graphHint.getBoundingClientRect();
+  const boxPadX=12,boxPadY=10;
+
+  // Small forgiveness around the editable box itself.
+  if(clientX>=r.left-boxPadX&&clientX<=r.right+boxPadX
+    &&clientY>=r.top-boxPadY&&clientY<=r.bottom+boxPadY)
+    return true;
+
+  if(graphHintAnchorX<0||graphHintAnchorY<0)return false;
+
+  const ax=graphHintAnchorX,ay=graphHintAnchorY;
+  if(Math.hypot(clientX-ax,clientY-ay)<=18)return true;
+
+  // Nearest point on the box edge from the original EQ/Dynamic node.
+  const tx=clamp(ax,r.left+8,r.right-8);
+  let ty=(r.top+r.bottom)*.5;
+  if(ay<r.top)ty=r.top;
+  else if(ay>r.bottom)ty=r.bottom;
+
+  const vx=tx-ax,vy=ty-ay,len2=vx*vx+vy*vy;
+  if(len2<=.0001)return false;
+
+  const wx=clientX-ax,wy=clientY-ay;
+  const t=clamp((wx*vx+wy*vy)/len2,0,1);
+  const cx=ax+vx*t,cy=ay+vy*t;
+
+  // Slightly wider than the visual gap so the user can comfortably reach
+  // the editable values, but sideways movement closes immediately.
+  return Math.hypot(clientX-cx,clientY-cy)<=26;
+}
+function commitGraphHintEdit(el){
+  const b=Number(el.dataset.band),kind=el.dataset.kind,dyn=el.dataset.dyn==="1";
+  if(!Number.isInteger(b)||b<0||b>3)return;
+  const raw=String(el.textContent||"").trim().toLowerCase();
+  let val=parseUiNumber(raw);
+  if(!Number.isFinite(val))return;
+  if(kind==="gain"){
+    val=clamp(val,-18,18);
+    if(dyn){
+      const offset=clamp(Number(state.eq.gain[b]||0),-18,18);
+      state.dyn.dynamics[b]=clamp((val-offset)/18*100,-100,100);
+    }else state.eq.gain[b]=val;
+  }else if(kind==="freq"){
+    if(raw.includes("k"))val*=1000;
+    state.eq.freq[b]=clamp(val,20,20000);
+  }else if(kind==="q"){
+    state.eq.q[b]=clamp(val,.1,18);
+  }else if(kind==="oct"){
+    const slopes=[6,12,24,36,48,60,72];
+    let best=0,dist=Math.abs(val-slopes[0]);
+    for(let i=1;i<slopes.length;i++){const d=Math.abs(val-slopes[i]);if(d<dist){best=i;dist=d}}
+    state.eq.slope[b]=best;
+  }
+  knobRefreshers.forEach(fn=>fn());
+  sendParams();drawEQ();
+  graphHint.innerHTML=graphHintBandHtml(b,dyn?4:2);
+}
+graphHint.addEventListener("pointerdown",e=>e.stopPropagation());
+graphHint.addEventListener("focusin",e=>{
+  const el=e.target.closest?.(".graphEdit");if(!el)return;
+  el.dataset.original=el.textContent;
+  requestAnimationFrame(()=>{
+    const sel=window.getSelection(),range=document.createRange();
+    range.selectNodeContents(el);sel.removeAllRanges();sel.addRange(range);
+  });
+});
+graphHint.addEventListener("keydown",e=>{
+  const el=e.target.closest?.(".graphEdit");if(!el)return;
+  if(e.key==="Enter"){e.preventDefault();el.blur()}
+  else if(e.key==="Escape"){
+    e.preventDefault();el.textContent=el.dataset.original??"";el.dataset.cancelEdit="1";el.blur();
+  }
+});
+graphHint.addEventListener("focusout",e=>{
+  const el=e.target.closest?.(".graphEdit");if(!el)return;
+  if(el.dataset.cancelEdit==="1"){delete el.dataset.cancelEdit;return}
+  commitGraphHintEdit(el);
+});
+graphHint.addEventListener("mouseleave",e=>{
+  if(graphHint.contains(document.activeElement))return;
+  if(!graphHintNear(e.clientX,e.clientY))hideGraphHint();
+});
+document.addEventListener("mousemove",e=>{
+  if(graphHint.hidden||graphHint.contains(document.activeElement))return;
+  const target=e.target;
+  if(target===eqCanvas||target===graphHint
+    || (target instanceof Node&&graphHint.contains(target)))return;
+  if(!graphHintNear(e.clientX,e.clientY))hideGraphHint();
+});
+function graphHintBandHtml(b,mask){
+  // Compact graph readout: no EQ / DYN EQ / GAIN labels.
+  const dynamicReadout=!!(mask&4);
+  const gain=dynamicReadout
+    ? dynamicEffectiveTargetGain(b)
+    : Number(state.eq.gain[b]||0);
+  const signed=(gain>=0?"+":"")+fmt(gain,2)+" dB";
+  const freq=Number(state.eq.freq[b]||20);
+  const freqText=freq>=1000?fmt(freq/1000,2)+" kHz":fmt(freq,2)+" Hz";
+  const third=isRollOffType(b)
+    ? slopeDbPerOct(b)+" dB/oct"
+    : "Q "+fmt(state.eq.q[b],3);
+  const dyn=dynamicReadout?1:0;
+  const thirdKind=isRollOffType(b)?"oct":"q";
+  return '<div class="active graphEdit" contenteditable="true" spellcheck="false" data-band="'+b+'" data-dyn="'+dyn+'" data-kind="gain">'+signed
+    +'</div><div class="active graphEdit" contenteditable="true" spellcheck="false" data-band="'+b+'" data-dyn="'+dyn+'" data-kind="freq">'+freqText
+    +'</div><div class="active graphEdit" contenteditable="true" spellcheck="false" data-band="'+b+'" data-dyn="'+dyn+'" data-kind="'+thirdKind+'">'+third+"</div>";
+}
+
+const EQ_FILTER_TYPES=[
+  ["Parametric Bell","#c084fc"],
+  ["Matched Bell","#a78bfa"],
+  ["Wide Plateau","#22d3ee"],
+  ["Steep Plateau 72","#06b6d4"],
+  ["Low Shelf","#84cc16"],
+  ["High Shelf","#84cc16"],
+  ["Low Shelf + Res","#a3e635"],
+  ["High Shelf + Res","#a3e635"],
+  ["Low Contour","#fb923c"],
+  ["High Contour","#fb923c"],
+  ["Focus Pass","#f472b6"],
+  ["Deep Reject","#fb7185"],
+  ["HF Roll-Off","#fbbf24"],
+  ["LF Roll-Off","#fbbf24"]
+];
+const EQ_FILTER_ORDER=[0,2,4,5,6,7,8,9,13,12];
+const eqTypeMenu=$("#eqTypeMenu");
+function eqTypeIcon(type){
+  const p=[
+    "M2 16 H7 C10 16 11 5 18 5 C25 5 26 16 34 16",
+    "M2 16 H6 C10 16 11 4 18 4 C25 4 26 16 34 16",
+    "M2 16 H7 C10 16 11 7 14 7 H22 C25 7 26 16 34 16",
+    "M2 17 H10 L12 5 H24 L26 17 H34",
+    "M2 6 H9 C13 6 14 16 23 16 H34",
+    "M2 16 H13 C22 16 23 6 27 6 H34",
+    "M2 6 H8 C11 6 12 3 15 3 C18 3 19 16 24 16 H34",
+    "M2 16 H12 C17 16 18 3 21 3 C24 3 25 6 28 6 H34",
+    "M2 7 C10 7 13 9 18 12 C23 15 28 16 34 16",
+    "M2 16 C8 16 13 14 18 11 C23 8 28 7 34 7",
+    "M2 17 C9 17 11 5 18 5 C25 5 27 17 34 17",
+    "M2 6 H12 C14 6 15 17 18 17 C21 17 22 6 24 6 H34",
+    "M2 6 H20 C25 6 27 8 29 12 C31 15 32 17 34 17",
+    "M2 17 C4 17 5 15 7 12 C9 8 11 6 16 6 H34"
+  ][type]||"M2 11H34";
+  return '<svg class="eqTypeIcon" viewBox="0 0 36 22" aria-hidden="true">'
+    +'<path class="axis" d="M2 18.5H34"/>'
+    +'<path class="shape" d="'+p+'"/></svg>';
+}
+function closeEqTypeMenu(){eqTypeMenu.hidden=true;eqTypeMenu.innerHTML="";}
+function openEqTypeMenu(b,clientX,clientY){
+  if(b<0||b>3)return;
+  const normalized=normalizedEqType(b);
+  if(Number(state.eq.type?.[b]||0)!==normalized){
+    state.eq.type[b]=normalized;
+    sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());
+  }
+  eqTypeMenu.innerHTML="";
+  EQ_FILTER_ORDER.forEach(type=>{
+    if((b===1||b===2)&&type>=12)return;
+    const item=EQ_FILTER_TYPES[type];
+    const btn=document.createElement("button");
+    btn.className="eqTypeItem"+(normalizedEqType(b)===type?" on":"");
+    btn.style.setProperty("--shape",item[1]);
+    const selected=normalizedEqType(b)===type;
+    btn.innerHTML=eqTypeIcon(type)+'<span>'+(selected?'● ':'')+item[0]+'</span>';
+    btn.onclick=e=>{
+      e.stopPropagation();
+      state.eq.type[b]=type;
+      closeEqTypeMenu();
+      knobRefreshers.forEach(fn=>fn());
+      sendParams();drawEQ();
+    };
+    eqTypeMenu.appendChild(btn);
+  });
+  const gr=eqCanvas.parentElement.getBoundingClientRect();
+  eqTypeMenu.hidden=false;
+  const mw=eqTypeMenu.offsetWidth,mh=eqTypeMenu.offsetHeight;
+  eqTypeMenu.style.left=clamp(clientX-gr.left+8,4,Math.max(4,gr.width-mw-4))+"px";
+  eqTypeMenu.style.top=clamp(clientY-gr.top+8,4,Math.max(4,gr.height-mh-4))+"px";
+}
+document.addEventListener("pointerdown",e=>{if(!eqTypeMenu.hidden&&!eqTypeMenu.contains(e.target))closeEqTypeMenu()});
+
+eqCanvas.addEventListener("contextmenu",e=>e.preventDefault());
+function graphHoverTarget(x,y,w,h){
+  // Pointer capture owns the readout until pointerup/cancel.
+  if(dragMode===7&&dragBand>=0)return {band:dragBand,mask:rightSoloDynamic?4:2};
+  if(dragMode===1&&dragBand>=0)return {band:dragBand,mask:2};
+  if(dragMode===2&&dragBand>=0)return {band:dragBand,mask:4};
+  if(dragMode===5&&dragDynamicHandleBand>=0)return {band:dragDynamicHandleBand,mask:4};
+  // v1.0.41: deterministic readout identity.
+  // Static EQ always wins on its own point. Live gain never steals the hint.
+  const staticBand=staticEqAtPointer(x,y,w,h);
+  if(staticBand>=0&&Math.hypot(x-logX(state.eq.freq[staticBand],w),y-dbToY(state.eq.gain[staticBand],h))<=7)
+    return {band:staticBand,mask:2};
+
+  let best=12,band=-1;
+  for(let b=0;b<4;b++){
+    const dyn=Number(state.dyn.dynamics[b]||0);
+    const target=dynamicTargetPoint(b,w,h);
+    const handleX=clamp(target.x+31,18,w-12),handleY=target.y;
+
+    if(Math.abs(dyn)<=.05
+      && Math.abs(x-handleX)<=6&&Math.abs(y-handleY)<=10)
+      return {band:b,mask:1|4};
+
+    if(Math.abs(dyn)>.05){
+      const d=Math.hypot(x-target.x,y-target.y);
+      const staticY=dbToY(state.eq.gain[b],h);
+      if(d<best&&Math.hypot(x-target.x,y-staticY)>=7){best=d;band=b;}
+    }
+  }
+  return band>=0?{band,mask:1|4}:{band:-1,mask:0};
+}
+
+eqCanvas.addEventListener("mousemove",e=>{
+  if(dragMode===1||dragMode===2||dragMode===5||dragMode===7)return;
+  if(graphHintNear(e.clientX,e.clientY))return;
+  const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
+  const xo=state.udmbc.x.map(v=>logX(v,w));hoverXover=-1;
+  for(let i=0;i<3;i++)if(Math.hypot(xo[i]-x,h-18-y)<=10){hoverXover=i;break;}
+  const hit=graphHoverTarget(x,y,w,h);
+  hoverDynamicBand=hit.band;
+  if(hit.band>=0)showGraphHint(e,graphHintBandHtml(hit.band,hit.mask));else hideGraphHint();
+  drawEQ();
+});
+eqCanvas.addEventListener("pointermove",e=>{
+  if(!e.buttons&&graphHintNear(e.clientX,e.clientY))return;
+  const r=eqCanvas.getBoundingClientRect();
+  const x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
+  const hit=graphHoverTarget(x,y,w,h);
+  hoverDynamicBand=hit.band;
+  if(hit.band>=0)showGraphHint(e,graphHintBandHtml(hit.band,hit.mask));else hideGraphHint();
+  if(e.buttons)drawEQ();
+});
+eqCanvas.addEventListener("mouseleave",e=>{
+  hoverDynamicBand=-1;hoverXover=-1;
+
+  const next=e.relatedTarget;
+  const enteringHint=
+    next===graphHint
+    || (next instanceof Node && graphHint.contains(next));
+
+  if(!enteringHint&&!graphHintNear(e.clientX,e.clientY))
+    hideGraphHint();
+
+  drawEQ();
+});
+eqCanvas.addEventListener("wheel",e=>{
+  const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
+  if(e.buttons===2||e.button===2){
+    const hit=graphHoverTarget(x,y,w,h);
+    const band=pendingRightBand>=0
+      ?pendingRightBand
+      :(dragBand>=0?dragBand:hit.band);
+    if(band>=0){
+      e.preventDefault();
+      if(pendingRightBand>=0){
+        rightSoloDynamic=pendingRightDynamic;
+        graphLastMoveX=x;graphLastMoveY=y;
+        pendingRightBand=-1;pendingRightDynamic=false;
+        dragMode=7;dragBand=band;clearGraphControls();
+      }else if(dragMode!==7){
+        rightSoloDynamic=!!(hit.mask&4);
+        dragMode=7;dragBand=band;
+      }
+      if(isRollOffType(band)){
+        const dir=e.deltaY>0?1:-1;
+        state.eq.slope[band]=clamp(Math.round(Number(state.eq.slope[band]??1))+dir,0,6);
+      }else{
+        const q=Math.max(.1,Number(state.eq.q[band]||.707));
+        state.eq.q[band]=nextQFromWheel(q,e.deltaY,e.shiftKey);
+      }
+      soloSpotX=x;soloSpotY=y;
+      state.solo.graphActive=true;state.solo.graphFreq=state.eq.freq[band];
+      state.solo.graphQ=isRollOffType(band)?.70710678:state.eq.q[band];
+      showGraphHint(e,graphHintBandHtml(band,rightSoloDynamic?4:8));sendParams();drawEQ();return;
+    }
+  }
+  // Crossover curvature / OVERLAP is controlled ONLY by the bottom infinity marker.
+  const xo=state.udmbc.x.map(v=>logX(v,w));let xb=10,xi=-1;
+  const markerY=h-18;
+  for(let i=0;i<3;i++){const dd=Math.hypot(xo[i]-x,markerY-y);if(dd<xb){xb=dd;xi=i;}}
+  if(xi>=0){
+    e.preventDefault();
+    const ov=state.udmbc.overlap??[50,50,50];
+    const next=clamp((ov[xi]??50)-e.deltaY*.50,0,100);
+    ov[0]=ov[1]=ov[2]=next;
+    setGraphControls(["XOVER_OVERLAP"],false);
+    sendParams();drawEQ();return;
+  }
+  // Wheel on either the static EQ point or active DYNAMICS point
+  // adjusts the same shared Q parameter.
+  let best=13,band=-1,dynamicWheelReadout=false;
+  for(let b=0;b<4;b++){
+    const px=logX(state.eq.freq[b],w);
+    const eqY=dbToY(state.eq.gain[b],h);
+    const eqD=Math.hypot(px-x,eqY-y);
+    if(eqD<best){best=eqD;band=b;dynamicWheelReadout=false;}
+    const dyn=Number(state.dyn.dynamics[b]||0);
+    if(Math.abs(dyn)>0.01){
+      const target=dynamicTargetPoint(b,w,h);
+      const dynD=Math.hypot(target.x-x,target.y-y);
+      if(dynD<best){best=dynD;band=b;dynamicWheelReadout=true;}
+    }
+  }
+  if(band<0)return;
+  e.preventDefault();
+  setGraphControls(["EQ"+(band+1)+"_Q"],false);
+  if(isRollOffType(band)){
+    const dir=e.deltaY>0?1:-1;
+    state.eq.slope[band]=clamp(Math.round(Number(state.eq.slope[band]??1))+dir,0,6);
+  }else{
+    state.eq.q[band]=nextQFromWheel(state.eq.q[band],e.deltaY,e.shiftKey);
+  }
+  knobRefreshers.forEach(fn=>fn());
+  showGraphHint(e,graphHintBandHtml(band,dynamicWheelReadout?4:8));
+  sendParams();drawEQ();
+},{passive:false});
+function resetGraphGainAtDoubleClick(e){
+  if(e.button!==0)return;
+  const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
+
+  let dynamicBand=-1,bestDynamic=13;
+  for(let b=0;b<4;b++){
+    const dynamics=Math.abs(Number(state.dyn.dynamics[b]||0));
+    if(dynamics<=.05)continue;
+    const target=dynamicTargetPoint(b,w,h);
+    const d=Math.hypot(x-target.x,y-target.y);
+    if(d<=bestDynamic){bestDynamic=d;dynamicBand=b;}
+  }
+
+  let staticBand=-1,bestStatic=8;
+  for(let b=0;b<4;b++){
+    const px=logX(state.eq.freq[b],w),py=dbToY(state.eq.gain[b],h);
+    const d=Math.hypot(x-px,y-py);
+    if(d<=bestStatic){bestStatic=d;staticBand=b;}
+  }
+
+  if(dynamicBand>=0&&(staticBand<0||bestDynamic<=bestStatic)){
+    state.dyn.dynamics[dynamicBand]=0;
+    knobRefreshers.forEach(fn=>fn());
+    setGraphControls(["DYN_DYNAMICS"+(dynamicBand+1)],false);
+    sendParams();drawEQ();
+    e.preventDefault();
+    return;
+  }
+
+  if(staticBand>=0){
+    state.eq.gain[staticBand]=0;
+    knobRefreshers.forEach(fn=>fn());
+    setGraphControls(["EQ"+(staticBand+1)+"_GAIN"],false);
+    sendParams();drawEQ();
+    e.preventDefault();
+  }
+}
+eqCanvas.addEventListener("dblclick",resetGraphGainAtDoubleClick);
+eqCanvas.addEventListener("pointerdown",e=>{
+  const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
+  if(expandedDynamicBand>=0&&e.button!==2){
+    const p=dynamicPopupBounds(expandedDynamicBand,w,h);
+    if(!(x>=p.x&&x<=p.x+p.w&&y>=p.y&&y<=p.y+p.h)){
+      expandedDynamicBand=-1;dragDynamicMsBand=-1;dragMode=0;drawEQ();return;
+    }
+  }
+  if(e.button===2){
+    const hit=graphHoverTarget(x,y,w,h),band=hit.band;
+    if(band>=0){
+      e.preventDefault();closeEqTypeMenu();
+      expandedDynamicBand=-1;dragDynamicMsBand=-1;dragMode=8;dragBand=-1;
+      pendingRightBand=band;
+      pendingRightDynamic=!!(hit.mask&4);
+      pendingRightX=x;pendingRightY=y;
+      eqCanvas.setPointerCapture(e.pointerId);hideGraphHint();drawEQ();return;
+    }
+  }
+  if(expandedDynamicBand>=0){
+    const p=dynamicPopupBounds(expandedDynamicBand,w,h),bar={x:p.x+12,y:p.y+50,w:p.w-24,h:11};
+    if(x>=p.x&&x<=p.x+p.w&&y>=p.y&&y<=p.y+p.h){
+      if(e.button===0&&x>=bar.x&&x<=bar.x+bar.w&&y>=bar.y-8&&y<=bar.y+20){
+        dragDynamicMsBand=expandedDynamicBand;dragMode=3;
+        eqCanvas.setPointerCapture(e.pointerId);
+        state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);
+        sendParams();drawEQ();
+      }
+      return;
+    }
+  }
+  if(e.button!==0)return;
+
+  // Dedicated DYNAMICS arrow handle; priority above the EQ XY node.
+  for(let b=0;b<4;b++){
+    const dyn=Number(state.dyn.dynamics[b]||0);
+    const target=dynamicTargetPoint(b,w,h);
+    const handleX=clamp(target.x+31,18,w-12),handleY=target.y;
+    if(Math.abs(dyn)<=.05&&Math.abs(x-handleX)<=3&&Math.abs(y-handleY)<=7){
+      dragMode=5;dragDynamicHandleBand=b;dragBand=-1;dragXover=-1;dragDynamicMsBand=-1;
+      graphLastMoveX=x;graphLastMoveY=y;clearGraphControls();
+      dynHandleStartY=y;dynHandleStartValue=dyn;
+      eqCanvas.setPointerCapture(e.pointerId);
+      showGraphHint(e,graphHintBandHtml(b,1|4));
+      drawEQ();
+      return;
+    }
+  }
+
+  // The exact static EQ GAIN node wins only when the two nodes overlap.
+  // The entire Dynamic Target circle, including its centre, is one XY control:
+  // X = linked EQ FREQ, Y = linked DYNAMICS.
+  const staticBand=staticEqAtPointer(x,y,w,h);
+  if(staticBand<0){
+    const tb=dynamicTargetAtPointer(x,y,w,h);
+    if(tb>=0){
+      dragMode=2;dragBand=tb;dragXover=-1;dragDynamicTargetBand=tb;
+      graphLastMoveX=x;graphLastMoveY=y;clearGraphControls();
+      dynFreqStartHz=state.eq.freq[tb];
+      dynFreqGrabOffsetX=x-logX(dynFreqStartHz,w);
+      dynDynamicsStartY=y;
+      dynDynamicsStartValue=state.dyn.dynamics[tb];
+      dynTargetStartFreq=state.eq.freq[tb];
+      dynTargetStartX=x;
+      eqCanvas.setPointerCapture(e.pointerId);
+      showGraphHint(e,graphHintBandHtml(tb,1|4));
+      return;
+    }
+  }
+
+  // Static EQ node.
+  if(staticBand>=0){
+    dragMode=1;dragBand=staticBand;dragXover=-1;dragDynamicTargetBand=-1;eqDragAxis=0;
+    graphLastMoveX=x;graphLastMoveY=y;clearGraphControls();
+    dynFreqStartHz=state.eq.freq[staticBand];
+    dynFreqStartX=x;
+    dynFreqGrabOffsetX=x-logX(dynFreqStartHz,w);
+    dynGainStartY=y;dynGainStartOffset=state.eq.gain[staticBand];
+    eqCanvas.setPointerCapture(e.pointerId);
+    showGraphHint(e,graphHintBandHtml(staticBand,1|2));
+    return;
+  }
+
+  // Bottom figure-eight marker = continuous shared OVERLAP control.
+  const xo=state.udmbc.x.map(v=>logX(v,w));
+  const markerY=h-18;
+  for(let i=0;i<3;i++){
+    if(Math.hypot(xo[i]-x,markerY-y)<14){
+      dragMode=6;
+      dragOverlapXover=i;
+      dragXover=-1;
+      overlapDragStartY=y;
+      overlapDragStartValue=Number(state.udmbc.overlap?.[i]??50);
+      setGraphControls(["XOVER_OVERLAP"],false);
+      eqCanvas.setPointerCapture(e.pointerId);
+      showGraphHint(e,"X"+(i+1)+"  OVERLAP "+fmt(overlapDragStartValue,1)+"%");
+      return;
+    }
+  }
+
+  // X1/X2/X3 crossover lines.
+  for(let i=0;i<3;i++)if(Math.abs(xo[i]-x)<14){dragMode=4;dragXover=i;setGraphControls(["UDMBC_X"+(i+1)],false);eqCanvas.setPointerCapture(e.pointerId);return;}
+});
+eqCanvas.addEventListener("pointermove",e=>{
+  const r=eqCanvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,0,r.width),y=clamp(e.clientY-r.top,0,r.height),w=r.width,h=r.height;
+  if(dragMode===8&&pendingRightBand>=0&&(e.buttons&2)){
+    if(Math.hypot(x-pendingRightX,y-pendingRightY)<=3)return;
+    dragMode=7;dragBand=pendingRightBand;
+    rightSoloDynamic=pendingRightDynamic;
+    graphLastMoveX=pendingRightX;graphLastMoveY=pendingRightY;
+    pendingRightBand=-1;pendingRightDynamic=false;
+    soloSpotX=x;soloSpotY=y;
+    state.solo.graphActive=true;
+    state.solo.graphFreq=state.eq.freq[dragBand];
+    state.solo.graphQ=isRollOffType(dragBand)?.70710678:state.eq.q[dragBand];
+    clearGraphControls();
+    sendParams();
+  }
+  if(state.solo.graphActive&&(e.buttons&2)){soloSpotX=x;soloSpotY=y;}
+  hoverDynamicBand=dynamicTargetAtPointer(x,y,w,h);
+  if(dragMode===7&&dragBand>=0){
+    const hzv=invLog(clamp(x,0,w)/w);
+    const movedX=Math.abs(x-graphLastMoveX)>.35,movedY=Math.abs(y-graphLastMoveY)>.35;
+    const ids=[];
+
+    if(movedX){
+      state.eq.freq[dragBand]=hzv;
+      state.solo.graphFreq=hzv;
+      ids.push("EQ"+(dragBand+1)+"_FREQ");
+    }
+
+    if(rightSoloDynamic){
+      if(movedY){
+        const targetGain=yToDb(y,h);
+        const offset=clamp(Number(state.eq.gain[dragBand]||0),-18,18);
+        state.dyn.dynamics[dragBand]=clamp((targetGain-offset)/18*100,-100,100);
+        ids.push("DYN_DYNAMICS"+(dragBand+1));
+      }
+      showGraphHint(e,graphHintBandHtml(dragBand,1|4));
+    }else{
+      if(movedY){
+        state.eq.gain[dragBand]=yToDb(y,h);
+        ids.push("EQ"+(dragBand+1)+"_GAIN");
+      }
+      showGraphHint(e,graphHintBandHtml(dragBand,1|2));
+    }
+
+    if(ids.length){
+      graphLastMoveX=x;graphLastMoveY=y;
+      pulseGraphControls(ids);
+      sendParams();knobRefreshers.forEach(fn=>fn());
+    }
+    state.solo.graphActive=true;
+    state.solo.graphFreq=state.eq.freq[dragBand];
+    state.solo.graphQ=isRollOffType(dragBand)?.70710678:state.eq.q[dragBand];
+    drawEQ();return;
+  }
+  if(dragDynamicMsBand>=0){
+    const p=dynamicPopupBounds(dragDynamicMsBand,w,h),bar={x:p.x+12,y:p.y+50,w:p.w-24,h:11};
+    state.dyn.ms[dragDynamicMsBand]=clamp((x-bar.x)/bar.w*100,0,100);sendParams();drawEQ();return;
+  }
+  if(dragMode===5&&dragDynamicHandleBand>=0){
+    const fine=e.shiftKey?0.1:1;
+    const deltaDynamics=-(y-dynHandleStartY)/Math.max(1,h)*200*fine;
+    state.dyn.dynamics[dragDynamicHandleBand]=clamp(dynHandleStartValue+deltaDynamics,-100,100);
+    if(Math.abs(y-graphLastMoveY)>.35){
+      graphLastMoveX=x;graphLastMoveY=y;
+      pulseGraphControls(["DYN_DYNAMICS"+(dragDynamicHandleBand+1)]);
+    }
+    showGraphHint(e,graphHintBandHtml(dragDynamicHandleBand,4));
+    sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
+  }
+  if(dragMode===1&&dragBand>=0){
+    const hzv=invLog(clamp(x,0,w)/w),gainAtCursor=yToDb(y,h);
+    const movedX=Math.abs(x-graphLastMoveX)>.35,movedY=Math.abs(y-graphLastMoveY)>.35;
+    const ids=[];
+    if(movedX){state.eq.freq[dragBand]=hzv;ids.push("EQ"+(dragBand+1)+"_FREQ")}
+    if(movedY){state.eq.gain[dragBand]=gainAtCursor;ids.push("EQ"+(dragBand+1)+"_GAIN")}
+    if(ids.length){graphLastMoveX=x;graphLastMoveY=y;pulseGraphControls(ids);sendParams();knobRefreshers.forEach(fn=>fn())}
+    showGraphHint(e,graphHintBandHtml(dragBand,1|2));
+    drawEQ();return;
+  }
+  if(dragMode===2&&dragBand>=0){
+    const hzv=invLog(clamp(x,0,w)/w),targetGain=yToDb(y,h);
+    const offset=clamp(Number(state.eq.gain[dragBand]||0),-18,18);
+    const dynamics=clamp((targetGain-offset)/18*100,-100,100);
+    const movedX=Math.abs(x-graphLastMoveX)>.35,movedY=Math.abs(y-graphLastMoveY)>.35;
+    const ids=[];
+    if(movedX){state.eq.freq[dragBand]=hzv;ids.push("EQ"+(dragBand+1)+"_FREQ")}
+    if(movedY){state.dyn.dynamics[dragBand]=dynamics;ids.push("DYN_DYNAMICS"+(dragBand+1))}
+    if(ids.length){graphLastMoveX=x;graphLastMoveY=y;pulseGraphControls(ids);sendParams();knobRefreshers.forEach(fn=>fn())}
+    showGraphHint(e,graphHintBandHtml(dragBand,1|4));
+    drawEQ();return;
+  }
+  if(dragMode===6&&dragOverlapXover>=0){
+    const fine=e.shiftKey?0.1:1;
+    const next=clamp(overlapDragStartValue-(y-overlapDragStartY)/Math.max(1,h)*200*fine,0,100);
+    state.udmbc.overlap[0]=state.udmbc.overlap[1]=state.udmbc.overlap[2]=next;
+    setGraphControls(["XOVER_OVERLAP"],true);
+    sendParams();drawEQ();return;
+  }
+  if(dragMode===4&&dragXover>=0){
+    let f=invLog(x/w);
+    if(dragXover===0)f=clamp(f,40,Math.min(1000,state.udmbc.x[1]-80));
+    else if(dragXover===1)f=clamp(f,state.udmbc.x[0]+80,Math.min(5000,state.udmbc.x[2]-200));
+    else f=clamp(f,state.udmbc.x[1]+200,18000);
+    state.udmbc.x[dragXover]=f;setGraphControls(["UDMBC_X"+(dragXover+1)],true);sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
+  }
+  drawEQ();
+});
+eqCanvas.addEventListener("pointerup",e=>{
+  if(dragMode===8&&pendingRightBand>=0){
+    const b=pendingRightBand;
+    pendingRightBand=-1;pendingRightDynamic=false;
+    openEqTypeMenu(b,e.clientX,e.clientY);
+  }
+  if(state.solo.graphActive){state.solo.graphActive=false;sendParams();}
+  const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
+  const hit=graphHoverTarget(x,y,w,h);
+  if(hit.band>=0)showGraphHint(e,graphHintBandHtml(hit.band,hit.mask));else hideGraphHint();
+  ++graphMovementPulseToken;clearGraphControls();graphLastMoveX=graphLastMoveY=-1;
+  dragMode=0;dragBand=-1;rightSoloDynamic=false;dragXover=-1;dragOverlapXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;dragDynamicHandleBand=-1;eqDragAxis=0;clearGraphControls();drawEQ();
+});
+eqCanvas.addEventListener("pointercancel",e=>{
+  pendingRightBand=-1;pendingRightDynamic=false;rightSoloDynamic=false;
+  if(state.solo.graphActive){state.solo.graphActive=false;sendParams();}
+  const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
+  const hit=graphHoverTarget(x,y,w,h);
+  if(hit.band>=0)showGraphHint(e,graphHintBandHtml(hit.band,hit.mask));else hideGraphHint();
+  ++graphMovementPulseToken;clearGraphControls();graphLastMoveX=graphLastMoveY=-1;
+  dragMode=0;dragBand=-1;dragXover=-1;dragOverlapXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;dragDynamicHandleBand=-1;eqDragAxis=0;clearGraphControls();drawEQ();
+});
+function stopPlayback(){
+  disconnectAnalyzerTap();
+  stopAnalyzerLoop();if(source){try{source.stop()}catch{}try{source.disconnect()}catch{}source=null}playing=false;$("#status").textContent="READY"}
+async function loadAudioFile(file){
+  if(!file||!(file.type||"").startsWith("audio/")){$("#status").textContent="請拖入音訊檔";return}
+  try{
+    if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    await audioCtx.resume();
+    $("#status").textContent="DECODING…";
+    const data=await file.arrayBuffer();
+    audioBuffer=await audioCtx.decodeAudioData(data);
+    $("#fileName").textContent=file.name;
+    $("#cursorTime").textContent="0:00.000";
+    $("#status").textContent="READY";
+  }catch(e){
+    audioBuffer=null;
+    $("#status").textContent="LOAD ERROR · "+(e?.message||"decode failed");
+  }
+}
+function bindAudioDrop(){
+  const app=document.querySelector(".app"),loader=document.querySelector(".transport .tiny");
+  if(!app)return;
+  const prevent=e=>{e.preventDefault();e.stopPropagation()};
+  ["dragenter","dragover","dragleave","drop"].forEach(type=>app.addEventListener(type,prevent));
+  ["dragenter","dragover"].forEach(type=>app.addEventListener(type,()=>app.classList.add("audioDragOver")));
+  ["dragleave","drop"].forEach(type=>app.addEventListener(type,()=>app.classList.remove("audioDragOver")));
+  app.addEventListener("drop",e=>{
+    const file=e.dataTransfer?.files?.[0];
+    if(file)loadAudioFile(file);
+  });
+  if(loader)loader.addEventListener("dragover",prevent);
+}
+
+async function startPlayback(){
+  if(!audioBuffer){$("#status").textContent="先 LOAD AUDIO";return}
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  await audioCtx.resume();
+  stopPlayback();
+  directFallback=false;
+  workletFaulted=false;
+  workletHeartbeatSeen=false;
+  paramSyncScheduled=false;
+  try{await ensureAudioGraph()}catch(err){
+    directFallback=false;
+    workletFaulted=true;
+    $("#status").textContent="DSP ERROR · "+(err?.message||"AudioWorklet unavailable");
+    return;
+  }
+  source=audioCtx.createBufferSource();
+  source.buffer=audioBuffer;
+  source.loop=true;
+  source.connect(directFallback?audioCtx.destination:workletNode);
+  connectAnalyzerTap();
+  startAnalyzerLoop();
+  source.onended=()=>{if(playing){source=null;return}playing=false;$("#status").textContent="READY"};
+  source.start();playing=true;$("#status").textContent="PLAYING · LOOP";
+  // Give the worklet enough time to publish its ready heartbeat before any
+  // compatibility fallback. A transient startup delay must never disable DSP.
+  setTimeout(()=>{
+    if(playing&&!workletHeartbeatSeen&&!directFallback&&!workletFaulted){
+      switchToDirectAudioFallback();
+    }
+  },3500);
+}
+$("#audioFileInput").addEventListener("change",e=>loadAudioFile(e.target.files[0]));bindAudioDrop();$("#playBtn").onclick=()=>startPlayback().catch(()=>$("#status").textContent="PLAY ERROR");$("#stopBtn").onclick=stopPlayback;$("#resetBtn").onclick=()=>location.reload();
+</script>
+</body>
+</html>

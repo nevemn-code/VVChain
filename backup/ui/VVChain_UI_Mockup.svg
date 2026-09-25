@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+<defs>
+  <linearGradient id="top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#343840"/><stop offset="1" stop-color="#17191e"/></linearGradient>
+  <linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#292d33"/><stop offset="1" stop-color="#12151a"/></linearGradient>
+  <style>.ui{font-family:Arial,sans-serif}.white{fill:#fff}.muted{fill:#8b949f}.tiny{font-size:9px}.small{font-size:11px}.label{font-size:10px;font-weight:700}.knob{fill:#171a1f;stroke-width:2}</style>
+</defs>
+<rect width="1600" height="1000" fill="#080a0d"/>
+<rect width="1600" height="70" fill="url(#top)"/>
+<text x="18" y="34" class="ui white" font-size="25" font-weight="700">VVCHAIN</text>
+<text x="20" y="52" class="ui muted small">4-BAND EQ · UDMBC · TAPE COLOR · DE-ESSER</text>
+<text x="1310" y="49" class="ui muted tiny">MIX</text><line x1="1335" y1="51" x2="1405" y2="51" stroke="#38bdf8" stroke-width="4"/><circle cx="1374" cy="51" r="6" fill="#38bdf8"/>
+<text x="1415" y="49" class="ui muted tiny">OUT</text><line x1="1440" y1="51" x2="1510" y2="51" stroke="#9ed85c" stroke-width="4"/><circle cx="1488" cy="51" r="6" fill="#9ed85c"/>
+
+<rect x="18" y="78" width="1564" height="315" rx="8" fill="#111318" stroke="#050607"/>
+<text x="30" y="96" class="ui white small">EQ RESPONSE · 20 Hz — 20 kHz · DRAG NODES</text>
+<path d="M18 330 C130 315 210 335 330 295 S530 318 680 270 S850 305 1000 242 S1200 280 1370 200 S1500 215 1582 178" fill="none" stroke="#fff" stroke-width="3"/>
+<g><circle cx="190" cy="315" r="9" fill="#38bdf8"/><circle cx="455" cy="305" r="9" fill="#22d3ee"/><circle cx="895" cy="276" r="9" fill="#a3e635"/><circle cx="1290" cy="223" r="9" fill="#f97316"/></g>
+<text x="105" y="120" class="ui muted tiny">Hover a colored point → wheel UP = smaller Q · wheel DOWN = larger Q</text>
+
+<!-- five equal lower zones -->
+<g class="ui">
+  <rect x="18" y="404" width="301" height="500" rx="8" fill="url(#card)" stroke="#38bdf8"/>
+  <rect x="325" y="404" width="301" height="500" rx="8" fill="url(#card)" stroke="#22d3ee"/>
+  <rect x="632" y="404" width="301" height="500" rx="8" fill="url(#card)" stroke="#a3e635"/>
+  <rect x="939" y="404" width="301" height="500" rx="8" fill="url(#card)" stroke="#f97316"/>
+  <rect x="1246" y="404" width="336" height="500" rx="8" fill="url(#card)" stroke="#67d3aa"/>
+
+  <g class="white" font-size="13" font-weight="700">
+    <text x="31" y="426">BAND 1</text><text x="338" y="426">BAND 2</text><text x="645" y="426">BAND 3</text><text x="952" y="426">BAND 4</text><text x="1259" y="426">DE-ESSER</text>
+  </g>
+  <g class="muted tiny"><text x="31" y="443">EQ / ANALOG · UDMBC · TAPE COLOR</text><text x="338" y="443">EQ / ANALOG · UDMBC · TAPE COLOR</text><text x="645" y="443">EQ / ANALOG · UDMBC · TAPE COLOR</text><text x="952" y="443">EQ / ANALOG · UDMBC · TAPE COLOR</text><text x="1259" y="443">PRECISION SIBILANCE · 6–18 kHz</text></g>
+
+  <!-- sample knob rows, rings are full color and pointer moves -->
+  <g>
+    <g transform="translate(65 510)"><circle r="33" class="knob" stroke="#38bdf8"/><path d="M0 0 L0 -22" stroke="#111" stroke-width="4"/><text x="-22" y="58" class="muted label">FREQ</text></g>
+    <g transform="translate(145 510)"><circle r="33" class="knob" stroke="#38bdf8"/><path d="M0 0 L12 -19" stroke="#111" stroke-width="4"/><text x="-20" y="58" class="muted label">GAIN</text></g>
+    <g transform="translate(225 510)"><circle r="33" class="knob" stroke="#38bdf8"/><path d="M0 0 L20 -8" stroke="#111" stroke-width="4"/><text x="-7" y="58" class="muted label">Q</text></g>
+
+    <g transform="translate(372 510)"><circle r="33" class="knob" stroke="#22d3ee"/><path d="M0 0 L0 -22" stroke="#111" stroke-width="4"/><text x="-22" y="58" class="muted label">FREQ</text></g>
+    <g transform="translate(452 510)"><circle r="33" class="knob" stroke="#22d3ee"/><path d="M0 0 L12 -19" stroke="#111" stroke-width="4"/><text x="-20" y="58" class="muted label">GAIN</text></g>
+    <g transform="translate(532 510)"><circle r="33" class="knob" stroke="#22d3ee"/><path d="M0 0 L20 -8" stroke="#111" stroke-width="4"/><text x="-7" y="58" class="muted label">Q</text></g>
+
+    <g transform="translate(679 510)"><circle r="33" class="knob" stroke="#a3e635"/><path d="M0 0 L0 -22" stroke="#111" stroke-width="4"/><text x="-22" y="58" class="muted label">FREQ</text></g>
+    <g transform="translate(759 510)"><circle r="33" class="knob" stroke="#a3e635"/><path d="M0 0 L12 -19" stroke="#111" stroke-width="4"/><text x="-20" y="58" class="muted label">GAIN</text></g>
+    <g transform="translate(839 510)"><circle r="33" class="knob" stroke="#a3e635"/><path d="M0 0 L20 -8" stroke="#111" stroke-width="4"/><text x="-7" y="58" class="muted label">Q</text></g>
+
+    <g transform="translate(986 510)"><circle r="33" class="knob" stroke="#f97316"/><path d="M0 0 L0 -22" stroke="#111" stroke-width="4"/><text x="-22" y="58" class="muted label">FREQ</text></g>
+    <g transform="translate(1066 510)"><circle r="33" class="knob" stroke="#f97316"/><path d="M0 0 L12 -19" stroke="#111" stroke-width="4"/><text x="-20" y="58" class="muted label">GAIN</text></g>
+    <g transform="translate(1146 510)"><circle r="33" class="knob" stroke="#f97316"/><path d="M0 0 L20 -8" stroke="#111" stroke-width="4"/><text x="-7" y="58" class="muted label">Q</text></g>
+  </g>
+
+  <!-- DE-ESSER zone -->
+  <rect x="1262" y="478" width="304" height="220" rx="8" fill="#67d3aa" fill-opacity=".10" stroke="#67d3aa" stroke-opacity=".30"/>
+  <g transform="translate(1335 560)"><circle r="48" class="knob" stroke="#67d3aa"/><path d="M0 0 L0 -32" stroke="#111" stroke-width="5"/></g>
+  <g transform="translate(1490 560)"><circle r="48" class="knob" stroke="#67d3aa"/><path d="M0 0 L25 -20" stroke="#111" stroke-width="5"/></g>
+  <text x="1286" y="640" class="label" fill="#67d3aa">DE-ESS FREQ</text><text x="1438" y="640" class="label" fill="#67d3aa">DE-ESS %</text>
+
+  <!-- +ADV examples -->
+  <rect x="250" y="455" width="55" height="21" rx="4" fill="#17191d" stroke="#38bdf8"/><text x="277" y="469" fill="#d6dbe1" font-size="9" text-anchor="middle">+ ADV</text>
+  <rect x="557" y="455" width="55" height="21" rx="4" fill="#17191d" stroke="#22d3ee"/><text x="584" y="469" fill="#d6dbe1" font-size="9" text-anchor="middle">+ ADV</text>
+  <rect x="864" y="455" width="55" height="21" rx="4" fill="#17191d" stroke="#a3e635"/><text x="891" y="469" fill="#d6dbe1" font-size="9" text-anchor="middle">+ ADV</text>
+  <rect x="1171" y="455" width="55" height="21" rx="4" fill="#17191d" stroke="#f97316"/><text x="1198" y="469" fill="#d6dbe1" font-size="9" text-anchor="middle">+ ADV</text>
+</g>
+
+<text x="18" y="932" class="ui muted tiny">旋鈕：整圈固定顏色，數值由指針表示；所有旋鈕文字放大 10%。DE-ESSER 為獨立第五區。</text>
+</svg>

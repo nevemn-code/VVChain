@@ -1,0 +1,410 @@
+# VVChain
+
+## 目前實際狀態（v1.0.65）
+
+v1.0.55 修復既有 Web smoke／UI regression 的過時 source guard，Fast Gate 改為 main push 也執行，並把 Web smoke、project static audit、UI/interaction regression 各重跑十輪。實際通過狀態以本版 GitHub Actions 結果為準；DAW／pluginval／AAX 仍屬獨立驗證。
+
+目前主鏈的實際順序：EQ／Dynamic EQ → 四段 TRANSIENT → 四段 Analog parallel-delta → UDMBC parallel-delta → TAPE COLOR delta → Mix／Out → Solo → true-peak limiter → 主 Bypass／Delta。TRANSIENT 使用同一組 X1／X2／X3 頻段設定，但在 host rate 採 parallel-delta 架構：原始 base signal 不經額外 split/recombine，只注入各頻段的增益差值，因此不新增整條 full-band crossover phase rotation；UDMBC、TAPE COLOR 與頻段 Solo 沿用相同 crossover 設定。
+
+Linear EQ / Dynamic EQ 現在固定在 host sample rate；只有實際啟用 Analog ADAA v2 時才進入 4× oversampling（48 kHz → 192 kHz）。Analog 四段全部 0% 或 Bypass 時，整個 upsample → ADAA → downsample 路徑完全跳過，以等延遲純 delay 維持固定 PDC。Windows VST3／DAW 實測仍以 CI artifact 與 host 驗證為準。
+
+四段式音訊鏈結 VST3 / AAX 專案，主介面固定為單一 plugin 視窗。
+
+## Signal Flow
+INPUT
+→ 4-Band Parametric EQ / Dynamic EQ
+→ 4-Band TRANSIENT
+→ 4-Band Analog Color
+→ 4-Band UDMBC
+→ 4-Band TAPE COLOR
+→ MIX
+→ OUT
+→ OUTPUT
+
+## Main UI
+- 上方顯示 EQ response、Shared X-Over 與即時 Spectrum Analyzer。
+- 主 Spectrum 使用 4096-point Hann FFT。ANALOG / UDMBC / TYPE-A 的 contribution Analyzer、六條 pre/post stream 與其 2048 FFT 已全部移除。
+- 3 條可拖曳 Shared X-Over 線，分成 4 個頻段；線上滾輪調整 OVERLAP。
+- BAND 1–4：FREQ / GAIN / Q / ANALOG COLOR / UDMBC % / ATTACK / RELEASE / TAPE COLOR + / TRANSIENT。
+- 每個頻段的 ANALOG COLOR 完全獨立；使用者範圍 0–60%，0% = exact dry；X2 只把目前 ANALOG delta 放大為 ×2。
+- ANALOG COLOR 上方有 TT / SS 撥桿：TT = Tube Saturation；SS = Solid-State Saturation。
+- 各 BAND 的 UDMBC / TAPE COLOR BYPASS 小燈固定位於對應旋鈕右上方；亮 = 啟用，暗 = BYPASS。
+- Master BYPASS 位於右上角，為全鏈旁通；啟用時 UI 灰階化。
+- +ADV 開啟後，點視窗外即可關閉。
+
+## DSP
+- HP / CORNER 不參與聲音計算。
+- ANALOG COLOR 使用 unity-normalized smooth algebraic transfer + analytical first-order ADAA：0% exact dry；TT/SS 純奇對稱；只有 Analog nonlinear stage 固定 4× oversampling；ADAA state 逐 band/channel 隔離；shaping domain 限制 -1..+1；|x|=1 維持 unity；X2 仍只放大該段產生的 ANALOG delta ×2。
+- Master BYPASS 保持固定 PDC，完全旁通時輸出延遲乾聲。
+- AAX 目標受 VVCHAIN_ENABLE_AAX 控制，需合法 AAX SDK / 開發環境。
+
+## Web Preview
+- LOAD AUDIO：選取音檔後解碼，再 PLAY / STOP / RESET。
+- Master BYPASS 會切至原始輸入並將整個介面灰階化。
+- Worklet 發生處理錯誤時，狀態列顯示 DSP ERROR。
+
+Online preview:
+https://nevemn-code.github.io/VVChain/
+
+## Native Build
+- JUCE 9.0.2 / C++20
+- VST3 + Standalone
+- AAX switch guarded by VVCHAIN_ENABLE_AAX
+
+## 版本日誌
+
+### v1.0.65
+- UDMBC detector / gain control 改為真正 stereo-linked：每個頻段共用 Gate / Down / Up detector 與 gain state，L/R 套用相同動態增益，避免 stereo image wandering。
+- UDMBC 固定 Attack / Release / Gate / RMS slow coefficient 搬出 sample×channel×band 熱迴圈；只保留真正 program-dependent lifter release 的動態 coefficient。
+- Web shared X1/X2/X3 由 one-pole preview split 改為與 Native 同結構的 LR4 tree，UDMBC 同步 branch all-pass compensation 與 stereo-linked detector。
+- Type-A/TAPE COLOR 非線性由直接 48 kHz tanh 改為解析式一階 ADAA；不新增 oversampling/PDC，保留 normalized tanh 音色目標並降低 alias。
+- Large host block 改為預配置 65536-sample safety capacity，超過 capacity 時切塊連續處理，不再整個 process return。
+- Final true-peak limiter 在整個 block 未產生任何 gain reduction 時改輸出 pure delayed input；oversampler 仍持續運算維持 true-peak/state，neutral full-chain 可與 aligned dry null。
+- 新增 headless C++ full-chain neutral / DELTA / 70,000-sample large-block test、Type-A ADAA alias matrix 與 signal-integrity parity matrix。
+- CI 改回 Fast Deploy 規則：一般 PR 只跑 Fast Gate；Windows VST3 與 Full Native/DSP 由 main push / workflow_dispatch 分工。完整驗證使用 workflow_dispatch full_validation=true。
+- 清理 active source 的第三方風格命名與過期測試註記；同步文件與規則。
+
+### v1.0.64
+- 移除未公開控制的 30 Hz 全頻高通；neutral 狀態不再偷偷削低頻。
+- Analog 4× 改為 parallel-delta：oversampler / X1-X3 只承載 nonlinear delta，再加回等 PDC 的 post-EQ/Transient base；啟用 Analog 不再用四段 crossover 重建整條 base signal。
+- UDMBC 改為 base + module-delta；MIX=0% exact dry，Auto Trim 不再污染 0% Mix。
+- TAPE COLOR 改為標準 dry/wet；0% Mix exact dry。
+- Bypass / zero-work 時重置 UDMBC / TAPE crossover state，避免舊 state 在重新啟用時跳回。
+- Native / Web Preview 同步上述 routing；清除 active UI/source 中第三方品牌式命名。
+- 本版不改 Analog ADAA v2 transfer、TT/SS alpha、0.25 ms smoothing、X2 delta 規則或固定 4× quality。
+
+### v1.0.63
+- 完整移除 Native / Web 的 De-Esser 參數、DSP state、處理路徑與專用 UI。
+- 四個 BAND 新增 bipolar TRANSIENT（-100%～+100%，0% 為 zero-work bypass）。
+- TRANSIENT 在 Analog 前以 host-rate parallel-delta 處理；使用相同 X1／X2／X3 頻段定義，但只把 (gain−1)×band 注入 untouched base signal，不讓 TRANSIENT 自己增加整條 full-band crossover phase rotation，也不會單獨喚醒 Analog 4× oversampler。
+- Stereo-linked squared-energy detector；Band 1 偵測路徑加入 70 Hz / 12 dB/oct HPF，audio path 不經此 HPF。
+- Fast/Slow squared envelope 使用單次 log-ratio、rational soft-knee 與極短 gain smoothing；L/R 套用同一控制增益，避免 stereo image wandering。
+- 不恢復任何 module contribution Analyzer；主 4096 Spectrum 與最終 DELTA Analyzer 架構維持不變。
+
+
+### v1.0.59
+- 修正 VVChain Fast CI/CD #1255 的 UI / interaction regression：測試仍引用舊的 `resetDynamics` 變數，但目前實作已是 `resetParameter("DYN_DYNAMICS" + n, 0.0f)`。
+- DELTA Analyzer 邏輯沿用 v1.0.57：DELTA ON 時主頻譜只看實際 audible Delta 輸出，不顯示原始輸入頻譜，也不顯示三個 module contribution overlays。
+- DELTA OFF 時回到原本：灰色主頻譜 + ANALOG / UDMBC / TYPE-A contribution。
+- 版本同步至 v1.0.59，重新觸發 Fast Gate、Windows VST3 與 Pages。
+
+### v1.0.57
+- DELTA 開啟時，Spectrum Analyzer 不再保留原始輸入波形：Native 改抓 `dsp.process()` 完成後的實際 Delta 輸出；Web 改把 Analyzer tap 從 source 切到 AudioWorklet 最終輸出。
+- DELTA 模式只顯示目前耳朵實際聽到的 `OUTPUT − aligned DRY` 頻譜；ANALOG / UDMBC / TYPE-A contribution layers 暫停並清空，避免又疊回原音參考。
+- DELTA 關閉後自動回到原本模式：灰色主 Spectrum = 原始／pre-DSP reference，三色 contribution layer 顯示各模組增加的頻譜內容。
+- 修正 #1254 Fast Gate 抓到的過時 Web smoke 斷言，並更新 project static audit 與 UI regression 為目前 source contracts。
+- 版本同步 Native / Web / Worklet / CMake / Windows VST3 artifact 至 v1.0.57。
+
+### v1.0.56
+- 修正 v1.0.55 Fast Gate 在 Web smoke 的既有 Python 語法錯誤：遺漏的 `for forbidden in [...]` 已補回。
+- 清除 project static audit 對舊規則文字 `X1/X2/X3` 的無效字面斷言；實際 crossover 架構仍由 DSP source invariants 驗證。
+- Analyzer 主演算法與三色 Contribution 規則不變；補強 Master BYPASS 時清空／停止 contribution 顯示，避免舊資料殘留。
+- Contribution FIFO 寫入量限制在預配置 analyzer stream 容量內，避免極端 host block 大於分析緩衝時越界；音訊 DSP 本身不因此改變。
+- 本版重新跑 Web smoke ×10、static audit ×10、UI/interaction regression ×10、Analyzer matrix ×10、Windows VST3 與 Pages。
+
+### v1.0.55
+- 主 Spectrum 改為 4096-point Hann / 50% overlap / 256 log points，使用 power-domain fractional-octave averaging、7-tap binomial smoothing、約 35 ms attack / 180 ms release、4.5 dB/oct @ 1 kHz tilt 與 monotone cubic Hermite 顯示。
+- 新增三層模組 Contribution Analyzer：ANALOG=橘金、UDMBC=青藍、TYPE-A=紫粉；顏色代表模組來源，不再用 Band 顏色表示 contribution。
+- Contribution 的訊號形狀來自各模組局部 Delta（Post−Pre）；只有 Post power > Pre power 且高於約 −82 dBFS 時才向上畫，避免 downward compression／被移除訊號被誤解成「新增」。
+- 三層從主 Spectrum 頂端依 ANALOG → UDMBC → TYPE-A 往上堆；單模組視覺成長最多 8 dB，三層總高度最多 12 dB。
+- Contribution 使用 2048-point Hann、較窄的頻率平滑與較快時間反應，刻意保留 harmonic / excitation 細節；Analyzer 關閉或 Editor 不可見時停止分析資料收集。
+- Native 為 Analog 建立 analyzer-only oversampled pre/post tap；分析支線不回寫 audio path、不改 DSP、PDC、APVTS、automation 或聲音。
+- Web Worklet 同步提供六個 pre/post contribution streams；Web Preview 用可重用 radix-2 2048 FFT 計算三個 module Delta overlay。
+- 修復既有 Web smoke Python 引號錯誤、UI regression 過時固定版本／註解 guard；Fast Gate 改為 main push 也執行，Web smoke、靜態 audit、UI/interaction regression 各 ×10。
+- Windows artifact 名稱與 Native/Web/Worklet/CMake 統一為 v1.0.55。
+
+### v1.0.54
+- Spectrum Analyzer 由 2048 升為 4096-point FFT，採 75% overlap（1024-sample hop），改善低頻解析度並降低 frame-to-frame 跳動。
+- 頻率方向改為約 1/12-octave RMS energy smoothing，低頻至少 3 FFT bins；再做 5-point Gaussian 平滑，避免 log-frequency 顯示鋸齒。
+- 時間方向使用 fast-attack / slow-release EMA；顯示另加入 4.5 dB/oct、1 kHz pivot 的 perceptual tilt，對齊現代 EQ analyzer 的自然視覺。
+- Native JUCE 與 Web Preview 都改用 256 個 logarithmic display points，並以 Catmull-Rom / cubic Bezier 曲線繪製，不再用直線逐點連接。
+- 修正 v1.0.53 Native Analyzer 成員誤放進 MetalLookAndFeel scope 導致 Windows VST3 編譯失敗；Analyzer 狀態與 FFT buffers 正式移回 Editor instance。
+- Analyzer 仍完全不進 DSP chain，不改 latency、APVTS、automation、Delta、Solo 或任何聲音參數。
+
+### v1.0.53
+- 修正 v1.0.52 Web Preview runtime 初始化順序：Theme 初始化不再於 state 建立前呼叫 drawEQ()，避免頁面載入後 UI 全空白。
+- Native 新增低負載背景 Spectrum Analyzer：Input tap → lock-free FIFO → 2048-point Hann FFT → 220 個 logarithmic display points → 30 Hz UI repaint。FFT 完全不進 DSP chain、不增加 plugin latency。
+- Web 新增平行 Analyzer tap：Audio source 額外分岔至 2048-point Web Audio AnalyserNode，再進 0-gain sink；主聲音路徑仍維持原 source → Worklet / fallback，不讓 Analyzer 介入聲音鏈。
+- SETTINGS / ANALYZER / GRAPH 的 Analyzer ON/OFF 正式啟用；預設 ON。OFF 時 Native 停止 FFT/FIFO 寫入，Web 斷開 Analyzer branch 並停止 40 ms UI timer。
+- Spectrum 以灰色細線 + 半透明填色畫在 EQ response / grid 後方；DARK 與 IVORY 均有對應中性色，不改四頻段功能色。
+- Analyzer 僅為 UI metering，不寫 APVTS、不送 automation、不改 preset 音訊參數、不更動 DSP、Delta、Solo、Dry/Wet 或 PDC。
+
+### v1.0.52
+- SETTINGS / INTERFACE 新增真正可操作的 `THEME DARK / IVORY` UI-only 切換；預設仍為 DARK。
+- IVORY 採暖米白主背景、米灰面板、深灰文字與淺金屬旋鈕；四頻段與 UDMBC / ANALOG / TAPE / DE-ESS 功能色保留。
+- Native JUCE 與 Web Preview 同步切換主背景、Header、EQ Graph、Band cards、旋鈕、數值框、按鈕、Settings panel 與 Advanced popup 的配色。
+- Theme 切換只做 repaint / CSS class / graph redraw，不寫 APVTS、不送 AudioWorklet 參數、不改 DSP、latency、automation、控制數值或聲音。
+- 本版為視覺測試版，Theme 不寫入音訊 preset；每個新 Plugin instance / Web reload 的 factory default 仍是 DARK。
+
+### v1.0.51
+- 修正 Web Preview 顯示版本與 AudioWorklet cache query 不一致；cache 由 1.0.49 同步到 1.0.51。
+- Native / Web / Worklet / CMake 對外版本統一為 v1.0.51；不修改 DSP 與 Settings 行為。
+
+### v1.0.50
+- Native JUCE 與 Web Preview 右上角在 DE-ESS 後新增 28×28 SETTINGS vector gear；既有 BYPASS / SOLO PRE / EQ / UDMBC / ANALOG / TAPE COLOR / DE-ESS 順序不變。
+- Settings Panel 從齒輪左下展開，寬 330 px、最高 480 px；內容超出時僅面板內捲動。再次點齒輪、點面板外或 Esc 均可關閉。
+- 建立 INTERFACE / CONTROL / ANALYZER / GRAPH / AUDIO / QUALITY / SYSTEM / ABOUT section 架構；尚未定義 persistence 或 DSP 行為的項目明確標示 RESERVED / DISABLED，不提供假控制。
+- AUDIO / QUALITY 僅保留分類，不接 Oversampling / HQ / ECO / nonlinear quality；開關 Settings Overlay 不寫 APVTS、不送 automation、不修改 DSP、latency 或聲音。
+- Native About 顯示版本、build code 與 Git commit；CMake 在可用時將目前短 commit 注入 UI。
+- Web 使用 inline SVG vector gear，不使用 Unicode emoji；Native 使用 JUCE vector drawing，不依賴字型齒輪。
+
+### v1.0.49
+- 文件更新：同步整理目前實際訊號流程、Native／Web 差異及十輪封閉測試結果與限制。
+- Native、Web、Worklet、CMake 與 Windows VST3 artifact 版本標示統一至 v1.0.49。
+- 僅更新文件與版本標示，DSP、參數、控制邏輯及聲音處理不變。
+
+### v1.0.47
+- ANALOG COLOR 換入 VVChain 專用 analytical first-order ADAA，保留原 unity-normalized algebraic transfer 與 TT/SS 1.55 / 1.80 曲率差異。
+- Native ADAA 放在既有 EQ 4x oversampling 內；每一頻段、每一聲道獨立 previous shaping-domain state。
+- Web AudioWorklet 同步採相同 transfer / antiderivative / ADAA 核心，並加入相同 0.25 ms control smoothing。
+- 0% COLOR / BYPASS 即時 exact dry；X2 仍只乘 Analog delta；超過 ±1 的 peak 不會由 Analog 額外縮小。
+- 移除固定 beta*x² 偶次注入，避免 SS 人為 DC 偏移；TT / SS 維持純奇對稱。
+- 新增 ADAA regression / static guards，版本與 Windows VST3 artifact 統一至 v1.0.47。
+
+### v1.0.44
+- 清理未使用的第三方參考殘留檔案與文字。
+- 統一將舊版第三方風格名稱改為中性專案名稱；僅變更命名與文件，不變更 DSP 運算。
+
+
+### v1.0.1｜穩定基準版
+- 已確認 Web 播放音訊處理鏈、參數控制、DELTA 與 Bypass 正常。
+- 此版本作為後續 UI 修改的基準，不回改其已驗證的音訊處理鏈。
+
+### v1.0.4｜TAPE COLOR 啟動瞬間爆音修正
+- TAPE COLOR 改為無狀態正規化 tanh 核心：不再用 Attack / Release / envelope state 決定增益，避免第一顆聲音因狀態初始化而突然放大。
+- Drive 在參數區塊預先計算；以 tanh(drive) 作為 Makeup 分母，讓 |input|=1 的基準點維持 |output|=1。
+- Native JUCE 與 GitHub Pages AudioWorklet 同步採同一套 4-band、stateless、normalized transfer；原有 Attack / Release 參數保留作為 preset/UI 相容，不再參與 TAPE COLOR 增益核心。
+- 同時修正 TAPE COLOR 四段 crossover 重建方式為 LP1 / (LP2-LP1) / (LP3-LP2) / HP3，避免各頻段重疊累加造成額外電平。
+- 此正規化保證的是 |input|≤1 的 0 dBFS 基準；內部超過 1.0 的 peak 仍由後級固定延遲 True-Peak Limiter 處理。
+### v1.0.3｜Dynamic EQ / Graph 操作修正
+- 修正 DYNAMICS 與該頻段靜態 GAIN 重複計算造成的高增益／爆音問題；Native 與 Web 都限制動態總 GAIN 在安全範圍。
+- 上方 EQ / DYNAMICS / Q 操作統一顯示即時小框，列出 FREQ / GAIN / DYN / Q，正在移動的參數粗體化，滑鼠放開立即關閉。
+- DYNAMICS Target 點改為可直接抓取控制；上下箭頭保留為獨立 DYNAMICS 微調把手。
+- CI/CD 修正 JUCE `StringArray` 編譯陷阱與同步檢查範圍，並更新 GitHub Actions cache 版本。
+
+### v1.0.2｜本次 UI / 操作更新
+- 上方 EQ Graph 補回 dB 正負刻度與頻率刻度。
+- 上方 DYNAMICS Target 點支援上下調整 DYNAMICS、左右同步移動 EQ 頻率；下方 DYNAMICS 與之同步。
+- DE-ESSER 在 MAXIMUM REDUCTION 右上方增加獨立 BYPASS 控制，與原 DE-ESSER BYPASS 同一參數。
+- UDMBC = 0、ANALOG COLOR = 0、TAPE COLOR + = 0、DE-ESSER MAXIMUM REDUCTION = 0 的灰階規則已加入。
+- 第 4～7 項為可獨立撤回的視覺規則，保留後續回改空間。
+
+## GitHub 開發規則
+- 強制規則文件：`.github/VVCHAIN_RULES.md`
+- 任何 `docs/*.html` 修改，都必須同步更新頁面版本號；不使用日期／時間碼作為版本識別。
+- ANALOG 正式基準自 v1.0.47 起為 unity-normalized smooth algebraic transfer + analytical first-order ADAA；TT/SS/X2 各段獨立，不得重新引入 V1/V2/V3 選擇頁。
+
+## Validation
+- Tests/reference_stress.py：僅在手動 Full Validation 使用的 DSP stress helper；一般 PR 不執行。
+- Tests/web_smoke.py：Web Preview JavaScript 語法、UI 結構、音檔載入 / 播放、BYPASS、TRANSIENT、MIX / OUT regression。
+
+> Regression tests are not a substitute for final DAW pluginval or AAX certification.
+  
+### Analog Color / TT / SS
+Analog Color uses the v1.0.47 unity-normalized algebraic transfer with analytical first-order ADAA. Zero amount is exact dry, TT/SS are odd-symmetric with separate saturation depths, the shaping domain is -1..+1, the user control is capped at 60%, and X2 multiplies only the generated Analog Color delta by 2.
+
+
+## 開發同步規則（重要）
+- **任何功能、UI、操作邏輯、參數、DSP 或互動修改，都必須同步檢查 JUCE Plugin 版與 GitHub Pages Web Preview。**
+- JUCE 實作主要位於 `Source/`；GitHub Pages 實際執行版本位於 `docs/index.html`。
+- **不能只修改 `Source/PluginEditor.cpp` / `ChainDSP.cpp` 就視為完成。** 若該功能在 Web Preview 存在，必須同步修改 `docs/index.html` 對應的 JavaScript / UI / DSP 模擬邏輯。
+- 每次改版完成後，必須做「Plugin ↔ Web Preview」雙版本功能對照，至少確認參數範圍、拖曳方向、滑鼠事件、數值計算、UI 顯示與預設值一致。
+- GitHub Pages 會從 `main` 的 `docs/` 部署；因此 Web Preview 的修正也必須直接提交到 `main`，並確認 Pages deployment 已觸發。
+- **除非明確說明某功能只存在於其中一個版本，否則一律以雙版本同步為完成條件。**
+
+## 版本規則
+
+VVChain 只使用版本號標示修改版本，不再在 UI、Web Preview、測試或原始碼中寫入修改日期／時間戳。每次功能修改須同步更新 Native VST3、GitHub Pages Web Preview 與對應回歸測試的版本號。
+
+## v1.0.41
+
+- 修正 Native FloatingValueBox 實際尺寸與字體設定：寬 150 px、高 66 px、字體 10.5 pt。
+- 修正 Web graphHint 實際 CSS：字體 10 px / 15 px，並保持 150 px 寬。
+- Dynamic EQ 點維持 XY 連動：X 同步 EQ FREQ、Y 同步 DYNAMICS；下方控制即時同步。
+- EQ Graph 左側 +15 / -15 dB 標籤維持移除。
+
+## v1.0.40
+
+- EQ / DYN EQ 浮動說明框放大，字體同步放大，讀取 GAIN / FREQ / Q 更清楚。
+- EQ Graph 左側只移除 **+15 / -15 dB** 文字標籤；3 dB 網格線保留。
+- DYN EQ Target 點改為明確的 **XY 連動控制**：左右拖曳同步 EQ FREQ，上下拖曳同步 DYNAMICS；下方兩個控制即時跟隨。
+- Native JUCE 與 GitHub Pages Web Preview 維持相同的 Dynamic EQ XY 互動邏輯與命中範圍。
+
+## v1.0.39
+
+- EQ Graph 垂直增益顯示固定為 **+18 ～ -18 dB** 全高度，不再繪製 ±18 以外的無效範圍。
+- dB 刻度固定放在圖表左側，每 **3 dB** 一格，+18 到 -18 完整顯示。
+- 頻率軸改為更密的對數定位刻度：20 / 30 / 40 / 50 / 70 / 100 / 150 / 200 / 300 / 500 / 700 / 1k / 2k / 3k / 5k / 7k / 10k / 15k / 20k。
+- Native JUCE 與 GitHub Pages Web Preview 使用相同的 ±18 dB 與頻率刻度基準。
+
+## v1.0.38
+
+- 上方 4 個 EQ GAIN 節點支援雙擊立即歸零到 0 dB，並同步下方對應的 GAIN 控制。
+- 上方 4 個 Dynamic EQ GAIN 節點支援雙擊立即歸零；由於 Dynamic EQ GAIN 是由靜態 EQ GAIN + DYNAMICS 形成，雙擊會同步調整下方 DYNAMICS，使 Dynamic Target 精確回到 0 dB。
+- Native JUCE 與 GitHub Pages Web Preview 同步加入相同的雙擊命中優先級、零點計算與下方控制刷新。
+
+## v1.0.37
+
+- 修復 Web 浮框缺少 class 導致排到畫布下方遭裁切。
+- EQ / DYN EQ 維持三行頻率、GAIN、Q，112px 寬；Native / Web 浮框置於游標上方並避開邊界。
+- Q 滾輪先更新參數再顯示，游標停留期間保持讀值。
+
+## v1.0.36
+
+- 依使用者提供的節點浮動框參考圖，改成 112px 的三行讀值：`EQ / DYN EQ + 頻率`、`GAIN`、`Q`。
+- 頻率和增益顯示兩位小數，Q 顯示三位小數；Native 與 Web 使用同一種排列。
+
+## v1.0.35
+
+- 上方 EQ 與動態 EQ 浮動框在拖曳期間固定顯示被抓取的節點，放開後才重新判斷游標位置。
+- Native 與網頁預覽同步擴充兩行浮動框寬度，完整顯示 GAIN、FREQ 與 Q；縮小靜態 EQ 的滑鼠命中範圍，避免遮住鄰近動態節點。
+- 保持 EQ 與動態 EQ 各自獨立數值來源，浮動框不顯示其他參數。
+
+## v1.0.34
+
+- 上方浮動數值框命中規則改為確定式：滑鼠碰到 Static EQ 點時永遠顯示 `EQ GAIN`，不再被 Dynamic Live/Target 搶走。
+- 只有滑鼠明確碰到 Dynamic Target 或右側 DYNAMICS 箭頭時，才顯示 `DYN EQ GAIN`。
+- Dynamic Live 白點改為純視覺顯示，不再取得浮動數值框控制權。
+- Web 的 DYNAMICS 箭頭按下瞬間也改用正式兩行 `DYN EQ GAIN / FREQ Q` formatter，不再暫時顯示 `DYN n xx%`。
+- 新增 50-case Static EQ 與 Dynamic target 重疊/接近時的命中優先測試。
+
+## v1.0.31
+
+- 修正 Dynamic EQ regression 仍硬寫舊 `?v=1.0.18` 的問題；版本/cache 真正一致性改由通用 parity audit 驗證，不再每版維護舊常數。
+- 本版不改 DSP 聲音公式；延續 v1.0.30 的專案清理、真實 stress test 與 Fast Deploy 優化。
+
+## v1.0.30
+
+- 第二輪專案除錯：Native EQ / DYN 不再維護舊 `graphHintBand / graphHintAutoHideAt` 狀態；舊 graph hint 只保留給 XOVER 拖曳，EQ / DYN 一律走兩行浮動框。
+- `reference_stress.py` 移除永遠會 PASS 的 `tone - tone` 假 null test，改成 Analog odd/no-shrink/dry、TAPE COLOR unity、Q 連續性與 envelope coefficient 的真實數學檢查。
+- Full Validation 移除 SciPy 依賴，只安裝 NumPy，縮短重型驗證準備時間。
+- Fast Gate 新增 whole-project static audit，連跑 10 次檢查版本同步、Worklet cache、死碼、規則、CI cache 與部署設定。
+- Analog 核心舊函式名稱 Analog core legacy naming was removed; Web label standardized to ANALOG COLOR; DSP formula unchanged.
+
+## v1.0.29
+
+- 專案第一輪除錯／清理：移除未使用 Analog scratch buffers、舊 Analog prototype、永遠無法執行的舊橫向 graph hint renderer 與假的 CMake echo test。
+- 修正 Web 顯示版本已更新、但 AudioWorklet cache query 仍停在 v1.0.18 的問題；現在 CMake / Web / Worklet cache 版本會互相驗證。
+- `PROJECT_RULES.md` 改為只指向 `.github/VVCHAIN_RULES.md`，避免兩套規則互相衝突。
+- main push 不再重跑 PR Fast Gate；Pages 與 Windows VST3 獨立執行。
+- Windows CI 只建 `VVChain_VST3` target、關閉 runner 本機 plugin copy，並改用穩定 incremental cache key，避免每次重新建立大型 cache。
+- 更新 Architecture / Test Plan / Test Report / Third-Party notes，使文件與目前 DSP 架構一致。
+
+## v1.0.28
+
+- 上方 EQ 點的 Q 滾輪靈敏度提高為 v1.0.24 的 **3 倍**。
+- 一般 EQ 滾輪與右鍵 SOLO + 滾輪仍共用同一個連續 exponential Q 公式，不做離散段落或步進。
+- Native / Web：一般速度由 0.025 → 0.075；Shift fine 由 0.0025 → 0.0075。
+- 新增 50-step 無段式連續性測試，確認每一步 Q 都是唯一且單調變化。
+
+## v1.0.24
+
+- 上方浮動數值框固定 112 px、固定兩行，不允許展開成橫向長條。
+- 靜態 EQ 點／EQ 拖曳／Q 滾輪／右鍵 SOLO Q：第一行固定顯示 `EQ  GAIN …`。
+- Dynamic Target／Live／DYNAMICS 箭頭／Dynamic 點 Q 滾輪：第一行固定顯示 `DYN EQ  GAIN …`。
+- 第二行永遠只顯示 `FREQ …  Q …`；禁止 TARGET / OFFSET / DYN % / AUTO THR 等其他欄位進入浮動框。
+- 新增 50-case readout identity / format regression。
+
+## v1.0.23
+
+- CI/CD 改成 Fast Deploy 預設路徑：一般 PR 只跑必要同步、版本、JS syntax、Web smoke、UI/互動 regression。
+- 一般 PR 不再安裝 Linux audio/X11 開發套件、不再每次完整 Linux VST3 build、不再每次安裝 numpy/scipy。
+- 500-case ANALOG matrix 與 5 次 DSP stress 移至手動 Full Validation。
+- Windows VST3 Release 改為 main push / 手動 workflow 才建置，並加入 incremental build cache。
+- GitHub Pages 改為 docs-only sparse checkout，與 Windows/Native CI 平行，Fast Gate 與 Pages 都以 3 分鐘執行時間為上限。
+- GitHub hosted runner 排隊不受 repo 控制；若要保證從 push 到完成的牆鐘時間低於 3 分鐘，需要 self-hosted runner。
+
+## v1.0.18
+
+- 上方 EQ 點的一般滾輪與右鍵 SOLO 滾輪統一回到慢速、連續 Q 調整；Web 以每標準滾輪單位約 2.5% 比例變化，避免直接撞 0.1 / 18 上下限。
+- ANALOG COLOR 使用者範圍由 0–100% 改為 0–60%；DSP 仍以百分比 /100 轉成 amount，因此 60% 對應原演算法 0.60 強度。
+- ANALOG X2 改成真正將目前產生的 Analog delta ×2；不改原始乾聲。
+- PEAK ↔ ONSETS 寬度 40 px → 60 px；拖曳改為相對式慢速 0.3×，並加入慢速滾輪控制。
+- UDMBC %、TAPE COLOR +、DE-ESSER 的局部 LED BYPASS 與 0 值灰階連動；右上五個模組 BYPASS 也同步灰階其對應元件。
+- 下區塊最右側主 BYPASS 文字改為置中在圓形主 BYPASS 按鈕正上方。
+- 上方浮動值框固定兩行：EQ 或 DYN EQ 的 GAIN；第二行只顯示 FREQ + Q，依實際 hover 目標切換。
+- 右鍵 SOLO EQ 點時，SOLO 中心保持原彩色，往左右頻率距離增加時線性淡入灰階。
+- Native VST3 / Web Preview / AudioWorklet / Regression / Windows artifact 同步升至 v1.0.18。
+
+## v1.0.17
+
+- 修正 GitHub Pages 部署驗證仍硬檢查舊 `ANALOG #443` 的問題。
+- Pages 現改為驗證目前 `ANALOG COLOR` 與 `unity-normalized smooth saturation` 標記，不再因舊基準字串阻擋 Web Preview。
+- 本版不改 v1.0.16 已完成的 EQ / Dynamic EQ / ANALOG DSP 行為，只同步部署規則、Native/Web 顯示版本與 CI artifact 至 v1.0.17。
+
+## v1.0.16
+
+- 右鍵 + 滾輪與一般 EQ 滾輪共用同一個 Q 計算函式，方向與速度不再可能分岔。
+- PEAK / ONSETS 寬度固定 40 px，約為原長條的一半，精準置中於 DYNAMICS 旋鈕上方。
+- EQ 圖形垂直軸改為可逆非線性 mastering scale：±3 dB 最慢，3–6 dB、6–12 dB、12–18 dB 逐級加速；拖曳點與滑鼠 Y 座標完全一致。
+- DYNAMICS 上下箭頭由 +30 px 再右移至 +44 px，hit area 縮成 6×14 px；靜態 EQ 中心 9 px 範圍具有優先權，避免誤抓 Dynamic EQ。
+- 上方浮動框固定兩行，只顯示 EQ/DYN EQ GAIN，以及 FREQ + Q。
+- ANALOG 加入 hard no-shrink guard；在既有 unity normalization 上再保證 COLOR 增加不會把 sample 絕對值變小，0% exact dry，X2 delta 規則不變。
+- Native / Web Preview / Web Worklet / Regression / CI artifact 統一升至 v1.0.16。
+
+## v1.0.15
+
+- 上方 EQ 右鍵滾輪的 Q 調整與一般 EQ 滾輪統一為完全相同方向與速度；SOLO / 右鍵拖曳其餘行為不變。
+- PEAK / ONSETS 比例控制寬度縮小約一半，定位到 DYNAMICS 旋鈕正上方中線。
+- 上方 EQ GAIN 改為 cursor-anchored 非累積式分段加速：±3 dB 最細、3–6 dB 次之、6–12 dB 再加速、12–18 dB 最快。
+- Dynamic EQ 上下箭頭右移並縮小 hit area；0% Dynamics 時中心區優先給靜態 EQ，降低誤拉 Dynamic EQ。
+- 上方數值提示只保留兩行：EQ 或 DYN EQ 的 GAIN，以及 FREQ + Q。
+- ANALOG 改為 unity-normalized smooth algebraic saturation，避免 COLOR 越開整體越小；0% exact dry，X2 仍只放大 ANALOG delta。
+- Native / Web Preview / Web Worklet / Regression / CI artifact 統一升至 v1.0.15。
+
+## v1.0.14
+
+- Dynamic EQ 的 PEAK / ONSETS 改為 0–100% 連續混合，預設 50% / 50%；Native 與 Web DSP 同步以比例混合 onset detector。
+- 上方 EQ 右鍵按住即 SOLO 該 EQ 頻率；右鍵拖曳同步調整 FREQ / GAIN，右鍵滾輪調整 Q，放開右鍵解除頻率 SOLO。
+- PEAK / ONSETS 控制改為較短、寬版 TT / SS 類型比例條，比例填色使用藍色。
+- Native / Web Preview / Web Worklet / Regression / CI artifact 統一升至 v1.0.14。
+
+## v1.0.13
+
+- 修正 EQ 上方曲線的頻率響應計算：Native / Web Graph 現在直接依目前 TPT Bell 拓撲計算，不再使用錯誤的舊複數響應公式。
+- 修正正增益曲線反向、S 型與單一 Band 響應形狀異常；EQ 聲音處理核心保持 v1.0.12 不變。
+- Native 與 Web Graph 使用相同的 TPT Bell state-space transfer evaluation。
+
+## v1.0.12
+
+- 修正 Web AudioWorklet Dynamic EQ 的 TPT Bell state 初始化缺漏：`ic1/ic2` 現在與 Native TPTBell 一樣明確初始化為 0。
+- 新增防禦性 finite state 初始化，避免舊版 Web state 造成 NaN 進而被輸出安全閘切成全 0。
+- Native VST3、Web Preview、Web Worklet、Regression Tests、CI artifact 統一升至 v1.0.12。
+
+## v1.0.11
+
+- Web Preview 新增真正的音訊檔案拖放載入：拖入頁面即可解碼並顯示檔名，阻止瀏覽器直接開啟音檔。
+- 拖放載入與 LOAD AUDIO 按鈕共用同一個解碼流程。
+- Native VST3、Web Worklet、Web Preview、Regression Tests 與 CI artifact 統一升至 v1.0.11。
+
+## v1.0.10
+
+- 本次更新正式升版；之後每一次新的 GitHub 修改批次都必須遞增 PATCH 版本，不再沿用上一版號。
+- Native VST3、Web AudioWorklet、Web EQ response graph、Regression Tests 與 CI artifact 統一使用 v1.0.10。
+- Web Dynamic EQ response graph 與 Native / Web TPT Bell DSP 保持同一套 Q / Bell 拓撲，避免「聲音已更新但 Web 曲線仍是舊演算法」的不同步問題。
+- GitHub CI 壓測規則為 5 次；GPT 提交前後自我驗證規則為 10 + 10 次。
+
+## v1.0.9
+
+- 4-band Dynamic/Parametric EQ core replaced with double-precision Cytomic/Simper TPT Bell topology.
+- Bell damping uses the exact relation k = 1 / (Q * A); the previous empirical extra Q reduction is removed.
+- EQ state remains double precision while audio I/O stays float; 0 dB is structurally bit-transparent.
+- Native updates the TPT Bell coefficients every sample, removing the old 4-sample coefficient stepping during Dynamic EQ movement.
+- Web AudioWorklet and EQ response graph are synchronized to the same Bell topology/Q mapping.
+- Added deterministic 50-case TPT Bell frequency/phase regression plus 50-case per-sample modulation stability stress testing.
+## v1.0.8
+
+- 上方 EQ / DYNAMICS 改為絕對游標座標映射；X/Y 都直接跟隨滑鼠，不再用累積位移或抓取偏移造成越跑越遠。
+- Graph 可用 GAIN 視覺範圍調整為 ±18 dB，與實際參數範圍一致。
+- DE-ESS MODE 改為 I / II / III / IV 四段撥桿。
+- DE-ESSER 右側 BYPASS 位置／尺寸重新對齊；MIX / OUT 下移。
+- LOAD AUDIO 後的 0:00.000 固定緊接在右側，不再因版面擠壓跑到其他列。
+- ANALOG COLOR 正式基準改為 Deploy VVChain Web Preview #443；移除 V1 / V2 / V3 舊頁面。
+- ANALOG COLOR X2 僅將該段染色 delta 放大 1.6 倍。
+
+- 上方 EQ／DYNAMICS 頻率拖曳改為直接依滑鼠座標反算，保留抓取偏移，不再使用會造成超前的跟隨倍率。
+- DE-ESS MODE 改為四段離散旋鈕，10–14 點鐘方向顯示 I／II／III／IV。
+- 上方浮動數值框縮小，只顯示 EQ 或 DYN EQ 的 GAIN、FREQ、Q。
+- EQ FREQ 與 DE-ESS FREQ 拖曳靈敏度降低到接近 GAIN 手感；Web Preview 與 Native 同步。
+- TAPE COLOR 最大染色上限固定為 Band 1=50%、Band 2=60%、Band 3=70%、Band 4=90%，演算法本體不改。
+- 每段 ANALOG COLOR 新增 X2 開關；開啟後只將當前 COLOR 量乘以 1.6，並保留 100% 實際處理上限。
