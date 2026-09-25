@@ -53,7 +53,7 @@ def source_guards():
     cpp=(ROOT/"Source"/"DSP"/"ChainDSP.cpp").read_text(encoding="utf-8")
     editor=(ROOT/"Source"/"PluginEditor.cpp").read_text(encoding="utf-8")
     adaa=(ROOT/"Source"/"DSP"/"VVChain_AnalogADAA_v2.h").read_text(encoding="utf-8")
-    for marker in ("VVChain_AnalogADAA_v2","analogADAA[band][ch].processSample","const double shapingInput = juce::jlimit(-1.0, 1.0, x)","const double delta = saturated - shapingInput","constexpr double kSmoothingMs = 0.25"):
+    for marker in ("VVChain_AnalogADAA_v2","analogADAA[band][(size_t)ch].processSample","const double shapingInput = juce::jlimit(","const double delta = saturated - shapingInput","constexpr double kAnalogSmoothingMs = 0.25"):
         assert marker in cpp or marker in adaa,marker
     assert "std::sqrt(std::sqrt(1.0 + alpha))" in adaa
     assert "calcAntiderivative" in adaa
