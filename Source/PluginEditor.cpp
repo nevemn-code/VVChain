@@ -3024,8 +3024,35 @@ void VVChainAudioProcessorEditor::showFloatingValueBoxForBand(
                   + " dB/oct"
             : "Q " + juce::String(q, 3);
 
+    const auto graph = eqGraphBounds();
+    const float nodeX =
+        graphFrequencyToX(graph, frequency);
+
+    float nodeY = eqDbToY(
+        graph,
+        dynamicReadout
+            ? dynamicEffectiveTargetGain(band)
+            : parameterValue("EQ" + n + "_GAIN"));
+
+    float anchorX = nodeX;
+
+    // When DYNAMICS is still exactly at the static point, the only distinct
+    // Dynamic control is the arrow handle to the right. Anchor the box there
+    // so the mouse tunnel starts where the user actually hovered.
+    if (dynamicReadout
+        && std::abs(parameterValue("DYN_DYNAMICS" + n)) <= 0.05f)
+    {
+        anchorX = juce::jlimit(
+            graph.getX() + 18.0f,
+            graph.getRight() - 12.0f,
+            nodeX + 31.0f);
+    }
+
+    juce::ignoreUnused(position);
     floatingValueBox.updateInfo(
-        line1, line2, line3, position.toInt(), getLocalBounds());
+        line1, line2, line3,
+        juce::Point<float>(anchorX, nodeY).toInt(),
+        getLocalBounds());
 }
 
 void VVChainAudioProcessorEditor::commitFloatingValueEdit(
@@ -3352,7 +3379,10 @@ void VVChainAudioProcessorEditor::mouseMove(
 
     if (!graph.contains(event.position))
     {
-        floatingValueBox.hideInstantly();
+        // The editable value box is a child of the editor and can sit on top
+        // of the graph. Always let the directional tunnel decide first.
+        updateFloatingValueBoxAt(event.position);
+
         if (hoverDynamicBand != -1 || hoverXover != -1)
         {
             hoverDynamicBand = -1;
@@ -3394,11 +3424,24 @@ void VVChainAudioProcessorEditor::mouseMove(
 }
 
 void VVChainAudioProcessorEditor::mouseExit(
-    const juce::MouseEvent&)
+    const juce::MouseEvent& event)
 {
     hoverDynamicBand = -1;
     hoverXover = -1;
-    floatingValueBox.hideInstantly();
+
+    const auto localPosition =
+        getLocalPoint(
+            nullptr,
+            event.getScreenPosition().toFloat());
+
+    if (!floatingValueBox.isEditing()
+        && !floatingValueBox.isWithinInteractionZone(
+            localPosition.toInt()))
+    {
+        floatingValueBox.hideInstantly();
+        floatingValueBand = -1;
+    }
+
     repaint();
 }
 
