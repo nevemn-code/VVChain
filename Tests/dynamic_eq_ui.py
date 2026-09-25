@@ -122,7 +122,7 @@ def source_assertions():
         'EQ_COLOR_GLOBAL_BYPASS',
         'UDMBC_BYPASS',
         'TAPE_BYPASS',
-        'DEESS_BYPASS',
+        'TRANSIENT1',
         'DELTA_MONITOR',
     ]:
         assert token in proc or token in cpp, token
@@ -132,7 +132,7 @@ def source_assertions():
     assert 'zoneBands(y,c,"analogLp",s.udmbc.x)' in worklet
     assert 'colorX2?.[b]?2:1' in worklet
 
-    # v1.0.59 keeps only the main Spectrum Analyzer.
+    # v1.0.60 keeps only the main Spectrum Analyzer.
     assert 'updateContributionAnalyzer' not in cpp and 'updateContributionAnalyzer' not in head
     assert 'popContributionSamples' not in proc
     assert 'setContributionAnalysisEnabled' not in proc
