@@ -54,8 +54,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       bandProcessingHp:{z1:0,z2:0},
       analogLp:[0,0,0], lp:[0,0,0], typeLp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,
       lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0],
-      transientLp:[0,0,0], transientHp:{z1:0,z2:0}, soloPre:[0,0,0], soloPost:[0,0,0], graphSoloPre:{z1:0,z2:0}, graphSoloPost:{z1:0,z2:0},
-      contribAnalogPre:0,contribAnalogPost:0,contribUdmbcPre:0,contribUdmbcPost:0,contribTypePre:0,contribTypePost:0
+      transientLp:[0,0,0], transientHp:{z1:0,z2:0}, soloPre:[0,0,0], soloPost:[0,0,0], graphSoloPre:{z1:0,z2:0}, graphSoloPost:{z1:0,z2:0}
     };
   }
   clamp(v,a,b){return Math.max(a,Math.min(b,v))}
@@ -420,7 +419,6 @@ class VVChainWorklet extends AudioWorkletProcessor {
   sample(x,ch,analogAlpha){
     const s=this.s,c=this.ch[ch];let y=x;
     // EQ/Dynamics and the one shared 30 Hz floor are already upstream.
-    c.contribAnalogPre=y;
 
     // ANALOG COLOR v1.0.56: true four-band routing.
     // Shared X1/X2/X3 positions define four bands before independent COLOR/ADAA.
@@ -438,8 +436,6 @@ class VVChainWorklet extends AudioWorkletProcessor {
       }
     }
     y=analogReconstructed;
-    c.contribAnalogPost=y;
-    c.contribUdmbcPre=y;
     if(!s.udmbc.bypass){
       const original=y,inputGain=this.db2g(this.clamp(s.udmbc.input,-24,24)),xs=s.udmbc.x,z=original*inputGain;
       c.lp[0]+=(1-Math.exp(-2*Math.PI*xs[0]/sampleRate))*(z-c.lp[0]);const h0=z-c.lp[0];
@@ -482,8 +478,6 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const mix=this.clamp(s.udmbc.mix/100,0,1);
       y=original*(1-mix)+sum*mix;
     }
-    c.contribUdmbcPost=y;
-    c.contribTypePre=y;
     if(!s.type.bypass){
       const ti=y*this.db2g(s.type.input);
       const mix=this.clamp(Number(s.type.mix)/100,0,1);
@@ -527,7 +521,6 @@ class VVChainWorklet extends AudioWorkletProcessor {
 
       y=(ti+enhancement*mix)*this.db2g(this.clamp(Number(s.type.output||0),-24,12));
     }
-    c.contribTypePost=y;
     return y;
   }
   process(inputs,outputs){
