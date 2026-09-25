@@ -1,0 +1,50 @@
+name: Materialize PNG UI Atlas
+
+on:
+  push:
+    branches:
+      - ui-real-png-v1.0.67
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui-real-png-v1.0.67
+          fetch-depth: 0
+      - name: Decode real PNG atlas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs/assets/ui/png
+          if [ -s docs/assets/ui/png/VVChain_HardwareAtlas.png ]; then
+            echo "PNG atlas already exists"
+            exit 0
+          fi
+          cat docs/assets/ui/.png-b64/*.txt | base64 -d > docs/assets/ui/png/VVChain_HardwareAtlas.png
+          file docs/assets/ui/png/VVChain_HardwareAtlas.png
+          python - <<'PY'
+          from PIL import Image
+          p='docs/assets/ui/png/VVChain_HardwareAtlas.png'
+          im=Image.open(p)
+          assert im.format == 'PNG'
+          assert im.size == (768,1056), im.size
+          print('validated', im.size, im.mode)
+          PY
+      - name: Commit materialized PNG
+        shell: bash
+        run: |
+          if git diff --quiet -- docs/assets/ui/png/VVChain_HardwareAtlas.png; then
+            echo "No PNG change"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/assets/ui/png/VVChain_HardwareAtlas.png
+          git commit -m "[v1.0.67] Materialize real PNG hardware atlas"
+          git push origin HEAD:ui-real-png-v1.0.67
