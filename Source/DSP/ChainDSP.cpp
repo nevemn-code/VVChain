@@ -559,29 +559,23 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     const int maxBlock = juce::jmax(1, samplesPerBlock);
     dryBuffer.setSize(channels, maxBlock, false, true, true);
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
-    dynamicDetectorInput.setSize(channels, maxBlock * 4, false, true, true);
+    dynamicDetectorInput.setSize(channels, maxBlock, false, true, true);
+    analogBypassBuffer.setSize(channels, maxBlock, false, true, true);
 
-    for (auto& stream : contributionStreams)
-        stream.setSize(1, maxBlock, false, true, true);
-    contributionPreAnalogBase.setSize(
-        channels, maxBlock, false, true, true);
-
-    eqOversampler.reset();
-    contributionEqDownsampler.reset();
+    analogOversampler.reset();
     limiterOversampler.reset();
-    eqOversampler.initProcessing(static_cast<size_t>(maxBlock));
-    contributionEqDownsampler.initProcessing(static_cast<size_t>(maxBlock));
+    analogOversampler.initProcessing(static_cast<size_t>(maxBlock));
     limiterOversampler.initProcessing(static_cast<size_t>(maxBlock));
 
-    eqLatencySamples =
-        static_cast<int>(std::lround(eqOversampler.getLatencyInSamples()));
+    analogLatencySamples =
+        static_cast<int>(std::lround(analogOversampler.getLatencyInSamples()));
     limiterOversamplingLatencySamples =
         static_cast<int>(std::lround(limiterOversampler.getLatencyInSamples()));
     limiterLookaheadSamples =
         juce::jmax(1, static_cast<int>(std::lround(sr * 0.003)));
 
     totalLatencySamples =
-        eqLatencySamples
+        analogLatencySamples
         + limiterOversamplingLatencySamples
         + limiterLookaheadSamples;
 
@@ -592,8 +586,18 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
         static_cast<juce::uint32>(channels)
     };
 
-    eqDryDelay.prepare(drySpec);
-    eqDryDelay.setDelay(static_cast<float>(eqLatencySamples));
+    analogDryDelay.prepare(drySpec);
+    analogDryDelay.setDelay(static_cast<float>(analogLatencySamples));
+    analogBypassDelay.prepare(drySpec);
+    analogBypassDelay.setDelay(static_cast<float>(analogLatencySamples));
+
+    // Linear EQ / Dynamic EQ stay at host rate. This fixed 30 Hz floor is
+    // also linear, so calculate it once at base rate instead of every block.
+    updateHighPass(
+        bandProcessingHighPass,
+        sr,
+        30.0,
+        0.7071067811865476);
 
     juce::dsp::ProcessSpec limiterSpec
     {
@@ -673,12 +677,19 @@ void VVChainDSP::reset()
 
     deessSplit.reset();
 
-    eqOversampler.reset();
-    contributionEqDownsampler.reset();
+    analogOversampler.reset();
     limiterOversampler.reset();
-    eqDryDelay.reset();
+    analogDryDelay.reset();
+    analogBypassDelay.reset();
     limiterLookahead.reset();
     masterDryDelay.reset();
+
+    analogPathMix = 0.0f;
+    analogXoverCache.valid = false;
+    udmbcXoverCache.valid = false;
+    typeXoverCache.valid = false;
+    for (auto& cache : staticEqCache)
+        cache.valid = false;
 
     masterBypassBlend = 0.f;
     limiterGain = 1.f;
@@ -704,34 +715,7 @@ void VVChainDSP::reset()
     dryBuffer.clear();
     alignedDryBuffer.clear();
     dynamicDetectorInput.clear();
-    contributionPreAnalogBase.clear();
-    for (auto& stream : contributionStreams)
-        stream.clear();
-    contributionPreAnalogReady = false;
-}
-
-void VVChainDSP::captureContributionMono(
-    int stream,
-    const juce::AudioBuffer<float>& source,
-    int numSamples) noexcept
-{
-    if (!contributionAnalysisEnabled
-        || stream < 0 || stream >= 6
-        || numSamples <= 0)
-        return;
-
-    auto& destination = contributionStreams[(size_t)stream];
-    const int count = juce::jmin(numSamples, destination.getNumSamples());
-    const int nCh = juce::jmax(1, source.getNumChannels());
-    auto* out = destination.getWritePointer(0);
-
-    for (int n = 0; n < count; ++n)
-    {
-        float mono = 0.0f;
-        for (int ch = 0; ch < nCh; ++ch)
-            mono += source.getReadPointer(ch)[n];
-        out[n] = mono / static_cast<float>(nCh);
-    }
+    analogBypassBuffer.clear();
 }
 
 float VVChainDSP::rmsDetectPDR(float input,
@@ -916,10 +900,10 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
     juce::dsp::AudioBlock<const float> inputBlock(buffer);
     juce::dsp::AudioBlock<float> outputBlock(buffer);
-    auto osBlock = eqOversampler.processSamplesUp(inputBlock);
+    auto osBlock = analogOversampler.processSamplesUp(inputBlock);
 
     const double osSr =
-        sr * static_cast<double>(eqOversampler.getOversamplingFactor());
+        sr * static_cast<double>(analogOversampler.getOversamplingFactor());
     const int osSamples = static_cast<int>(osBlock.getNumSamples());
     const int osChannels = static_cast<int>(osBlock.getNumChannels());
     constexpr float invSqrt2 = 0.7071067811865475f;
@@ -1428,7 +1412,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     }
 
-    eqOversampler.processSamplesDown(outputBlock);
+    analogOversampler.processSamplesDown(outputBlock);
 }
 void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
@@ -2086,10 +2070,10 @@ void VVChainDSP::alignDryBuffer(int numSamples)
         for (int n = 0; n < numSamples; ++n)
         {
             const float input = dryBuffer.getSample(ch, n);
-            eqDryDelay.pushSample(ch, input);
+            analogDryDelay.pushSample(ch, input);
 
             alignedDryBuffer.setSample(
-                ch, n, eqDryDelay.popSample(ch));
+                ch, n, analogDryDelay.popSample(ch));
         }
     }
 }
@@ -2113,40 +2097,17 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     for (int ch = 0; ch < nCh; ++ch)
         dryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
 
-    // Always traverse the fixed-latency EQ oversampling path. When EQ is
-    // bypassed this is a latency-only pass-through, keeping PDC stable.
+    // Linear EQ / Dynamic EQ run at host rate. Analog is the only EQ-side
+    // module that pays the 4x nonlinear oversampling cost.
     applyEq(buffer, p);
+    applyAnalog(buffer, p);
     alignDryBuffer(numSamples);
-
-    const bool captureContributions =
-        contributionAnalysisEnabled && !p.masterBypass;
-
-    if (captureContributions)
-    {
-        if (contributionPreAnalogReady)
-            captureContributionMono(
-                0, contributionPreAnalogBase, numSamples);
-        else
-            captureContributionMono(0, buffer, numSamples);
-
-        captureContributionMono(1, buffer, numSamples);
-        captureContributionMono(2, buffer, numSamples);
-    }
 
     if (!p.udmbcBypass)
         applyOtt(buffer, p);
 
-    if (captureContributions)
-    {
-        captureContributionMono(3, buffer, numSamples);
-        captureContributionMono(4, buffer, numSamples);
-    }
-
     if (!p.tapeBypass)
         applyAType(buffer, p);
-
-    if (captureContributions)
-        captureContributionMono(5, buffer, numSamples);
 
     processDeEsser(buffer, p);
 
