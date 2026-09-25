@@ -534,6 +534,7 @@ private:
     {
     public:
         bool monochrome = false;
+        bool ivoryTheme = false;
 
         void drawRotarySlider(juce::Graphics&, int x, int y, int width, int height,
                               float sliderPosProportional, float rotaryStartAngle,
@@ -571,6 +572,7 @@ private:
     void addBypass(int index, const juce::String& parameterId,
                    const juce::String& tooltip, juce::Colour accent);
     void setSettingsPanelVisible(bool visible);
+    void setIvoryTheme(bool ivory);
 
     Knob* findKnob(const juce::String& id);
     void placeKnob(const juce::String& id, juce::Rectangle<int> area);
@@ -659,6 +661,7 @@ private:
     std::unique_ptr<SettingsGearButton> settingsButton;
     std::unique_ptr<SettingsPanel> settingsPanel;
     bool settingsPanelVisible = false;
+    bool ivoryTheme = false;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> tapeBandBypassButtons;
     std::array<std::unique_ptr<BoolAttachment>, 4> udmbcBandBypassAttachments;
     std::array<std::unique_ptr<BoolAttachment>, 4> analogModeAttachments;

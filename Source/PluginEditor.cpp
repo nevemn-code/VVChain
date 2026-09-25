@@ -70,17 +70,22 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
         }
     }
 
-    g.setColour(juce::Colours::black.withAlpha(0.92f));
+    g.setColour(ivoryTheme ? juce::Colour(0xffa89f93)
+                           : juce::Colours::black.withAlpha(0.92f));
     g.fillEllipse(cx - radius - 3.f, cy - radius - 3.f,
                   (radius + 3.f) * 2.f, (radius + 3.f) * 2.f);
 
-    juce::ColourGradient rim(juce::Colour(0xff70757e), cx, cy - radius,
-                             juce::Colour(0xff1a1d22), cx, cy + radius, false);
+    juce::ColourGradient rim(ivoryTheme ? juce::Colour(0xfff8f2e9) : juce::Colour(0xff70757e),
+                             cx, cy - radius,
+                             ivoryTheme ? juce::Colour(0xffaaa195) : juce::Colour(0xff1a1d22),
+                             cx, cy + radius, false);
     g.setGradientFill(rim);
     g.fillEllipse(cx - radius, cy - radius, radius * 2.f, radius * 2.f);
 
-    juce::ColourGradient face(juce::Colour(0xff4a4f57), cx, cy - radius * .8f,
-                              juce::Colour(0xff171a1f), cx, cy + radius, false);
+    juce::ColourGradient face(ivoryTheme ? juce::Colour(0xfff3ede3) : juce::Colour(0xff4a4f57),
+                              cx, cy - radius * .8f,
+                              ivoryTheme ? juce::Colour(0xffc9c0b4) : juce::Colour(0xff171a1f),
+                              cx, cy + radius, false);
     g.setGradientFill(face);
     g.fillEllipse(cx - radius + 4.f, cy - radius + 4.f,
                   (radius - 4.f) * 2.f, (radius - 4.f) * 2.f);
@@ -115,11 +120,11 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
     const float px = cx + std::cos(angle - juce::MathConstants<float>::halfPi) * pointerLength;
     const float py = cy + std::sin(angle - juce::MathConstants<float>::halfPi) * pointerLength;
     // White pointer / scale mark for clear visibility on the dark knob face.
-    g.setColour(juce::Colours::black.withAlpha(.85f));
+    g.setColour(ivoryTheme ? juce::Colour(0xfff8f4ed) : juce::Colours::black.withAlpha(.85f));
     g.drawLine(cx, cy, px, py, 4.4f);
-    g.setColour(juce::Colours::white.withAlpha(.96f));
+    g.setColour(ivoryTheme ? juce::Colour(0xff34383d) : juce::Colours::white.withAlpha(.96f));
     g.drawLine(cx, cy, px, py, 2.4f);
-    g.setColour(juce::Colours::white.withAlpha(.70f));
+    g.setColour(ivoryTheme ? juce::Colour(0xff34383d) : juce::Colours::white.withAlpha(.70f));
     g.fillEllipse(cx - 2.2f, cy - 2.2f, 4.4f, 4.4f);
 }
 
@@ -138,9 +143,9 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
         const auto blue = monochrome
             ? juce::Colour(0xff60a5fa).withSaturation(0.0f)
             : juce::Colour(0xff60a5fa);
-        g.setColour(juce::Colour(0xff090b0e));
+        g.setColour(ivoryTheme ? juce::Colour(0xffe9e1d5) : juce::Colour(0xff090b0e));
         g.fillRoundedRectangle(r, 4.0f);
-        g.setColour(juce::Colour(0xff343941));
+        g.setColour(ivoryTheme ? juce::Colour(0xffaaa095) : juce::Colour(0xff343941));
         g.drawRoundedRectangle(r, 4.0f, 1.0f);
 
         const float t = juce::jlimit(0.f, 1.f, sliderPosProportional);
@@ -152,7 +157,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
         constexpr float kDynamicModeFontSize = 8.2f;
         g.setFont(
             juce::FontOptions(kDynamicModeFontSize).withStyle("Bold"));
-        g.setColour(juce::Colours::white.withAlpha(.94f));
+        g.setColour(ivoryTheme ? juce::Colour(0xff2a2d31) : juce::Colours::white.withAlpha(.94f));
         g.drawText("PEAK", r.removeFromLeft(r.getWidth() * 0.5f).toNearestInt(),
                    juce::Justification::centred);
         g.drawText("RMS", r.toNearestInt(), juce::Justification::centred);
@@ -169,14 +174,14 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
         const auto accent = monochrome
             ? slider.findColour(juce::Slider::thumbColourId).withSaturation(0.0f)
             : slider.findColour(juce::Slider::thumbColourId);
-        g.setColour(juce::Colours::black.withAlpha(.78f));
+        g.setColour(ivoryTheme ? juce::Colour(0xffeee7dc) : juce::Colours::black.withAlpha(.78f));
         g.fillRoundedRectangle(r, 5.0f);
         g.setFont(juce::FontOptions(8.0f).withStyle("Bold"));
-        g.setColour(juce::Colour(0xffcfd5dc));
+        g.setColour(ivoryTheme ? juce::Colour(0xff34383d) : juce::Colour(0xffcfd5dc));
         g.drawText("DE-ESS MODE", r.withHeight(14.0f).toNearestInt(),
                    juce::Justification::left);
         const auto track = r.withY(r.getY() + 17.0f).withHeight(31.0f);
-        g.setColour(juce::Colour(0xff0c0f13));
+        g.setColour(ivoryTheme ? juce::Colour(0xffe4dbcf) : juce::Colour(0xff0c0f13));
         g.fillRoundedRectangle(track, 5.0f);
         g.setColour(accent.withAlpha(.45f));
         g.drawRoundedRectangle(track, 5.0f, 1.0f);
@@ -196,8 +201,9 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
                 g.drawRoundedRectangle(seg.reduced(2.0f), 4.0f, 1.1f);
             }
             g.setFont(juce::FontOptions(8.5f).withStyle("Bold"));
-            g.setColour(i == selected ? juce::Colours::white
-                                      : juce::Colour(0xffaeb5bd));
+            g.setColour(i == selected
+                ? (ivoryTheme ? juce::Colour(0xff202327) : juce::Colours::white)
+                : (ivoryTheme ? juce::Colour(0xff716b64) : juce::Colour(0xffaeb5bd)));
             g.drawText(labels[i], seg.toNearestInt(),
                        juce::Justification::centred);
         }
@@ -432,6 +438,11 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     addAndMakeVisible(*settingsButton);
 
     settingsPanel = std::make_unique<SettingsPanel>();
+    settingsPanel->onThemeChanged = [this](bool ivory)
+    {
+        setIvoryTheme(ivory);
+    };
+    settingsPanel->setIvoryTheme(false);
     addAndMakeVisible(*settingsPanel);
     settingsPanel->setVisible(false);
 
@@ -1342,12 +1353,14 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     juce::Graphics& g, juce::Rectangle<float> graph)
 {
     juce::ColourGradient bg(
-        juce::Colour(0xff0f1216), graph.getX(), graph.getY(),
-        juce::Colour(0xff20242a), graph.getRight(), graph.getBottom(), false);
+        ivoryTheme ? juce::Colour(0xfff4efe7) : juce::Colour(0xff0f1216),
+        graph.getX(), graph.getY(),
+        ivoryTheme ? juce::Colour(0xffddd4c8) : juce::Colour(0xff20242a),
+        graph.getRight(), graph.getBottom(), false);
     g.setGradientFill(bg);
     g.fillRoundedRectangle(graph, 8.f);
 
-    g.setColour(juce::Colours::black.withAlpha(.95f));
+    g.setColour(ivoryTheme ? juce::Colour(0xff9f9589) : juce::Colours::black.withAlpha(.95f));
     g.drawRoundedRectangle(graph, 8.f, 1.f);
 
     // Use the entire available gain range: -18 dB at the bottom,
@@ -1358,7 +1371,8 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         const bool centre = (db == 0);
         g.setColour(centre
             ? juce::Colour(0xffffd84d).withAlpha(.45f)
-            : juce::Colour(0xff69717c).withAlpha(.34f));
+            : (ivoryTheme ? juce::Colour(0xff8e887f).withAlpha(.30f)
+                          : juce::Colour(0xff69717c).withAlpha(.34f)));
         g.drawHorizontalLine((int)y, graph.getX(), graph.getRight());
     }
 
@@ -1373,7 +1387,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     for (const auto f : frequencyTicks)
     {
         const float x = graphFrequencyToX(graph, f);
-        g.setColour(juce::Colour(0xff68727d).withAlpha(.28f));
+        g.setColour((ivoryTheme ? juce::Colour(0xff8d867d) : juce::Colour(0xff68727d)).withAlpha(.28f));
         g.drawVerticalLine((int)x, graph.getY(), graph.getBottom());
     }
 
@@ -1430,7 +1444,8 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         const float markerY = graph.getBottom() - 18.f;
         const float labelY = graph.getBottom() - 35.f;
 
-        g.setColour(juce::Colours::black.withAlpha(.72f));
+        g.setColour(ivoryTheme ? juce::Colour(0xffe7ded2).withAlpha(.92f)
+                               : juce::Colours::black.withAlpha(.72f));
         g.fillRoundedRectangle(
             x - 47.f, labelY, 94.f, 15.f, 3.f);
         g.setColour(
@@ -1471,7 +1486,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     // Axis labels: dB on the LEFT; frequency along the BOTTOM.
     // Do not waste graph height: +18 / -18 are the actual top / bottom limits.
     g.setFont(juce::FontOptions(7.0f).withStyle("Bold"));
-    g.setColour(juce::Colour(0xffb8bec6));
+    g.setColour(ivoryTheme ? juce::Colour(0xff4e5257) : juce::Colour(0xffb8bec6));
 
     for (int db = 18; db >= -18; db -= 3)
     {
@@ -1668,8 +1683,9 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             offsetResponse.lineTo(pt);
     }
 
-    g.setColour(
-        juce::Colours::white.withAlpha(.35f));
+    g.setColour(ivoryTheme
+        ? juce::Colour(0xff34383d).withAlpha(.42f)
+        : juce::Colours::white.withAlpha(.35f));
     g.strokePath(
         offsetResponse, juce::PathStrokeType(1.15f));
 
@@ -2103,12 +2119,14 @@ void VVChainAudioProcessorEditor::drawCard(
     juce::Graphics& g, juce::Rectangle<float> r, juce::Colour accent,
     const juce::String& title, const juce::String& subtitle)
 {
-    juce::ColourGradient bg(juce::Colour(0xff292d33), r.getX(), r.getY(),
-                            juce::Colour(0xff12151a), r.getRight(), r.getBottom(), false);
+    juce::ColourGradient bg(ivoryTheme ? juce::Colour(0xfff2ece2) : juce::Colour(0xff292d33),
+                            r.getX(), r.getY(),
+                            ivoryTheme ? juce::Colour(0xffddd4c8) : juce::Colour(0xff12151a),
+                            r.getRight(), r.getBottom(), false);
     g.setGradientFill(bg);
     g.fillRoundedRectangle(r, 8.f);
 
-    g.setColour(juce::Colours::black.withAlpha(.94f));
+    g.setColour(ivoryTheme ? juce::Colour(0xffa89e92) : juce::Colours::black.withAlpha(.94f));
     g.drawRoundedRectangle(r, 8.f, 1.f);
 
     accent = uiColour(accent);
@@ -2120,7 +2138,7 @@ void VVChainAudioProcessorEditor::drawCard(
 
     const bool monitorCard = title == "BYPASS";
     const int titleY = monitorCard ? 36 : 8;
-    g.setColour(juce::Colours::white);
+    g.setColour(ivoryTheme ? juce::Colour(0xff292d31) : juce::Colours::white);
     g.setFont(juce::FontOptions(12.f).withStyle("Bold"));
     if (monitorCard)
         g.drawText(title, (int) r.getX(), (int) r.getY() + titleY,
@@ -2131,7 +2149,7 @@ void VVChainAudioProcessorEditor::drawCard(
 
     if (!monitorCard)
     {
-        g.setColour(juce::Colour(0xff8b929c));
+        g.setColour(ivoryTheme ? juce::Colour(0xff68645f) : juce::Colour(0xff8b929c));
         g.setFont(juce::FontOptions(7.5f));
         g.drawText(subtitle, (int) r.getX() + 13, (int) r.getY() + 25,
                    (int) r.getWidth() - 80, 12, juce::Justification::left);
@@ -2146,11 +2164,13 @@ void VVChainAudioProcessorEditor::drawPanel(
     juce::Graphics& g, juce::Rectangle<float> r,
     const juce::String& title, const juce::String& subtitle, juce::Colour accent)
 {
-    juce::ColourGradient bg(juce::Colour(0xff24282e), r.getX(), r.getY(),
-                            juce::Colour(0xff12151a), r.getX(), r.getBottom(), false);
+    juce::ColourGradient bg(ivoryTheme ? juce::Colour(0xfff2ece2) : juce::Colour(0xff24282e),
+                            r.getX(), r.getY(),
+                            ivoryTheme ? juce::Colour(0xffddd4c8) : juce::Colour(0xff12151a),
+                            r.getX(), r.getBottom(), false);
     g.setGradientFill(bg);
     g.fillRoundedRectangle(r, 8.f);
-    g.setColour(juce::Colours::black.withAlpha(.92f));
+    g.setColour(ivoryTheme ? juce::Colour(0xffa89e92) : juce::Colours::black.withAlpha(.92f));
     g.drawRoundedRectangle(r, 8.f, 1.f);
     g.setColour(accent.withAlpha(.72f));
     g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
@@ -2637,23 +2657,25 @@ void VVChainAudioProcessorEditor::drawGraphDragHint(
 
 void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff080a0d));
+    g.fillAll(ivoryTheme ? juce::Colour(0xffe8e1d4) : juce::Colour(0xff080a0d));
 
-    juce::ColourGradient top(juce::Colour(0xff343840), 0.f, 0.f,
-                             juce::Colour(0xff17191e), 0.f, 70.f, false);
+    juce::ColourGradient top(ivoryTheme ? juce::Colour(0xfff4eee5) : juce::Colour(0xff343840),
+                             0.f, 0.f,
+                             ivoryTheme ? juce::Colour(0xffd8cec0) : juce::Colour(0xff17191e),
+                             0.f, 70.f, false);
     g.setGradientFill(top);
     g.fillRect(0, 0, getWidth(), 70);
 
-    g.setColour(juce::Colours::black.withAlpha(.86f));
+    g.setColour(ivoryTheme ? juce::Colour(0xffa79d90) : juce::Colours::black.withAlpha(.86f));
     g.fillRect(0, 68, getWidth(), 2);
 
-    g.setColour(juce::Colours::white);
+    g.setColour(ivoryTheme ? juce::Colour(0xff25292d) : juce::Colours::white);
     g.setFont(juce::FontOptions(22.f).withStyle("Bold"));
     g.drawText("VVCHAIN", 18, 8, 240, 27, juce::Justification::left);
 
-    g.setColour(juce::Colour(0xff7f8893));
+    g.setColour(ivoryTheme ? juce::Colour(0xff6c675f) : juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.51", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.52", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2775,6 +2797,33 @@ void VVChainAudioProcessorEditor::setExpandedBand(int band)
 
     resized();
     repaint();
+}
+
+void VVChainAudioProcessorEditor::setIvoryTheme(bool ivory)
+{
+    ivoryTheme = ivory;
+    metalLook.ivoryTheme = ivory;
+
+    if (settingsButton)
+        settingsButton->setIvoryTheme(ivory);
+    if (settingsPanel)
+        settingsPanel->setIvoryTheme(ivory);
+
+    setExpandedBand(expandedBand);
+    repaint();
+
+    for (auto& k : knobs)
+    {
+        if (k.slider) k.slider->repaint();
+        if (k.label)
+            k.label->setColour(juce::Label::textColourId,
+                ivory ? juce::Colour(0xff35393e) : juce::Colour(0xffc0c5cb));
+    }
+    for (auto& b : bypassButtons) if (b) b->repaint();
+    for (auto& b : soloButtons) if (b) b->repaint();
+    if (masterBypassButton) masterBypassButton->repaint();
+    if (soloModeButton) soloModeButton->repaint();
+    if (deessModeSwitch) deessModeSwitch->repaint();
 }
 
 void VVChainAudioProcessorEditor::setSettingsPanelVisible(bool visible)

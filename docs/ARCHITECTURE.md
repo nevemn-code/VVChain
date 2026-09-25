@@ -1,4 +1,4 @@
-# VVChain Architecture（v1.0.51）
+# VVChain Architecture（v1.0.52）
 
 > 以下以目前程式實際執行為準；本次封閉測試的失敗和限制見 `TEST_REPORT.md`。
 
@@ -76,3 +76,12 @@ A fast PR gate protects Source/Web synchronization, JavaScript syntax and intera
 - Panel geometry is 330 px wide and at most 480 px high. Overflow scrolls inside the panel only.
 - INTERFACE, CONTROL, ANALYZER / GRAPH and SYSTEM / ABOUT are scaffolded. AUDIO / QUALITY is reserved only.
 - Any future behavior-affecting setting requires explicit persistence design before it can be enabled. Audio settings belong in APVTS only when host automation is actually required; UI preferences must remain outside APVTS.
+
+
+## UI Theme (v1.0.52)
+
+- Factory/default theme remains DARK.
+- SETTINGS / INTERFACE exposes DARK / IVORY. This is a UI-only preference path and is intentionally outside APVTS.
+- IVORY changes colours only: no bounds, hit areas, parameter values, DSP state, processing order, latency, or automation behavior may change.
+- Native uses the editor/theme-aware LookAndFeel and paint paths; Web uses the `.ivoryTheme` class plus theme-aware EQ canvas colours.
+- v1.0.52 is a visual trial build; theme persistence across a newly created plugin instance is intentionally not enabled yet.

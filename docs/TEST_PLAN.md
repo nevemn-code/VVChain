@@ -1,4 +1,4 @@
-# VVChain Test Plan（v1.0.51）
+# VVChain Test Plan（v1.0.52）
 
 目前五個現有測試腳本在十輪本機封閉測試均未通過；詳見 `TEST_REPORT.md`。下列 CI 觸發描述的是配置，不代表驗證已成功。
 
@@ -69,3 +69,12 @@ Still required when preparing a distributable release:
 - Confirm panel overflow is internal and the plugin/page itself never gains a scrollbar.
 - Confirm opening/closing the overlay does not write APVTS, send Web Worklet parameters, change DSP state, latency, or plugin dimensions.
 - Confirm all not-yet-implemented settings are visibly RESERVED / DISABLED rather than interactive no-op controls.
+
+
+## Theme regression (v1.0.52)
+
+- New instance / page load must start in DARK.
+- SETTINGS -> THEME toggles DARK <-> IVORY without closing/reopening the plugin.
+- Theme switch must not call APVTS parameter writes or Web sendParams().
+- Parameter values, DSP output, latency, bypass state, Solo/Delta state and control geometry must remain unchanged across a theme switch.
+- Native and Web should preserve band/module accent colours while changing neutral surfaces/text to the ivory palette.

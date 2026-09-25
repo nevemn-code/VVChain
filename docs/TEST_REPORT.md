@@ -1,4 +1,4 @@
-# VVChain Validation Status（v1.0.51；既有測試基準仍為 v1.0.48）
+# VVChain Validation Status（v1.0.52；既有測試基準仍為 v1.0.48）
 
 This document records what the repository actually verifies. It is not a claim of DAW certification.
 
@@ -9,6 +9,8 @@ This document records what the repository actually verifies. It is not a claim o
 既有五個測試腳本在 v1.0.49 已記錄有前置 source-guard / Python syntax 問題；本版不把那些既有失敗誤報成 Settings UI 已通過完整 CI。Windows VST3 / DAW / pluginval 仍需由 Actions artifact 與實際 host 驗證。
 
 v1.0.51 另修正 Web visible version 與 AudioWorklet cache query parity；此修正不改 DSP。
+
+v1.0.52 新增 DARK / IVORY 純 UI theme。切換路徑不寫 APVTS，也不向 Web AudioWorklet 傳送參數；本版不宣稱改動任何聲音結果。
 
 
 ## 十輪本機封閉測試

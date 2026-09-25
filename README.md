@@ -1,6 +1,6 @@
 # VVChain
 
-## 目前實際狀態（v1.0.51）
+## 目前實際狀態（v1.0.52）
 
 目前 `main` 的五個測試腳本在本機各重跑十輪均提前失敗，包含 `web_smoke.py` 的 Python 語法錯誤；完整位置和驗證限制見 [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md)。歷史版本日誌描述當時修改，現行行為請以 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 與實際程式為準。本次只更新說明，未更改 DSP。
 
@@ -55,6 +55,13 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
+
+### v1.0.52
+- SETTINGS / INTERFACE 新增真正可操作的 `THEME DARK / IVORY` UI-only 切換；預設仍為 DARK。
+- IVORY 採暖米白主背景、米灰面板、深灰文字與淺金屬旋鈕；四頻段與 UDMBC / ANALOG / TAPE / DE-ESS 功能色保留。
+- Native JUCE 與 Web Preview 同步切換主背景、Header、EQ Graph、Band cards、旋鈕、數值框、按鈕、Settings panel 與 Advanced popup 的配色。
+- Theme 切換只做 repaint / CSS class / graph redraw，不寫 APVTS、不送 AudioWorklet 參數、不改 DSP、latency、automation、控制數值或聲音。
+- 本版為視覺測試版，Theme 不寫入音訊 preset；每個新 Plugin instance / Web reload 的 factory default 仍是 DARK。
 
 ### v1.0.51
 - 修正 Web Preview 顯示版本與 AudioWorklet cache query 不一致；cache 由 1.0.49 同步到 1.0.51。

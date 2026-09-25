@@ -37,6 +37,45 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 .monitorBand .deessPower{width:58px;height:58px}
 .monitorBand .monitorKnobRow{transform:translateY(18px)}
 </style>
+<style id="vvchain-ivory-theme">
+.app.ivoryTheme{background:linear-gradient(180deg,#eee7dc,#e2d9cc);border-color:#a99e91;color:#2a2d31;box-shadow:0 18px 50px #0005}
+.app.ivoryTheme .tiny{border-color:#b7ada0;background:#eee7dc;color:#35393e}
+.app.ivoryTheme .file,.app.ivoryTheme .lastModified,.app.ivoryTheme .sub{color:#6b665f}
+.app.ivoryTheme .header{border-color:#b3a89b;background:linear-gradient(180deg,#f4eee5,#d8cec0);box-shadow:inset 0 1px #fff8}
+.app.ivoryTheme .logo{color:#25292d}
+.app.ivoryTheme .panel,.app.ivoryTheme .band{border-color:#aaa094;background:linear-gradient(180deg,#f2ece2,#ddd4c8);box-shadow:0 7px 16px #0004,inset 0 1px #fff9}
+.app.ivoryTheme .bandsFrame{border-color:#a99f93;background:linear-gradient(180deg,#e7dfd3,#d8cec0);box-shadow:0 8px 18px #0004}
+.app.ivoryTheme .graph{border-color:#a99f93;background:#eee7dc}
+.app.ivoryTheme .graphHint{border-color:#8c8378;background:#f5efe6f5;color:#25292d;box-shadow:0 7px 20px #0005}
+.app.ivoryTheme .graphHint .active{color:#202327}.app.ivoryTheme .graphHint .muted{color:#6d6861}
+.app.ivoryTheme .eqTypeMenu{border-color:#9f9487;background:#eee7dcf5}
+.app.ivoryTheme .eqTypeItem{border-color:#b7ada0;background:linear-gradient(180deg,#f5efe6,#ddd4c8);color:#34383d}
+.app.ivoryTheme .eqTypeItem:hover{background:linear-gradient(180deg,#fffaf2,#e7ded2);border-color:#887e72}
+.app.ivoryTheme .eqTypeItem.on{background:linear-gradient(180deg,#eadfce,#d5c8b7);color:#202327}
+.app.ivoryTheme .dynSection{border-color:#b8aea1;background:#e9e1d5}
+.app.ivoryTheme .dynModeBtn{border-color:#aaa095;background:#e5dccf;color:#35393e}
+.app.ivoryTheme .dynDetectBlend{border-color:#aaa095;background:linear-gradient(to right,#60a5fa 0 var(--mix,50%),#e5dccf var(--mix,50%) 100%);color:#202327}
+.app.ivoryTheme .knob{color:#4d5156}
+.app.ivoryTheme .dial{background:radial-gradient(circle at 34% 28%,#f6f0e7,#d8cfc2 58%,#b9afa2 100%);box-shadow:0 4px 8px #0005,inset 0 1px 2px #fff}
+.app.ivoryTheme .dial:before,.app.ivoryTheme .dial:after{background:#34383d}
+.app.ivoryTheme .knobValue{border-color:#b8aea1;background:#eee7dc;color:#2f3337}
+.app.ivoryTheme .modeSwitch,.app.ivoryTheme .analogX2Btn{border-color:#aaa095;background:#e8e0d4;color:#625d57}
+.app.ivoryTheme .masterBypass{border-color:#9d9387;background:#e8e0d4;color:#2b2f33}
+.app.ivoryTheme .soloBtn,.app.ivoryTheme .advBtn,.app.ivoryTheme .bypassBtn{border-color:#aaa095;background:#e8e0d4;color:#303438}
+.app.ivoryTheme .deessPower{border-color:#9e9488;background:radial-gradient(circle at 35% 28%,#f5efe6,#d1c7b9 68%,#aaa095 100%);color:#4f5358;box-shadow:0 6px 10px #0005,inset 0 1px 2px #fff}
+.app.ivoryTheme .deltaBtn{border-color:#aaa095;background:#e8e0d4;color:#303438}
+.app.ivoryTheme .masterBypassLabel{color:#303438}
+.app.ivoryTheme .settingsGear{border-color:#b8aea0;background:#eee7dc;color:#34383d}
+.app.ivoryTheme .settingsGear:hover,.app.ivoryTheme .settingsGear.open{border-color:#81786d;background:#d7cdbd;color:#25292d}
+.app.ivoryTheme .settingsPanel{border-color:#a99e91;background:#f3eee4;color:#2a2d31;box-shadow:0 18px 42px #0006}
+.app.ivoryTheme .settingsHead{background:#e5dccf;border-color:#c5b9aa}
+.app.ivoryTheme .settingsSectionTitle{color:#34383d}.app.ivoryTheme .settingsSection.reserved .settingsSectionTitle{color:#81796f}
+.app.ivoryTheme .settingsRow{border-color:#c8bdaf;background:#eee7dc;color:#68645f}.app.ivoryTheme .settingsRow span:last-child{color:#80796f}
+.app.ivoryTheme .settingsNote{color:#777168}
+.app.ivoryTheme .advPopup{background:linear-gradient(180deg,#f0e6d7,#d8cec0);box-shadow:0 18px 44px #0006,0 0 0 1px #fff6}
+.themeToggle{height:29px;width:100%;margin-bottom:3px;border:1px solid #4f5660;border-radius:3px;background:#20242a;color:#e5eaf0;font:800 9px Consolas}
+.app.ivoryTheme .themeToggle{border-color:#a99f93;background:#ddd3c5;color:#2a2d31}
+</style>
 </head>
 <body>
 <div class="app"><span hidden>NO PAGE SCROLL</span><span hidden>DE-ESSER = ZERO-LATENCY SAMPLE-DOMAIN · DELTA = OUTPUT − DRY · SOLO = SHARED X-OVER PRE/POST</span>
@@ -47,7 +86,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.51</div></div><div class="sub"></div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.52</div></div><div class="sub"></div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · ANALOG COLOR · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -60,6 +99,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
   <div class="settingsPanel" id="settingsPanel" hidden>
     <div class="settingsHead">SETTINGS</div>
     <section class="settingsSection"><div class="settingsSectionTitle">INTERFACE</div>
+      <button id="themeToggle" class="themeToggle" type="button">THEME  DARK</button>
       <div class="settingsRow" aria-disabled="true"><span>UI Scale</span><span>100% · RESERVED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Animation</span><span>ON · RESERVED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>LED Brightness</span><span>100% · RESERVED</span></div>
@@ -88,7 +128,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
       <div class="settingsRow" aria-disabled="true"><span>CPU / latency display</span><span>RESERVED</span></div>
     </section>
     <section class="settingsSection"><div class="settingsSectionTitle">SYSTEM / ABOUT</div>
-      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.51</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.52</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Build number / commit</span><span>GitHub build metadata</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset UI Settings</span><span>DISABLED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset All Settings</span><span>DISABLED</span></div>
@@ -109,8 +149,17 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
 <script>
 const $=s=>document.querySelector(s);let audioCtx=null,audioBuffer=null,source=null,workletNode=null,workletModuleUrl=null,playing=false,directFallback=false,workletHeartbeatSeen=false;
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
-const settingsGear=$("#settingsGear"),settingsPanel=$("#settingsPanel");
-let settingsPanelVisible=false;
+const settingsGear=$("#settingsGear"),settingsPanel=$("#settingsPanel"),themeToggle=$("#themeToggle");
+let settingsPanelVisible=false,ivoryTheme=false;
+const tc=(dark,ivory)=>ivoryTheme?ivory:dark;
+function setIvoryTheme(ivory){
+  ivoryTheme=!!ivory;
+  document.querySelector(".app").classList.toggle("ivoryTheme",ivoryTheme);
+  themeToggle.textContent=ivoryTheme?"THEME  IVORY":"THEME  DARK";
+  drawEQ();
+}
+themeToggle.addEventListener("click",()=>setIvoryTheme(!ivoryTheme));
+setIvoryTheme(false);
 function setSettingsPanelVisible(visible){
   settingsPanelVisible=!!visible;
   settingsPanel.hidden=!settingsPanelVisible;
@@ -136,9 +185,9 @@ document.addEventListener("keydown",e=>{
 });
 const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive:false,graphFreq:1000,graphQ:.707},bandBypass:[false,false,false,false],eq:{bypass:false,globalBypass:false,freq:[80,350,2500,10000],gain:[0,0,0,0],q:[.707,.707,.707,.707],type:[0,0,0,0],slope:[1,1,1,1],color:[0,0,0,0],colorBypass:[false,false,false,false],colorX2:[false,false,false,false],mode:[false,false,false,false]},dyn:{bypass:false,target:[18,18,18,18],dynamics:[0,0,0,0],attack:[8,8,5,3],release:[120,120,100,80],detectOnsets:[50,50,50,50],triggerBelow:[false,false,false,false],ms:[50,50,50,50],gainMid:[0,0,0,0],gainSide:[0,0,0,0]},udmbc:{bypass:false,bandBypass:[false,false,false,false],degree:[0,0,0,0],liftT:[-35,-35,-35,-35],liftA:[1,1,1,1],liftR:[80,80,80,80],liftM:[70,70,60,50],compT:[-24,-24,-24,-24],compA:[15,8,3,1],compR:[50,50,50,50],compM:[85,85,85,85],level:[0,0,0,0],x:[90,2500,7000],overlap:[50,50,50],input:0,gate:-80,mix:25,clip:false,output:0},type:{bypass:false,bandBypass:[false,false,false,false],degree:[0,0,0,0],level:[0,0,1,1],attack:1,release:20,input:0,mix:100,output:0},de:{bypass:false,freq:7500,threshold:0,mode:2,offset:0},mix:{bypass:false,drywet:100,output:0}};
 const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],uiTouched={udmbc:[false,false,false,false],analog:[false,false,false,false],tape:[false,false,false,false]},clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.51
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.52
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.51"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.52"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -819,7 +868,7 @@ function dynamicPopupBounds(b,w,h){
 function drawEQ(){
   const r=eqCanvas.getBoundingClientRect(),w=r.width,h=r.height;
   eqCtx.clearRect(0,0,w,h);
-  eqCtx.fillStyle="#111318";
+  eqCtx.fillStyle=tc("#111318","#f0e9de");
   eqCtx.fillRect(0,0,w,h);
 
   // Gain axis: the full usable range is exactly -18 .. +18 dB.
@@ -829,7 +878,7 @@ function drawEQ(){
     const y=dbToY(db,h);
     eqCtx.beginPath();
     eqCtx.moveTo(0,y);eqCtx.lineTo(w,y);
-    eqCtx.strokeStyle=db===0?"#facc1566":"#4b556044";
+    eqCtx.strokeStyle=db===0?"#facc1566":tc("#4b556044","#817a7044");
     eqCtx.lineWidth=db===0?1.2:1;
     eqCtx.stroke();
   });
@@ -845,12 +894,12 @@ function drawEQ(){
     const x=logX(hzv,w);
     eqCtx.beginPath();
     eqCtx.moveTo(x,0);eqCtx.lineTo(x,h);
-    eqCtx.strokeStyle="#4b556044";
+    eqCtx.strokeStyle=tc("#4b556044","#817a7044");
     eqCtx.lineWidth=1;
     eqCtx.stroke();
   });
 
-  eqCtx.fillStyle="#b8bec6";
+  eqCtx.fillStyle=tc("#b8bec6","#4f5358");
   eqCtx.font="bold 7px Consolas";
   eqCtx.textAlign="left";
   dbTicks.forEach(db=>{
@@ -879,7 +928,7 @@ function drawEQ(){
     eqCtx.beginPath();eqCtx.moveTo(x,20);eqCtx.lineTo(x,h-28);eqCtx.stroke();
 
     const hovered=hoverXover===b;
-    eqCtx.fillStyle="#000c";eqCtx.fillRect(x-48,labelY,96,15);
+    eqCtx.fillStyle=tc("#000c","#e2d8cbdd");eqCtx.fillRect(x-48,labelY,96,15);
     eqCtx.fillStyle="#ffe36a";eqCtx.font="bold 8px Consolas";eqCtx.textAlign="center";
     eqCtx.fillText("X"+(b+1)+" "+hz(state.udmbc.x[b]),x,labelY+11);
 
@@ -898,7 +947,7 @@ function drawEQ(){
   }
 
   // Static Offset response.
-  eqCtx.strokeStyle="#ffffff55";
+  eqCtx.strokeStyle=tc("#ffffff55","#34383d66");
   eqCtx.lineWidth=1.1;
   eqCtx.beginPath();
   for(let i=0;i<=420;i++){
@@ -936,7 +985,7 @@ function drawEQ(){
   }
 
   // Live Gain curve.
-  eqCtx.strokeStyle="#ffffff";
+  eqCtx.strokeStyle=tc("#ffffff","#34383d");
   eqCtx.lineWidth=2.2;
   eqCtx.beginPath();
   for(let i=0;i<=420;i++){
@@ -963,14 +1012,14 @@ function drawEQ(){
     eqCtx.beginPath();eqCtx.arc(n.x,offsetY,5.5,0,Math.PI*2);eqCtx.fill();
 
     // Target handle.
-    eqCtx.fillStyle="#06080be8";
+    eqCtx.fillStyle=tc("#06080be8","#f4eee5ee");
     eqCtx.beginPath();eqCtx.arc(t.x,t.y,7,0,Math.PI*2);eqCtx.fill();
     eqCtx.strokeStyle=c;
     eqCtx.lineWidth=1.6;
     eqCtx.stroke();
 
     // Live gain.
-    eqCtx.fillStyle="#fff";
+    eqCtx.fillStyle=tc("#fff","#25292d");
     eqCtx.beginPath();eqCtx.arc(n.x,n.y,6,0,Math.PI*2);eqCtx.fill();
     // The arrow is only the "pull Dynamic out" affordance while
     // DYNAMICS is at 0 and the Dynamic target is still on the EQ point.
@@ -987,25 +1036,25 @@ function drawEQ(){
 
     const mid=clamp(Math.abs(+state.dyn.gainMid[b]||0),0,18)/18;
     const side=clamp(Math.abs(+state.dyn.gainSide[b]||0),0,18)/18;
-    eqCtx.strokeStyle="#fff";
+    eqCtx.strokeStyle=tc("#fff","#34383d");
     eqCtx.lineWidth=2.5;
     eqCtx.beginPath();eqCtx.arc(n.x,n.y,11,-Math.PI/2,-Math.PI/2+mid*Math.PI);eqCtx.stroke();
-    eqCtx.strokeStyle="#747b85";
+    eqCtx.strokeStyle=tc("#747b85","#817a70");
     eqCtx.beginPath();eqCtx.arc(n.x,n.y,11,-Math.PI/2+mid*Math.PI,-Math.PI/2+(mid+side)*Math.PI);eqCtx.stroke();
 
     // Compact two-line graphHint is the only EQ/Dynamic EQ hover readout.
 
     if(expandedDynamicBand===b){
       const p=dynamicPopupBounds(b,w,h),ms=clamp(Number(state.dyn.ms[b]||50),0,100);
-      eqCtx.fillStyle="#06090ef7";eqCtx.strokeStyle="#fff9";eqCtx.lineWidth=1;eqCtx.fillRect(p.x,p.y,p.w,p.h);eqCtx.strokeRect(p.x,p.y,p.w,p.h);
-      eqCtx.fillStyle="#fff";eqCtx.font="bold 11px Consolas";eqCtx.fillText("BAND "+(b+1)+" · DYNAMIC MID / SIDE",p.x+12,p.y+17);
+      eqCtx.fillStyle=tc("#06090ef7","#f4eee5f7");eqCtx.strokeStyle=tc("#fff9","#817a7099");eqCtx.lineWidth=1;eqCtx.fillRect(p.x,p.y,p.w,p.h);eqCtx.strokeRect(p.x,p.y,p.w,p.h);
+      eqCtx.fillStyle=tc("#fff","#25292d");eqCtx.font="bold 11px Consolas";eqCtx.fillText("BAND "+(b+1)+" · DYNAMIC MID / SIDE",p.x+12,p.y+17);
       eqCtx.font="bold 10px Consolas";eqCtx.fillStyle=c;eqCtx.fillText("MID "+fmt(ms,0)+"%",p.x+12,p.y+37);
       eqCtx.textAlign="right";eqCtx.fillStyle="#e8edf2";eqCtx.fillText("SIDE "+fmt(100-ms,0)+"%",p.x+p.w-12,p.y+37);eqCtx.textAlign="left";
       const bx=p.x+12,by=p.y+50,bw=p.w-24;
-      eqCtx.fillStyle="#232830";eqCtx.fillRect(bx,by,bw,11);
-      eqCtx.fillStyle="#f8fafc";eqCtx.fillRect(bx,by,bw*ms/100,11);
-      eqCtx.strokeStyle="#707985";eqCtx.strokeRect(bx,by,bw,11);
-      eqCtx.fillStyle="#c6ccd3";eqCtx.font="bold 8px Consolas";eqCtx.fillText("DRAG BAR = MID / SIDE",bx,by+24);
+      eqCtx.fillStyle=tc("#232830","#d9cfc2");eqCtx.fillRect(bx,by,bw,11);
+      eqCtx.fillStyle=tc("#f8fafc","#3f4449");eqCtx.fillRect(bx,by,bw*ms/100,11);
+      eqCtx.strokeStyle=tc("#707985","#8b8278");eqCtx.strokeRect(bx,by,bw,11);
+      eqCtx.fillStyle=tc("#c6ccd3","#58534d");eqCtx.font="bold 8px Consolas";eqCtx.fillText("DRAG BAR = MID / SIDE",bx,by+24);
     }
   }
 
@@ -1029,19 +1078,19 @@ function drawEQ(){
     dbTicks.forEach(db=>{
       const y=dbToY(db,h);
       eqCtx.beginPath();eqCtx.moveTo(0,y);eqCtx.lineTo(w,y);
-      eqCtx.strokeStyle=db===0?"#facc1566":"#4b556044";
+      eqCtx.strokeStyle=db===0?"#facc1566":tc("#4b556044","#817a7044");
       eqCtx.lineWidth=db===0?1.2:1;
       eqCtx.stroke();
     });
     freqTicks.forEach(([hzv])=>{
       const x=logX(hzv,w);
       eqCtx.beginPath();eqCtx.moveTo(x,0);eqCtx.lineTo(x,h);
-      eqCtx.strokeStyle="#4b556044";
+      eqCtx.strokeStyle=tc("#4b556044","#817a7044");
       eqCtx.lineWidth=1;
       eqCtx.stroke();
     });
 
-    eqCtx.fillStyle="#b8bec6";
+    eqCtx.fillStyle=tc("#b8bec6","#4f5358");
     eqCtx.font="bold 7px Consolas";
     eqCtx.textAlign="left";
     dbTicks.forEach(db=>{
@@ -1062,7 +1111,7 @@ function drawEQ(){
     if(!state.bandBypass[b])continue;
     const leftX=b===0?0:logX(state.udmbc.x[b-1],w);
     const rightX=b===3?w:logX(state.udmbc.x[b],w);
-    eqCtx.fillStyle="#5b6066aa";
+    eqCtx.fillStyle=tc("#5b6066aa","#8d857baa");
     eqCtx.fillRect(leftX,0,Math.max(0,rightX-leftX),h);
   }
 

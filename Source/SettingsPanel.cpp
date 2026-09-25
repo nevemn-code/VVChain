@@ -19,16 +19,25 @@ void SettingsGearButton::setPanelOpen(bool open)
     repaint();
 }
 
+void SettingsGearButton::setIvoryTheme(bool ivory)
+{
+    ivoryTheme = ivory;
+    repaint();
+}
+
 void SettingsGearButton::paintButton(juce::Graphics& g, bool highlighted, bool down)
 {
     auto r = getLocalBounds().toFloat().reduced(0.5f);
     const bool active = panelOpen || down;
-    const auto bg = active ? juce::Colour(0xff30353d)
-                           : juce::Colour(0xff171a1f);
-    const auto border = highlighted || active ? juce::Colour(0xff7d8792)
-                                              : juce::Colour(0xff454b53);
-    const auto icon = highlighted || active ? juce::Colour(0xffedf2f7)
-                                            : juce::Colour(0xff8d96a0);
+    const auto bg = ivoryTheme
+        ? (active ? juce::Colour(0xffd7cdbd) : juce::Colour(0xffeee7dc))
+        : (active ? juce::Colour(0xff30353d) : juce::Colour(0xff171a1f));
+    const auto border = ivoryTheme
+        ? (highlighted || active ? juce::Colour(0xff81786d) : juce::Colour(0xffb8aea0))
+        : (highlighted || active ? juce::Colour(0xff7d8792) : juce::Colour(0xff454b53));
+    const auto icon = ivoryTheme
+        ? juce::Colour(0xff34383d)
+        : (highlighted || active ? juce::Colour(0xffedf2f7) : juce::Colour(0xff8d96a0));
 
     g.setColour(bg);
     g.fillRoundedRectangle(r, 4.0f);
@@ -65,7 +74,34 @@ void SettingsDismissOverlay::mouseDown(const juce::MouseEvent&)
 SettingsPanel::Content::Content()
 {
     setInterceptsMouseClicks(true, true);
-    setSize(310, 842);
+    setSize(310, 875);
+
+    addAndMakeVisible(themeButton);
+    themeButton.setTooltip("UI THEME ONLY · DOES NOT CHANGE AUDIO");
+    themeButton.onClick = [this]
+    {
+        setIvoryTheme(!ivoryTheme);
+        if (onThemeChanged)
+            onThemeChanged(ivoryTheme);
+    };
+}
+
+void SettingsPanel::Content::setIvoryTheme(bool ivory)
+{
+    ivoryTheme = ivory;
+    themeButton.setButtonText(ivoryTheme ? "THEME  IVORY" : "THEME  DARK");
+    themeButton.setColour(juce::TextButton::buttonColourId,
+        ivoryTheme ? juce::Colour(0xffddd3c5) : juce::Colour(0xff181c21));
+    themeButton.setColour(juce::TextButton::buttonOnColourId,
+        ivoryTheme ? juce::Colour(0xffd3c6b5) : juce::Colour(0xff242a31));
+    themeButton.setColour(juce::TextButton::textColourOffId,
+        ivoryTheme ? juce::Colour(0xff2a2d31) : juce::Colour(0xffd9e0e7));
+    repaint();
+}
+
+void SettingsPanel::Content::resized()
+{
+    themeButton.setBounds(7, 30, getWidth() - 14, 28);
 }
 
 void SettingsPanel::Content::drawRow(juce::Graphics& g, int y,
@@ -74,20 +110,24 @@ void SettingsPanel::Content::drawRow(juce::Graphics& g, int y,
                                     bool enabled)
 {
     auto row = juce::Rectangle<int>(7, y, getWidth() - 14, 28);
-    g.setColour(juce::Colour(0xff181c21));
+    g.setColour(ivoryTheme ? juce::Colour(0xffeee7dc) : juce::Colour(0xff181c21));
     g.fillRoundedRectangle(row.toFloat(), 3.0f);
-    g.setColour(juce::Colour(0xff343a42));
+    g.setColour(ivoryTheme ? juce::Colour(0xffc8bdaf) : juce::Colour(0xff343a42));
     g.drawRoundedRectangle(row.toFloat(), 3.0f, 1.0f);
 
     auto textArea = row.reduced(8, 0);
     auto leftArea = textArea.removeFromLeft(182);
 
     g.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
-    g.setColour(enabled ? juce::Colour(0xffd9e0e7) : juce::Colour(0xff7e8791));
+    g.setColour(ivoryTheme
+        ? (enabled ? juce::Colour(0xff262a2e) : juce::Colour(0xff68645f))
+        : (enabled ? juce::Colour(0xffd9e0e7) : juce::Colour(0xff7e8791)));
     g.drawText(name, leftArea, juce::Justification::centredLeft);
 
     g.setFont(juce::FontOptions(8.0f));
-    g.setColour(enabled ? juce::Colour(0xffbac4cf) : juce::Colour(0xff626b75));
+    g.setColour(ivoryTheme
+        ? (enabled ? juce::Colour(0xff4f5358) : juce::Colour(0xff80796f))
+        : (enabled ? juce::Colour(0xffbac4cf) : juce::Colour(0xff626b75)));
     g.drawText(value, textArea, juce::Justification::centredRight);
 }
 
@@ -97,7 +137,9 @@ void SettingsPanel::Content::drawSection(juce::Graphics& g, int& y,
                                         bool reserved)
 {
     g.setFont(juce::FontOptions(9.5f).withStyle("Bold"));
-    g.setColour(reserved ? juce::Colour(0xff7f8790) : juce::Colour(0xffe5eaf0));
+    g.setColour(ivoryTheme
+        ? (reserved ? juce::Colour(0xff81796f) : juce::Colour(0xff34383d))
+        : (reserved ? juce::Colour(0xff7f8790) : juce::Colour(0xffe5eaf0)));
     g.drawText(title, 8, y, getWidth() - 16, 20,
                juce::Justification::centredLeft);
     y += 22;
@@ -115,15 +157,26 @@ void SettingsPanel::Content::drawSection(juce::Graphics& g, int& y,
 
 void SettingsPanel::Content::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff111419));
+    g.fillAll(ivoryTheme ? juce::Colour(0xfff3eee4) : juce::Colour(0xff111419));
     int y = 8;
 
-    drawSection(g, y, "INTERFACE",
-        { "UI Scale|100% · RESERVED",
+    g.setFont(juce::FontOptions(9.5f).withStyle("Bold"));
+    g.setColour(ivoryTheme ? juce::Colour(0xff34383d) : juce::Colour(0xffe5eaf0));
+    g.drawText("INTERFACE", 8, y, getWidth() - 16, 20,
+               juce::Justification::centredLeft);
+    y = 61;
+    for (const auto& row : juce::StringArray {
+          "UI Scale|100% · RESERVED",
           "Animation|ON · RESERVED",
           "LED Brightness|100% · RESERVED",
           "Value Popup|ON · RESERVED",
-          "Value Popup mouse tunnel|26 px · RESERVED" }, false);
+          "Value Popup mouse tunnel|26 px · RESERVED" })
+    {
+        auto parts = juce::StringArray::fromTokens(row, "|", "");
+        drawRow(g, y, parts[0], parts[1], false);
+        y += 31;
+    }
+    y += 7;
 
     drawSection(g, y, "CONTROL",
         { "Knob Drag Sensitivity|DEFAULT · RESERVED",
@@ -157,6 +210,12 @@ void SettingsPanel::Content::paint(juce::Graphics& g)
 
 SettingsPanel::SettingsPanel()
 {
+    content.onThemeChanged = [this](bool ivory)
+    {
+        setIvoryTheme(ivory);
+        if (onThemeChanged)
+            onThemeChanged(ivory);
+    };
     setInterceptsMouseClicks(true, true);
     setOpaque(true);
     viewport.setViewedComponent(&content, false);
@@ -165,26 +224,33 @@ SettingsPanel::SettingsPanel()
     addAndMakeVisible(viewport);
 }
 
+void SettingsPanel::setIvoryTheme(bool ivory)
+{
+    ivoryTheme = ivory;
+    content.setIvoryTheme(ivory);
+    repaint();
+}
+
 void SettingsPanel::resized()
 {
     viewport.setBounds(getLocalBounds().reduced(7, 34).withTrimmedBottom(1));
-    content.setSize(juce::jmax(286, viewport.getMaximumVisibleWidth()), 842);
+    content.setSize(juce::jmax(286, viewport.getMaximumVisibleWidth()), 875);
 }
 
 void SettingsPanel::paint(juce::Graphics& g)
 {
     auto r = getLocalBounds().toFloat();
-    g.setColour(juce::Colour(0xff111419));
+    g.setColour(ivoryTheme ? juce::Colour(0xfff3eee4) : juce::Colour(0xff111419));
     g.fillRoundedRectangle(r, 7.0f);
-    g.setColour(juce::Colour(0xff525a64));
+    g.setColour(ivoryTheme ? juce::Colour(0xffa99e91) : juce::Colour(0xff525a64));
     g.drawRoundedRectangle(r.reduced(0.5f), 7.0f, 1.0f);
 
-    g.setColour(juce::Colour(0xff171b20));
+    g.setColour(ivoryTheme ? juce::Colour(0xffe5dccf) : juce::Colour(0xff171b20));
     g.fillRoundedRectangle(juce::Rectangle<float>(1.0f, 1.0f,
         static_cast<float>(getWidth() - 2), 31.0f), 6.0f);
 
     g.setFont(juce::FontOptions(10.5f).withStyle("Bold"));
-    g.setColour(juce::Colour(0xffeef2f6));
+    g.setColour(ivoryTheme ? juce::Colour(0xff2a2d31) : juce::Colour(0xffeef2f6));
     g.drawText("SETTINGS", 12, 5, getWidth() - 24, 24,
                juce::Justification::centredLeft);
 }
