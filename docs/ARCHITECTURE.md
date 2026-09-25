@@ -1,4 +1,4 @@
-# VVChain Architecture（v1.0.58）
+# VVChain Architecture（v1.0.59）
 
 > 以下以目前程式實際執行為準；本次封閉測試的失敗和限制見 `TEST_REPORT.md`。
 
@@ -14,7 +14,7 @@ INPUT
 → master limiter
 → OUTPUT
 
-實際 Native 順序：EQ／Dynamic EQ 與四段 Analog Color（EQ 4× oversampling）→ UDMBC → TAPE COLOR → De-Esser → Mix／Out → Solo → 4× true-peak limiter → 主 Bypass／Delta。X1／X2／X3 與 OVERLAP 供 Analog、UDMBC、TAPE COLOR 及頻段 Solo 使用；四個 EQ 的頻率另由各自 FREQ 設定。
+實際 Native 順序：EQ／Dynamic EQ（host rate）→ 必要時四段 Analog Color（僅 nonlinear stage 固定 4×）→ UDMBC → TAPE COLOR → De-Esser → Mix／Out → Solo → 4× true-peak limiter → 主 Bypass／Delta。X1／X2／X3 與 OVERLAP 供 Analog、UDMBC、TAPE COLOR 及頻段 Solo 使用；四個 EQ 的頻率另由各自 FREQ 設定。
 
 ## Parametric / Dynamic EQ
 
@@ -33,7 +33,7 @@ Each EQ band has an independent Analog Color amount, TT/SS mode, bypass and X2.
 - Core transfer: unity-normalized smooth algebraic saturation based on `x / (1 + alpha*x^2)^(1/4)`.
 - 靜態 transfer 在 shaping domain 的 ±1 歸一化；ADAA 是有狀態的一階差分，沒有逐 sample 的 hard no-shrink guard。
 - X2 doubles only the generated Analog delta; it does not multiply EQ / UDMBC / TAPE COLOR / De-Esser / Mix / Out.
-- ADAA 的 previous sample 依頻段和聲道獨立保存；每段 alpha 使用約 0.25 ms smoothing。即使 Color 為 0，整個 EQ 路徑仍經過分頻重建及 oversampling，不能把整鏈宣稱為 bit-exact dry。
+- ADAA 的 previous sample 依頻段和聲道獨立保存；每段 alpha 使用約 0.25 ms smoothing。四段 Color 全 0%／Bypass 時完全跳過 4× up/downsample，以等延遲 pure-delay path 維持固定 PDC；Linear EQ / Dynamic EQ 不進入 Analog oversampling domain。
 
 ## 參數與操作
 
@@ -144,3 +144,11 @@ Normal Analyzer mode remains a pre-DSP/original spectrum reference plus the thre
 Module contribution overlays are disabled and cleared while DELTA is active, because the audible Delta spectrum already represents the total difference signal and stacking per-module added-energy overlays on top would mix two incompatible display meanings.
 
 Native performs this switch by writing the Analyzer FIFO before DSP only when DELTA is OFF, and after `dsp.process()` only when DELTA is ON. Web switches the AnalyserNode connection from `source` to the AudioWorklet output. Turning DELTA OFF reconnects the original analyzer reference automatically.
+
+
+## v1.0.59 CPU / Analyzer architecture
+
+- Main Spectrum Analyzer only: 4096-point Hann FFT.
+- ANALOG / UDMBC / TYPE-A contribution analyzers, six pre/post streams and Web Worklet contribution messages are removed.
+- DYNAMICS=0% uses a static coefficient path; active Dynamic EQ retains the realtime detector/gain path.
+- UDMBC and Type-A return before crossover/detector/waveshaper work when every band is effectively inactive.
