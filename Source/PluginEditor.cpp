@@ -3314,21 +3314,19 @@ void VVChainAudioProcessorEditor::showEqTypeMenu(
 }
 
 void VVChainAudioProcessorEditor::beginRightSolo(
-    int band, juce::Point<float> position)
+    int band, juce::Point<float> position, bool dynamicTarget)
 {
     if (band < 0 || band >= 4 || rightSoloBand >= 0)
         return;
 
     const auto n = juce::String(band + 1);
     rightSoloBand = band;
+    rightSoloDynamic = dynamicTarget;
     rightSoloPosition = position;
     expandedDynamicBand = -1;
     dragDynamicMsBand = -1;
     dragBand = -1;
     dragOffsetBand = -1;
-    dynamicGainDragStartY = position.y;
-    dynamicGainDragStartOffset =
-        parameterValue("EQ" + n + "_GAIN");
 
     setParameter(
         "GRAPH_SOLO_FREQ",
@@ -3347,13 +3345,26 @@ void VVChainAudioProcessorEditor::beginRightSolo(
     if (auto* pFreq =
             audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
         pFreq->beginChangeGesture();
-    if (auto* pGain =
-            audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
-        pGain->beginChangeGesture();
+
+    if (dynamicTarget)
+    {
+        if (auto* pDynamics =
+                audioProcessor.apvts.getParameter("DYN_DYNAMICS" + n))
+            pDynamics->beginChangeGesture();
+    }
+    else
+    {
+        if (auto* pGain =
+                audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
+            pGain->beginChangeGesture();
+    }
 
     juce::StringArray graphIds;
     graphIds.add("EQ" + n + "_FREQ");
-    graphIds.add("EQ" + n + "_GAIN");
+    graphIds.add(
+        dynamicTarget
+            ? "DYN_DYNAMICS" + n
+            : "EQ" + n + "_GAIN");
     setGraphControlState(graphIds, false);
     showGraphDragHint = false;
     graphDragHint.clear();
@@ -3391,35 +3402,53 @@ void VVChainAudioProcessorEditor::mouseDown(
 
     int band = -1;
 
-    // Right-click is dual-purpose:
-    // click/release = filter-type menu; drag/wheel = existing SOLO.
+    // Right-click remembers exactly which node was hit:
+    // Static EQ and Dynamic Target must never share the same drag path.
     if (event.mods.isRightButtonDown())
     {
         float bestDistance = 24.0f;
+        bool bestIsDynamic = false;
         band = -1;
 
         for (int b = 0; b < 4; ++b)
         {
             const auto n = juce::String(b + 1);
-            const float x = graphFrequencyToX(
-                graph, parameterValue("EQ" + n + "_FREQ"));
-            const float y = eqDbToY(
-                graph, parameterValue("EQ" + n + "_GAIN"));
-            const float dStatic = pos.getDistanceFrom({ x, y });
-            const float dDynamic =
-                pos.getDistanceFrom(dynamicTargetPoint(b));
-            const float d = juce::jmin(dStatic, dDynamic);
+            const auto staticPoint = juce::Point<float>(
+                graphFrequencyToX(
+                    graph, parameterValue("EQ" + n + "_FREQ")),
+                eqDbToY(
+                    graph, parameterValue("EQ" + n + "_GAIN")));
+            const float dStatic =
+                pos.getDistanceFrom(staticPoint);
 
-            if (d < bestDistance)
+            const bool dynamicIsSeparate =
+                std::abs(parameterValue("DYN_DYNAMICS" + n)) > 0.05f;
+            const float dDynamic =
+                dynamicIsSeparate
+                    ? pos.getDistanceFrom(dynamicTargetPoint(b))
+                    : 1.0e9f;
+
+            // Static wins its own centre/overlap. Otherwise the nearer
+            // Dynamic target keeps Dynamic identity for the entire gesture.
+            if (dStatic < bestDistance)
             {
-                bestDistance = d;
+                bestDistance = dStatic;
                 band = b;
+                bestIsDynamic = false;
+            }
+
+            if (dDynamic < bestDistance && dDynamic < dStatic)
+            {
+                bestDistance = dDynamic;
+                band = b;
+                bestIsDynamic = true;
             }
         }
 
         if (band >= 0)
         {
             pendingRightClickBand = band;
+            pendingRightClickDynamic = bestIsDynamic;
             pendingRightClickPosition = pos;
             pendingRightClickDragged = false;
             floatingValueBox.hideInstantly();
@@ -3724,10 +3753,12 @@ void VVChainAudioProcessorEditor::mouseDrag(
         && event.position.getDistanceFrom(pendingRightClickPosition) > 3.0f)
     {
         const int band = pendingRightClickBand;
+        const bool dynamicTarget = pendingRightClickDynamic;
         const auto start = pendingRightClickPosition;
         pendingRightClickBand = -1;
+        pendingRightClickDynamic = false;
         pendingRightClickDragged = true;
-        beginRightSolo(band, start);
+        beginRightSolo(band, start, dynamicTarget);
     }
 
     if (rightSoloBand >= 0 && event.mods.isRightButtonDown())
@@ -3736,25 +3767,67 @@ void VVChainAudioProcessorEditor::mouseDrag(
             juce::jlimit(graph.getX(), graph.getRight(), event.position.x),
             juce::jlimit(graph.getY(), graph.getBottom(), event.position.y)
         };
+
         const auto n = juce::String(rightSoloBand + 1);
-        const float x = juce::jlimit(graph.getX(), graph.getRight(), event.position.x);
+        const float x =
+            juce::jlimit(graph.getX(), graph.getRight(), event.position.x);
         const float hz = graphXToFrequency(graph, x);
-        const float gain =
-            eqYToDb(graph, event.position.y);
         setGraphControlMoving(true);
         setParameter("EQ" + n + "_FREQ", hz);
-        setParameter("EQ" + n + "_GAIN", gain);
+
+        float displayedGain = 0.0f;
+
+        if (rightSoloDynamic)
+        {
+            const float targetGain = eqYToDb(graph, event.position.y);
+            const float offset = parameterValue("EQ" + n + "_GAIN");
+            const float dynamics =
+                juce::jlimit(
+                    -100.f, 100.f,
+                    (targetGain - offset) / 18.f * 100.f);
+
+            setParameter("DYN_DYNAMICS" + n, dynamics);
+            displayedGain =
+                dynamicEffectiveTargetGain(rightSoloBand);
+
+            if (auto* dynamicsKnob =
+                    findKnob("DYN_DYNAMICS" + n))
+                dynamicsKnob->slider->setValue(
+                    parameterValue("DYN_DYNAMICS" + n),
+                    juce::sendNotificationSync);
+        }
+        else
+        {
+            const float gain = eqYToDb(graph, event.position.y);
+            setParameter("EQ" + n + "_GAIN", gain);
+            displayedGain = gain;
+
+            if (auto* gainKnob = findKnob("EQ" + n + "_GAIN"))
+                gainKnob->slider->setValue(
+                    gain, juce::dontSendNotification);
+        }
+
         setParameter("GRAPH_SOLO_FREQ", hz);
-        setParameter("GRAPH_SOLO_Q", parameterValue("EQ" + n + "_Q"));
+        const int filterType = juce::jlimit(
+            0, 13,
+            juce::roundToInt(
+                parameterValue("EQ" + n + "_TYPE")));
+        setParameter(
+            "GRAPH_SOLO_Q",
+            filterType >= 12
+                ? 0.70710678f
+                : parameterValue("EQ" + n + "_Q"));
         setParameter("GRAPH_SOLO_ACTIVE", 1.f);
-        if (auto* knob = findKnob("EQ" + n + "_FREQ"))
-            knob->slider->setValue(hz, juce::dontSendNotification);
-        if (auto* knob = findKnob("EQ" + n + "_GAIN"))
-            knob->slider->setValue(gain, juce::dontSendNotification);
+
+        if (auto* freqKnob = findKnob("EQ" + n + "_FREQ"))
+            freqKnob->slider->setValue(
+                hz, juce::dontSendNotification);
+
         showGraphDragHint = false;
         graphDragHint.clear();
         showFloatingValueBoxForBand(
-            rightSoloBand, false, gain, event.position);
+            rightSoloBand, rightSoloDynamic,
+            displayedGain, event.position);
         repaint();
         return;
     }
@@ -3977,6 +4050,7 @@ void VVChainAudioProcessorEditor::mouseUp(
         const int band = pendingRightClickBand;
         const auto position = pendingRightClickPosition;
         pendingRightClickBand = -1;
+        pendingRightClickDynamic = false;
         pendingRightClickDragged = false;
         showEqTypeMenu(band, position);
     }
@@ -3984,12 +4058,26 @@ void VVChainAudioProcessorEditor::mouseUp(
     if (rightSoloBand >= 0)
     {
         const auto n = juce::String(rightSoloBand + 1);
-        if (auto* pFreq = audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
+        if (auto* pFreq =
+                audioProcessor.apvts.getParameter("EQ" + n + "_FREQ"))
             pFreq->endChangeGesture();
-        if (auto* pGain = audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
-            pGain->endChangeGesture();
+
+        if (rightSoloDynamic)
+        {
+            if (auto* pDynamics =
+                    audioProcessor.apvts.getParameter("DYN_DYNAMICS" + n))
+                pDynamics->endChangeGesture();
+        }
+        else
+        {
+            if (auto* pGain =
+                    audioProcessor.apvts.getParameter("EQ" + n + "_GAIN"))
+                pGain->endChangeGesture();
+        }
+
         setParameter("GRAPH_SOLO_ACTIVE", 0.f);
         rightSoloBand = -1;
+        rightSoloDynamic = false;
     }
     if (dragDynamicHandleBand >= 0)
     {
@@ -4076,28 +4164,50 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
         if (pendingRightClickBand >= 0)
         {
             const int pendingBand = pendingRightClickBand;
+            const bool dynamicTarget = pendingRightClickDynamic;
             const auto pendingPosition = pendingRightClickPosition;
             pendingRightClickBand = -1;
+            pendingRightClickDynamic = false;
             pendingRightClickDragged = true;
-            beginRightSolo(pendingBand, pendingPosition);
+            beginRightSolo(
+                pendingBand, pendingPosition, dynamicTarget);
         }
 
         int band = rightSoloBand;
+        bool dynamicTarget = rightSoloDynamic;
         float bestDistance = 24.0f;
+
         if (band < 0)
         {
             for (int b = 0; b < 4; ++b)
             {
                 const auto n = juce::String(b + 1);
-                const float x = graphFrequencyToX(
-                    graph, parameterValue("EQ" + n + "_FREQ"));
-                const float y = eqDbToY(
-                    graph, parameterValue("EQ" + n + "_GAIN"));
-                const float d = event.position.getDistanceFrom({ x, y });
-                if (d < bestDistance)
+                const auto staticPoint = juce::Point<float>(
+                    graphFrequencyToX(
+                        graph, parameterValue("EQ" + n + "_FREQ")),
+                    eqDbToY(
+                        graph, parameterValue("EQ" + n + "_GAIN")));
+                const float dStatic =
+                    event.position.getDistanceFrom(staticPoint);
+
+                const bool dynamicIsSeparate =
+                    std::abs(parameterValue("DYN_DYNAMICS" + n)) > 0.05f;
+                const float dDynamic =
+                    dynamicIsSeparate
+                        ? event.position.getDistanceFrom(dynamicTargetPoint(b))
+                        : 1.0e9f;
+
+                if (dStatic < bestDistance)
                 {
-                    bestDistance = d;
+                    bestDistance = dStatic;
                     band = b;
+                    dynamicTarget = false;
+                }
+                if (dDynamic < bestDistance && dDynamic < dStatic)
+                {
+                    bestDistance = dDynamic;
+                    band = b;
+                    dynamicTarget = true;
                 }
             }
         }
@@ -4105,7 +4215,8 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
         if (band >= 0)
         {
             if (rightSoloBand < 0)
-                beginRightSolo(band, event.position);
+                beginRightSolo(
+                    band, event.position, dynamicTarget);
             band = rightSoloBand >= 0 ? rightSoloBand : band;
 
             rightSoloPosition = {
