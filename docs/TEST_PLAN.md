@@ -130,6 +130,6 @@ Still required when preparing a distributable release:
 - Mono, dual-mono and asymmetric stereo transient tests; L/R must share one gain command.
 - Band 1: 40/50/60/80/100 Hz sine tests verify detector HPF avoids waveform-riding modulation.
 - Impulse and sine-burst tests verify no pre-ringing, NaN/Inf or uncontrolled gain.
-- Analog ON/OFF combinations verify TRANSIENT precedes Analog and shares the same audible split; no second Transient crossover may be added.
+- Analog ON/OFF combinations verify TRANSIENT precedes Analog、TRANSIENT 單獨啟用不喚醒 Analog 4× oversampler，且 output 採 untouched base + band delta；不得新增第二條 full-band split/recombine audible path。
 - Dry/Wet, Master Bypass and DELTA remain fixed-PDC/aligned.
 - Main Analyzer remains 4096-point only; no TRANSIENT contribution analyzer.
