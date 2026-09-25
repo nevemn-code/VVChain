@@ -2993,11 +2993,28 @@ void VVChainAudioProcessorEditor::updateFloatingValueBoxAt(
 
     // A mouse drag keeps ownership of the node that received mouseDown.
     // Geometric hover can cross the other node while the target is moving.
-    if (rightSoloBand >= 0 || dragOffsetBand >= 0)
+    if (rightSoloBand >= 0)
     {
-        const int band = rightSoloBand >= 0 ? rightSoloBand : dragOffsetBand;
-        showFloatingValueBoxForBand(band, false,
-            parameterValue("EQ" + juce::String(band + 1) + "_GAIN"), position);
+        const int band = rightSoloBand;
+        const auto n = juce::String(band + 1);
+        showFloatingValueBoxForBand(
+            band,
+            rightSoloDynamic,
+            rightSoloDynamic
+                ? dynamicEffectiveTargetGain(band)
+                : parameterValue("EQ" + n + "_GAIN"),
+            position);
+        return;
+    }
+
+    if (dragOffsetBand >= 0)
+    {
+        const int band = dragOffsetBand;
+        showFloatingValueBoxForBand(
+            band, false,
+            parameterValue(
+                "EQ" + juce::String(band + 1) + "_GAIN"),
+            position);
         return;
     }
     if (dragBand >= 0 || dragDynamicHandleBand >= 0)
@@ -4263,7 +4280,11 @@ void VVChainAudioProcessorEditor::mouseWheelMove(
             showGraphDragHint = false;
             graphDragHint.clear();
             showFloatingValueBoxForBand(
-                band, false, parameterValue("EQ" + n + "_GAIN"),
+                band,
+                rightSoloDynamic,
+                rightSoloDynamic
+                    ? dynamicEffectiveTargetGain(band)
+                    : parameterValue("EQ" + n + "_GAIN"),
                 event.position);
             repaint();
             return;
