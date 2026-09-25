@@ -12,4 +12,3 @@
 - `Tests/`：Reference、Web smoke、signal-integrity、Type-A ADAA 與 headless C++ null regression。
 - `docs/`：GitHub Pages 預覽、架構與測試文件。
 - `.github/`：GitHub Actions 與相關設定。
-- `backup/`：正式 v1.0.65 的完整 repository 檔案樹快照；不包含遞迴的 `backup/` 自身。

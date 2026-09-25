@@ -1,4 +1,4 @@
-# VVChain Validation Status（v1.0.66；歷史基準仍保留於下文）
+# VVChain Validation Status（v1.0.65；歷史基準仍保留於下文）
 
 ## v1.0.65 stereo-link / ADAA / full-chain null
 - UDMBC：single linked detector/gain per band；Native/Web 同步 LR4 + branch phase compensation。

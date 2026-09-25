@@ -1,6 +1,6 @@
 # VVChain
 
-## 目前實際狀態（v1.0.66）
+## 目前實際狀態（v1.0.65）
 
 v1.0.55 修復既有 Web smoke／UI regression 的過時 source guard，Fast Gate 改為 main push 也執行，並把 Web smoke、project static audit、UI/interaction regression 各重跑十輪。實際通過狀態以本版 GitHub Actions 結果為準；DAW／pluginval／AAX 仍屬獨立驗證。
 
@@ -52,10 +52,6 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
-
-### v1.0.66
-- 在 repo 根目錄新增 `backup/`，完整保存正式 v1.0.65 檔案樹；備份不包含遞迴的 backup 自身。
-- 本版僅建立完整備份與版本標記，不改 DSP、UI 互動或聲音邏輯。
 
 ### v1.0.65
 - UDMBC detector / gain control 改為真正 stereo-linked：每個頻段共用 Gate / Down / Up detector 與 gain state，L/R 套用相同動態增益，避免 stereo image wandering。
