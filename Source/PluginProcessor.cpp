@@ -346,79 +346,10 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.dryWet = value("DRY_WET");
     p.outputDb = value("OUTPUT_LEVEL");
 
-    dsp.setContributionAnalysisEnabled(
-        analyzerOn && !p.masterBypass && !p.deltaMonitor);
-
     dsp.process(buffer, p);
 
     if (analyzerOn && p.deltaMonitor)
         pushMainAnalyzer();
-
-    if (analyzerOn && !p.masterBypass && !p.deltaMonitor)
-    {
-        const int numSamples = juce::jmin(
-            buffer.getNumSamples(),
-            dsp.contributionStream(0).getNumSamples());
-        const auto regions = contributionFifo.write(numSamples);
-        int written = 0;
-
-        const auto writeRegion = [&](int start, int size)
-        {
-            for (int stream = 0; stream < 6; ++stream)
-            {
-                const auto& source = dsp.contributionStream(stream);
-                const auto* in = source.getReadPointer(0);
-
-                std::copy_n(
-                    in + written,
-                    size,
-                    contributionBuffers[(size_t)stream].data() + start);
-            }
-
-            written += size;
-        };
-
-        writeRegion(regions.startIndex1, regions.blockSize1);
-        writeRegion(regions.startIndex2, regions.blockSize2);
-    }
-
-}
-
-int VVChainAudioProcessor::popContributionSamples(
-    const std::array<float*, 6>& destinations,
-    int maxSamples) noexcept
-{
-    if (maxSamples <= 0)
-        return 0;
-
-    for (auto* destination : destinations)
-        if (destination == nullptr)
-            return 0;
-
-    const int available =
-        juce::jmin(maxSamples, contributionFifo.getNumReady());
-    const auto regions = contributionFifo.read(available);
-    int copied = 0;
-
-    const auto copyRegion = [&](int start, int size)
-    {
-        if (size <= 0)
-            return;
-
-        for (int stream = 0; stream < 6; ++stream)
-        {
-            std::copy_n(
-                contributionBuffers[(size_t)stream].data() + start,
-                size,
-                destinations[(size_t)stream] + copied);
-        }
-
-        copied += size;
-    };
-
-    copyRegion(regions.startIndex1, regions.blockSize1);
-    copyRegion(regions.startIndex2, regions.blockSize2);
-    return copied;
 }
 
 int VVChainAudioProcessor::popAnalyzerSamples(float* destination,
