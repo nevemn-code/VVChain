@@ -1553,11 +1553,10 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
     }
 
     // True neutral UDMBC no longer pays crossover/detector/envelope cost.
-    if (globalMix <= 0.000001f
-        || (!anyBandActive
-            && !p.udmbcClipper
-            && std::abs(p.udmbcInputGainDb) <= 0.000001f
-            && std::abs(p.udmbcOutputGainDb) <= 0.000001f))
+    if (!anyBandActive
+        && !p.udmbcClipper
+        && std::abs(p.udmbcInputGainDb) <= 0.000001f
+        && std::abs(p.udmbcOutputGainDb) <= 0.000001f)
         return;
 
     const bool xoverChanged =
