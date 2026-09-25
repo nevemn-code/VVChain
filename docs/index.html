@@ -70,7 +70,7 @@ const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive
 const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],uiTouched={udmbc:[false,false,false,false],analog:[false,false,false,false],tape:[false,false,false,false]},clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.49
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.49"+"-hpf30-eqtypes-oct6-ledrollback-dynright-edit";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.49"+"-hpf30-eqtypes-oct6-ledrollback-dynright-edit-order";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -1081,7 +1081,7 @@ const EQ_FILTER_TYPES=[
   ["HF Roll-Off","#fbbf24"],
   ["LF Roll-Off","#fbbf24"]
 ];
-const EQ_FILTER_ORDER=[0,4,5,6,7,8,9,2,13,12];
+const EQ_FILTER_ORDER=[0,2,4,5,6,7,8,9,13,12];
 const eqTypeMenu=$("#eqTypeMenu");
 function eqTypeIcon(type){
   const p=[
