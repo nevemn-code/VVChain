@@ -129,7 +129,24 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 .moduleMuted,.knobMuted,.knobMuted .modeSwitch,.modeSwitch.muted{opacity:.58!important;filter:grayscale(1) saturate(0)!important}
 .band.bypassed{filter:grayscale(1) saturate(0)!important;opacity:.70}
 </style>
-</head>
+<style id="vvchain-v1065-real-image-assets">
+.app:not(.ivoryTheme),.app:not(.ivoryTheme) .header,.app:not(.ivoryTheme) .bandsFrame,.app:not(.ivoryTheme) .band,.app:not(.ivoryTheme) .panel{background-image:url("assets/ui/studio_teal_panel.svg")!important;background-size:100% 100%!important;background-repeat:no-repeat!important}
+.app.ivoryTheme,.app.ivoryTheme .header,.app.ivoryTheme .bandsFrame,.app.ivoryTheme .band,.app.ivoryTheme .panel{background-image:url("assets/ui/ivory_gold_panel.svg")!important;background-size:100% 100%!important;background-repeat:no-repeat!important}
+.app:not(.ivoryTheme) .graph{background-image:url("assets/ui/studio_teal_graph.svg")!important;background-size:100% 100%!important;background-repeat:no-repeat!important}
+.app.ivoryTheme .graph{background-image:url("assets/ui/ivory_gold_graph.svg")!important;background-size:100% 100%!important;background-repeat:no-repeat!important}
+.app:not(.ivoryTheme) .dial{background-image:url("assets/ui/studio_teal_knob_small.svg")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:transparent!important;border:0!important;box-shadow:none!important}
+.app.ivoryTheme .dial{background-image:url("assets/ui/ivory_gold_knob_small.svg")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:transparent!important;border:0!important;box-shadow:none!important}
+.app:not(.ivoryTheme) .masterMonitor .dial{background-image:url("assets/ui/studio_teal_knob_large.svg")!important}.app.ivoryTheme .masterMonitor .dial{background-image:url("assets/ui/ivory_gold_knob_large.svg")!important}
+.app:not(.ivoryTheme) .masterBypass,.app:not(.ivoryTheme) .soloBtn,.app:not(.ivoryTheme) .advBtn,.app:not(.ivoryTheme) .bypassBtn,.app:not(.ivoryTheme) .deltaBtn,.app:not(.ivoryTheme) .dynModeBtn,.app:not(.ivoryTheme) .modeSwitch,.app:not(.ivoryTheme) .tiny,.app:not(.ivoryTheme) .uiThemeQuick{background-image:url("assets/ui/studio_teal_button_off.svg")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:transparent!important;border:0!important;box-shadow:none!important}
+.app:not(.ivoryTheme) .masterBypass.on,.app:not(.ivoryTheme) .soloBtn.on,.app:not(.ivoryTheme) .bypassBtn.on,.app:not(.ivoryTheme) .deltaBtn.on,.app:not(.ivoryTheme) .dynModeBtn.on{background-image:url("assets/ui/studio_teal_button_on.svg")!important}
+.app.ivoryTheme .masterBypass,.app.ivoryTheme .soloBtn,.app.ivoryTheme .advBtn,.app.ivoryTheme .bypassBtn,.app.ivoryTheme .deltaBtn,.app.ivoryTheme .dynModeBtn,.app.ivoryTheme .modeSwitch,.app.ivoryTheme .tiny,.app.ivoryTheme .uiThemeQuick{background-image:url("assets/ui/ivory_gold_button_off.svg")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:transparent!important;border:0!important;box-shadow:none!important}
+.app.ivoryTheme .masterBypass.on,.app.ivoryTheme .soloBtn.on,.app.ivoryTheme .bypassBtn.on,.app.ivoryTheme .deltaBtn.on,.app.ivoryTheme .dynModeBtn.on{background-image:url("assets/ui/ivory_gold_button_on.svg")!important}
+.app:not(.ivoryTheme) .led,.app:not(.ivoryTheme) .bandLed{background-image:url("assets/ui/studio_teal_led_off.svg")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:transparent!important;border:0!important;box-shadow:none!important}.app:not(.ivoryTheme) .led.on,.app:not(.ivoryTheme) .bandLed.on{background-image:url("assets/ui/studio_teal_led_on.svg")!important}
+.app.ivoryTheme .led,.app.ivoryTheme .bandLed{background-image:url("assets/ui/ivory_gold_led_off.svg")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:transparent!important;border:0!important;box-shadow:none!important}.app.ivoryTheme .led.on,.app.ivoryTheme .bandLed.on{background-image:url("assets/ui/ivory_gold_led_on.svg")!important}
+.app:not(.ivoryTheme) .masterPower{background-image:url("assets/ui/studio_teal_power_off.svg")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:transparent!important;border:0!important;box-shadow:none!important}.app:not(.ivoryTheme) .masterPower.on{background-image:url("assets/ui/studio_teal_power_on.svg")!important}
+.app.ivoryTheme .masterPower{background-image:url("assets/ui/ivory_gold_power_off.svg")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:transparent!important;border:0!important;box-shadow:none!important}.app.ivoryTheme .masterPower.on{background-image:url("assets/ui/ivory_gold_power_on.svg")!important}
+.app.globalBypass .dial,.moduleMuted .dial,.knobMuted .dial{background-image:url("assets/ui/muted_knob_small.svg")!important}.app.globalBypass .masterMonitor .dial{background-image:url("assets/ui/muted_knob_large.svg")!important}.app.globalBypass .led,.app.globalBypass .bandLed{background-image:url("assets/ui/muted_led_off.svg")!important}.app.globalBypass .masterPower{background-image:url("assets/ui/muted_power_off.svg")!important}
+</style></head>
 <body>
 <div class="app"><span hidden>NO PAGE SCROLL</span><span hidden>DELTA = OUTPUT − DRY · SOLO = SHARED X-OVER PRE/POST</span>
   <div class="transport">
@@ -139,7 +156,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.64</div></div><div class="sub"></div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.65</div></div><div class="sub"></div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · ANALOG COLOR · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -182,7 +199,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
       <div class="settingsRow" aria-disabled="true"><span>CPU / latency display</span><span>RESERVED</span></div>
     </section>
     <section class="settingsSection"><div class="settingsSectionTitle">SYSTEM / ABOUT</div>
-      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.64</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.65</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Build number / commit</span><span>GitHub build metadata</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset UI Settings</span><span>DISABLED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset All Settings</span><span>DISABLED</span></div>
@@ -331,9 +348,9 @@ function setAnalyzerEnabled(enabled){
 analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
 document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
 setAnalyzerEnabled(true);
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.64
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.65
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.64"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.65"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -984,7 +1001,7 @@ function dynamicPopupBounds(b,w,h){
 function drawEQ(){
   const r=eqCanvas.getBoundingClientRect(),w=r.width,h=r.height;
   eqCtx.clearRect(0,0,w,h);
-  eqCtx.fillStyle=tc("#08252b","#171711");
+  eqCtx.fillStyle=tc("rgba(8,37,43,.86)","rgba(23,23,17,.86)");
   eqCtx.fillRect(0,0,w,h);
 
   if(analyzerEnabled){

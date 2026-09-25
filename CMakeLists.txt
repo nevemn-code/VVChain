@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(VVChain VERSION 1.0.64 LANGUAGES C CXX)
+project(VVChain VERSION 1.0.65 LANGUAGES C CXX)
 
 include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
@@ -25,6 +25,45 @@ endif()
 if (VVCHAIN_ENABLE_AAX)
     list(APPEND VVCHAIN_FORMATS AAX)
 endif()
+
+juce_add_binary_data(VVChainAssets
+    HEADER_NAME VVChainAssets.h
+    NAMESPACE VVChainAssets
+    SOURCES
+        docs/assets/ui/studio_teal_panel.svg
+        docs/assets/ui/studio_teal_graph.svg
+        docs/assets/ui/studio_teal_knob_small.svg
+        docs/assets/ui/studio_teal_knob_large.svg
+        docs/assets/ui/studio_teal_button_off.svg
+        docs/assets/ui/studio_teal_button_on.svg
+        docs/assets/ui/studio_teal_led_off.svg
+        docs/assets/ui/studio_teal_led_on.svg
+        docs/assets/ui/studio_teal_power_off.svg
+        docs/assets/ui/studio_teal_power_on.svg
+        docs/assets/ui/studio_teal_screw.svg
+        docs/assets/ui/ivory_gold_panel.svg
+        docs/assets/ui/ivory_gold_graph.svg
+        docs/assets/ui/ivory_gold_knob_small.svg
+        docs/assets/ui/ivory_gold_knob_large.svg
+        docs/assets/ui/ivory_gold_button_off.svg
+        docs/assets/ui/ivory_gold_button_on.svg
+        docs/assets/ui/ivory_gold_led_off.svg
+        docs/assets/ui/ivory_gold_led_on.svg
+        docs/assets/ui/ivory_gold_power_off.svg
+        docs/assets/ui/ivory_gold_power_on.svg
+        docs/assets/ui/ivory_gold_screw.svg
+        docs/assets/ui/muted_panel.svg
+        docs/assets/ui/muted_graph.svg
+        docs/assets/ui/muted_knob_small.svg
+        docs/assets/ui/muted_knob_large.svg
+        docs/assets/ui/muted_button_off.svg
+        docs/assets/ui/muted_button_on.svg
+        docs/assets/ui/muted_led_off.svg
+        docs/assets/ui/muted_led_on.svg
+        docs/assets/ui/muted_power_off.svg
+        docs/assets/ui/muted_power_on.svg
+        docs/assets/ui/muted_screw.svg
+)
 
 juce_add_plugin(VVChain
     COMPANY_NAME "VVChain"
@@ -71,6 +110,7 @@ target_compile_definitions(VVChain PRIVATE
 )
 
 target_link_libraries(VVChain PRIVATE
+    VVChainAssets
     juce::juce_audio_utils
     juce::juce_dsp
 )

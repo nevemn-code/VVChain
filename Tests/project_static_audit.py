@@ -98,6 +98,11 @@ assert '"moduleMuted"' in editor
 assert "UI IVORY" in editor and "UI STUDIO" in editor
 assert 'id="uiThemeQuick"' in web
 assert "vvchain-v1064-dual-hardware-skins" in web
+assert "vvchain-v1065-real-image-assets" in web
+assert "juce_add_binary_data(VVChainAssets" in cmake
+assert "VVChainAssets.h" in editor
+for asset in ("studio_teal_knob_small.svg","ivory_gold_knob_small.svg","studio_teal_button_on.svg","ivory_gold_led_on.svg","muted_knob_small.svg"):
+    assert (ROOT / "docs" / "assets" / "ui" / asset).is_file(), asset
 assert ".globalBypass{filter:grayscale(1) saturate(0)!important}" in web
 assert "refreshAnalyzerTap" in web
 

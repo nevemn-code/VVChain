@@ -39,6 +39,10 @@ jobs:
           set -euo pipefail
           test -s docs/index.html
           test -s docs/vvchain-worklet.js
+          test -s docs/assets/ui/studio_teal_knob_small.svg
+          test -s docs/assets/ui/ivory_gold_knob_small.svg
+          test -s docs/assets/ui/studio_teal_button_on.svg
+          test -s docs/assets/ui/ivory_gold_led_on.svg
           grep -q 'id="bandGrid"' docs/index.html
           grep -q 'TRANSIENT' docs/index.html
           grep -q 'ANALOG COLOR' docs/index.html

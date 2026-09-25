@@ -533,8 +533,12 @@ private:
     class MetalLookAndFeel final : public juce::LookAndFeel_V4
     {
     public:
+        MetalLookAndFeel();
         bool monochrome = false;
         bool ivoryTheme = false;
+
+        void drawPanelSurface(juce::Graphics&, juce::Rectangle<float>) const;
+        void drawGraphSurface(juce::Graphics&, juce::Rectangle<float>) const;
 
         void drawRotarySlider(juce::Graphics&, int x, int y, int width, int height,
                               float sliderPosProportional, float rotaryStartAngle,
@@ -546,6 +550,21 @@ private:
         void drawToggleButton(juce::Graphics&, juce::ToggleButton&,
                               bool shouldDrawButtonAsHighlighted,
                               bool shouldDrawButtonAsDown) override;
+
+    private:
+        struct HardwareAssets
+        {
+            std::unique_ptr<juce::Drawable> panel, graph;
+            std::unique_ptr<juce::Drawable> knobSmall, knobLarge;
+            std::unique_ptr<juce::Drawable> buttonOff, buttonOn;
+            std::unique_ptr<juce::Drawable> ledOff, ledOn;
+            std::unique_ptr<juce::Drawable> powerOff, powerOn;
+            std::unique_ptr<juce::Drawable> screw;
+        };
+        HardwareAssets studioAssets, ivoryAssets, mutedAssets;
+        const HardwareAssets& assets(bool localMuted = false) const noexcept;
+        static std::unique_ptr<juce::Drawable> loadDrawable(const void* data, int size);
+        static void drawDrawable(juce::Graphics&, const juce::Drawable*, juce::Rectangle<float>, float opacity = 1.0f);
     };
 
     struct Knob
