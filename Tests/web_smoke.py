@@ -76,7 +76,7 @@ required_worklet = [
     "tptBell",
     "analog(x,alpha,ch,b,x2=1)",
     "analytical first-order ADAA",
-    "analogReconstructed",
+    "analogDelta",
     'zoneBands(y,c,"analogLp",s.udmbc.x)',
     "colorX2?.[b]?2:1",
 ]
@@ -90,6 +90,7 @@ for token in [
     "transientGain",
     "deltaL+=bandsL[b]*d",
     "const transientOut=this.applyTransientStereo",
+    "y+=analogDelta",
 ]:
     assert token in worklet, token
 

@@ -1,13 +1,15 @@
-# VVChain Architecture（v1.0.60）
+# VVChain Architecture（v1.0.64）
 
 > 以下以目前程式實際執行為準；本次封閉測試的失敗和限制見 `TEST_REPORT.md`。
 
 Signal flow:
 
 INPUT
-→ 4-band Parametric / Dynamic EQ + per-band Analog Color
-→ 4-band UDMBC
-→ 4-band TAPE COLOR
+→ 4-band Parametric / Dynamic EQ
+→ 4-band TRANSIENT parallel-delta
+→ 4-band Analog Color parallel-delta
+→ 4-band UDMBC parallel-delta
+→ 4-band TAPE COLOR delta
 → dry/wet
 → output level
 → master limiter
@@ -31,7 +33,7 @@ Each EQ band has an independent Analog Color amount, TT/SS mode, bypass and X2.
 - 0 = exact dry.
 - Core transfer: unity-normalized smooth algebraic saturation based on `x / (1 + alpha*x^2)^(1/4)`.
 - 靜態 transfer 在 shaping domain 的 ±1 歸一化；ADAA 是有狀態的一階差分，沒有逐 sample 的 hard no-shrink guard。
-- X2 doubles only the generated Analog delta; it does not multiply EQ / UDMBC / TAPE COLOR / De-Esser / Mix / Out.
+- X2 doubles only the generated Analog delta; it does not multiply EQ / UDMBC / TAPE COLOR / Mix / Out.
 - ADAA 的 previous sample 依頻段和聲道獨立保存；每段 alpha 使用約 0.25 ms smoothing。四段 Color 全 0%／Bypass 時完全跳過 4× up/downsample，以等延遲 pure-delay path 維持固定 PDC；Linear EQ / Dynamic EQ 不進入 Analog oversampling domain。
 
 ## 參數與操作
@@ -52,7 +54,7 @@ Each EQ band has an independent Analog Color amount, TT/SS mode, bypass and X2.
 
 ## Plugin latency
 
-The reported plugin latency is derived from the active EQ oversampling path plus limiter oversampling/lookahead. Master bypass keeps the dry path aligned to the same reported latency.
+The reported plugin latency is derived from the fixed Analog-domain PDC plus limiter oversampling/lookahead. Master bypass keeps the dry path aligned to the same reported latency.
 
 Native lookahead 約 3 ms。`process` 若收到比 `prepareToPlay` 配置更大的 block，目前直接 return，屬待驗證風險。Web DSP 在 `docs/vvchain-worklet.js`，以實際 Worklet rate 執行；Native Analog 在 4× oversampling 內，兩端不能宣稱逐 sample 完全一致。
 
@@ -113,7 +115,7 @@ The analyzer display now separates measurement smoothing from curve rendering:
 These steps affect only metering/visualization. Audio samples are never reconstructed from the smoothed spectrum and DSP output remains unchanged.
 
 
-## Pro-style main analyzer + module contribution layers (v1.0.55)
+## Historical module contribution analyzer (removed after v1.0.57)
 
 Main spectrum is display-only and uses 4096-point Hann FFT, 50% overlap, 256 logarithmic display points, power-domain fractional-octave averaging, seven-tap binomial smoothing, asymmetric time ballistics, 4.5 dB/oct tilt around 1 kHz and monotone cubic Hermite rendering.
 
@@ -132,7 +134,7 @@ Contribution analysis uses a separate 2048-point Hann FFT path with lighter freq
 Analyzer collection is disabled when the Analyzer is OFF or the Native editor is not showing. Web also suspends contribution traffic when the page is hidden. None of these analyzer taps write APVTS, host automation, latency, or audible samples.
 
 
-## Analyzer safety refinements (v1.0.56)
+## Historical analyzer safety refinements (v1.0.56)
 
 Master BYPASS suppresses and clears module contribution layers so stale pre-bypass Delta data is never left on screen. Contribution FIFO copies are bounded by the preallocated analyzer stream size; analyzer metering may drop excess analysis samples from an abnormal oversized host block, but it must never enlarge or alter the audible processing buffer.
 

@@ -4,7 +4,7 @@
 
 v1.0.55 修復既有 Web smoke／UI regression 的過時 source guard，Fast Gate 改為 main push 也執行，並把 Web smoke、project static audit、UI/interaction regression 各重跑十輪。實際通過狀態以本版 GitHub Actions 結果為準；DAW／pluginval／AAX 仍屬獨立驗證。
 
-目前主鏈的實際順序：EQ／Dynamic EQ → 四段 TRANSIENT → 四段 Analog → UDMBC → TAPE COLOR → Mix／Out → Solo → true-peak limiter → 主 Bypass／Delta。TRANSIENT 使用同一組 X1／X2／X3 頻段設定，但在 host rate 採 parallel-delta 架構：原始 base signal 不經額外 split/recombine，只注入各頻段的增益差值，因此不新增整條 full-band crossover phase rotation；UDMBC、TAPE COLOR 與頻段 Solo 沿用相同 crossover 設定。
+目前主鏈的實際順序：EQ／Dynamic EQ → 四段 TRANSIENT → 四段 Analog parallel-delta → UDMBC parallel-delta → TAPE COLOR delta → Mix／Out → Solo → true-peak limiter → 主 Bypass／Delta。TRANSIENT 使用同一組 X1／X2／X3 頻段設定，但在 host rate 採 parallel-delta 架構：原始 base signal 不經額外 split/recombine，只注入各頻段的增益差值，因此不新增整條 full-band crossover phase rotation；UDMBC、TAPE COLOR 與頻段 Solo 沿用相同 crossover 設定。
 
 Linear EQ / Dynamic EQ 現在固定在 host sample rate；只有實際啟用 Analog ADAA v2 時才進入 4× oversampling（48 kHz → 192 kHz）。Analog 四段全部 0% 或 Bypass 時，整個 upsample → ADAA → downsample 路徑完全跳過，以等延遲純 delay 維持固定 PDC。Windows VST3／DAW 實測仍以 CI artifact 與 host 驗證為準。
 
@@ -53,6 +53,15 @@ https://nevemn-code.github.io/VVChain/
 
 ## 版本日誌
 
+### v1.0.64
+- 移除未公開控制的 30 Hz 全頻高通；neutral 狀態不再偷偷削低頻。
+- Analog 4× 改為 parallel-delta：oversampler / X1-X3 只承載 nonlinear delta，再加回等 PDC 的 post-EQ/Transient base；啟用 Analog 不再用四段 crossover 重建整條 base signal。
+- UDMBC 改為 base + module-delta；MIX=0% exact dry，Auto Trim 不再污染 0% Mix。
+- TAPE COLOR 改為標準 dry/wet；0% Mix exact dry。
+- Bypass / zero-work 時重置 UDMBC / TAPE crossover state，避免舊 state 在重新啟用時跳回。
+- Native / Web Preview 同步上述 routing；清除 active UI/source 中第三方品牌式命名。
+- 本版不改 Analog ADAA v2 transfer、TT/SS alpha、0.25 ms smoothing、X2 delta 規則或固定 4× quality。
+
 ### v1.0.63
 - 完整移除 Native / Web 的 De-Esser 參數、DSP state、處理路徑與專用 UI。
 - 四個 BAND 新增 bipolar TRANSIENT（-100%～+100%，0% 為 zero-work bypass）。
@@ -96,7 +105,7 @@ https://nevemn-code.github.io/VVChain/
 ### v1.0.54
 - Spectrum Analyzer 由 2048 升為 4096-point FFT，採 75% overlap（1024-sample hop），改善低頻解析度並降低 frame-to-frame 跳動。
 - 頻率方向改為約 1/12-octave RMS energy smoothing，低頻至少 3 FFT bins；再做 5-point Gaussian 平滑，避免 log-frequency 顯示鋸齒。
-- 時間方向使用 fast-attack / slow-release EMA；顯示另加入 4.5 dB/oct、1 kHz pivot 的 perceptual tilt，對齊 Pro-Q 類 analyzer 的自然視覺。
+- 時間方向使用 fast-attack / slow-release EMA；顯示另加入 4.5 dB/oct、1 kHz pivot 的 perceptual tilt，對齊現代 EQ analyzer 的自然視覺。
 - Native JUCE 與 Web Preview 都改用 256 個 logarithmic display points，並以 Catmull-Rom / cubic Bezier 曲線繪製，不再用直線逐點連接。
 - 修正 v1.0.53 Native Analyzer 成員誤放進 MetalLookAndFeel scope 導致 Windows VST3 編譯失敗；Analyzer 狀態與 FFT buffers 正式移回 Editor instance。
 - Analyzer 仍完全不進 DSP chain，不改 latency、APVTS、automation、Delta、Solo 或任何聲音參數。

@@ -679,8 +679,6 @@ void VVChainDSP::reset()
     analogAlpha = { 0.0, 0.0, 0.0, 0.0 };
     analogAlphaInitialized = { false, false, false, false };
 
-    bandProcessingHighPass.reset();
-
     analogXover1.reset();
     analogXover2.reset();
     analogXover3.reset();
@@ -1069,7 +1067,7 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
     constexpr float invSqrt2 = 0.7071067811865475f;
     constexpr float dynKneeDb = 10.0f;
 
-    // Sonnox-style Dynamic EQ:
+    // Target/Offset Dynamic EQ:
     // Offset = p.gain. DYN_TARGET defines the maximum dynamic span around that EQ offset.
     // DYNAMICS is signed: negative = downward compression, positive = upward
     // expansion; 0% = no dynamic movement. A 10 dB soft knee controls drive.
@@ -1425,22 +1423,21 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     }
 
-    // Shared 30 Hz processing floor runs once at base rate.
-    constexpr double kBandProcessingLowCutHz = 30.0;
-    constexpr double kButterworthQ = 0.7071067811865476;
-    updateHighPass(bandProcessingHighPass, sr,
-                   kBandProcessingLowCutHz, kButterworthQ);
+    // Base-rate TRANSIENT precedes Analog without entering the Analog 4x path.
+    // No hidden full-band HPF: neutral user settings remain transparent.
+    applyTransient(buffer, p);
 
+    // Keep a fixed-PDC post-EQ/Transient base. Analog carries nonlinear delta only.
     for (int ch = 0; ch < osChannels && ch < 2; ++ch)
     {
         auto* data = buffer.getWritePointer(ch);
-        const bool right = ch == 1;
+        auto* delayedBase = dynamicDetectorInput.getWritePointer(ch);
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
-            data[sample] = bandProcessingHighPass.process(data[sample], right);
+        {
+            eqWetDelay.pushSample(ch, data[sample]);
+            delayedBase[sample] = eqWetDelay.popSample(ch);
+        }
     }
-
-    // Base-rate TRANSIENT precedes Analog without entering the Analog 4x path.
-    applyTransient(buffer, p);
 
     std::array<bool, 4> analogActive {};
     bool anyAnalogActive = false;
@@ -1461,30 +1458,14 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     }
 
-    if (anyAnalogActive)
-    {
-        for (int ch = 0; ch < juce::jmin(channels, buffer.getNumChannels()); ++ch)
-        {
-            auto* data = buffer.getWritePointer(ch);
-            for (int n = 0; n < buffer.getNumSamples(); ++n)
-            {
-                eqWetDelay.pushSample(ch, data[n]);
-                juce::ignoreUnused(eqWetDelay.popSample(ch));
-            }
-        }
-    }
-
     if (!anyAnalogActive)
     {
+        analogXover1.reset();
+        analogXover2.reset();
+        analogXover3.reset();
+        eqOversampler.reset();
         for (int ch = 0; ch < juce::jmin(channels, buffer.getNumChannels()); ++ch)
-        {
-            auto* data = buffer.getWritePointer(ch);
-            for (int n = 0; n < buffer.getNumSamples(); ++n)
-            {
-                eqWetDelay.pushSample(ch, data[n]);
-                data[n] = eqWetDelay.popSample(ch);
-            }
-        }
+            buffer.copyFrom(ch, 0, dynamicDetectorInput, ch, 0, buffer.getNumSamples());
         return;
     }
 
@@ -1563,48 +1544,85 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             const float high = analogXover3.high(x2High, right);
             const float bands[4] = { low, lowMid, midHigh, high };
 
-            float reconstructed = 0.0f;
+            float analogDelta = 0.0f;
             for (size_t band = 0; band < 4; ++band)
             {
-                float bandSignal = bands[band];
+                if (!analogActive[band])
+                    continue;
 
-                if (analogActive[band])
-                {
-                    const double shapingInput = juce::jlimit(
-                        -1.0, 1.0, static_cast<double>(bandSignal));
-                    const double saturated =
-                        analogADAA[band][(size_t)ch].processSample(
-                            shapingInput, analogAlpha[band]);
-                    const double delta = saturated - shapingInput;
-                    const double x2 = p.eqColorX2[band] ? 2.0 : 1.0;
-                    const double bandOutput =
-                        static_cast<double>(bandSignal) + delta * x2;
+                const float bandSignal = bands[band];
+                const double shapingInput = juce::jlimit(
+                    -1.0, 1.0, static_cast<double>(bandSignal));
+                const double saturated =
+                    analogADAA[band][(size_t)ch].processSample(
+                        shapingInput, analogAlpha[band]);
+                const double delta = saturated - shapingInput;
+                const double x2 = p.eqColorX2[band] ? 2.0 : 1.0;
+                const double bandOutput =
+                    static_cast<double>(bandSignal) + delta * x2;
 
-                    bandSignal = static_cast<float>(
-                        std::isfinite(bandOutput)
-                            ? bandOutput
-                            : static_cast<double>(bandSignal));
-                }
-
-                reconstructed += bandSignal;
+                if (std::isfinite(bandOutput))
+                    analogDelta += static_cast<float>(
+                        bandOutput - static_cast<double>(bandSignal));
             }
 
-            data[sample] = reconstructed;
+            data[sample] = analogDelta;
         }
     }
 
     eqOversampler.processSamplesDown(analogOutput);
+
+    for (int ch = 0; ch < juce::jmin(channels, buffer.getNumChannels()); ++ch)
+    {
+        auto* data = buffer.getWritePointer(ch);
+        const auto* delayedBase = dynamicDetectorInput.getReadPointer(ch);
+        for (int n = 0; n < buffer.getNumSamples(); ++n)
+            data[n] += delayedBase[n];
+    }
 }
 void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
+    const float globalMix =
+        juce::jlimit(0.f, 1.f, p.udmbcMix / 100.f);
+
+    const auto resetUdmbcState = [this]()
+    {
+        udmbcXover1.reset(); udmbcXover2.reset(); udmbcXover3.reset();
+        udmbcPhase2_B1.reset(); udmbcPhase3_B1.reset(); udmbcPhase3_B2.reset();
+        for (auto& state : udmbcDynamics)
+        {
+            state.gateEnvDb = { 0.f, 0.f };
+            state.lifterEnv = { 1.f, 1.f };
+            state.compEnvDb = { 0.f, 0.f };
+            state.upRmsPower = { 0.f, 0.f };
+            state.upSlowRmsPower = { 0.f, 0.f };
+            state.downRmsPower = { 0.f, 0.f };
+            state.downSlowRmsPower = { 0.f, 0.f };
+        }
+    };
+
+    if (p.udmbcBypass || globalMix <= 0.000001f)
+    {
+        resetUdmbcState();
+        return;
+    }
+
     bool anyActiveBand = false;
     for (size_t band = 0; band < 4; ++band)
         anyActiveBand = anyActiveBand
             || (!p.udmbcBandBypass[band]
                 && p.udmbcDegree[band] > 0.0001f);
 
-    if (!anyActiveBand)
+    const bool globalProcessingActive =
+        std::abs(p.udmbcInputGainDb) > 0.0001f
+        || std::abs(p.udmbcOutputGainDb) > 0.0001f
+        || p.udmbcClipper;
+
+    if (!anyActiveBand && !globalProcessingActive)
+    {
+        resetUdmbcState();
         return;
+    }
 
     // Four independent UDMBC bands. Each band has its own detector state and
     // runs downward compression first, then upward compression, followed by
@@ -1628,8 +1646,6 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.udmbcInputGainDb));
-    const float globalMix =
-        juce::jlimit(0.f, 1.f, p.udmbcMix / 100.f);
     const float outputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.udmbcOutputGainDb));
 
@@ -1674,6 +1690,7 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
             lowMid = udmbcPhase3_B2.allPass(lowMid, right);
 
             float bands[4] = { low, lowMid, midHigh, top };
+            const float dryBands[4] = { low, lowMid, midHigh, top };
 
             for (int band = 0; band < 4; ++band)
             {
@@ -1703,7 +1720,7 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
                 // Classic UDMBC-style scaling: upward reaches 4:1.
                 // Downward is intentionally much stronger, matching the
-                // documented Ableton/Xfer family character. The top band
+                // high-ratio multiband upward/downward character. The top band
                 // uses the slightly harder target.
                 const float downMaxRatio = band == 3 ? 100.f : kCompressorRatio;
                 const float downRatio =
@@ -1806,24 +1823,38 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 bands[band] = v;
             }
 
-            float wet = bands[0] + bands[1] + bands[2] + bands[3];
+            float moduleDelta = 0.0f;
+            for (int band = 0; band < 4; ++band)
+            {
+                if (p.udmbcBandBypass[(size_t) band]
+                    || p.udmbcDegree[(size_t) band] <= 0.0001f)
+                    continue;
+                moduleDelta += bands[band] - dryBands[band];
+            }
 
+            float wet = x + moduleDelta;
             if (p.udmbcClipper)
                 wet = std::tanh(wet * 1.7f);
+            wet *= outputGain * autoTrimGain;
 
-            wet *= outputGain;
-
-            // Do not clip the UDMBC reconstruction here. The final true-peak
-            // lookahead limiter operates on the complete mixed programme.
-            data[n] =
-                (original + globalMix * (wet - original))
-                * autoTrimGain;
+            data[n] = original + globalMix * (wet - original);
         }
     }
 }
 
 void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
+    const float mix =
+        juce::jlimit(0.f, 1.f, p.tapeMix / 100.f);
+
+    if (p.tapeBypass || mix <= 0.000001f)
+    {
+        typeXover1.reset();
+        typeXover2.reset();
+        typeXover3.reset();
+        return;
+    }
+
     bool anyActiveBand = false;
     for (size_t band = 0; band < 4; ++band)
         anyActiveBand = anyActiveBand
@@ -1839,8 +1870,6 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
         dbToGain(juce::jlimit(-24.f, 24.f, p.tapeInputGainDb));
     const float outputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.tapeOutputGainDb));
-    const float mix =
-        juce::jlimit(0.f, 1.f, p.tapeMix / 100.f);
 
     // TAPE uses the same shared graph crossovers as UDMBC.
     const float x1 = juce::jlimit(40.f, 1000.f, p.udmbcX1);
@@ -1939,8 +1968,8 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
                 enhancement += (processed - bands[band]) * depth;
             }
 
-            data[n] =
-                (x + enhancement * mix) * outputGain;
+            const float wet = (x + enhancement) * outputGain;
+            data[n] = original + mix * (wet - original);
         }
     }
 }
@@ -2044,11 +2073,8 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     applyEq(buffer, p);
     alignDryBuffer(numSamples);
 
-    if (!p.udmbcBypass)
-        applyOtt(buffer, p);
-
-    if (!p.tapeBypass)
-        applyAType(buffer, p);
+    applyOtt(buffer, p);
+    applyAType(buffer, p);
 
 
     // Dry/Wet is performed after the EQ latency has been matched.

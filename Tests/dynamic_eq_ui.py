@@ -128,7 +128,7 @@ def source_assertions():
         assert token in proc or token in cpp, token
 
     assert 'if(this.s.delta){yL=yL-l;yR=yR-r;}' in worklet
-    assert 'analogReconstructed' in worklet
+    assert 'analogDelta' in worklet
     assert 'zoneBands(y,c,"analogLp",s.udmbc.x)' in worklet
     assert 'colorX2?.[b]?2:1' in worklet
 

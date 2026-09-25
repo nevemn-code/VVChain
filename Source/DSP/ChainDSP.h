@@ -410,12 +410,6 @@ private:
     std::array<double, 4> analogAlpha {};
     std::array<bool, 4> analogAlphaInitialized { false, false, false, false };
 
-    // One shared 30 Hz / 12 dB/oct Butterworth high-pass before the
-    // ANALOG -> UDMBC -> TAPE band-processing chain. This is intentionally
-    // a single filter, not one HPF per module, so no inter-module phase mismatch
-    // or additional sample latency is introduced.
-    Biquad bandProcessingHighPass {};
-
     // Reusable scratch for allocation-free four-band ANALOG.
     Crossover4th analogXover1 {};
     Crossover4th analogXover2 {};

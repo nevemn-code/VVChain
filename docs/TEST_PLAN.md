@@ -1,4 +1,4 @@
-# VVChain Test Plan（v1.0.60）
+# VVChain Test Plan（v1.0.64）
 
 v1.0.55 已修正先前已知的 Web smoke Python 引號錯誤與 UI regression 過時固定版本／註解 guard。Fast Gate 現在在 PR、main push、手動執行三種情況都會跑；實際通過與否仍以本版 Actions 為準。
 
@@ -12,8 +12,6 @@ Runs on pull requests, main pushes and manual workflow dispatch, and is intentio
 - Web smoke regression.
 - Dynamic EQ / UI / interaction regression.
 - Current Web visible version ↔ Worklet cache version parity.
-
-目前 `web_smoke.py` 第 82 行 Python 語法錯誤，PR gate 不能通過；其他 source guard 也有舊字面斷言。先修測試，確定它們真正執行到測試核心，再宣稱 Fast Gate 通過。
 
 The Fast Gate must not install the full Linux audio/X11 toolchain or rebuild Native VST3.
 
@@ -46,7 +44,7 @@ Manual `full_validation=true` is reserved for expensive checks:
 - Compact two-line EQ / DYN EQ graph readout.
 - Master bypass / dry path latency alignment.
 - Main Spectrum Analyzer remains 4096-point; module contribution Analyzer symbols/FIFOs/Worklet messages must be absent.
-- DYNAMICS=0 static fast path and all-zero UDMBC / Type-A lazy-return guards must remain present.
+- DYNAMICS=0 static fast path、Analog conditional 4×、UDMBC / TAPE zero-work guards 必須存在；UDMBC / TAPE MIX=0 必須 exact dry。
 
 ## Host validation before public release
 

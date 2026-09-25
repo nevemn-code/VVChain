@@ -1,4 +1,10 @@
-# VVChain Validation Status（v1.0.60；歷史基準仍保留於下文）
+# VVChain Validation Status（v1.0.64；歷史基準仍保留於下文）
+
+## v1.0.64 signal-integrity routing
+- 移除 hidden 30 Hz audible HPF。
+- Analog 改為 fixed-PDC parallel nonlinear delta，不再以四段 crossover 重建 full-band base。
+- UDMBC / TAPE Dry-Wet 改為 dry + mix × (wet-dry)；MIX=0 exact dry。
+- Native/Web source contracts 同步；實際 host null / CPU profiler 仍屬發版前 DAW 驗證。
 
 ## v1.0.60 Transient implementation
 - Branch: `feature/transient-v1.0.60`.

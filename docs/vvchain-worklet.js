@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.63
+// VVChain Web AudioWorklet DSP module · v1.0.64
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -418,30 +418,34 @@ class VVChainWorklet extends AudioWorkletProcessor {
 
   sample(x,ch,analogAlpha){
     const s=this.s,c=this.ch[ch];let y=x;
-    // EQ/Dynamics and the one shared 30 Hz floor are already upstream.
+    // EQ/Dynamics and TRANSIENT are already upstream.
 
     // ANALOG COLOR v1.0.56: true four-band routing.
     // Shared X1/X2/X3 positions define four bands before independent COLOR/ADAA.
     const analogBands=this.zoneBands(y,c,"analogLp",s.udmbc.x);
-    let analogReconstructed=0;
+    let analogDelta=0;
     for(let b=0;b<4;b++){
       const bandInput=analogBands[b];
-      if(s.eq.globalBypass||s.eq.colorBypass[b]||analogAlpha[b]<=1e-6){
-        analogReconstructed+=bandInput;
-      }else{
-        const x2=s.eq.colorX2?.[b]?2:1;
-        analogReconstructed+=this.analog(
-          bandInput,analogAlpha[b],c,b,x2
-        );
-      }
+      if(s.eq.globalBypass||s.eq.colorBypass[b]||analogAlpha[b]<=1e-6)continue;
+      const x2=s.eq.colorX2?.[b]?2:1;
+      analogDelta+=this.analog(
+        bandInput,analogAlpha[b],c,b,x2
+      )-bandInput;
     }
-    y=analogReconstructed;
+    y+=analogDelta;
     if(!s.udmbc.bypass){
       const original=y,inputGain=this.db2g(this.clamp(s.udmbc.input,-24,24)),xs=s.udmbc.x,z=original*inputGain;
       c.lp[0]+=(1-Math.exp(-2*Math.PI*xs[0]/sampleRate))*(z-c.lp[0]);const h0=z-c.lp[0];
       c.lp[1]+=(1-Math.exp(-2*Math.PI*xs[1]/sampleRate))*(h0-c.lp[1]);const h1=h0-c.lp[1];
       c.lp[2]+=(1-Math.exp(-2*Math.PI*xs[2]/sampleRate))*(h1-c.lp[2]);
       const bands=[c.lp[0],c.lp[1],c.lp[2],h1-c.lp[2]];
+      const dryBands=bands.slice();
+      let amountSum=0,amountCount=0;
+      for(let b=0;b<4;b++){
+        if(s.bandBypass?.[b]||s.udmbc.bandBypass[b])continue;
+        amountSum+=this.clamp(Number(s.udmbc.degree[b]||0),0,100)/100;
+        amountCount++;
+      }
       for(let b=0;b<4;b++){
         if(s.bandBypass?.[b]||s.udmbc.bandBypass[b])continue;
         const degree=this.clamp(Number(s.udmbc.degree[b]||0),0,100);
@@ -469,14 +473,18 @@ class VVChainWorklet extends AudioWorkletProcessor {
         const upMix=this.clamp(s.udmbc.liftM[b]/100,0,1);v*=c.lift[b]*upMix+(1-upMix);
         v*=this.db2g(this.clamp(s.udmbc.level[b],-24,12));bands[b]=v;
       }
-      let sum=bands[0]+bands[1]+bands[2]+bands[3];
+      let moduleDelta=0;
+      for(let b=0;b<4;b++){
+        if(s.bandBypass?.[b]||s.udmbc.bandBypass[b])continue;
+        if(this.clamp(Number(s.udmbc.degree[b]||0),0,100)<=1e-4)continue;
+        moduleDelta+=bands[b]-dryBands[b];
+      }
+      let sum=z+moduleDelta;
       if(s.udmbc.clip)sum=Math.tanh(sum*1.7);
-      sum*=this.db2g(this.clamp(s.udmbc.output,-24,24));
-      const ceilingDb=-.8,inputDb=this.g2db(Math.max(Math.abs(sum),1e-9)),targetRed=inputDb>ceilingDb?-(inputDb-ceilingDb):0;
-      const la=this.tc(.05),lr=this.tc(85),lc=targetRed<c.lim?la:lr;
-      c.lim=lc*c.lim+(1-lc)*targetRed;sum*=this.db2g(c.lim);
+      const autoTrim=this.db2g(-2.5*(amountCount?amountSum/amountCount:0));
+      sum*=this.db2g(this.clamp(s.udmbc.output,-24,24))*autoTrim;
       const mix=this.clamp(s.udmbc.mix/100,0,1);
-      y=original*(1-mix)+sum*mix;
+      y=original+mix*(sum-original);
     }
     if(!s.type.bypass){
       const ti=y*this.db2g(s.type.input);
@@ -519,7 +527,8 @@ class VVChainWorklet extends AudioWorkletProcessor {
         enhancement+=(processed-bands[b])*depth;
       }
 
-      y=(ti+enhancement*mix)*this.db2g(this.clamp(Number(s.type.output||0),-24,12));
+      const wet=(ti+enhancement)*this.db2g(this.clamp(Number(s.type.output||0),-24,12));
+      y=y+mix*(wet-y);
     }
     return y;
   }
@@ -541,7 +550,6 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const soloBand=Number(this.s.solo?.band??-1),graphSolo=!!this.s.solo?.graphActive,soloEnabled=graphSolo||(soloBand>=0&&soloBand<4),xs=this.s.udmbc.x;
     const analogSmoothingCoeff=Math.exp(-1/(0.001*0.25*sampleRate));
     const analogAlpha=this.analogAlpha;
-    const bandProcessingHpCoef=this.hp(30,.7071067811865476);
 
     for(let b=0;b<4;b++){
       const active=!this.s.eq.globalBypass&&!this.s.eq.colorBypass[b]&&Number(this.s.eq.color[b]||0)>1e-6;
@@ -575,12 +583,8 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const l=L[n]||0,r=R[n]||0;
       const dyn=this.dynamicStereo(l,r,stereo);
 
-      // One shared audible 30 Hz floor, then base-rate TRANSIENT, then Analog.
-      const floorL=this.biquad(dyn[0],bandProcessingHpCoef,this.ch[0].bandProcessingHp);
-      const floorR=stereo
-        ? this.biquad(dyn[1],bandProcessingHpCoef,this.ch[1].bandProcessingHp)
-        : dyn[1];
-      const transientOut=this.applyTransientStereo(floorL,floorR,stereo,xs);
+      // No hidden audible HPF: neutral user settings remain transparent.
+      const transientOut=this.applyTransientStereo(dyn[0],dyn[1],stereo,xs);
       const moduleL=this.sample(transientOut[0],0,analogAlpha);
       const moduleR=this.sample(transientOut[1],1,analogAlpha);
 

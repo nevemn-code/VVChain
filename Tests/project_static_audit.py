@@ -88,6 +88,10 @@ assert "const double osSr = sr;" in dsp
 assert "dynamicsAmount <= 0.000001f" in dsp
 assert dsp.count("bool anyActiveBand = false;") >= 2
 assert "eqWetDelay" in dsp + dsp_h
+assert "bandProcessingHighPass" not in dsp + dsp_h
+assert "analogDelta" in dsp
+assert "data[n] = original + globalMix * (wet - original);" in dsp
+assert "original + mix * (wet - original)" in dsp
 assert "visibilitychange" in web
 assert "const bool deltaMonitorOn" in processor
 assert "if (!deltaMonitorOn)" in processor
