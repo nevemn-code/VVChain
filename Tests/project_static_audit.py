@@ -68,30 +68,25 @@ processor_h = read("Source/PluginProcessor.h")
 processor = read("Source/PluginProcessor.cpp")
 settings = read("Source/SettingsPanel.cpp")
 
-# v1.0.55 analyzer / contribution invariants.
+# v1.0.59 analyzer invariants: main Spectrum only, no module contribution path.
 assert "analyzerFftOrder = 12" in editor_h
 assert "analyzerHopSize = analyzerFftSize / 2" in editor_h
-assert "contributionFftOrder = 11" in editor_h
+assert "contributionFftOrder" not in editor_h
 assert "std::atomic<bool> analyzerEnabled { false }" in processor_h
-assert "popContributionSamples" in processor_h + processor
-assert "setContributionAnalysisEnabled" in dsp_h + processor
-assert "contributionStream" in dsp_h + processor
-assert "ANALOG / UDMBC / TYPE-A" in settings
-assert "ADDED DELTA" in settings
-assert "0xfff4a63a" in editor
-assert "0xff4fc3ff" in editor
-assert "0xffd97cff" in editor
-assert "postPower <= prePower * 1.005" in editor
-assert "postDb < -82.0f" in editor
-assert "totalGrowth > 12.0f" in editor
+assert "popContributionSamples" not in processor_h + processor
+assert "setContributionAnalysisEnabled" not in dsp_h + processor
+assert "contributionStream" not in dsp_h + processor
 assert "analyzerPath.cubicTo" in editor
+assert "Nonlinear Analog ADAA v2 remains fixed at 4x" in dsp
+assert "eqOversampler.processSamplesUp" in dsp
+assert "const double osSr = sr;" in dsp
+assert "dynamicsAmount <= 0.000001f" in dsp
+assert dsp.count("bool anyActiveBand = false;") >= 2
+assert "eqWetDelay" in dsp + dsp_h
 assert "visibilitychange" in web
-assert 'type:"contributionSamples"' in read("docs/vvchain-worklet.js")
-assert "ContributionFFT" in web
 assert "const bool deltaMonitorOn" in processor
 assert "if (!deltaMonitorOn)" in processor
 assert "if (analyzerOn && p.deltaMonitor)" in processor
-assert "analyzerOn && !p.masterBypass && !p.deltaMonitor" in processor
 assert 'parameterValue("DELTA_MONITOR") > 0.5f' in editor
 assert "refreshAnalyzerTap" in web
 

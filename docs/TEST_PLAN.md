@@ -1,4 +1,4 @@
-# VVChain Test Plan（v1.0.58）
+# VVChain Test Plan（v1.0.59）
 
 v1.0.55 已修正先前已知的 Web smoke Python 引號錯誤與 UI regression 過時固定版本／註解 guard。Fast Gate 現在在 PR、main push、手動執行三種情況都會跑；實際通過與否仍以本版 Actions 為準。
 
@@ -40,11 +40,13 @@ Manual `full_validation=true` is reserved for expensive checks:
 - Shared X1 / X2 / X3 crossover boundaries.
 - Four independent UDMBC bands and bypass states.
 - Four TAPE COLOR bands sharing the crossover ranges.
-- Four independent Analog Color bands, 0–60 processing range, TT/SS, bypass and X2 delta ×2.
+- Four independent Analog Color bands, 0–60 processing range, TT/SS, bypass and X2 delta ×2; active Analog remains 4× while all-zero/bypass must skip the oversampler.
 - De-Esser 6–18 kHz, 0–8 dB maximum reduction, four response modes.
 - LF／HF Roll-Off 6／12／24／36／48／60／72 dB/oct，預設 12；逐格 OCT 控制須實測滑鼠滾輪。
 - Compact two-line EQ / DYN EQ graph readout.
 - Master bypass / dry path latency alignment.
+- Main Spectrum Analyzer remains 4096-point; module contribution Analyzer symbols/FIFOs/Worklet messages must be absent.
+- DYNAMICS=0 static fast path and all-zero UDMBC / Type-A lazy-return guards must remain present.
 
 ## Host validation before public release
 

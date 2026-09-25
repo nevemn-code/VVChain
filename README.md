@@ -1,12 +1,12 @@
 # VVChain
 
-## 目前實際狀態（v1.0.58）
+## 目前實際狀態（v1.0.59）
 
 v1.0.55 修復既有 Web smoke／UI regression 的過時 source guard，Fast Gate 改為 main push 也執行，並把 Web smoke、project static audit、UI/interaction regression 各重跑十輪。實際通過狀態以本版 GitHub Actions 結果為準；DAW／pluginval／AAX 仍屬獨立驗證。
 
 目前主鏈的實際順序：EQ／Dynamic EQ + 四段 Analog → UDMBC → TAPE COLOR → De-Esser → Mix／Out → Solo → true-peak limiter → 主 Bypass／Delta。X1／X2／X3 共用於 Analog、UDMBC、TAPE COLOR 和頻段 Solo；EQ 四個點各有自己的頻率。LF／HF Roll-Off 供 6–72 dB/oct 的離散選項，預設 12 dB/oct。
 
-Analog 0% 的**非線性增量**為零；整條 EQ 路徑仍經過 oversampling 和分頻重建，未完成全鏈 bit-exact null 驗證。Native 的 Analog 在 4× EQ oversampling 內，Web 在 Worklet rate 運作，兩版不能視為逐 sample 相同。Windows VST3／DAW 實測尚未由這次封閉測試證實。
+Linear EQ / Dynamic EQ 現在固定在 host sample rate；只有實際啟用 Analog ADAA v2 時才進入 4× oversampling（48 kHz → 192 kHz）。Analog 四段全部 0% 或 Bypass 時，整個 upsample → ADAA → downsample 路徑完全跳過，以等延遲純 delay 維持固定 PDC。Windows VST3／DAW 實測仍以 CI artifact 與 host 驗證為準。
 
 四段式音訊鏈結 VST3 / AAX 專案，主介面固定為單一 plugin 視窗。
 
@@ -22,7 +22,7 @@ INPUT
 
 ## Main UI
 - 上方顯示 EQ response、Shared X-Over 與即時 Spectrum Analyzer。
-- 主 Spectrum 使用 4096-point Hann FFT；其上方另外顯示三個 ADDED-DELTA contribution layers：ANALOG（橘）、UDMBC（青）、TYPE-A（紫）。
+- 主 Spectrum 使用 4096-point Hann FFT。ANALOG / UDMBC / TYPE-A 的 contribution Analyzer、六條 pre/post stream 與其 2048 FFT 已全部移除。
 - 3 條可拖曳 Shared X-Over 線，分成 4 個頻段；線上滾輪調整 OVERLAP。
 - BAND 1–4：FREQ / GAIN / Q / ANALOG COLOR / UDMBC % / ATTACK / RELEASE / TAPE COLOR +。
 - 每個頻段的 ANALOG COLOR 完全獨立；使用者範圍 0–60%，0% = exact dry；X2 只把目前 ANALOG delta 放大為 ×2。
@@ -36,7 +36,7 @@ INPUT
 ## DSP
 - Native De-Esser 為 sample-domain split-band 處理；本身不再使用舊 8192-sample FFT/block PDC。
 - HP / CORNER 不參與聲音計算。
-- ANALOG COLOR 自 v1.0.47 起使用 unity-normalized smooth algebraic transfer + analytical first-order ADAA：0% exact dry；TT/SS 純奇對稱；Native 在 EQ 4x oversampling 內執行；ADAA state 逐 band/channel 隔離；shaping domain 限制 -1..+1；|x|=1 維持 unity；X2 仍只放大該段產生的 ANALOG delta ×2。
+- ANALOG COLOR 使用 unity-normalized smooth algebraic transfer + analytical first-order ADAA：0% exact dry；TT/SS 純奇對稱；只有 Analog nonlinear stage 固定 4× oversampling；ADAA state 逐 band/channel 隔離；shaping domain 限制 -1..+1；|x|=1 維持 unity；X2 仍只放大該段產生的 ANALOG delta ×2。
 - Master BYPASS 保持固定 PDC，完全旁通時輸出延遲乾聲。
 - AAX 目標受 VVCHAIN_ENABLE_AAX 控制，需合法 AAX SDK / 開發環境。
 
@@ -57,11 +57,11 @@ https://nevemn-code.github.io/VVChain/
 
 ## 版本日誌
 
-### v1.0.58
+### v1.0.59
 - 修正 VVChain Fast CI/CD #1255 的 UI / interaction regression：測試仍引用舊的 `resetDynamics` 變數，但目前實作已是 `resetParameter("DYN_DYNAMICS" + n, 0.0f)`。
 - DELTA Analyzer 邏輯沿用 v1.0.57：DELTA ON 時主頻譜只看實際 audible Delta 輸出，不顯示原始輸入頻譜，也不顯示三個 module contribution overlays。
 - DELTA OFF 時回到原本：灰色主頻譜 + ANALOG / UDMBC / TYPE-A contribution。
-- 版本同步至 v1.0.58，重新觸發 Fast Gate、Windows VST3 與 Pages。
+- 版本同步至 v1.0.59，重新觸發 Fast Gate、Windows VST3 與 Pages。
 
 ### v1.0.57
 - DELTA 開啟時，Spectrum Analyzer 不再保留原始輸入波形：Native 改抓 `dsp.process()` 完成後的實際 Delta 輸出；Web 改把 Analyzer tap 從 source 切到 AudioWorklet 最終輸出。
