@@ -68,7 +68,7 @@ processor_h = read("Source/PluginProcessor.h")
 processor = read("Source/PluginProcessor.cpp")
 settings = read("Source/SettingsPanel.cpp")
 
-# v1.0.59 analyzer invariants: main Spectrum only, no module contribution path.
+# v1.0.62 analyzer/transient invariants: main Spectrum only, no module contribution path.
 assert "analyzerFftOrder = 12" in editor_h
 assert "analyzerHopSize = analyzerFftSize / 2" in editor_h
 assert "contributionFftOrder" not in editor_h
@@ -76,6 +76,9 @@ assert "std::atomic<bool> analyzerEnabled { false }" in processor_h
 assert "popContributionSamples" not in processor_h + processor
 assert "setContributionAnalysisEnabled" not in dsp_h + processor
 assert "contributionStream" not in dsp_h + processor
+assert "contribAnalog" not in web
+assert "contribUdmbc" not in web
+assert "contribType" not in web
 assert "analyzerPath.cubicTo" in editor
 assert "Nonlinear Analog ADAA v2 remains fixed at 4x" in dsp
 assert "eqOversampler.processSamplesUp" in dsp
@@ -89,5 +92,22 @@ assert "if (!deltaMonitorOn)" in processor
 assert "if (analyzerOn && p.deltaMonitor)" in processor
 assert 'parameterValue("DELTA_MONITOR") > 0.5f' in editor
 assert "refreshAnalyzerTap" in web
+
+# TRANSIENT is base-rate, precedes Analog, uses a stereo-linked detector,
+# and injects only band deltas so it cannot add a second full-band crossover
+# phase rotation. It must not wake the Analog 4x path by itself.
+assert "transientAmount" in dsp_h + processor
+assert "void VVChainDSP::applyTransient" in dsp
+assert "applyTransient(buffer, p);" in dsp
+assert "vvFastLogPositive" in dsp
+assert "transientBand1SidechainHPF" in dsp_h + dsp
+assert "transientXover1" in dsp_h + dsp
+assert "const float energySq" in dsp
+assert "inputByChannel[ch] + delta" in dsp
+assert "bandsByChannel[ch][band] * (gains[band] - 1.0f)" in dsp
+assert "anyBandStageActive" not in dsp
+assert "transientGain[band]" not in dsp
+for dead in ("DEESS_", "processDeEsser", "DeEssState", "deessStereo", "state.de.", "de:{"):
+    assert dead not in editor_h + editor + processor_h + processor + dsp_h + dsp + web + read("docs/vvchain-worklet.js"), dead
 
 print(f"PASS project static audit v{version.group(1)}")

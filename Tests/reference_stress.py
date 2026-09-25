@@ -53,11 +53,11 @@ def source_guards():
     cpp=(ROOT/"Source"/"DSP"/"ChainDSP.cpp").read_text(encoding="utf-8")
     editor=(ROOT/"Source"/"PluginEditor.cpp").read_text(encoding="utf-8")
     adaa=(ROOT/"Source"/"DSP"/"VVChain_AnalogADAA_v2.h").read_text(encoding="utf-8")
-    for marker in ("VVChain_AnalogADAA_v2","analogADAA[band][ch].processSample","const double shapingInput = juce::jlimit(-1.0, 1.0, x)","const double delta = saturated - shapingInput","constexpr double kSmoothingMs = 0.25"):
+    for marker in ("VVChain_AnalogADAA_v2","analogADAA[band][(size_t)ch].processSample","const double shapingInput = juce::jlimit(","const double delta = saturated - shapingInput","constexpr double kAnalogSmoothingMs = 0.25"):
         assert marker in cpp or marker in adaa,marker
     assert "std::sqrt(std::sqrt(1.0 + alpha))" in adaa
     assert "calcAntiderivative" in adaa
-    assert "p.eqColorX2[band] ? 2.0f : 1.0f" in cpp
+    assert "const double x2 = p.eqColorX2[band] ? 2.0 : 1.0;" in cpp
     assert "const float speed = fine ? 0.0075f : 0.075f;" in editor
 
 
@@ -79,9 +79,9 @@ def run_stress_test(iterations=5):
                         assert np.array_equal(y, x)
                     else:
                         probe=np.linspace(-1.0,1.0,4097)
-                    alpha=amount*(1.80 if solid_state else 1.55)
-                    static_y=probe/(1+alpha*probe*probe)**.25*(1+alpha)**.25
-                    assert np.min(np.abs(static_y)-np.abs(probe))>=-1e-12
+                        alpha=amount*(1.80 if solid_state else 1.55)
+                        static_y=probe/(1+alpha*probe*probe)**.25*(1+alpha)**.25
+                        assert np.min(np.abs(static_y)-np.abs(probe))>=-1e-12
 
         for degree in (0.0, 6.0, 25.0, 50.0, 90.0):
             y = tape_reference(x, degree)

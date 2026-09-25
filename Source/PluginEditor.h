@@ -634,16 +634,10 @@ private:
     GlobalGraphMouseListener globalGraphMouseListener;
 
     std::vector<Knob> knobs;
-    std::array<std::unique_ptr<juce::ToggleButton>, 5> bypassButtons;
-    std::array<std::unique_ptr<BoolAttachment>, 5> bypassAttachments;
+    std::array<std::unique_ptr<juce::ToggleButton>, 4> bypassButtons;
+    std::array<std::unique_ptr<BoolAttachment>, 4> bypassAttachments;
     std::unique_ptr<juce::ToggleButton> masterBypassButton;
     std::unique_ptr<BoolAttachment> masterBypassAttachment;
-    std::unique_ptr<juce::ToggleButton> deessBypassButton;
-    std::unique_ptr<BoolAttachment> deessBypassAttachment;
-    std::unique_ptr<juce::Slider> deessModeSwitch;
-    std::unique_ptr<Attachment> deessModeAttachment;
-    std::unique_ptr<juce::ToggleButton> deessLocalBypassButton;
-    std::unique_ptr<BoolAttachment> deessLocalBypassAttachment;
     std::unique_ptr<juce::ToggleButton> deltaMonitorButton;
     std::unique_ptr<BoolAttachment> deltaMonitorAttachment;
     std::array<std::unique_ptr<juce::TextButton>, 4> advancedButtons;

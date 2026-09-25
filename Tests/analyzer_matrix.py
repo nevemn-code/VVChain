@@ -35,7 +35,7 @@ def main() -> None:
     assert 'type:"analysisEnabled"' not in worklet
     assert 'type:"contributionSamples"' not in worklet
 
-    # CPU architecture invariants for v1.0.59.
+    # CPU architecture invariants for v1.0.60.
     assert "Nonlinear Analog ADAA v2 remains fixed at 4x" in dsp
     assert "eqOversampler.processSamplesUp" in dsp
     assert "const double osSr = sr;" in dsp

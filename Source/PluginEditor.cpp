@@ -37,39 +37,6 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
         : slider.findColour(juce::Slider::rotarySliderFillColourId);
     const float angle = juce::jmap(sliderPosProportional, rotaryStartAngle, rotaryEndAngle);
 
-    if (slider.getComponentID() == "DEESS_MODE")
-    {
-        static constexpr std::array<const char*, 4> labels { "I", "II", "III", "IV" };
-        const float labelRadius = radius + 12.0f;
-
-        for (size_t i = 0; i < labels.size(); ++i)
-        {
-            const float t = static_cast<float>(i)
-                / static_cast<float>(labels.size() - 1);
-            const float tickAngle =
-                juce::jmap(t, rotaryStartAngle, rotaryEndAngle);
-            const float screenAngle =
-                tickAngle - juce::MathConstants<float>::halfPi;
-
-            const float inner = radius + 5.0f;
-            const float outer = radius + 9.0f;
-            const float x1 = cx + std::cos(screenAngle) * inner;
-            const float y1 = cy + std::sin(screenAngle) * inner;
-            const float x2 = cx + std::cos(screenAngle) * outer;
-            const float y2 = cy + std::sin(screenAngle) * outer;
-
-            g.setColour(accent.withAlpha(0.92f));
-            g.drawLine(x1, y1, x2, y2, 1.4f);
-
-            const float tx = cx + std::cos(screenAngle) * labelRadius - 7.0f;
-            const float ty = cy + std::sin(screenAngle) * labelRadius - 5.0f;
-            g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-            g.drawText(labels[i],
-                       juce::Rectangle<float>(tx, ty, 14.0f, 10.0f).toNearestInt(),
-                       juce::Justification::centred);
-        }
-    }
-
     g.setColour(ivoryTheme ? juce::Colour(0xffa89f93)
                            : juce::Colours::black.withAlpha(0.92f));
     g.fillEllipse(cx - radius - 3.f, cy - radius - 3.f,
@@ -164,51 +131,6 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
         return;
     }
 
-    if (slider.getComponentID() == "DEESS_MODE_SWITCH")
-    {
-        juce::ignoreUnused(sliderPosProportional, sliderAsymmetry,
-                           sliderStart, style);
-        auto r = juce::Rectangle<float>(
-            static_cast<float>(x), static_cast<float>(y),
-            static_cast<float>(width), static_cast<float>(height)).reduced(1.0f);
-        const auto accent = monochrome
-            ? slider.findColour(juce::Slider::thumbColourId).withSaturation(0.0f)
-            : slider.findColour(juce::Slider::thumbColourId);
-        g.setColour(ivoryTheme ? juce::Colour(0xffeee7dc) : juce::Colours::black.withAlpha(.78f));
-        g.fillRoundedRectangle(r, 5.0f);
-        g.setFont(juce::FontOptions(8.0f).withStyle("Bold"));
-        g.setColour(ivoryTheme ? juce::Colour(0xff34383d) : juce::Colour(0xffcfd5dc));
-        g.drawText("DE-ESS MODE", r.withHeight(14.0f).toNearestInt(),
-                   juce::Justification::left);
-        const auto track = r.withY(r.getY() + 17.0f).withHeight(31.0f);
-        g.setColour(ivoryTheme ? juce::Colour(0xffe4dbcf) : juce::Colour(0xff0c0f13));
-        g.fillRoundedRectangle(track, 5.0f);
-        g.setColour(accent.withAlpha(.45f));
-        g.drawRoundedRectangle(track, 5.0f, 1.0f);
-        static constexpr std::array<const char*, 4> labels { "I", "II", "III", "IV" };
-        const int selected = juce::jlimit(
-            1, 4, static_cast<int>(std::lround(slider.getValue()))) - 1;
-        const float segW = track.getWidth() / 4.0f;
-        for (int i = 0; i < 4; ++i)
-        {
-            auto seg = track.withX(track.getX() + segW * static_cast<float>(i))
-                            .withWidth(segW);
-            if (i == selected)
-            {
-                g.setColour(accent.withAlpha(.28f));
-                g.fillRoundedRectangle(seg.reduced(2.0f), 4.0f);
-                g.setColour(accent);
-                g.drawRoundedRectangle(seg.reduced(2.0f), 4.0f, 1.1f);
-            }
-            g.setFont(juce::FontOptions(8.5f).withStyle("Bold"));
-            g.setColour(i == selected
-                ? (ivoryTheme ? juce::Colour(0xff202327) : juce::Colours::white)
-                : (ivoryTheme ? juce::Colour(0xff716b64) : juce::Colour(0xffaeb5bd)));
-            g.drawText(labels[i], seg.toNearestInt(),
-                       juce::Justification::centred);
-        }
-        return;
-    }
     juce::LookAndFeel_V4::drawLinearSlider(
         g, x, y, width, height,
         sliderPosProportional, sliderAsymmetry,
@@ -295,48 +217,6 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
         g.setColour(ss ? juce::Colour(0xffedf1f5) : accent);
         g.drawText("SS", r.withX(r.getX() + half).withWidth(half).toNearestInt(),
                    juce::Justification::centred);
-        return;
-    }
-
-    if (button.getComponentID() == "DEESS_ROUND_BYPASS")
-    {
-        const auto r = button.getLocalBounds().toFloat().reduced(1.f);
-        const float d = juce::jmin(r.getWidth(), r.getHeight()) - 6.f;
-        const float cx = r.getCentreX();
-        const float cy = r.getCentreY();
-        const auto accent = monochrome
-            ? button.findColour(juce::ToggleButton::tickColourId).withSaturation(0.0f)
-            : button.findColour(juce::ToggleButton::tickColourId);
-        const bool active = !button.getToggleState();
-
-        g.setColour(juce::Colours::black.withAlpha(.92f));
-        g.fillEllipse(cx - d * .5f - 5.f, cy - d * .5f - 5.f,
-                      d + 10.f, d + 10.f);
-
-        juce::ColourGradient glow(active ? accent.withAlpha(.95f)
-                                          : juce::Colour(0xff4b5058),
-                                  cx, cy - d * .5f,
-                                  active ? accent.withAlpha(.16f)
-                                         : juce::Colour(0xff15181c),
-                                  cx, cy + d * .5f, false);
-        g.setGradientFill(glow);
-        g.fillEllipse(cx - d * .5f, cy - d * .5f, d, d);
-        g.setColour(active ? accent : juce::Colour(0xff626870));
-        g.drawEllipse(cx - d * .5f, cy - d * .5f, d, d, 1.8f);
-
-        g.setColour(active ? juce::Colours::white
-                           : juce::Colour(0xff8b929a));
-
-        g.drawLine(cx, cy - d * .27f,
-                   cx, cy - d * .02f, 3.f);
-
-        juce::Path powerArc;
-        const float pi = juce::MathConstants<float>::pi;
-        powerArc.addCentredArc(
-            cx, cy + d * .01f,
-            d * .22f, d * .22f, 0.f,
-            pi * 0.23f, pi * 1.77f, true);
-        g.strokePath(powerArc, juce::PathStrokeType(3.f));
         return;
     }
 
@@ -453,27 +333,26 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     addAndMakeVisible(*settingsPanel);
     settingsPanel->setVisible(false);
 
-    const std::array<juce::String, 5> bypassIds
+    const std::array<juce::String, 4> bypassIds
     {
         "EQ_BYPASS", "UDMBC_BYPASS", "EQ_COLOR_GLOBAL_BYPASS",
-        "TAPE_BYPASS", "DEESS_BYPASS"
+        "TAPE_BYPASS"
     };
 
-    const std::array<juce::String, 5> bypassLabels
+    const std::array<juce::String, 4> bypassLabels
     {
-        "EQ", "UDMBC", "ANALOG", "TAPE COLOR", "DE-ESS"
+        "EQ", "UDMBC", "ANALOG", "TAPE COLOR"
     };
 
-    const std::array<juce::Colour, 5> bypassColours
+    const std::array<juce::Colour, 4> bypassColours
     {
         juce::Colour(0xff38bdf8),
         juce::Colour(0xfffacc15),
         juce::Colour(0xff60a5fa),
-        juce::Colour(0xfff472b6),
-        juce::Colour(0xff67d3aa)
+        juce::Colour(0xfff472b6)
     };
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
         addBypass(i, bypassIds[(size_t) i], bypassLabels[(size_t) i],
                   bypassColours[(size_t) i]);
 
@@ -660,6 +539,10 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addKnob("TAPE_DEGREE" + n, "TAPE COLOR +", 0, 100, .1,
                 parameterValue("TAPE_DEGREE" + n), "", b, 7, c, true);
 
+        addKnob("TRANSIENT" + n, "TRANSIENT", -100, 100, .1,
+                parameterValue("TRANSIENT" + n), " %", b, 11,
+                juce::Colour(0xff34c759));
+
         // Independent per-band bypass LEDs. False = active/lit; true = bypass/dim.
         udmbcBandBypassButtons[(size_t) b] = std::make_unique<juce::ToggleButton>();
         udmbcBandBypassButtons[(size_t) b]->setLookAndFeel(&metalLook);
@@ -712,59 +595,10 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addAndMakeVisible(*advancedButtons[(size_t) b]);
     }
 
-    // Dedicated fifth zone: DE-ESSER is separate from BAND 4.
-    addKnob("DEESS_FREQ", "DE-ESS FREQ", 6000, 18000, 10,
-            parameterValue("DEESS_FREQ"), " Hz", 4, 0,
-            juce::Colour(0xff67d3aa));
-    addKnob("DEESS_THRESHOLD", "THRESHOLD", -36, 0, .1,
-            parameterValue("DEESS_THRESHOLD"), " dB", 4, 1,
-            juce::Colour(0xff67d3aa));
-    deessModeSwitch = std::make_unique<juce::Slider>();
-    deessModeSwitch->setLookAndFeel(&metalLook);
-    deessModeSwitch->setComponentID("DEESS_MODE_SWITCH");
-    deessModeSwitch->setSliderStyle(juce::Slider::LinearHorizontal);
-    deessModeSwitch->setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    deessModeSwitch->setRange(1.0, 4.0, 1.0);
-    deessModeSwitch->setValue(
-        parameterValue("DEESS_MODE"), juce::dontSendNotification);
-    deessModeSwitch->setColour(
-        juce::Slider::thumbColourId, juce::Colour(0xff67d3aa));
-    deessModeSwitch->setTooltip(
-        "I SAFE 5/120 ms 3:1 · II VOCAL 2/70 ms 4:1 · "
-        "III FAST 0.75/35 ms 8:1 · IV HARD 0.25/20 ms 10:1");
-    deessModeAttachment =
-        std::make_unique<Attachment>(
-            audioProcessor.apvts, "DEESS_MODE", *deessModeSwitch);
-    addAndMakeVisible(*deessModeSwitch);
-
-
-
-    deessBypassButton = std::make_unique<juce::ToggleButton>();
-    deessBypassButton->setLookAndFeel(&metalLook);
-    deessBypassButton->setComponentID("DEESS_ROUND_BYPASS");
-    deessBypassButton->setButtonText("");
-    deessBypassButton->setColour(
-        juce::ToggleButton::tickColourId, juce::Colour(0xffdfe7ef));
-    deessBypassButton->setTooltip("整體 BYPASS：亮 = 作動中；暗 = BYPASS");
-    deessBypassAttachment = std::make_unique<BoolAttachment>(
-        audioProcessor.apvts, "MASTER_BYPASS", *deessBypassButton);
-    addAndMakeVisible(*deessBypassButton);
-
-    deessLocalBypassButton = std::make_unique<juce::ToggleButton>();
-    deessLocalBypassButton->setLookAndFeel(&metalLook);
-    deessLocalBypassButton->setComponentID("DEESS_LOCAL_BYPASS");
-    deessLocalBypassButton->setButtonText("");
-    deessLocalBypassButton->setColour(
-        juce::ToggleButton::tickColourId, juce::Colour(0xff67d3aa));
-    deessLocalBypassButton->setTooltip(
-        "DE-ESSER：亮 = 啟用；按下 = BYPASS");
-    deessLocalBypassAttachment = std::make_unique<BoolAttachment>(
-        audioProcessor.apvts, "DEESS_BYPASS", *deessLocalBypassButton);
-    addAndMakeVisible(*deessLocalBypassButton);
-
+    // Global monitor controls: DELTA + MIX / OUT.
     deltaMonitorButton = std::make_unique<juce::ToggleButton>("DELTA");
     deltaMonitorButton->setLookAndFeel(&metalLook);
-    deltaMonitorButton->setComponentID("DEESS_DELTA");
+    deltaMonitorButton->setComponentID("DELTA_MONITOR");
     deltaMonitorButton->setColour(
         juce::ToggleButton::tickColourId, juce::Colour(0xffffffff));
     deltaMonitorButton->setTooltip(
@@ -807,8 +641,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     startTimerHz(30);
     updateBypassVisuals();
 
-    // DE-ESSER also owns the final MIX / OUT controls.
-    // All four controls are rotary knobs and stay strictly vertical.
+    // Final MIX / OUT remain in the global monitor card.
     addKnob("DRY_WET", "MIX", 0, 100, .1,
             parameterValue("DRY_WET"), " %", 4, 2, juce::Colour(0xff38bdf8));
     addKnob("OUTPUT_LEVEL", "OUT", -24, 12, .1,
@@ -855,10 +688,6 @@ VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
 
     if (masterBypassButton) masterBypassButton->setLookAndFeel(nullptr);
     masterBypassAttachment.reset();
-    if (deessBypassButton) deessBypassButton->setLookAndFeel(nullptr);
-    deessBypassAttachment.reset();
-    if (deessLocalBypassButton) deessLocalBypassButton->setLookAndFeel(nullptr);
-    deessLocalBypassAttachment.reset();
     if (deltaMonitorButton) deltaMonitorButton->setLookAndFeel(nullptr);
     deltaMonitorAttachment.reset();
 
@@ -951,12 +780,6 @@ void VVChainAudioProcessorEditor::addKnob(
         else
             wheelSlider->setDragSensitivity(180, 1800);
 
-        if (id == "DEESS_MODE")
-            wheelSlider->setDiscreteArc(
-                4,
-                7.0f * juce::MathConstants<float>::pi / 6.0f,
-                11.0f * juce::MathConstants<float>::pi / 6.0f);
-
         double wheelStep = std::max(
             0.01, (max - min) * 0.01);
 
@@ -976,8 +799,6 @@ void VVChainAudioProcessorEditor::addKnob(
             wheelStep = 1.0;
         else if (id.contains("RELEASE"))
             wheelStep = 5.0;
-        else if (id == "DEESS_MODE")
-            wheelStep = 1.0;
         else if (id.contains("DEGREE") || id.contains("MIX")
                  || id.contains("COLOR") || id == "DRY_WET")
             wheelStep = 1.0;
@@ -2160,13 +1981,10 @@ void VVChainAudioProcessorEditor::drawCard(
     g.drawRoundedRectangle(r, 8.f, 1.f);
 
     accent = uiColour(accent);
-    if (title == "DE-ESSER"
-        && (parameterValue("DEESS_BYPASS") > 0.5f))
-        accent = juce::Colour(0xff747b84);
     g.setColour(accent.withAlpha(.8f));
     g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
 
-    const bool monitorCard = title == "BYPASS";
+    const bool monitorCard = title == "MASTER";
     const int titleY = monitorCard ? 36 : 8;
     g.setColour(ivoryTheme ? juce::Colour(0xff292d31) : juce::Colours::white);
     g.setFont(juce::FontOptions(12.f).withStyle("Bold"));
@@ -2247,25 +2065,19 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
                            uiColour(k.accent.brighter(.35f)));
     }
 
-    const std::array<juce::Colour, 5> moduleColours
+    const std::array<juce::Colour, 4> moduleColours
     {{
         juce::Colour(0xff38bdf8),
         juce::Colour(0xfffacc15),
         juce::Colour(0xff60a5fa),
-        juce::Colour(0xfff472b6),
-        juce::Colour(0xff67d3aa)
+        juce::Colour(0xfff472b6)
     }};
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
         if (bypassButtons[(size_t) i])
             bypassButtons[(size_t) i]->setColour(
                 juce::ToggleButton::tickColourId,
                 uiColour(moduleColours[(size_t) i]));
-
-    if (deessBypassButton)
-        deessBypassButton->setColour(
-            juce::ToggleButton::tickColourId,
-            uiColour(juce::Colour(0xffdfe7ef)));
 
     if (masterBypassButton)
         masterBypassButton->setColour(
@@ -2406,25 +2218,6 @@ void VVChainAudioProcessorEditor::timerCallback()
             dynTriggerButtons[(size_t) b]->setButtonText(
                 parameterValue("DYN_TRIGGER_BELOW" + n) > 0.5f
                     ? "BELOW" : "ABOVE");
-    }
-
-    // The round POWER control is the same global MASTER_BYPASS as the
-    // upper-right BYPASS control.
-    const bool masterBypassed = parameterValue("MASTER_BYPASS") > 0.5f;
-    if (deessBypassButton)
-        deessBypassButton->setToggleState(masterBypassed,
-                                          juce::dontSendNotification);
-
-    const bool deessBypassed = parameterValue("DEESS_BYPASS") > 0.5f;
-    if (bypassButtons[4])
-        bypassButtons[4]->setToggleState(deessBypassed,
-                                         juce::dontSendNotification);
-    if (deessLocalBypassButton)
-    {
-        deessLocalBypassButton->setToggleState(
-            deessBypassed, juce::dontSendNotification);
-        deessLocalBypassButton->setAlpha(
-            1.0f);
     }
 
     for (int b = 0; b < 4; ++b)
@@ -2610,24 +2403,6 @@ void VVChainAudioProcessorEditor::timerCallback()
             parameterValue("TAPE_DEGREE" + n) <= 0.0001f);
     }
 
-    if (deessLocalBypassButton)
-    {
-        deessLocalBypassButton->getProperties().set(
-            "forceLedOff",
-            parameterValue("DEESS_THRESHOLD") >= -0.0001f);
-        deessLocalBypassButton->repaint();
-    }
-
-    const bool deessMuted =
-        parameterValue("DEESS_BYPASS") > 0.5f;
-    for (const auto& id : { juce::String("DEESS_FREQ"),
-                            juce::String("DEESS_THRESHOLD"),
-                            juce::String("DEESS_MODE") })
-        if (auto* knob = findKnob(id))
-        {
-            knob->slider->setAlpha(deessMuted ? 0.42f : 1.0f);
-            knob->label->setAlpha(deessMuted ? 0.42f : 1.0f);
-        }
     if (deltaMonitorButton)
         deltaMonitorButton->setToggleState(
             parameterValue("DELTA_MONITOR") > 0.5f,
@@ -2707,7 +2482,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(ivoryTheme ? juce::Colour(0xff6c675f) : juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.59", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.62", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2727,23 +2502,15 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                  { (float) x, (float) cardY, (float) cardW, (float) cardH },
                  uiColour(kBandColours[(size_t) b]),
                  "BAND " + juce::String(b + 1),
-                 "UDMBC · ANALOG · TAPE COLOR");
+                 "TRANSIENT · ANALOG · UDMBC · TAPE COLOR");
     }
 
     {
         const int x = left + 4 * (cardW + gap);
-        const int halfW = (cardW - gap) / 2;
         drawCard(g,
-                 { (float) x, (float) cardY, (float) halfW, (float) cardH },
-                 uiColour(juce::Colour(0xff67d3aa)),
-                 "DE-ESSER",
-                 "PRECISION SIBILANCE · 6–18 kHz");
-
-        drawCard(g,
-                 { (float) x + halfW + gap, (float) cardY,
-                   (float) halfW, (float) cardH },
+                 { (float) x, (float) cardY, (float) cardW, (float) cardH },
                  uiColour(juce::Colour(0xffe5e7eb)),
-                 "BYPASS",
+                 "MASTER",
                  "GLOBAL BYPASS · DELTA · MIX / OUT");
     }
 
@@ -3112,7 +2879,6 @@ void VVChainAudioProcessorEditor::setIvoryTheme(bool ivory)
     for (auto& b : soloButtons) if (b) b->repaint();
     if (masterBypassButton) masterBypassButton->repaint();
     if (soloModeButton) soloModeButton->repaint();
-    if (deessModeSwitch) deessModeSwitch->repaint();
 }
 
 void VVChainAudioProcessorEditor::setSettingsPanelVisible(bool visible)
@@ -3159,10 +2925,10 @@ void VVChainAudioProcessorEditor::resized()
     const int cardY = 404;
     const int gap = 8;
     const int left = 18;
-    const int unitW = (w - left * 2 - gap * 5) / 5;
+    const int unitW = (w - left * 2 - gap * 4) / 5;
     const int cardW = unitW;
 
-    const std::array<int, 5> moduleWidths { 50, 52, 64, 66, 62 };
+    const std::array<int, 4> moduleWidths { 50, 52, 64, 66 };
     constexpr int topGap = 5;
     constexpr int masterW = 78;
     int total = masterW;
@@ -3196,7 +2962,7 @@ void VVChainAudioProcessorEditor::resized()
         soloModeButton->setBounds(topX + masterW + topGap, topY, soloModeW, 25);
 
     int xTop = topX + masterW + topGap + soloModeW + topGap;
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
     {
         if (bypassButtons[(size_t) i])
             bypassButtons[(size_t) i]->setBounds(
@@ -3279,15 +3045,18 @@ void VVChainAudioProcessorEditor::resized()
         placeKnob("UDMBC_COMP_A" + n, cell(3, 1));
         placeKnob("UDMBC_COMP_R" + n, cell(3, 2));
 
-        // ROW 5 — colour / TAPE
+        // ROW 5 — ANALOG / TYPE-A / TRANSIENT
         placeKnob("EQ_COLOR_B" + n, cell(4, 0));
         placeKnob("TAPE_DEGREE" + n, cell(4, 1));
+        placeKnob("TRANSIENT" + n, cell(4, 2));
 
         if (analogModeButtons[(size_t) b])
-            analogModeButtons[(size_t) b]->setBounds(
-                cell(4, 2).getX() + 18,
-                cell(4, 2).getY() + 5,
-                36, 12);
+            if (auto* knob = findKnob("EQ_COLOR_B" + n))
+            {
+                const auto r = knob->slider->getBounds();
+                analogModeButtons[(size_t) b]->setBounds(
+                    r.getCentreX() - 18, r.getY() - 25, 36, 12);
+            }
 
         if (udmbcBandBypassButtons[(size_t) b])
             if (auto* knob = findKnob("UDMBC_DEGREE" + n))
@@ -3324,58 +3093,26 @@ void VVChainAudioProcessorEditor::resized()
             }
     }
 
-    // Fifth unit is split into:
-    //   left  = DE-ESSER, four knobs in one vertical column
-    //   right = global BYPASS / DELTA / MIX / OUT
+    // Fifth unit: global MASTER controls only.
     {
         const int x = left + 4 * (cardW + gap);
-        const int halfW = (cardW - gap) / 2;
-        const int deX = x;
-        const int monitorX = x + halfW + gap;
+        const int innerX = x + 14;
+        const int innerW = cardW - 28;
 
-        const int deInnerX = deX + 8;
-        const int deInnerW = halfW - 16;
-        const int startY = cardY + 60;
-        const int deKnobH = 126;
-        const int deKnobGap = 6;
-
-        placeKnob("DEESS_FREQ",
-                  { deInnerX, startY,
-                    deInnerW, deKnobH });
-        placeKnob("DEESS_THRESHOLD",
-                  { deInnerX, startY + deKnobH + deKnobGap,
-                    deInnerW, deKnobH });
-        if (deessModeSwitch)
-            deessModeSwitch->setBounds(
-                deInnerX,
-                startY + (deKnobH + deKnobGap) * 2 + 22,
-                deInnerW, 72);
-
-        // MIX / OUT are intentionally removed from the DE-ESSER column and
-        // live in the right-side global-BYPASS block below DELTA.
-        if (deessBypassButton)
-            deessBypassButton->setBounds(
-                monitorX + halfW / 2 - 25,
-                cardY + 58, 50, 50);
-        
-        if (deessLocalBypassButton)
-            if (auto* knob = findKnob("DEESS_THRESHOLD"))
-            {
-                const auto r = knob->slider->getBounds();
-                deessLocalBypassButton->setBounds(
-                    r.getRight() - 14, r.getY() - 10, 14, 14);
-            }
+        if (masterBypassButton)
+            masterBypassButton->setBounds(
+                innerX, cardY + 64, innerW, 32);
 
         if (deltaMonitorButton)
             deltaMonitorButton->setBounds(
-                monitorX + 9, cardY + 131, halfW - 18, 28);
+                innerX, cardY + 118, innerW, 30);
 
         placeKnob("DRY_WET",
-                  { monitorX + 8, cardY + 223,
-                    halfW - 16, 102 });
+                  { innerX, cardY + 190,
+                    innerW, 108 });
         placeKnob("OUTPUT_LEVEL",
-                  { monitorX + 8, cardY + 336,
-                    halfW - 16, 102 });
+                  { innerX, cardY + 330,
+                    innerW, 108 });
     }
 
     if (expandedBand >= 0)

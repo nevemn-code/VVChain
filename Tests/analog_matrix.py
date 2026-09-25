@@ -29,7 +29,8 @@ def analog_reference(x,amount,solid_state,x2=1.0):
 def run():
     from pathlib import Path
     cpp=Path("Source/DSP/ChainDSP.cpp").read_text(encoding="utf-8");h=Path("Source/DSP/ChainDSP.h").read_text(encoding="utf-8");ah=Path("Source/DSP/VVChain_AnalogADAA_v2.h").read_text(encoding="utf-8")
-    for marker in ('#include "VVChain_AnalogADAA_v2.h"',"const double modeAlpha = solidState ? 1.80 : 1.55;","const double shapingInput = juce::jlimit(-1.0, 1.0, x);","analogADAA[band][ch].processSample","const double delta = saturated - shapingInput","x + delta * static_cast<double>(safeColourMultiplier)","constexpr double kSmoothingMs = 0.25;"):assert marker in cpp,marker
+    for marker in ("const double modeAlpha = p.eqColorSolidState[band] ? 1.80 : 1.55;","const double shapingInput = juce::jlimit(","analogADAA[band][(size_t)ch].processSample","const double delta = saturated - shapingInput","static_cast<double>(bandSignal) + delta * x2","constexpr double kAnalogSmoothingMs = 0.25;"):assert marker in cpp,marker
+    assert '#include "VVChain_AnalogADAA_v2.h"' in h
     assert "std::array<std::array<VVChain_AnalogADAA_v2, 2>, 4> analogADAA" in h
     for marker in ("calcAntiderivative","m_hasPrev","std::sqrt(std::sqrt(1.0 + alpha))","(u075 - 1.0)"):assert marker in ah,marker
     rng=np.random.default_rng(20260924);rates=[44100.0,48000.0,88200.0,96000.0];min_tt_ss=np.inf;max_out=0.0
@@ -48,7 +49,12 @@ def run():
         if amount>0:assert np.min(np.abs(sy)-np.abs(p))>=-1e-12;assert np.max(np.abs(static_transfer(np.array([-1.,0.,1.]),amount,ss)-np.array([-1.,0.,1.])))<=1e-12
         tt=analog_reference(x,max(amount,.01),False);ssy=analog_reference(x,max(amount,.01),True);min_tt_ss=min(min_tt_ss,float(np.max(np.abs(tt-ssy))))
         b=analog_reference(x[:1024],amount,ss,1);z=analog_reference(x[:1024],amount,ss,2);assert np.max(np.abs((z-x[:1024])-(b-x[:1024])*2))<1e-9
-        pair=np.concatenate([x,-x]);yp=analog_reference(pair,amount,ss);assert np.max(np.abs(yp[:n]+yp[n:]))<1e-9
+        # ADAA carries previous-sample state, so odd-symmetry must be
+        # compared from identical fresh states. Concatenating x and -x into
+        # one stream incorrectly tests a state discontinuity at the midpoint.
+        yp=analog_reference(x,amount,ss)
+        yn=analog_reference(-x,amount,ss)
+        assert np.max(np.abs(yp+yn))<1e-9
     for ss in (False,True):
         amount=.60;alpha=amount*(1.80 if ss else 1.55);norm=(1+alpha)**.25;x=.437;direct=x/(1+alpha*x*x)**.25*norm;assert abs(adaa_reference(np.array([x]),amount,ss)[0]-direct)<1e-12
     assert min_tt_ss>1e-7

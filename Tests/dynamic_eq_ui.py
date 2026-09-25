@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# v1.0.37 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared TAPE/ANALOG crossovers, module-isolated Delta, global hover values, and DeEsser presets.
+# v1.0.37 regression matrix: TPT Bell EQ + existing v1.0.8 UI/interaction gates.: shared TAPE/ANALOG crossovers, module-isolated Delta, global hover values, and Transient invariants.
 """
 VVChain Dynamic EQ UI/control regression matrix.
 
@@ -122,7 +122,7 @@ def source_assertions():
         'EQ_COLOR_GLOBAL_BYPASS',
         'UDMBC_BYPASS',
         'TAPE_BYPASS',
-        'DEESS_BYPASS',
+        '"TRANSIENT" + n',
         'DELTA_MONITOR',
     ]:
         assert token in proc or token in cpp, token
@@ -132,7 +132,7 @@ def source_assertions():
     assert 'zoneBands(y,c,"analogLp",s.udmbc.x)' in worklet
     assert 'colorX2?.[b]?2:1' in worklet
 
-    # v1.0.59 keeps only the main Spectrum Analyzer.
+    # v1.0.60 keeps only the main Spectrum Analyzer.
     assert 'updateContributionAnalyzer' not in cpp and 'updateContributionAnalyzer' not in head
     assert 'popContributionSamples' not in proc
     assert 'setContributionAnalysisEnabled' not in proc
@@ -347,47 +347,62 @@ def test_full_simulation():
         assert len(values) == 4
 
 
-def test_deess_500_candidate_matrix():
-    """Evaluate exactly 500 current Attack/Release/Knee candidates."""
-    attacks = [0.25, 0.5, 0.6, 0.75, 0.9, 1.5, 2.0, 2.5, 5.0, 8.0]
-    releases = [20.0, 30.0, 45.0, 70.0, 120.0]
-    knees = [1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 4.0, 6.0, 8.0]
-    candidates = [(a, r, k) for a in attacks for r in releases for k in knees]
-    assert len(candidates) == 500
+def test_transient_500_candidate_matrix():
+    """500 deterministic Transient detector/control cases."""
+    fast = [2.5, 1.5, 0.8, 0.35]
+    slow = [30.0, 22.0, 15.0, 9.0]
+    amounts = [-100.0, -50.0, -1.0, 0.0, 1.0, 50.0, 100.0]
+    energies = [1e-8, 1e-6, 1e-4, 1e-2, 1.0]
 
-    profiles = [
-        (2.5, 120.0, 2.0),
-        (1.5, 70.0, 1.75),
-        (0.9, 45.0, 1.5),
-        (0.6, 30.0, 1.25),
-    ]
-    assert all(profile in candidates for profile in profiles)
+    cases = []
+    for band in range(4):
+        for amount in amounts:
+            for ef in energies:
+                for es in energies:
+                    cases.append((band, amount, ef, es))
+    assert len(cases) == 700
+    cases = cases[:500]
+
+    for band, amount, fast_sq, slow_sq in cases:
+        ratio = (fast_sq + 1e-12) / (slow_sq + 1e-12)
+        transient_db = (10.0 / math.log(10.0)) * math.log(ratio)
+        scaled = transient_db * (amount / 100.0) / 12.0
+        clipped = scaled / (1.0 + abs(scaled))
+        control_db = clipped * 12.0
+        gain = 10.0 ** (control_db / 20.0)
+        assert math.isfinite(gain)
+        assert gain > 0.0
+        assert abs(control_db) < 12.0 + 1e-6
+        assert fast[band] < slow[band]
 
     dsp = DSP.read_text(encoding="utf-8")
     worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
     for token in [
-        '{ 2.50f, 120.0f, 2.00f }',
-        '{ 1.50f,  70.0f, 1.75f }',
-        '{ 0.90f,  45.0f, 1.50f }',
-        '{ 0.60f,  30.0f, 1.25f }',
+        "fastMs[4] = { 2.5f, 1.5f, 0.8f, 0.35f }",
+        "slowMs[4] = { 30.0f, 22.0f, 15.0f, 9.0f }",
+        "transientBand1SidechainHPF",
+        "vvFastLogPositive",
+        "scaled / (1.0f + std::abs(scaled))",
+        "inputByChannel[ch] + delta",
     ]:
         assert token in dsp, token
     for token in [
-        '{attack:2.5,release:120,knee:2.0}',
-        '{attack:1.5,release:70,knee:1.75}',
-        '{attack:.9,release:45,knee:1.5}',
-        '{attack:.6,release:30,knee:1.25}',
+        "applyTransientStereo(l,r,stereo,xs)",
+        "const energy=stereo?.5*(dl*dl+dr*dr):dl*dl",
+        "const clipped=scaled/(1+Math.abs(scaled))",
+        "deltaL+=bandsL[b]*d",
     ]:
         assert token in worklet, token
 
 
-def test_v106_shared_four_band_modules_and_deess_presets():
+def test_v106_shared_four_band_modules_and_transient():
+
     cpp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
     worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
     editor = CPP.read_text(encoding="utf-8")
 
-    cpp_tape = cpp[cpp.index("void VVChainDSP::applyAType"):cpp.index("void VVChainDSP::processDeEsser")]
+    cpp_tape = cpp[cpp.index("void VVChainDSP::applyAType"):cpp.index("void VVChainDSP::processMasterLimiter")]
     worklet_tape = worklet[worklet.index("if(!s.type.bypass){"):worklet.index("\n    return y;", worklet.index("if(!s.type.bypass){"))]
 
     assert "std::tanh(bands[band] * driveParam[band])" in cpp_tape
@@ -475,16 +490,11 @@ def test_v103_ui_rules_50():
 
     assert ".knobMuted" in web
     assert ".knobMuted .modeSwitch" in web
-    assert ".deessMuted" in web
     assert 'mutedWhen:()=>state.udmbc.bypass||state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001' in web
     assert 'mutedWhen:()=>state.eq.globalBypass||state.eq.colorBypass[n]||state.eq.color[n]<=0.0001' in web
     assert 'mutedWhen:()=>state.type.bypass||state.type.bandBypass[n]||state.type.degree[n]<=0.0001' in web
-    assert 'mutedWhen:()=>state.de.bypass||state.de.intensity<=0.0001' in web
-
-    assert "deessLocalBypass" in web
-    assert "DEESS_LOCAL_BYPASS" in cpp
-    assert "deessLocalBypassButton" in head
-    assert 'DEESS_BYPASS", *deessLocalBypassButton' in cpp
+    assert 'state.transient' in web
+    assert 'addKnob("TRANSIENT" + n' in cpp
 
     assert "const hzv=invLog(clamp(x,0,w)/w);" in web
     assert "const targetGain=yToDb(y,h);" in web
@@ -538,13 +548,11 @@ def test_v103_closed_10():
         # Native/Web bypass and graph routing.
         assert 'setParameter("EQ" + n + "_FREQ", hz);' in cpp
         assert 'setParameter("DYN_DYNAMICS" + n, dynamics);' in cpp
-        assert "DEESS_LOCAL_BYPASS" in cpp
         assert "20 kHz" in web and "20 kHz" in cpp
 
         # Conditional grey-state rules.
         assert "UDMBC_DEGREE" + "" in cpp
         assert ".knobMuted" in web
-        assert ".deessMuted" in web
 
 
 
@@ -564,16 +572,9 @@ def test_v107_ui_controls():
     assert "const followScale=0.74" not in web
     assert "const hzv=invLog(clamp(x,0,w)/w);" in web
 
-    # EQ / DE-ESS frequency knobs are intentionally slower than the base gain drag.
+    # EQ frequency knobs are intentionally slower than the base gain drag.
     assert "setDragSensitivity(900, 9000)" in cpp
     assert 'const hzv=invLog(clamp(x,0,w)/w);' in web
-
-    # DE-ESS MODE is a four-position discrete rotary with Roman tick labels.
-    assert 'drawLinearSlider(' in cpp
-    assert 'labels { "I", "II", "III", "IV" }' in cpp
-    assert 'DEESS_MODE_SWITCH' in cpp
-    assert 'deEssModeSwitch' in web
-    assert 'state.de.mode=index+1' in web
 
     # Graph readout is compact: EQ / DYN EQ + GAIN, FREQ, Q only.
     assert 'DYN EQ' in cpp
@@ -611,18 +612,15 @@ def test_v1018_interaction_visual_sync():
     assert 'parameterValue("UDMBC_BAND_BYPASS" + n) > 0.5f' in cpp
     assert 'parameterValue("TAPE_BYPASS") > 0.5f' in cpp
     assert 'parameterValue("TAPE_BAND_BYPASS" + n) > 0.5f' in cpp
-    assert 'parameterValue("DEESS_BYPASS") > 0.5f' in cpp
     assert 'moduleMuteRefreshers' in web
     assert 'state.udmbc.bypass||state.udmbc.bandBypass[n]' in web
     assert 'state.type.bypass||state.type.bandBypass[n]' in web
-    assert 'state.de.bypass||state.de.intensity<=0.0001' in web
     assert '.moduleMuted{opacity:.42;filter:grayscale(1)}' in web
-    assert '.deessMuted .bandBody{opacity:.42;filter:grayscale(1)}' in web
 
     # Main lower BYPASS label is centered above its round power button.
-    assert 'const bool monitorCard = title == "BYPASS";' in cpp
+    assert 'const bool monitorCard = title == "MASTER";' in cpp
     assert 'juce::Justification::centred' in cpp
-    assert "class='masterBypassLabel'>BYPASS</div><button class='deessPower'" in web
+    assert "class='masterBypassLabel'>BYPASS</div><button class='masterPower'" in web
 
     # Floating readout has three short lines and switches identity by hover target.
     assert 'juce::String(dynamicReadout ? "DYN EQ" : "EQ")' in cpp
@@ -778,7 +776,7 @@ def main():
         test_dynamic_drag_anchor_is_exact()
         test_dynamic_cross_zero_is_linear()
         test_eq_xy_drag_math()
-        test_deess_500_candidate_matrix()
+        test_transient_500_candidate_matrix()
         test_dynamic_range_centered_500()
         test_dynamic_target_preserves_eq_as_center()
         test_dynamic_target_is_linear()
@@ -792,7 +790,7 @@ def main():
     print("PASS: current source invariants")
     print("PASS: 10 x 280 Dynamic EQ design cases")
     print("PASS: 10 x graph / XY / Q / reset interaction contracts")
-    print("PASS: 10 x 500 De-Esser candidate/profile checks")
+    print("PASS: 10 x 500 Transient detector/control checks")
     print("PASS: 10 x full four-band simulated sessions")
     print("ALL current Dynamic EQ / UI regression tests passed")
 

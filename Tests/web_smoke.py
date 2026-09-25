@@ -53,12 +53,11 @@ required_html = [
     "AudioWorkletNode",
     "new URL(\"vvchain-worklet.js\",document.baseURI)",
     'id="bandGrid"',
-    "grid-template-columns:repeat(4,minmax(0,1fr)) .5fr .5fr",
+    "grid-template-columns:repeat(4,minmax(0,1fr)) 1fr",
     "UDMBC %",
     "ANALOG COLOR",
     "TAPE COLOR +",
-    "DE-ESSER",
-    "MAXIMUM REDUCTION",
+    "TRANSIENT",
     "masterBypassLabel",
     "graphHintBandHtml",
     "resetGraphGainAtDoubleClick",
@@ -83,6 +82,19 @@ required_worklet = [
 ]
 for token in required_worklet:
     assert token in worklet, token
+
+for token in [
+    "applyTransientStereo(l,r,stereo,xs)",
+    "transientFast",
+    "transientSlow",
+    "transientGain",
+    "deltaL+=bandsL[b]*d",
+    "const transientOut=this.applyTransientStereo",
+]:
+    assert token in worklet, token
+
+for forbidden in ["DEESS_", "deessStereo", "state.de.", "de:{", "DE-ESSER"]:
+    assert forbidden not in text + worklet + source, forbidden
 
 cmake_version = re.search(r"project\(VVChain VERSION (\d+\.\d+\.\d+)", cmake)
 shown_version = re.search(r"VVCHAIN v(\d+\.\d+\.\d+)", text)

@@ -112,7 +112,7 @@ jobs:
 
   windows_vst3:
     name: Windows VST3 Release
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: windows-2025-vs2026
     timeout-minutes: 8
     steps:
@@ -148,20 +148,20 @@ jobs:
       run: |
         $plugin = Get-ChildItem -Path build-vst3 -Recurse -Directory -Filter "VVChain.vst3" | Select-Object -First 1
         if ($null -eq $plugin) { Write-Error "VVChain.vst3 was not produced." }
-        $zip = Join-Path $env:GITHUB_WORKSPACE "VVChain-v1.0.59-Windows-VST3.zip"
+        $zip = Join-Path $env:GITHUB_WORKSPACE "VVChain-v1.0.62-Windows-VST3.zip"
         Compress-Archive -Path $plugin.FullName -DestinationPath $zip -Force
         if (-not (Test-Path $zip)) { Write-Error "VST3 ZIP was not created." }
 
     - name: Upload Windows VST3
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
-        name: VVChain-v1.0.59-Windows-VST3
-        path: VVChain-v1.0.59-Windows-VST3.zip
+        name: VVChain-v1.0.62-Windows-VST3
+        path: VVChain-v1.0.62-Windows-VST3.zip
         if-no-files-found: error
 
   full_validation:
     name: Full Native / DSP Validation
-    if: github.event_name == 'workflow_dispatch' && inputs.full_validation == true
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.full_validation == true)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -204,4 +204,5 @@ jobs:
     - name: Full DSP validation
       run: |
         python3 Tests/analog_matrix.py
+        python3 Tests/transient_matrix.py
         python3 Tests/reference_stress.py --iterations 10

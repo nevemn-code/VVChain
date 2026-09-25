@@ -1,4 +1,4 @@
-# VVChain Architecture（v1.0.59）
+# VVChain Architecture（v1.0.60）
 
 > 以下以目前程式實際執行為準；本次封閉測試的失敗和限制見 `TEST_REPORT.md`。
 
@@ -8,13 +8,12 @@ INPUT
 → 4-band Parametric / Dynamic EQ + per-band Analog Color
 → 4-band UDMBC
 → 4-band TAPE COLOR
-→ split-band De-Esser
 → dry/wet
 → output level
 → master limiter
 → OUTPUT
 
-實際 Native 順序：EQ／Dynamic EQ（host rate）→ 必要時四段 Analog Color（僅 nonlinear stage 固定 4×）→ UDMBC → TAPE COLOR → De-Esser → Mix／Out → Solo → 4× true-peak limiter → 主 Bypass／Delta。X1／X2／X3 與 OVERLAP 供 Analog、UDMBC、TAPE COLOR 及頻段 Solo 使用；四個 EQ 的頻率另由各自 FREQ 設定。
+實際 Native 順序：EQ／Dynamic EQ（host rate）→ 四段 TRANSIENT（host-rate parallel delta）→ 四段 Analog Color（nonlinear stage 固定 4×）→ UDMBC → TAPE COLOR → Mix／Out → Solo → 4× true-peak limiter → 主 Bypass／Delta。TRANSIENT 與 Analog 共用 X1／X2／X3 頻段設定，但 TRANSIENT 不重建整條 split signal；只注入各頻段的 gain delta，TRANSIENT 先於 Analog。
 
 ## Parametric / Dynamic EQ
 
@@ -42,13 +41,14 @@ Each EQ band has an independent Analog Color amount, TT/SS mode, bypass and X2.
 - UDMBC 四段有獨立 gate／upward／downward 狀態。TAPE COLOR 的舊 Attack／Release 參數保留作 preset 相容，目前 tanh 染色增益不使用它們。
 - Solo 可取處理前或處理後的頻段／頻率，位置在最終 limiter 前；Delta 取最終輸出與對齊總延遲的原聲之差。
 
-## De-Esser
+## TRANSIENT
 
-- Frequency: 6–18 kHz.
-- Maximum Reduction: 0–8 dB.
-- Four response presets control attack / release / ratio.
-- Current Native implementation is sample-domain split-band processing: low band passes untouched, only the high band is gain-reduced.
-- The current De-Esser does not use the old 8192-sample FFT/block design and does not add an 8192-sample PDC by itself.
+- 四段 bipolar amount：-100%～+100%，0% 為 true zero-work bypass。
+- Stereo detector 使用 squared energy，不做 sqrt；Fast/Slow squared envelope 以一次 log-ratio 產生 transient control。
+- Band 1 的 70 Hz / 12 dB/oct HPF 僅在 detector sidechain，audible signal 不經該 HPF。
+- Rational soft-knee 使用 x/(1+|x|)，最大控制增益 12 dB 為漸近安全上限；最後增益做極短 smoothing。
+- Native TRANSIENT 在 host rate 以獨立 detector/filter state 取得四段 band signal，但 audible base path 保持原樣，只注入 (gain−1)×band；因此 0% exact bypass，啟用時也不增加整條 full-band split/recombine phase rotation。
+- TRANSIENT 位於 Analog 前，讓後續 Analog / UDMBC / TYPE-A 接住被強化或削弱的 attack。
 
 ## Plugin latency
 
