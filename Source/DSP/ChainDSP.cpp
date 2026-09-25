@@ -559,18 +559,11 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
     const int maxBlock = juce::jmax(1, samplesPerBlock);
     dryBuffer.setSize(channels, maxBlock, false, true, true);
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
-    dynamicDetectorInput.setSize(channels, maxBlock * 4, false, true, true);
-
-    for (auto& stream : contributionStreams)
-        stream.setSize(1, maxBlock, false, true, true);
-    contributionPreAnalogBase.setSize(
-        channels, maxBlock, false, true, true);
+    dynamicDetectorInput.setSize(channels, maxBlock, false, true, true);
 
     eqOversampler.reset();
-    contributionEqDownsampler.reset();
     limiterOversampler.reset();
     eqOversampler.initProcessing(static_cast<size_t>(maxBlock));
-    contributionEqDownsampler.initProcessing(static_cast<size_t>(maxBlock));
     limiterOversampler.initProcessing(static_cast<size_t>(maxBlock));
 
     eqLatencySamples =
@@ -594,6 +587,8 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
 
     eqDryDelay.prepare(drySpec);
     eqDryDelay.setDelay(static_cast<float>(eqLatencySamples));
+    eqWetDelay.prepare(drySpec);
+    eqWetDelay.setDelay(static_cast<float>(eqLatencySamples));
 
     juce::dsp::ProcessSpec limiterSpec
     {
@@ -674,9 +669,9 @@ void VVChainDSP::reset()
     deessSplit.reset();
 
     eqOversampler.reset();
-    contributionEqDownsampler.reset();
     limiterOversampler.reset();
     eqDryDelay.reset();
+    eqWetDelay.reset();
     limiterLookahead.reset();
     masterDryDelay.reset();
 
@@ -704,34 +699,6 @@ void VVChainDSP::reset()
     dryBuffer.clear();
     alignedDryBuffer.clear();
     dynamicDetectorInput.clear();
-    contributionPreAnalogBase.clear();
-    for (auto& stream : contributionStreams)
-        stream.clear();
-    contributionPreAnalogReady = false;
-}
-
-void VVChainDSP::captureContributionMono(
-    int stream,
-    const juce::AudioBuffer<float>& source,
-    int numSamples) noexcept
-{
-    if (!contributionAnalysisEnabled
-        || stream < 0 || stream >= 6
-        || numSamples <= 0)
-        return;
-
-    auto& destination = contributionStreams[(size_t)stream];
-    const int count = juce::jmin(numSamples, destination.getNumSamples());
-    const int nCh = juce::jmax(1, source.getNumChannels());
-    auto* out = destination.getWritePointer(0);
-
-    for (int n = 0; n < count; ++n)
-    {
-        float mono = 0.0f;
-        for (int ch = 0; ch < nCh; ++ch)
-            mono += source.getReadPointer(ch)[n];
-        out[n] = mono / static_cast<float>(nCh);
-    }
 }
 
 float VVChainDSP::rmsDetectPDR(float input,
@@ -914,12 +881,9 @@ float VVChainDSP::applyLimiter(float input, float& envDb, double sampleRate)
 
 void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
-    juce::dsp::AudioBlock<const float> inputBlock(buffer);
-    juce::dsp::AudioBlock<float> outputBlock(buffer);
-    auto osBlock = eqOversampler.processSamplesUp(inputBlock);
-
-    const double osSr =
-        sr * static_cast<double>(eqOversampler.getOversamplingFactor());
+    // Linear EQ / Dynamic EQ remain at host rate.
+    juce::dsp::AudioBlock<float> osBlock(buffer);
+    const double osSr = sr;
     const int osSamples = static_cast<int>(osBlock.getNumSamples());
     const int osChannels = static_cast<int>(osBlock.getNumChannels());
     constexpr float invSqrt2 = 0.7071067811865475f;
@@ -1220,114 +1184,83 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     }
 
-    contributionPreAnalogReady = false;
-
-    // Shared BAND 1 floor: one zero-sample-latency 30 Hz / 12 dB/oct
-    // Butterworth HPF for ANALOG -> UDMBC -> TAPE. EQ/Dynamics remain upstream.
-    // Keeping this filter singular prevents the three processors from accumulating
-    // different low-frequency phase rotations. Master BYPASS still crossfades to
-    // the latency-aligned dry path, and this IIR adds no samples to reported PDC.
+    // Shared 30 Hz processing floor runs once at base rate.
     constexpr double kBandProcessingLowCutHz = 30.0;
     constexpr double kButterworthQ = 0.7071067811865476;
-    updateHighPass(
-        bandProcessingHighPass,
-        osSr,
-        kBandProcessingLowCutHz,
-        kButterworthQ);
+    updateHighPass(bandProcessingHighPass, sr,
+                   kBandProcessingLowCutHz, kButterworthQ);
 
     for (int ch = 0; ch < osChannels && ch < 2; ++ch)
     {
-        auto* data =
-            osBlock.getChannelPointer(static_cast<size_t>(ch));
+        auto* data = buffer.getWritePointer(ch);
         const bool right = ch == 1;
-
-        for (int sample = 0; sample < osSamples; ++sample)
-            data[sample] =
-                bandProcessingHighPass.process(data[sample], right);
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+            data[sample] = bandProcessingHighPass.process(data[sample], right);
     }
 
-    // Analyzer-only exact pre-Analog base-rate tap. The signal already passed
-    // the audible EQ oversampler's up path, so only an identical down path is
-    // required here. This block is never mixed back into the audio output.
-    bool analogContributionActive = false;
-    if (contributionAnalysisEnabled && !p.eqColorGlobalBypass)
+    std::array<bool, 4> analogActive {};
+    bool anyAnalogActive = false;
+    for (size_t band = 0; band < 4; ++band)
     {
-        for (size_t band = 0; band < 4; ++band)
+        analogActive[band] =
+            !p.eqColorGlobalBypass
+            && !p.eqColorBypass[band]
+            && p.eqColor[band] > 0.000001f;
+        anyAnalogActive = anyAnalogActive || analogActive[band];
+
+        if (!analogActive[band])
         {
-            if (!p.eqColorBypass[band]
-                && p.eqColor[band] > 0.0001f)
-            {
-                analogContributionActive = true;
-                break;
-            }
+            analogAlpha[band] = 0.0;
+            analogAlphaInitialized[band] = true;
+            for (int ch = 0; ch < juce::jmin(channels, 2); ++ch)
+                analogADAA[band][(size_t)ch].resetState();
         }
     }
 
-    if (analogContributionActive)
+    if (!anyAnalogActive)
     {
-        const int baseSamples = buffer.getNumSamples();
-
-        for (int ch = 0; ch < contributionPreAnalogBase.getNumChannels(); ++ch)
-            contributionPreAnalogBase.clear(ch, 0, baseSamples);
-
-        juce::dsp::AudioBlock<const float> analysisBaseInput(
-            contributionPreAnalogBase);
-        auto analysisBaseSub =
-            analysisBaseInput.getSubBlock(0, static_cast<size_t>(baseSamples));
-        auto analysisOsBlock =
-            contributionEqDownsampler.processSamplesUp(analysisBaseSub);
-
-        const int copyChannels = juce::jmin(
-            osChannels, static_cast<int>(analysisOsBlock.getNumChannels()));
-        const int copySamples = juce::jmin(
-            osSamples, static_cast<int>(analysisOsBlock.getNumSamples()));
-
-        for (int ch = 0; ch < copyChannels; ++ch)
-            std::copy_n(
-                osBlock.getChannelPointer(static_cast<size_t>(ch)),
-                copySamples,
-                analysisOsBlock.getChannelPointer(static_cast<size_t>(ch)));
-
-        juce::dsp::AudioBlock<float> analysisBaseOutput(
-            contributionPreAnalogBase);
-        auto analysisBaseOutSub =
-            analysisBaseOutput.getSubBlock(
-                0, static_cast<size_t>(baseSamples));
-
-        contributionEqDownsampler.processSamplesDown(
-            analysisBaseOutSub);
-
-        contributionPreAnalogReady = true;
+        // Preserve fixed PDC without executing the 4x up/downsampler.
+        for (int ch = 0; ch < juce::jmin(channels, buffer.getNumChannels()); ++ch)
+        {
+            auto* data = buffer.getWritePointer(ch);
+            for (int n = 0; n < buffer.getNumSamples(); ++n)
+            {
+                eqWetDelay.pushSample(ch, data[n]);
+                data[n] = eqWetDelay.popSample(ch);
+            }
+        }
+        return;
     }
 
-    // ANALOG COLOR v1.0.46: true four-band routing.
-    // Shared X1/X2/X3 positions define four crossover bands. Each band has
-    // independent COLOR/TT/SS/ADAA state, then all four bands are rebuilt.
+    // Nonlinear Analog ADAA v2 remains fixed at 4x.
+    juce::dsp::AudioBlock<const float> analogInput(buffer);
+    juce::dsp::AudioBlock<float> analogOutput(buffer);
+    auto analogOsBlock = eqOversampler.processSamplesUp(analogInput);
+    const double analogOsSr =
+        sr * static_cast<double>(eqOversampler.getOversamplingFactor());
+    const int analogSamples = static_cast<int>(analogOsBlock.getNumSamples());
+    const int analogChannels = static_cast<int>(analogOsBlock.getNumChannels());
+
     const float analogX1 = juce::jlimit(80.f, 900.f, p.udmbcX1);
-    const float analogX2 =
-        juce::jlimit(analogX1 + 80.f, 5000.f, p.udmbcX2);
-    const float analogX3 =
-        juce::jlimit(analogX2 + 200.f,
-                     static_cast<float>(sr * 0.42),
-                     p.udmbcX3);
+    const float analogX2 = juce::jlimit(analogX1 + 80.f, 5000.f, p.udmbcX2);
+    const float analogX3 = juce::jlimit(
+        analogX2 + 200.f, static_cast<float>(sr * 0.42), p.udmbcX3);
     const float analogCrossoverQ =
         crossoverQFromOverlap(p.udmbcXoverOverlap);
 
-    updateCrossover(analogXover1, osSr, analogX1, analogCrossoverQ);
-    updateCrossover(analogXover2, osSr, analogX2, analogCrossoverQ);
-    updateCrossover(analogXover3, osSr, analogX3, analogCrossoverQ);
+    updateCrossover(analogXover1, analogOsSr, analogX1, analogCrossoverQ);
+    updateCrossover(analogXover2, analogOsSr, analogX2, analogCrossoverQ);
+    updateCrossover(analogXover3, analogOsSr, analogX3, analogCrossoverQ);
 
     std::array<double, 4> analogTargetAlpha {};
     for (size_t band = 0; band < 4; ++band)
     {
-        const bool bypass =
-            p.eqColorGlobalBypass || p.eqColorBypass[band];
-        const float amount = bypass
-            ? 0.0f
-            : juce::jlimit(0.0f, 60.0f, p.eqColor[band]) / 100.0f;
-        const double modeAlpha =
-            p.eqColorSolidState[band] ? 1.80 : 1.55;
+        if (!analogActive[band])
+            continue;
 
+        const float amount =
+            juce::jlimit(0.0f, 60.0f, p.eqColor[band]) / 100.0f;
+        const double modeAlpha = p.eqColorSolidState[band] ? 1.80 : 1.55;
         analogTargetAlpha[band] =
             static_cast<double>(amount) * modeAlpha;
 
@@ -1335,23 +1268,10 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             ? VVChain_AnalogADAA_v2::Mode::SS
             : VVChain_AnalogADAA_v2::Mode::TT;
 
-        for (size_t ch = 0;
-             ch < static_cast<size_t>(osChannels) && ch < 2;
-             ++ch)
-        {
-            analogADAA[band][ch].setMode(mode);
-        }
+        for (int ch = 0; ch < juce::jmin(analogChannels, 2); ++ch)
+            analogADAA[band][(size_t)ch].setMode(mode);
 
-        if (amount <= 0.000001f)
-        {
-            analogAlpha[band] = 0.0;
-            analogAlphaInitialized[band] = true;
-            for (size_t ch = 0;
-                 ch < static_cast<size_t>(osChannels) && ch < 2;
-                 ++ch)
-                analogADAA[band][ch].resetState();
-        }
-        else if (!analogAlphaInitialized[band])
+        if (!analogAlphaInitialized[band])
         {
             analogAlpha[band] = analogTargetAlpha[band];
             analogAlphaInitialized[band] = true;
@@ -1360,26 +1280,20 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
     constexpr double kAnalogSmoothingMs = 0.25;
     const double analogSmoothingCoeff =
-        std::exp(-1.0 / (0.001 * kAnalogSmoothingMs * osSr));
+        std::exp(-1.0 / (0.001 * kAnalogSmoothingMs * analogOsSr));
 
-    for (int sample = 0; sample < osSamples; ++sample)
+    for (int sample = 0; sample < analogSamples; ++sample)
     {
         for (size_t band = 0; band < 4; ++band)
-        {
-            if (analogTargetAlpha[band] > 0.0)
-            {
+            if (analogActive[band])
                 analogAlpha[band] +=
                     (analogTargetAlpha[band] - analogAlpha[band])
                     * (1.0 - analogSmoothingCoeff);
-            }
-            else
-                analogAlpha[band] = 0.0;
-        }
 
-        for (int ch = 0; ch < osChannels && ch < 2; ++ch)
+        for (int ch = 0; ch < analogChannels && ch < 2; ++ch)
         {
             auto* data =
-                osBlock.getChannelPointer(static_cast<size_t>(ch));
+                analogOsBlock.getChannelPointer(static_cast<size_t>(ch));
             const bool right = ch == 1;
             const float input = data[sample];
 
@@ -1394,27 +1308,19 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             float reconstructed = 0.0f;
             for (size_t band = 0; band < 4; ++band)
             {
-                const bool bypass =
-                    p.eqColorGlobalBypass || p.eqColorBypass[band];
-
-                if (bypass || analogAlpha[band] <= 0.000001)
+                if (!analogActive[band])
                 {
                     reconstructed += bands[band];
                     continue;
                 }
 
-                const double shapingInput =
-                    juce::jlimit(
-                        -1.0, 1.0,
-                        static_cast<double>(bands[band]));
+                const double shapingInput = juce::jlimit(
+                    -1.0, 1.0, static_cast<double>(bands[band]));
                 const double saturated =
-                    analogADAA[band][static_cast<size_t>(ch)]
-                        .processSample(
-                            shapingInput,
-                            analogAlpha[band]);
+                    analogADAA[band][(size_t)ch].processSample(
+                        shapingInput, analogAlpha[band]);
                 const double delta = saturated - shapingInput;
-                const double x2 =
-                    p.eqColorX2[band] ? 2.0 : 1.0;
+                const double x2 = p.eqColorX2[band] ? 2.0 : 1.0;
                 const double bandOutput =
                     static_cast<double>(bands[band]) + delta * x2;
 
@@ -1423,12 +1329,11 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                         ? bandOutput
                         : static_cast<double>(bands[band]));
             }
-
             data[sample] = reconstructed;
         }
     }
 
-    eqOversampler.processSamplesDown(outputBlock);
+    eqOversampler.processSamplesDown(analogOutput);
 }
 void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
@@ -2113,40 +2018,16 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     for (int ch = 0; ch < nCh; ++ch)
         dryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
 
-    // Always traverse the fixed-latency EQ oversampling path. When EQ is
-    // bypassed this is a latency-only pass-through, keeping PDC stable.
+    // Linear EQ runs at host rate. applyEq enters 4x only when Analog is active;
+    // otherwise a pure delay preserves the same fixed PDC.
     applyEq(buffer, p);
     alignDryBuffer(numSamples);
-
-    const bool captureContributions =
-        contributionAnalysisEnabled && !p.masterBypass;
-
-    if (captureContributions)
-    {
-        if (contributionPreAnalogReady)
-            captureContributionMono(
-                0, contributionPreAnalogBase, numSamples);
-        else
-            captureContributionMono(0, buffer, numSamples);
-
-        captureContributionMono(1, buffer, numSamples);
-        captureContributionMono(2, buffer, numSamples);
-    }
 
     if (!p.udmbcBypass)
         applyOtt(buffer, p);
 
-    if (captureContributions)
-    {
-        captureContributionMono(3, buffer, numSamples);
-        captureContributionMono(4, buffer, numSamples);
-    }
-
     if (!p.tapeBypass)
         applyAType(buffer, p);
-
-    if (captureContributions)
-        captureContributionMono(5, buffer, numSamples);
 
     processDeEsser(buffer, p);
 
