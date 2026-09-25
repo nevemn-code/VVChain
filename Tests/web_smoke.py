@@ -128,4 +128,4 @@ for forbidden in [
 ]:
     assert forbidden not in text, f"legacy/forbidden remains: {forbidden}"
 
-print(f"PASS Web smoke: v{cmake_version.group(1)} parity + smooth main analyzer + 3 module contribution overlays")
+print(f"PASS Web smoke: v{cmake_version.group(1)} parity + smooth main analyzer only")
