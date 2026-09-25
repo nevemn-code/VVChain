@@ -70,12 +70,72 @@ private:
     class FloatingValueBox final : public juce::Component
     {
     public:
+        using CommitHandler =
+            std::function<void(int, const juce::String&)>;
+
         FloatingValueBox()
-            : m_font(juce::FontOptions(10.5f).withStyle("Bold"))
         {
-            setInterceptsMouseClicks(false, false);
+            setInterceptsMouseClicks(true, true);
             setMouseCursor(juce::MouseCursor::NormalCursor);
             setVisible(false);
+
+            auto setup = [this](juce::Label& label, int line)
+            {
+                addAndMakeVisible(label);
+                label.setEditable(true, true, false);
+                label.setJustificationType(juce::Justification::centredLeft);
+                label.setFont(
+                    juce::FontOptions(10.5f).withStyle("Bold"));
+                label.setColour(
+                    juce::Label::textColourId, juce::Colours::white);
+                label.setColour(
+                    juce::Label::backgroundColourId,
+                    juce::Colours::transparentBlack);
+                label.setColour(
+                    juce::Label::outlineColourId,
+                    juce::Colours::transparentBlack);
+                label.setColour(
+                    juce::Label::textWhenEditingColourId,
+                    juce::Colours::white);
+                label.setColour(
+                    juce::Label::backgroundWhenEditingColourId,
+                    juce::Colour(0xff171a1f));
+                label.setColour(
+                    juce::Label::outlineWhenEditingColourId,
+                    juce::Colour(0xff7f8790));
+                label.setMouseCursor(
+                    juce::MouseCursor::IBeamCursor);
+                label.onTextChange = [this, &label, line]
+                {
+                    if (m_updatingText)
+                        return;
+                    if (m_commitHandler != nullptr)
+                        m_commitHandler(line, label.getText());
+                };
+            };
+
+            setup(m_line1, 0);
+            setup(m_line2, 1);
+            setup(m_line3, 2);
+        }
+
+        void setCommitHandler(CommitHandler handler)
+        {
+            m_commitHandler = std::move(handler);
+        }
+
+        bool isEditing() const noexcept
+        {
+            return m_line1.isBeingEdited()
+                || m_line2.isBeingEdited()
+                || m_line3.isBeingEdited();
+        }
+
+        bool isWithinInteractionZone(
+            juce::Point<int> parentPoint) const noexcept
+        {
+            return isVisible()
+                && getBounds().expanded(54, 46).contains(parentPoint);
         }
 
         void updateInfo(const juce::String& line1Text,
@@ -85,27 +145,35 @@ private:
                         juce::Rectangle<int> parentBounds)
         {
             const bool textChanged =
-                m_line1Text != line1Text || m_line2Text != line2Text
-                || m_line3Text != line3Text;
+                m_line1.getText() != line1Text
+                || m_line2.getText() != line2Text
+                || m_line3.getText() != line3Text;
 
-            if (!textChanged && m_lastPos == mousePos && isVisible())
+            if (!textChanged
+                && m_lastPos == mousePos
+                && isVisible())
                 return;
 
-            m_line1Text = line1Text;
-            m_line2Text = line2Text;
-            m_line3Text = line3Text;
+            m_updatingText = true;
+            if (!m_line1.isBeingEdited())
+                m_line1.setText(
+                    line1Text, juce::dontSendNotification);
+            if (!m_line2.isBeingEdited())
+                m_line2.setText(
+                    line2Text, juce::dontSendNotification);
+            if (!m_line3.isBeingEdited())
+                m_line3.setText(
+                    line3Text, juce::dontSendNotification);
+            m_updatingText = false;
             m_lastPos = mousePos;
 
-            // One value per line keeps the readout narrow at every frequency.
-            if (textChanged || m_boxWidth <= 0)
-                m_boxWidth = 150;
-
             constexpr int boxHeight = 66;
-            int targetX = mousePos.x - m_boxWidth / 2;
+            constexpr int boxWidth = 150;
+            int targetX = mousePos.x - boxWidth / 2;
             int targetY = mousePos.y - boxHeight - 14;
 
-            if (targetX + m_boxWidth > parentBounds.getRight())
-                targetX = parentBounds.getRight() - m_boxWidth - 4;
+            if (targetX + boxWidth > parentBounds.getRight())
+                targetX = parentBounds.getRight() - boxWidth - 4;
             if (targetX < parentBounds.getX())
                 targetX = parentBounds.getX() + 4;
 
@@ -114,7 +182,7 @@ private:
             if (targetY + boxHeight > parentBounds.getBottom())
                 targetY = parentBounds.getBottom() - boxHeight - 4;
 
-            setBounds(targetX, targetY, m_boxWidth, boxHeight);
+            setBounds(targetX, targetY, boxWidth, boxHeight);
             if (!isVisible())
                 setVisible(true);
             repaint();
@@ -122,43 +190,38 @@ private:
 
         void hideInstantly()
         {
+            if (isEditing())
+                return;
+
             if (isVisible())
                 setVisible(false);
             m_lastPos = { -1, -1 };
-            m_line1Text.clear();
-            m_line2Text.clear();
-            m_line3Text.clear();
+        }
+
+        void resized() override
+        {
+            m_line1.setBounds(6, 3, getWidth() - 12, 19);
+            m_line2.setBounds(6, 23, getWidth() - 12, 19);
+            m_line3.setBounds(6, 43, getWidth() - 12, 19);
         }
 
         void paint(juce::Graphics& g) override
         {
             g.setColour(juce::Colour(0xE6111111));
-            g.fillRoundedRectangle(getLocalBounds().toFloat(), 4.0f);
-
+            g.fillRoundedRectangle(
+                getLocalBounds().toFloat(), 4.0f);
             g.setColour(juce::Colour(0x55FFFFFF));
             g.drawRoundedRectangle(
                 getLocalBounds().toFloat(), 4.0f, 1.0f);
-
-            g.setColour(juce::Colours::white);
-            g.setFont(m_font);
-            g.drawText(
-                m_line1Text, 8, 4, getWidth() - 16, 18,
-                juce::Justification::centredLeft);
-            g.drawText(
-                m_line2Text, 8, 24, getWidth() - 16, 18,
-                juce::Justification::centredLeft);
-            g.drawText(
-                m_line3Text, 8, 44, getWidth() - 16, 18,
-                juce::Justification::centredLeft);
         }
 
     private:
-        juce::String m_line1Text;
-        juce::String m_line2Text;
-        juce::String m_line3Text;
-        juce::Font m_font;
+        juce::Label m_line1;
+        juce::Label m_line2;
+        juce::Label m_line3;
+        CommitHandler m_commitHandler;
         juce::Point<int> m_lastPos { -1, -1 };
-        int m_boxWidth = 0;
+        bool m_updatingText = false;
     };
 
     class WheelSlider final : public juce::Slider
@@ -488,6 +551,8 @@ private:
     void showFloatingValueBoxForBand(
         int band, bool dynamicReadout, float displayedGain,
         juce::Point<float> position);
+    void commitFloatingValueEdit(
+        int line, const juce::String& text);
     void showEqTypeMenu(int band, juce::Point<float> position);
     void beginRightSolo(
         int band, juce::Point<float> position, bool dynamicTarget);
@@ -498,6 +563,11 @@ private:
     float qFromWheel(float q, float deltaY, bool fine) const noexcept;
 
     FloatingValueBox floatingValueBox;
+    int floatingValueBand = -1;
+    bool floatingValueDynamic = false;
+    std::array<bool, 4> udmbcUiTouched { false, false, false, false };
+    std::array<bool, 4> analogUiTouched { false, false, false, false };
+    std::array<bool, 4> tapeUiTouched { false, false, false, false };
     VVChainAudioProcessor& audioProcessor;
     MetalLookAndFeel metalLook;
     GlobalGraphMouseListener globalGraphMouseListener;
