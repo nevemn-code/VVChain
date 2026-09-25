@@ -936,6 +936,67 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             const float dynamicsSigned =
                 juce::jlimit(-100.f, 100.f, p.dynDynamics[band]) * 0.01f;
             const float dynamicsAmount = std::abs(dynamicsSigned);
+
+            // Static fast path: when DYNAMICS is exactly zero, the gain/Q are
+            // constant. Build the filters once for the block instead of
+            // rebuilding identical coefficients for every sample.
+            if (dynamicsAmount <= 0.000001f)
+            {
+                int staticEqType = juce::jlimit(0, 13, p.eqType[band]);
+                if (staticEqType == 3)
+                    staticEqType = 2;
+                else if (staticEqType == 1
+                      || staticEqType == 10
+                      || staticEqType == 11)
+                    staticEqType = 0;
+                if ((band == 1 || band == 2) && staticEqType >= 12)
+                    staticEqType = 0;
+
+                const int staticSlope =
+                    juce::jlimit(0, 6, p.eqSlope[band]);
+
+                updateEqFilter(
+                    dynMidEq[band], staticEqType,
+                    osSr, frequency, offsetGain, baseQ, staticSlope);
+                updateEqFilter(
+                    dynSideEq[band], staticEqType,
+                    osSr, frequency, offsetGain, baseQ, staticSlope);
+
+                dynMidGainChangeDb[band].store(
+                    0.0f, std::memory_order_relaxed);
+                dynSideGainChangeDb[band].store(
+                    0.0f, std::memory_order_relaxed);
+
+                auto* left = osBlock.getChannelPointer(0);
+                auto* right = osChannels > 1
+                    ? osBlock.getChannelPointer(1) : nullptr;
+
+                for (int sample = 0; sample < osSamples; ++sample)
+                {
+                    if (right != nullptr)
+                    {
+                        const float currentMid =
+                            (left[sample] + right[sample]) * invSqrt2;
+                        const float currentSide =
+                            (left[sample] - right[sample]) * invSqrt2;
+                        const float filteredMid =
+                            dynMidEq[band].process(currentMid);
+                        const float filteredSide =
+                            dynSideEq[band].process(currentSide);
+                        left[sample] =
+                            (filteredMid + filteredSide) * invSqrt2;
+                        right[sample] =
+                            (filteredMid - filteredSide) * invSqrt2;
+                    }
+                    else
+                    {
+                        left[sample] =
+                            dynMidEq[band].process(left[sample]);
+                    }
+                }
+                continue;
+            }
+
             const float thresholdDb =
                 dynamicThresholdFromDynamics(
                     p.dynDynamics[band]);
@@ -1337,6 +1398,15 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
 }
 void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
+    bool anyActiveBand = false;
+    for (size_t band = 0; band < 4; ++band)
+        anyActiveBand = anyActiveBand
+            || (!p.udmbcBandBypass[band]
+                && p.udmbcDegree[band] > 0.0001f);
+
+    if (!anyActiveBand)
+        return;
+
     // Four independent UDMBC bands. Each band has its own detector state and
     // runs downward compression first, then upward compression, followed by
     // per-band makeup. The gate is also applied after the crossover so it
@@ -1555,6 +1625,15 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
 void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& p)
 {
+    bool anyActiveBand = false;
+    for (size_t band = 0; band < 4; ++band)
+        anyActiveBand = anyActiveBand
+            || (!p.tapeBandBypass[band]
+                && p.tapeDegree[band] > 0.0001f);
+
+    if (!anyActiveBand)
+        return;
+
     // TAPE COLOR startup fix: stateless normalized tanh. Attack / Release and
     // envelope states are intentionally removed from the gain path.
     const float inputGain =
