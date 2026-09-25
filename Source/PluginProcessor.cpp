@@ -172,7 +172,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     f("DEESS_FREQ", "DeEsser Frequency", 6000.f, 18000.f, 7500.f);
     p.push_back(std::make_unique<juce::AudioParameterFloat>(
         "DEESS_THRESHOLD", "DeEsser Threshold",
-        juce::NormalisableRange<float>(-36.f, 0.f, 0.1f), -6.f));
+        juce::NormalisableRange<float>(-36.f, 0.f, 0.1f), 0.f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(
         "DEESS_MODE", "DeEsser Response",
         juce::NormalisableRange<float>(1.f, 4.f, 1.f), 2.f));
