@@ -718,7 +718,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     // Global monitor controls: DELTA + MIX / OUT.
     deltaMonitorButton = std::make_unique<juce::ToggleButton>("DELTA");
     deltaMonitorButton->setLookAndFeel(&metalLook);
-    deltaMonitorButton->setComponentID("DEESS_DELTA");
+    deltaMonitorButton->setComponentID("DELTA_MONITOR");
     deltaMonitorButton->setColour(
         juce::ToggleButton::tickColourId, juce::Colour(0xffffffff));
     deltaMonitorButton->setTooltip(
@@ -900,12 +900,6 @@ void VVChainAudioProcessorEditor::addKnob(
         else
             wheelSlider->setDragSensitivity(180, 1800);
 
-        if (id == "DEESS_MODE")
-            wheelSlider->setDiscreteArc(
-                4,
-                7.0f * juce::MathConstants<float>::pi / 6.0f,
-                11.0f * juce::MathConstants<float>::pi / 6.0f);
-
         double wheelStep = std::max(
             0.01, (max - min) * 0.01);
 
@@ -925,8 +919,6 @@ void VVChainAudioProcessorEditor::addKnob(
             wheelStep = 1.0;
         else if (id.contains("RELEASE"))
             wheelStep = 5.0;
-        else if (id == "DEESS_MODE")
-            wheelStep = 1.0;
         else if (id.contains("DEGREE") || id.contains("MIX")
                  || id.contains("COLOR") || id == "DRY_WET")
             wheelStep = 1.0;
@@ -2109,13 +2101,10 @@ void VVChainAudioProcessorEditor::drawCard(
     g.drawRoundedRectangle(r, 8.f, 1.f);
 
     accent = uiColour(accent);
-    if (title == "DE-ESSER"
-        && (parameterValue("DEESS_BYPASS") > 0.5f))
-        accent = juce::Colour(0xff747b84);
     g.setColour(accent.withAlpha(.8f));
     g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
 
-    const bool monitorCard = title == "BYPASS";
+    const bool monitorCard = title == "MASTER";
     const int titleY = monitorCard ? 36 : 8;
     g.setColour(ivoryTheme ? juce::Colour(0xff292d31) : juce::Colours::white);
     g.setFont(juce::FontOptions(12.f).withStyle("Bold"));
@@ -2196,25 +2185,19 @@ void VVChainAudioProcessorEditor::updateBypassVisuals()
                            uiColour(k.accent.brighter(.35f)));
     }
 
-    const std::array<juce::Colour, 5> moduleColours
+    const std::array<juce::Colour, 4> moduleColours
     {{
         juce::Colour(0xff38bdf8),
         juce::Colour(0xfffacc15),
         juce::Colour(0xff60a5fa),
-        juce::Colour(0xfff472b6),
-        juce::Colour(0xff67d3aa)
+        juce::Colour(0xfff472b6)
     }};
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
         if (bypassButtons[(size_t) i])
             bypassButtons[(size_t) i]->setColour(
                 juce::ToggleButton::tickColourId,
                 uiColour(moduleColours[(size_t) i]));
-
-    if (deessBypassButton)
-        deessBypassButton->setColour(
-            juce::ToggleButton::tickColourId,
-            uiColour(juce::Colour(0xffdfe7ef)));
 
     if (masterBypassButton)
         masterBypassButton->setColour(
