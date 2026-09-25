@@ -16,7 +16,6 @@ public:
         bool masterBypass = false;
         bool udmbcBypass = false;
         bool tapeBypass = false;
-        bool deessBypass = false;
         bool deltaMonitor = false;
         bool mixBypass = false;
         bool eqColorGlobalBypass = false;
@@ -86,13 +85,10 @@ public:
         float tapeInputGainDb = 0.f;
         float tapeOutputGainDb = 0.f;
 
-        // Hybrid mastering DeEsser controls.
-        // Frequency selects the LR4 split point; threshold is the relative-HF
-        // trigger value in dB. Lower threshold = more sensitive detection.
-        float deessReferenceHz = 7500.f;
-        float deessThresholdDb = -6.f;
-        float deessAverageOffset = 0.f;
-        float deessMode = 2.f;
+        // Four-band bipolar transient shaper. The four amounts share the
+        // same X1/X2/X3 band definition as Analog / UDMBC / TYPE-A.
+        // 0% is a true zero-work bypass; negative softens, positive enhances.
+        std::array<float, 4> transientAmount { 0.f, 0.f, 0.f, 0.f };
 
         int soloBand = -1;
         bool soloPost = false;
@@ -318,16 +314,6 @@ private:
         std::array<float, 2> downSlowRmsPower { 0.f, 0.f };
     };
 
-    struct DeEssState
-    {
-        // Hybrid De-Esser detector state:
-        // broadband envelope + two high-frequency envelopes.
-        float broadbandEnv = 0.f;
-        float hfFastEnv = 0.f;
-        float hfSlowEnv = 0.f;
-        float gainDb = 0.f;
-    };
-
     static void updateAnalogPeak(Biquad& filter, double fs, double f0,
                                  double gainDb, double q);
     static void updateDynamicPeak(TPTBell& filter, double fs, double f0,
@@ -377,8 +363,6 @@ private:
                            double sampleRate);
 
     static float applyLimiter(float input, float& envDb, double sampleRate);
-
-    void processDeEsser(juce::AudioBuffer<float>& buffer, const Parameters& p);
 
     void applyEq(juce::AudioBuffer<float>&, const Parameters&);
     void applyOtt(juce::AudioBuffer<float>&, const Parameters&);
@@ -458,9 +442,13 @@ private:
     std::array<std::array<float, 2>, 4> typeSlowEnv {};
     std::array<std::array<float, 2>, 4> typeDc {};
 
-    std::array<DeEssState, 2> deess {};
-    Crossover4th deessSplit {};
-    float deessLinkedGainDb = 0.f;
+    // TRANSIENT runs inside the existing Analog shared four-band split, before
+    // Analog coloration, so enabling it does not add a second audible crossover.
+    std::array<float, 4> transientFastEnvSq { 0.f, 0.f, 0.f, 0.f };
+    std::array<float, 4> transientSlowEnvSq { 0.f, 0.f, 0.f, 0.f };
+    std::array<float, 4> transientSmoothGain { 1.f, 1.f, 1.f, 1.f };
+    std::array<bool, 4> transientInitialized { false, false, false, false };
+    Biquad transientBand1SidechainHPF {};
     juce::dsp::Oversampling<float> eqOversampler
     {
         2, 2,
