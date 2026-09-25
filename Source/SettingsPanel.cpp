@@ -209,7 +209,6 @@ void SettingsPanel::Content::paint(juce::Graphics& g)
     drawSection(g, y, "ANALYZER / GRAPH",
         { "Main Spectrum|4096 FFT · HIGH",
           "Main Smoothing|PRO-Q STYLE · MEDIUM",
-          "Module contribution analyzer|REMOVED · ZERO CPU",
           "Peak Hold|RESERVED",
           "Grid|ON · RESERVED",
           "Spectrum opacity|RESERVED" }, false);
