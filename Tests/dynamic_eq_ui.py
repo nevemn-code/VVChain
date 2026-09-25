@@ -132,12 +132,17 @@ def source_assertions():
     assert 'zoneBands(y,c,"analogLp",s.udmbc.x)' in worklet
     assert 'colorX2?.[b]?2:1' in worklet
 
-    # Current analyzer / contribution integration is UI-only.
-    assert 'updateContributionAnalyzer' in cpp and 'updateContributionAnalyzer' in head
-    assert 'popContributionSamples' in proc
-    assert 'setContributionAnalysisEnabled' in proc
-    assert 'ContributionFFT' in web
-    assert 'type:"contributionSamples"' in worklet
+    # Main analyzer remains UI-only; module contribution analyzer is removed.
+    assert 'updateAnalyzer' in cpp and 'updateAnalyzer' in head
+    assert 'audioProcessor.setAnalyzerEnabled(false)' in cpp
+    for dead in (
+        'updateContributionAnalyzer',
+        'popContributionSamples',
+        'setContributionAnalysisEnabled',
+        'ContributionFFT',
+        'type:"contributionSamples"',
+    ):
+        assert dead not in cpp + head + proc + web + worklet, dead
 
 
 def test_v1016_gain_scale_10():
