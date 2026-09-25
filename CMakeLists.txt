@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(VVChain VERSION 1.0.66 LANGUAGES C CXX)
+project(VVChain VERSION 1.0.69 LANGUAGES C CXX)
 
 include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
@@ -30,39 +30,41 @@ juce_add_binary_data(VVChainAssets
     HEADER_NAME VVChainAssets.h
     NAMESPACE VVChainAssets
     SOURCES
-        docs/assets/ui/studio_teal_panel.svg
-        docs/assets/ui/studio_teal_graph.svg
-        docs/assets/ui/studio_teal_knob_small.svg
-        docs/assets/ui/studio_teal_knob_large.svg
-        docs/assets/ui/studio_teal_button_off.svg
-        docs/assets/ui/studio_teal_button_on.svg
-        docs/assets/ui/studio_teal_led_off.svg
-        docs/assets/ui/studio_teal_led_on.svg
-        docs/assets/ui/studio_teal_power_off.svg
-        docs/assets/ui/studio_teal_power_on.svg
-        docs/assets/ui/studio_teal_screw.svg
-        docs/assets/ui/ivory_gold_panel.svg
-        docs/assets/ui/ivory_gold_graph.svg
-        docs/assets/ui/ivory_gold_knob_small.svg
-        docs/assets/ui/ivory_gold_knob_large.svg
-        docs/assets/ui/ivory_gold_button_off.svg
-        docs/assets/ui/ivory_gold_button_on.svg
-        docs/assets/ui/ivory_gold_led_off.svg
-        docs/assets/ui/ivory_gold_led_on.svg
-        docs/assets/ui/ivory_gold_power_off.svg
-        docs/assets/ui/ivory_gold_power_on.svg
-        docs/assets/ui/ivory_gold_screw.svg
-        docs/assets/ui/muted_panel.svg
-        docs/assets/ui/muted_graph.svg
-        docs/assets/ui/muted_knob_small.svg
-        docs/assets/ui/muted_knob_large.svg
-        docs/assets/ui/muted_button_off.svg
-        docs/assets/ui/muted_button_on.svg
-        docs/assets/ui/muted_led_off.svg
-        docs/assets/ui/muted_led_on.svg
-        docs/assets/ui/muted_power_off.svg
-        docs/assets/ui/muted_power_on.svg
-        docs/assets/ui/muted_screw.svg
+        docs/assets/ui/png/ivory_panel.png
+        docs/assets/ui/png/ivory_graph.png
+        docs/assets/ui/png/ivory_knob_strip.png
+        docs/assets/ui/png/ivory_button_off.png
+        docs/assets/ui/png/ivory_button_on.png
+        docs/assets/ui/png/ivory_button_pressed.png
+        docs/assets/ui/png/ivory_led_off.png
+        docs/assets/ui/png/ivory_led_on.png
+        docs/assets/ui/png/ivory_power_off.png
+        docs/assets/ui/png/ivory_power_on.png
+        docs/assets/ui/png/ivory_screw.png
+        docs/assets/ui/png/ivory_slider.png
+        docs/assets/ui/png/studio_panel.png
+        docs/assets/ui/png/studio_graph.png
+        docs/assets/ui/png/studio_knob_strip.png
+        docs/assets/ui/png/studio_button_off.png
+        docs/assets/ui/png/studio_button_on.png
+        docs/assets/ui/png/studio_button_pressed.png
+        docs/assets/ui/png/studio_led_off.png
+        docs/assets/ui/png/studio_led_on.png
+        docs/assets/ui/png/studio_power_off.png
+        docs/assets/ui/png/studio_power_on.png
+        docs/assets/ui/png/studio_screw.png
+        docs/assets/ui/png/studio_slider.png
+        docs/assets/ui/png/muted_panel.png
+        docs/assets/ui/png/muted_knob_strip.png
+        docs/assets/ui/png/muted_button_off.png
+        docs/assets/ui/png/muted_button_on.png
+        docs/assets/ui/png/muted_button_pressed.png
+        docs/assets/ui/png/muted_led_off.png
+        docs/assets/ui/png/muted_led_on.png
+        docs/assets/ui/png/muted_power_off.png
+        docs/assets/ui/png/muted_power_on.png
+        docs/assets/ui/png/muted_slider.png
+        docs/assets/ui/png/bypass_led_red.png
 )
 
 juce_add_plugin(VVChain

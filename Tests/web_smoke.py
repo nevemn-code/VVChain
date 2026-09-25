@@ -71,11 +71,11 @@ required_html = [
     "UI STUDIO",
     "UI IVORY",
     "vvchain-v1064-dual-hardware-skins",
-    "vvchain-v1065-real-image-assets",
-    "assets/ui/studio_teal_knob_small.svg",
-    "assets/ui/ivory_gold_knob_small.svg",
-    "assets/ui/studio_teal_button_on.svg",
-    "assets/ui/ivory_gold_led_on.svg",
+    "vvchain-v1067-real-png-assets",
+    "assets/ui/png/studio_knob_strip.png",
+    "assets/ui/png/ivory_knob_strip.png",
+    "assets/ui/png/studio_button_on.png",
+    "assets/ui/png/ivory_led_on.png",
 ]
 for token in required_html:
     assert token in text, token
