@@ -378,17 +378,19 @@ def test_transient_500_candidate_matrix():
     dsp = DSP.read_text(encoding="utf-8")
     worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
     for token in [
-        "transientFastMs[4] = { 2.5f, 1.5f, 0.8f, 0.35f }",
-        "transientSlowMs[4] = { 30.0f, 22.0f, 15.0f, 9.0f }",
+        "fastMs[4] = { 2.5f, 1.5f, 0.8f, 0.35f }",
+        "slowMs[4] = { 30.0f, 22.0f, 15.0f, 9.0f }",
         "transientBand1SidechainHPF",
         "vvFastLogPositive",
         "scaled / (1.0f + std::abs(scaled))",
+        "inputByChannel[ch] + delta",
     ]:
         assert token in dsp, token
     for token in [
-        "transientGains(l,r,stereo,xs)",
+        "applyTransientStereo(l,r,stereo,xs)",
         "const energy=stereo?.5*(dl*dl+dr*dr):dl*dl",
         "const clipped=scaled/(1+Math.abs(scaled))",
+        "deltaL+=bandsL[b]*d",
     ]:
         assert token in worklet, token
 
