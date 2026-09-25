@@ -1,4 +1,4 @@
-# VVChain Test Plan（v1.0.64）
+# VVChain Test Plan（v1.0.65）
 
 v1.0.55 已修正先前已知的 Web smoke Python 引號錯誤與 UI regression 過時固定版本／註解 guard。Fast Gate 現在在 PR、main push、手動執行三種情況都會跑；實際通過與否仍以本版 Actions 為準。
 
@@ -131,3 +131,10 @@ Still required when preparing a distributable release:
 - Analog ON/OFF combinations verify TRANSIENT precedes Analog、TRANSIENT 單獨啟用不喚醒 Analog 4× oversampler，且 output 採 untouched base + band delta；不得新增第二條 full-band split/recombine audible path。
 - Dry/Wet, Master Bypass and DELTA remain fixed-PDC/aligned.
 - Main Analyzer remains 4096-point only; no TRANSIENT contribution analyzer.
+
+
+## v1.0.65 required validation
+- `Tests/dsp_null_test.cpp`：48 kHz neutral full-chain 對 reported PDC null、DELTA peak、prepare=64 / actual=70000 large-block continuity。
+- `Tests/typea_adaa_matrix.py`：Type-A normalized tanh ADAA finite/unity 與 10 kHz @ 48 kHz alias reduction。
+- `Tests/signal_integrity_matrix.py`：UDMBC stereo-link、Native/Web LR4 parity、lazy coefficients、large-block、neutral limiter guards。
+- UDMBC fixed coefficient 不得回到 sample×channel×band 內重算；允許的唯一 sample-dependent timeCoeff 是 program-dependent lifter release。

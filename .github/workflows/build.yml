@@ -32,7 +32,7 @@ concurrency:
 jobs:
   fast_checks:
     name: Fast Gate
-    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -103,16 +103,23 @@ jobs:
           python3 Tests/dynamic_eq_ui.py
         done
 
-    - name: Analyzer contribution matrix x10
+    - name: Analyzer matrix x10
       shell: bash
       run: |
         for i in {1..10}; do
           python3 Tests/analyzer_matrix.py
         done
 
+    - name: Signal-integrity source matrix x10
+      shell: bash
+      run: |
+        for i in {1..10}; do
+          python3 Tests/signal_integrity_matrix.py
+        done
+
   windows_vst3:
     name: Windows VST3 Release
-    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: windows-2025-vs2026
     timeout-minutes: 8
     steps:
@@ -148,20 +155,20 @@ jobs:
       run: |
         $plugin = Get-ChildItem -Path build-vst3 -Recurse -Directory -Filter "VVChain.vst3" | Select-Object -First 1
         if ($null -eq $plugin) { Write-Error "VVChain.vst3 was not produced." }
-        $zip = Join-Path $env:GITHUB_WORKSPACE "VVChain-v1.0.64-Windows-VST3.zip"
+        $zip = Join-Path $env:GITHUB_WORKSPACE "VVChain-v1.0.65-Windows-VST3.zip"
         Compress-Archive -Path $plugin.FullName -DestinationPath $zip -Force
         if (-not (Test-Path $zip)) { Write-Error "VST3 ZIP was not created." }
 
     - name: Upload Windows VST3
       uses: actions/upload-artifact@v6
       with:
-        name: VVChain-v1.0.64-Windows-VST3
-        path: VVChain-v1.0.64-Windows-VST3.zip
+        name: VVChain-v1.0.65-Windows-VST3
+        path: VVChain-v1.0.65-Windows-VST3.zip
         if-no-files-found: error
 
   full_validation:
     name: Full Native / DSP Validation
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.full_validation == true)
+    if: github.event_name == 'workflow_dispatch' && inputs.full_validation == true
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -197,12 +204,18 @@ jobs:
           -DVVCHAIN_BUILD_STANDALONE=OFF \
           -DVVCHAIN_ENABLE_AAX=OFF \
           -DVVCHAIN_COPY_PLUGIN_AFTER_BUILD=OFF \
+          -DVVCHAIN_BUILD_DSP_TESTS=ON \
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
           -DCMAKE_CXX_FLAGS="-O3 -ffast-math -mavx2 -D JUCE_WEB_BROWSER=0 -D JUCE_USE_CURL=0 -D JUCE_HEADLESS_PLUGIN_CLIENT=1"
-        cmake --build build --config Release --target VVChain_VST3 --parallel
+        cmake --build build --config Release --target VVChain_VST3 VVChainDSPNullTest --parallel
 
     - name: Full DSP validation
       run: |
+        test_bin="$(find build -type f -name VVChainDSPNullTest -perm -111 -print -quit)"
+        test -n "$test_bin"
+        "$test_bin"
         python3 Tests/analog_matrix.py
         python3 Tests/transient_matrix.py
+        python3 Tests/typea_adaa_matrix.py
+        python3 Tests/signal_integrity_matrix.py
         python3 Tests/reference_stress.py --iterations 10

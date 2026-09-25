@@ -574,15 +574,58 @@ float VVChainDSP::timeCoeff(double sampleRate, float ms) noexcept
     return std::exp(-1.0f / (0.001f * std::max(ms, 0.1f) * static_cast<float>(sampleRate)));
 }
 
+float VVChainDSP::processTypeAAdAA(float input, float drive, float makeup,
+                                   TypeAAdAAState& state) noexcept
+{
+    const double d = juce::jmax(1.0, static_cast<double>(drive));
+    const double norm = static_cast<double>(makeup);
+    const double x = static_cast<double>(input);
+
+    const auto transfer = [d, norm](double v) noexcept
+    {
+        return std::tanh(d * v) * norm;
+    };
+
+    const auto logCosh = [](double z) noexcept
+    {
+        const double a = std::abs(z);
+        return a + std::log1p(std::exp(-2.0 * a))
+            - std::log(2.0);
+    };
+
+    const auto antiderivative = [d, norm, &logCosh](double v) noexcept
+    {
+        return logCosh(d * v) * norm / d;
+    };
+
+    double y = transfer(x);
+    if (state.hasPrevious)
+    {
+        const double delta = x - state.previousInput;
+        y = std::abs(delta) < 1.0e-7
+            ? transfer(0.5 * (x + state.previousInput))
+            : (antiderivative(x) - antiderivative(state.previousInput)) / delta;
+    }
+
+    state.previousInput = x;
+    state.hasPrevious = true;
+    return static_cast<float>(std::isfinite(y) ? y : transfer(x));
+}
+
 void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels)
 {
     sr = std::max(8000.0, sampleRate);
     channels = juce::jlimit(1, 2, numChannels);
 
-    const int maxBlock = juce::jmax(1, samplesPerBlock);
+    // Hosts can occasionally deliver a larger block than their nominal
+    // prepareToPlay size. Reserve a large realtime-safe capacity up front so
+    // the audio thread never allocates or silently bypasses normal large blocks.
+    const int maxBlock = juce::jmax(65536, juce::jmax(1, samplesPerBlock));
+    preparedBlockCapacity = maxBlock;
     dryBuffer.setSize(channels, maxBlock, false, true, true);
     alignedDryBuffer.setSize(channels, maxBlock, false, true, true);
     dynamicDetectorInput.setSize(channels, maxBlock, false, true, true);
+    limiterDryBuffer.setSize(channels, maxBlock, false, true, true);
 
     eqOversampler.reset();
     limiterOversampler.reset();
@@ -622,6 +665,10 @@ void VVChainDSP::prepare(double sampleRate, int samplesPerBlock, int numChannels
 
     limiterLookahead.prepare(limiterSpec);
     limiterLookahead.setDelay(static_cast<float>(limiterLookaheadSamples * 4));
+
+    limiterDryDelay.prepare(drySpec);
+    limiterDryDelay.setDelay(static_cast<float>(
+        limiterOversamplingLatencySamples + limiterLookaheadSamples));
 
     masterDryDelay.prepare(drySpec);
     masterDryDelay.setDelay(static_cast<float>(
@@ -664,13 +711,13 @@ void VVChainDSP::reset()
 
     for (auto& b : udmbcDynamics)
     {
-        b.gateEnvDb = { 0.f, 0.f };
-        b.lifterEnv = { 1.f, 1.f };
-        b.compEnvDb = { 0.f, 0.f };
-        b.upRmsPower = { 0.f, 0.f };
-        b.upSlowRmsPower = { 0.f, 0.f };
-        b.downRmsPower = { 0.f, 0.f };
-        b.downSlowRmsPower = { 0.f, 0.f };
+        b.gateEnvDb = 0.f;
+        b.lifterEnv = 1.f;
+        b.compEnvDb = 0.f;
+        b.upRmsPower = 0.f;
+        b.upSlowRmsPower = 0.f;
+        b.downRmsPower = 0.f;
+        b.downSlowRmsPower = 0.f;
     }
 
     for (auto& bandState : analogADAA)
@@ -686,6 +733,9 @@ void VVChainDSP::reset()
     typeXover1.reset();
     typeXover2.reset();
     typeXover3.reset();
+    for (auto& band : typeAAdAA)
+        for (auto& channel : band)
+            channel.reset();
 
     transientXover1.reset();
     transientXover2.reset();
@@ -697,28 +747,27 @@ void VVChainDSP::reset()
     eqDryDelay.reset();
     eqWetDelay.reset();
     limiterLookahead.reset();
+    limiterDryDelay.reset();
     masterDryDelay.reset();
+
+    transientXoverCache.invalidate();
+    analogXoverCache.invalidate();
+    udmbcXoverCache.invalidate();
+    typeXoverCache.invalidate();
+    soloXoverCache.invalidate();
 
     masterBypassBlend = 0.f;
     limiterGain = 1.f;
-
-    for (size_t band = 0; band < 4; ++band)
-    {
-        typeFastEnv[band] = { 0.f, 0.f };
-        typeSlowEnv[band] = { 0.f, 0.f };
-        typeDc[band] = { 0.f, 0.f };
-    }
 
     transientFastEnvSq = { 0.f, 0.f, 0.f, 0.f };
     transientSlowEnvSq = { 0.f, 0.f, 0.f, 0.f };
     transientSmoothGain = { 1.f, 1.f, 1.f, 1.f };
     transientInitialized = { false, false, false, false };
 
-    gateEnvDb = { 0.f, 0.f };
-    limiterEnvDb = { 0.f, 0.f };
     dryBuffer.clear();
     alignedDryBuffer.clear();
     dynamicDetectorInput.clear();
+    limiterDryBuffer.clear();
 }
 
 float VVChainDSP::rmsDetectPDR(float input,
@@ -729,7 +778,9 @@ float VVChainDSP::rmsDetectPDR(float input,
                                   double sampleRate,
                                   float& programReleaseMs,
                                   float attackCoeffOverride,
-                                  float releaseCoeffOverride) noexcept
+                                  float releaseCoeffOverride,
+                                  float slowAttackCoeffOverride,
+                                  float slowReleaseCoeffOverride) noexcept
 {
     const float target = input * input;
 
@@ -742,9 +793,13 @@ float VVChainDSP::rmsDetectPDR(float input,
             ? juce::jlimit(0.0f, 1.0f, releaseCoeffOverride)
             : timeCoeff(sampleRate, juce::jmax(0.5f, releaseMs * 0.35f));
     const float slowAttack =
-        timeCoeff(sampleRate, juce::jmax(attackMs * 4.0f, 5.0f));
+        slowAttackCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, slowAttackCoeffOverride)
+            : timeCoeff(sampleRate, juce::jmax(attackMs * 4.0f, 5.0f));
     const float slowRelease =
-        timeCoeff(sampleRate, juce::jmax(releaseMs * 1.75f, 20.0f));
+        slowReleaseCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, slowReleaseCoeffOverride)
+            : timeCoeff(sampleRate, juce::jmax(releaseMs * 1.75f, 20.0f));
 
     fastPower = (target > fastPower ? fastAttack : fastRelease) * fastPower
               + (1.0f - (target > fastPower ? fastAttack : fastRelease)) * target;
@@ -774,7 +829,9 @@ float VVChainDSP::applyLifterFromDetectorDb(float input, float detectorDb,
                                              float& env, float thresholdDb,
                                              float attackMs, float releaseMs,
                                              float mix, double sampleRate,
-                                             float ratio)
+                                             float ratio,
+                                             float attackCoeffOverride,
+                                             float releaseCoeffOverride)
 {
     const float safeRatio = juce::jmax(1.0f, ratio);
     const float slope = 1.0f - (1.0f / safeRatio);
@@ -794,8 +851,14 @@ float VVChainDSP::applyLifterFromDetectorDb(float input, float detectorDb,
     const float targetGainDbClamped =
         juce::jmin(12.0f, juce::jmax(0.0f, targetGainDb));
     const float targetLinear = dbToGain(targetGainDbClamped);
-    const float attack = timeCoeff(sampleRate, attackMs);
-    const float release = timeCoeff(sampleRate, releaseMs);
+    const float attack =
+        attackCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, attackCoeffOverride)
+            : timeCoeff(sampleRate, attackMs);
+    const float release =
+        releaseCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, releaseCoeffOverride)
+            : timeCoeff(sampleRate, releaseMs);
     const float alpha = targetLinear > env ? attack : release;
     env = alpha * env + (1.0f - alpha) * targetLinear;
 
@@ -844,7 +907,9 @@ float VVChainDSP::applyCompressorFromDetectorDb(float input, float detectorDb,
 }
 
 float VVChainDSP::applyGate(float input, float& envDb, float thresholdDb,
-                            double sampleRate)
+                            double sampleRate,
+                            float attackCoeffOverride,
+                            float releaseCoeffOverride)
 {
     const float knee = kGateKneeDb;
     const float ratioSlope = kGateRatio - 1.f;
@@ -871,34 +936,21 @@ float VVChainDSP::applyGate(float input, float& envDb, float thresholdDb,
 
     targetGainDb = std::min(0.f, targetGainDb);
 
-    const float attack = timeCoeff(sampleRate, 100.f);
-    const float release = timeCoeff(sampleRate, 30.f);
+    const float attack =
+        attackCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, attackCoeffOverride)
+            : timeCoeff(sampleRate, 100.f);
+    const float release =
+        releaseCoeffOverride >= 0.0f
+            ? juce::jlimit(0.0f, 1.0f, releaseCoeffOverride)
+            : timeCoeff(sampleRate, 30.f);
     const float alpha = targetGainDb < envDb ? attack : release;
     envDb = alpha * envDb + (1.f - alpha) * targetGainDb;
 
     return input * (0.90f * dbToGain(envDb) + 0.10f);
 }
 
-float VVChainDSP::applyLimiter(float input, float& envDb, double sampleRate)
-{
-    constexpr float ceilingDb = -0.8f;
-    const float inputDb =
-        juce::Decibels::gainToDecibels(std::max(std::abs(input), 1.0e-9f));
-
-    const float targetReductionDb =
-        inputDb > ceilingDb
-            ? -juce::jlimit(0.f, 24.f, inputDb - ceilingDb)
-            : 0.f;
-
-    const float attack = timeCoeff(sampleRate, 0.05f);
-    const float release = timeCoeff(sampleRate, 85.f);
-    const float alpha = targetReductionDb < envDb ? attack : release;
-    envDb = alpha * envDb
-        + (1.f - alpha) * targetReductionDb;
-
-    return input * dbToGain(envDb);
-}
-
+void VVChainDSP::applyTransient
 void VVChainDSP::applyTransient(
     juce::AudioBuffer<float>& buffer,
     const Parameters& p)
@@ -939,14 +991,18 @@ void VVChainDSP::applyTransient(
         x2 + 200.f, static_cast<float>(sr * 0.42), p.udmbcX3);
     const float xoverQ = crossoverQFromOverlap(p.udmbcXoverOverlap);
 
-    updateCrossover(transientXover1, sr, x1, xoverQ);
-    updateCrossover(transientXover2, sr, x2, xoverQ);
-    updateCrossover(transientXover3, sr, x3, xoverQ);
-    updateHighPass(
-        transientBand1SidechainHPF,
-        sr,
-        70.0,
-        0.7071067811865476);
+    if (!transientXoverCache.matches(sr, x1, x2, x3, xoverQ))
+    {
+        updateCrossover(transientXover1, sr, x1, xoverQ);
+        updateCrossover(transientXover2, sr, x2, xoverQ);
+        updateCrossover(transientXover3, sr, x3, xoverQ);
+        updateHighPass(
+            transientBand1SidechainHPF,
+            sr,
+            70.0,
+            0.7071067811865476);
+        transientXoverCache.set(sr, x1, x2, x3, xoverQ);
+    }
 
     static constexpr float fastMs[4] = { 2.5f, 1.5f, 0.8f, 0.35f };
     static constexpr float slowMs[4] = { 30.0f, 22.0f, 15.0f, 9.0f };
@@ -1485,9 +1541,15 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
     const float analogCrossoverQ =
         crossoverQFromOverlap(p.udmbcXoverOverlap);
 
-    updateCrossover(analogXover1, analogOsSr, analogX1, analogCrossoverQ);
-    updateCrossover(analogXover2, analogOsSr, analogX2, analogCrossoverQ);
-    updateCrossover(analogXover3, analogOsSr, analogX3, analogCrossoverQ);
+    if (!analogXoverCache.matches(
+            analogOsSr, analogX1, analogX2, analogX3, analogCrossoverQ))
+    {
+        updateCrossover(analogXover1, analogOsSr, analogX1, analogCrossoverQ);
+        updateCrossover(analogXover2, analogOsSr, analogX2, analogCrossoverQ);
+        updateCrossover(analogXover3, analogOsSr, analogX3, analogCrossoverQ);
+        analogXoverCache.set(
+            analogOsSr, analogX1, analogX2, analogX3, analogCrossoverQ);
+    }
 
     std::array<double, 4> analogTargetAlpha {};
     for (size_t band = 0; band < 4; ++band)
@@ -1580,7 +1642,8 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             data[n] += delayedBase[n];
     }
 }
-void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
+void VVChainDSP::applyUdmbc(juce::AudioBuffer<float>& buffer,
+                              const Parameters& p)
 {
     const float globalMix =
         juce::jlimit(0.f, 1.f, p.udmbcMix / 100.f);
@@ -1589,15 +1652,16 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
     {
         udmbcXover1.reset(); udmbcXover2.reset(); udmbcXover3.reset();
         udmbcPhase2_B1.reset(); udmbcPhase3_B1.reset(); udmbcPhase3_B2.reset();
+        udmbcXoverCache.invalidate();
         for (auto& state : udmbcDynamics)
         {
-            state.gateEnvDb = { 0.f, 0.f };
-            state.lifterEnv = { 1.f, 1.f };
-            state.compEnvDb = { 0.f, 0.f };
-            state.upRmsPower = { 0.f, 0.f };
-            state.upSlowRmsPower = { 0.f, 0.f };
-            state.downRmsPower = { 0.f, 0.f };
-            state.downSlowRmsPower = { 0.f, 0.f };
+            state.gateEnvDb = 0.f;
+            state.lifterEnv = 1.f;
+            state.compEnvDb = 0.f;
+            state.upRmsPower = 0.f;
+            state.upSlowRmsPower = 0.f;
+            state.downRmsPower = 0.f;
+            state.downSlowRmsPower = 0.f;
         }
     };
 
@@ -1607,11 +1671,15 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
         return;
     }
 
+    std::array<bool, 4> active {};
     bool anyActiveBand = false;
     for (size_t band = 0; band < 4; ++band)
-        anyActiveBand = anyActiveBand
-            || (!p.udmbcBandBypass[band]
-                && p.udmbcDegree[band] > 0.0001f);
+    {
+        active[band] =
+            !p.udmbcBandBypass[band]
+            && p.udmbcDegree[band] > 0.0001f;
+        anyActiveBand = anyActiveBand || active[band];
+    }
 
     const bool globalProcessingActive =
         std::abs(p.udmbcInputGainDb) > 0.0001f
@@ -1624,49 +1692,318 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
         return;
     }
 
-    // Four independent UDMBC bands. Each band has its own detector state and
-    // runs downward compression first, then upward compression, followed by
-    // per-band makeup. The gate is also applied after the crossover so it
-    // cannot make one frequency band modulate another.
-    const float x1 = juce::jlimit(80.f, 900.f, p.udmbcX1);
-    const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.udmbcX2);
-    const float x3 = juce::jlimit(x2 + 200.f, static_cast<float>(sr * 0.42), p.udmbcX3);
-
-    const float xoverQ = crossoverQFromOverlap(p.udmbcXoverOverlap);
-
-    updateCrossover(udmbcXover1, sr, x1, xoverQ);
-    updateCrossover(udmbcXover2, sr, x2, xoverQ);
-    updateCrossover(udmbcXover3, sr, x3, xoverQ);
-
-    // Equalize the number of crossover sections traversed by each branch.
-    // B1: X1 -> add all-pass X2 + X3. B2: X1+X2 -> add all-pass X3.
-    updateCrossover(udmbcPhase2_B1, sr, x2, xoverQ);
-    updateCrossover(udmbcPhase3_B1, sr, x3, xoverQ);
-    updateCrossover(udmbcPhase3_B2, sr, x3, xoverQ);
-
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.udmbcInputGainDb));
     const float outputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.udmbcOutputGainDb));
 
-    float amountSum = 0.0f;
-    int amountCount = 0;
-    for (int band = 0; band < 4; ++band)
+    // If only the global controls are active, do not wake the crossover tree.
+    if (!anyActiveBand)
     {
-        if (p.udmbcBandBypass[(size_t) band])
-            continue;
-        amountSum += juce::jlimit(
-            0.0f, 100.0f, p.udmbcDegree[(size_t) band]) / 100.0f;
-        ++amountCount;
+        resetUdmbcState();
+        for (int ch = 0; ch < channels; ++ch)
+        {
+            auto* data = buffer.getWritePointer(ch);
+            for (int n = 0; n < buffer.getNumSamples(); ++n)
+            {
+                const float original = data[n];
+                float wet = original * inputGain;
+                if (p.udmbcClipper)
+                    wet = std::tanh(wet * 1.7f);
+                wet *= outputGain;
+                data[n] = original + globalMix * (wet - original);
+            }
+        }
+        return;
     }
 
+    const float x1 = juce::jlimit(80.f, 900.f, p.udmbcX1);
+    const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.udmbcX2);
+    const float x3 = juce::jlimit(
+        x2 + 200.f, static_cast<float>(sr * 0.42), p.udmbcX3);
+    const float xoverQ = crossoverQFromOverlap(p.udmbcXoverOverlap);
+
+    if (!udmbcXoverCache.matches(sr, x1, x2, x3, xoverQ))
+    {
+        updateCrossover(udmbcXover1, sr, x1, xoverQ);
+        updateCrossover(udmbcXover2, sr, x2, xoverQ);
+        updateCrossover(udmbcXover3, sr, x3, xoverQ);
+        updateCrossover(udmbcPhase2_B1, sr, x2, xoverQ);
+        updateCrossover(udmbcPhase3_B1, sr, x3, xoverQ);
+        updateCrossover(udmbcPhase3_B2, sr, x3, xoverQ);
+        udmbcXoverCache.set(sr, x1, x2, x3, xoverQ);
+    }
+
+    float amountSum = 0.0f;
+    int amountCount = 0;
+    for (size_t band = 0; band < 4; ++band)
+    {
+        if (p.udmbcBandBypass[band])
+            continue;
+        amountSum += juce::jlimit(0.f, 100.f, p.udmbcDegree[band]) / 100.f;
+        ++amountCount;
+    }
     const float averageAmount =
         amountCount > 0 ? amountSum / static_cast<float>(amountCount) : 0.0f;
-    // Nominal level compensation: 70% Amount -> -1.75dB.
-    const float autoTrimDb = -2.5f * averageAmount;
-    const float autoTrimGain = dbToGain(autoTrimDb);
+    const float autoTrimGain = dbToGain(-2.5f * averageAmount);
 
-    for (int ch = 0; ch < channels; ++ch)
+    std::array<float, 4> depth {}, downRatio {}, upRatio {};
+    std::array<float, 4> compMix {}, lifterMix {}, bandGain {};
+    std::array<float, 4> finalAttackMs {}, finalReleaseMs {};
+    std::array<float, 4> downFastAttack {}, downFastRelease {};
+    std::array<float, 4> downSlowAttack {}, downSlowRelease {};
+    std::array<float, 4> upFastAttack {}, upFastRelease {};
+    std::array<float, 4> upSlowAttack {}, upSlowRelease {};
+
+    for (size_t band = 0; band < 4; ++band)
+    {
+        const float degree = juce::jlimit(0.f, 100.f, p.udmbcDegree[band]);
+        depth[band] = degree / 100.f;
+        downRatio[band] =
+            1.f + depth[band] * ((band == 3 ? 100.f : kCompressorRatio) - 1.f);
+        upRatio[band] = 1.f + depth[band] * (kLifterRatio - 1.f);
+        compMix[band] = juce::jlimit(0.f, 100.f, p.udmbcCompMix[band]);
+        lifterMix[band] = juce::jlimit(0.f, 100.f, p.udmbcLifterMix[band]);
+        bandGain[band] = dbToGain(
+            juce::jlimit(-24.f, 12.f, p.udmbcBandLevelDb[band]));
+
+        const float baseAttack =
+            juce::jlimit(0.1f, 120.f, p.udmbcCompAttack[band]);
+        const float k = juce::jmax(0.f, (120.f - baseAttack) / 0.49f);
+        const float dynamicAttack =
+            baseAttack + k * depth[band] * depth[band];
+        const float minAttack =
+            band == 0 ? 15.f : (band == 1 ? 8.f : 1.f);
+        finalAttackMs[band] = juce::jmax(minAttack, dynamicAttack);
+
+        const float baseRelease =
+            juce::jlimit(10.f, 2500.f, p.udmbcCompRelease[band]);
+        finalReleaseMs[band] =
+            juce::jmax(20.f, baseRelease + depth[band] * 100.f);
+
+        downFastAttack[band] = timeCoeff(sr, finalAttackMs[band]);
+        downFastRelease[band] = timeCoeff(sr, finalReleaseMs[band]);
+        downSlowAttack[band] =
+            timeCoeff(sr, juce::jmax(finalAttackMs[band] * 4.f, 5.f));
+        downSlowRelease[band] =
+            timeCoeff(sr, juce::jmax(finalReleaseMs[band] * 1.75f, 20.f));
+
+        const float upAttack = p.udmbcLifterAttack[band];
+        const float upRelease = p.udmbcLifterRelease[band];
+        upFastAttack[band] = timeCoeff(sr, upAttack);
+        upFastRelease[band] =
+            timeCoeff(sr, juce::jmax(0.5f, upRelease * 0.35f));
+        upSlowAttack[band] =
+            timeCoeff(sr, juce::jmax(upAttack * 4.f, 5.f));
+        upSlowRelease[band] =
+            timeCoeff(sr, juce::jmax(upRelease * 1.75f, 20.f));
+    }
+
+    const float gateAttackCoeff = timeCoeff(sr, 100.f);
+    const float gateReleaseCoeff = timeCoeff(sr, 30.f);
+    const int nCh = juce::jmin(channels, buffer.getNumChannels());
+    const bool stereo = nCh > 1;
+
+    for (int n = 0; n < buffer.getNumSamples(); ++n)
+    {
+        float original[2] { 0.f, 0.f };
+        float dryBands[2][4] {};
+        float workBands[2][4] {};
+
+        for (int ch = 0; ch < nCh; ++ch)
+        {
+            auto* data = buffer.getWritePointer(ch);
+            original[ch] = data[n];
+            const float x = original[ch] * inputGain;
+            const bool right = ch == 1;
+
+            float low = udmbcXover1.low(x, right);
+            const float x1High = udmbcXover1.high(x, right);
+            float lowMid = udmbcXover2.low(x1High, right);
+            const float x2High = udmbcXover2.high(x1High, right);
+            const float midHigh = udmbcXover3.low(x2High, right);
+            const float top = udmbcXover3.high(x2High, right);
+
+            low = udmbcPhase2_B1.allPass(low, right);
+            low = udmbcPhase3_B1.allPass(low, right);
+            lowMid = udmbcPhase3_B2.allPass(lowMid, right);
+
+            dryBands[ch][0] = low;
+            dryBands[ch][1] = lowMid;
+            dryBands[ch][2] = midHigh;
+            dryBands[ch][3] = top;
+            for (int band = 0; band < 4; ++band)
+                workBands[ch][band] = dryBands[ch][band];
+        }
+
+        for (size_t band = 0; band < 4; ++band)
+        {
+            if (!active[band])
+                continue;
+
+            auto& state = udmbcDynamics[band];
+            const float linkedInput =
+                stereo
+                    ? std::sqrt(0.5f * (
+                        dryBands[0][band] * dryBands[0][band]
+                        + dryBands[1][band] * dryBands[1][band]))
+                    : std::abs(dryBands[0][band]);
+
+            const float gatedDetector = applyGate(
+                linkedInput, state.gateEnvDb, p.udmbcGateThresholdDb, sr,
+                gateAttackCoeff, gateReleaseCoeff);
+            const float gateGain =
+                linkedInput > 1.0e-12f ? gatedDetector / linkedInput : 1.0f;
+
+            for (int ch = 0; ch < nCh; ++ch)
+                workBands[ch][band] *= gateGain;
+
+            float downReleasePdr = finalReleaseMs[band];
+            const float downDb = rmsDetectPDR(
+                gatedDetector,
+                state.downRmsPower,
+                state.downSlowRmsPower,
+                finalAttackMs[band],
+                finalReleaseMs[band],
+                sr,
+                downReleasePdr,
+                downFastAttack[band],
+                downFastRelease[band],
+                downSlowAttack[band],
+                downSlowRelease[band]);
+
+            const float compGain = applyCompressorFromDetectorDb(
+                1.0f, downDb, state.compEnvDb,
+                p.udmbcCompThreshold[band],
+                finalAttackMs[band],
+                finalReleaseMs[band],
+                compMix[band], sr, downRatio[band],
+                downFastAttack[band],
+                downFastRelease[band]);
+
+            for (int ch = 0; ch < nCh; ++ch)
+                workBands[ch][band] *= compGain;
+
+            const float postCompDetector = gatedDetector * compGain;
+            float upReleasePdr = p.udmbcLifterRelease[band];
+            const float upDb = rmsDetectPDR(
+                postCompDetector,
+                state.upRmsPower,
+                state.upSlowRmsPower,
+                p.udmbcLifterAttack[band],
+                p.udmbcLifterRelease[band],
+                sr,
+                upReleasePdr,
+                upFastAttack[band],
+                upFastRelease[band],
+                upSlowAttack[band],
+                upSlowRelease[band]);
+
+            const float liftThreshold =
+                juce::jmax(p.udmbcLifterThreshold[band], -48.f);
+            const float liftGain = applyLifterFromDetectorDb(
+                1.0f, upDb, state.lifterEnv,
+                liftThreshold,
+                p.udmbcLifterAttack[band],
+                upReleasePdr,
+                lifterMix[band], sr, upRatio[band],
+                upFastAttack[band],
+                timeCoeff(sr, upReleasePdr));
+
+            for (int ch = 0; ch < nCh; ++ch)
+                workBands[ch][band] *= liftGain * bandGain[band];
+        }
+
+        for (int ch = 0; ch < nCh; ++ch)
+        {
+            float moduleDelta = 0.f;
+            for (size_t band = 0; band < 4; ++band)
+                if (active[band])
+                    moduleDelta += workBands[ch][band] - dryBands[ch][band];
+
+            float wet = original[ch] * inputGain + moduleDelta;
+            if (p.udmbcClipper)
+                wet = std::tanh(wet * 1.7f);
+            wet *= outputGain * autoTrimGain;
+
+            auto* data = buffer.getWritePointer(ch);
+            data[n] = original[ch] + globalMix * (wet - original[ch]);
+        }
+    }
+}
+
+void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer,
+                              const Parameters& p)
+{
+    const float mix = juce::jlimit(0.f, 1.f, p.tapeMix / 100.f);
+
+    std::array<bool, 4> active {};
+    bool anyActiveBand = false;
+    for (size_t band = 0; band < 4; ++band)
+    {
+        active[band] =
+            !p.tapeBandBypass[band]
+            && p.tapeDegree[band] > 0.0001f;
+        anyActiveBand = anyActiveBand || active[band];
+
+        if (!active[band])
+            for (auto& state : typeAAdAA[band])
+                state.reset();
+    }
+
+    if (p.tapeBypass || mix <= 0.000001f || !anyActiveBand)
+    {
+        typeXover1.reset(); typeXover2.reset(); typeXover3.reset();
+        typeXoverCache.invalidate();
+        for (auto& band : typeAAdAA)
+            for (auto& state : band)
+                state.reset();
+        return;
+    }
+
+    const float inputGain =
+        dbToGain(juce::jlimit(-24.f, 24.f, p.tapeInputGainDb));
+    const float outputGain =
+        dbToGain(juce::jlimit(-24.f, 24.f, p.tapeOutputGainDb));
+
+    const float x1 = juce::jlimit(40.f, 1000.f, p.udmbcX1);
+    const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.udmbcX2);
+    const float x3 = juce::jlimit(
+        x2 + 200.f, static_cast<float>(sr * 0.42), p.udmbcX3);
+    const float crossoverQ = crossoverQFromOverlap(p.udmbcXoverOverlap);
+
+    if (!typeXoverCache.matches(sr, x1, x2, x3, crossoverQ))
+    {
+        updateCrossover(typeXover1, sr, x1, crossoverQ);
+        updateCrossover(typeXover2, sr, x2, crossoverQ);
+        updateCrossover(typeXover3, sr, x3, crossoverQ);
+        typeXoverCache.set(sr, x1, x2, x3, crossoverQ);
+    }
+
+    std::array<float, 4> depth {};
+    std::array<float, 4> driveParam {};
+    std::array<float, 4> staticMakeupMultiplier {};
+    std::array<float, 4> bandTrim {};
+    constexpr float kTypeAMaxDegree[4] = { 50.f, 60.f, 70.f, 90.f };
+
+    for (size_t band = 0; band < 4; ++band)
+    {
+        const float limitedDegree =
+            juce::jlimit(0.f, kTypeAMaxDegree[band], p.tapeDegree[band]);
+        const float controlNorm =
+            limitedDegree / juce::jmax(1.0f, kTypeAMaxDegree[band]);
+        depth[band] = juce::jlimit(0.f, 0.5f, controlNorm * 0.5f);
+        driveParam[band] = juce::jmax(1.0f, 1.0f + 1.5f * depth[band]);
+
+        float makeupDenominator = std::tanh(driveParam[band]);
+        makeupDenominator = juce::jmax(makeupDenominator, 1.0e-6f);
+        staticMakeupMultiplier[band] = 1.0f / makeupDenominator;
+        bandTrim[band] =
+            dbToGain(juce::jlimit(-6.f, 6.f, p.tapeBandLevelDb[band]));
+    }
+
+    const int nCh = juce::jmin(channels, buffer.getNumChannels());
+    for (int ch = 0; ch < nCh; ++ch)
     {
         auto* data = buffer.getWritePointer(ch);
         const bool right = ch == 1;
@@ -1676,296 +2013,27 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
             const float original = data[n];
             const float x = original * inputGain;
 
-            float low = udmbcXover1.low(x, right);
-            const float x1High = udmbcXover1.high(x, right);
-            float lowMid = udmbcXover2.low(x1High, right);
-            const float x2High = udmbcXover2.high(x1High, right);
-            const float midHigh = udmbcXover3.low(x2High, right);
-            const float top = udmbcXover3.high(x2High, right);
-
-            // LP4 + HP4 compensation restores the phase path for skipped
-            // crossovers without adding host/plugin latency.
-            low = udmbcPhase2_B1.allPass(low, right);
-            low = udmbcPhase3_B1.allPass(low, right);
-            lowMid = udmbcPhase3_B2.allPass(lowMid, right);
-
-            float bands[4] = { low, lowMid, midHigh, top };
-            const float dryBands[4] = { low, lowMid, midHigh, top };
-
-            for (int band = 0; band < 4; ++band)
-            {
-                if (p.udmbcBandBypass[(size_t) band])
-                    continue;
-
-                const float degree =
-                    juce::jlimit(0.f, 100.f, p.udmbcDegree[(size_t) band]);
-
-                if (degree <= 0.0001f)
-                    continue;
-
-                auto& state = udmbcDynamics[(size_t) band];
-                float& gateEnv = state.gateEnvDb[(size_t) ch];
-                float& lifterEnv = state.lifterEnv[(size_t) ch];
-                float& compEnv = state.compEnvDb[(size_t) ch];
-
-                // The existing GATE control is now independent per frequency band.
-                float v = applyGate(
-                    bands[band], gateEnv,
-                    p.udmbcGateThresholdDb, sr);
-
-                // Degree=0 means true unity ratio. Degree=100 reaches the
-                // UDMBC-style maximum ratios while preserving the user's
-                // existing per-band controls.
-                const float depth = degree / 100.f;
-
-                // Classic UDMBC-style scaling: upward reaches 4:1.
-                // Downward is intentionally much stronger, matching the
-                // high-ratio multiband upward/downward character. The top band
-                // uses the slightly harder target.
-                const float downMaxRatio = band == 3 ? 100.f : kCompressorRatio;
-                const float downRatio =
-                    1.f + depth * (downMaxRatio - 1.f);
-                const float upRatio =
-                    1.f + depth * (kLifterRatio - 1.f);
-
-                const float compMix =
-                    juce::jlimit(0.f, 100.f, p.udmbcCompMix[(size_t) band]);
-                const float lifterMix =
-                    juce::jlimit(0.f, 100.f, p.udmbcLifterMix[(size_t) band]);
-
-                // Standard UDMBC order: downward first, upward second.
-                // The user's Attack is automatically lengthened as UDMBC Amount
-                // (degree) rises, reducing high-depth click / transient tearing.
-                const float amount = depth;
-
-                // The Compressor Attack parameter is the actual user base time.
-                // Defaults are Low=15ms, LowMid=8ms, HighMid=3ms, High=1ms.
-                const float baseAttackMs =
-                    juce::jlimit(0.1f, 120.0f,
-                                 p.udmbcCompAttack[(size_t) band]);
-
-                // Amount^2 curve: Amount=70% maps exactly to 120ms.
-                const float targetLimitMs = 120.0f;
-                const float k =
-                    juce::jmax(0.0f,
-                               (targetLimitMs - baseAttackMs) / 0.49f);
-                const float dynamicAttackMs =
-                    baseAttackMs + k * (amount * amount);
-
-                const float minAttackLimit =
-                    (band == 0) ? 15.0f
-                                : ((band == 1) ? 8.0f : 1.0f);
-
-                const float finalAttackMs =
-                    juce::jmax(minAttackLimit, dynamicAttackMs);
-
-                const float baseReleaseMs =
-                    juce::jlimit(10.0f, 2500.0f,
-                                 p.udmbcCompRelease[(size_t) band]);
-                const float dynamicReleaseMs =
-                    baseReleaseMs + (amount * 100.0f);
-                const float finalReleaseMs =
-                    juce::jmax(20.0f, dynamicReleaseMs);
-
-                const float attackCoef =
-                    std::exp(-1000.0f
-                             / (finalAttackMs * static_cast<float>(sr)));
-                const float releaseCoef =
-                    std::exp(-1000.0f
-                             / (finalReleaseMs * static_cast<float>(sr)));
-
-                // Each stage has its own RMS detector state for this band/channel.
-                float downReleaseMs = p.udmbcCompRelease[(size_t) band];
-                const float downDb = rmsDetectPDR(
-                    v,
-                    state.downRmsPower[(size_t) ch],
-                    state.downSlowRmsPower[(size_t) ch],
-                    finalAttackMs,
-                    finalReleaseMs,
-                    sr,
-                    downReleaseMs,
-                    attackCoef,
-                    releaseCoef);
-
-                v = applyCompressorFromDetectorDb(
-                    v, downDb, compEnv,
-                    p.udmbcCompThreshold[(size_t) band],
-                    finalAttackMs,
-                    finalReleaseMs,
-                    compMix, sr, downRatio,
-                    attackCoef,
-                    releaseCoef);
-
-                float upReleaseMs = p.udmbcLifterRelease[(size_t) band];
-                const float upDb = rmsDetectPDR(
-                    v,
-                    state.upRmsPower[(size_t) ch],
-                    state.upSlowRmsPower[(size_t) ch],
-                    p.udmbcLifterAttack[(size_t) band],
-                    p.udmbcLifterRelease[(size_t) band],
-                    sr,
-                    upReleaseMs);
-
-                const float liftThreshold =
-                    juce::jmax(p.udmbcLifterThreshold[(size_t) band], -48.f);
-
-                v = applyLifterFromDetectorDb(
-                    v, upDb, lifterEnv,
-                    liftThreshold,
-                    p.udmbcLifterAttack[(size_t) band],
-                    upReleaseMs,
-                    lifterMix, sr, upRatio);
-
-                v *= dbToGain(
-                    juce::jlimit(-24.f, 12.f,
-                        p.udmbcBandLevelDb[(size_t) band]));
-
-                bands[band] = v;
-            }
-
-            float moduleDelta = 0.0f;
-            for (int band = 0; band < 4; ++band)
-            {
-                if (p.udmbcBandBypass[(size_t) band]
-                    || p.udmbcDegree[(size_t) band] <= 0.0001f)
-                    continue;
-                moduleDelta += bands[band] - dryBands[band];
-            }
-
-            float wet = x + moduleDelta;
-            if (p.udmbcClipper)
-                wet = std::tanh(wet * 1.7f);
-            wet *= outputGain * autoTrimGain;
-
-            data[n] = original + globalMix * (wet - original);
-        }
-    }
-}
-
-void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& p)
-{
-    const float mix =
-        juce::jlimit(0.f, 1.f, p.tapeMix / 100.f);
-
-    if (p.tapeBypass || mix <= 0.000001f)
-    {
-        typeXover1.reset();
-        typeXover2.reset();
-        typeXover3.reset();
-        return;
-    }
-
-    bool anyActiveBand = false;
-    for (size_t band = 0; band < 4; ++band)
-        anyActiveBand = anyActiveBand
-            || (!p.tapeBandBypass[band]
-                && p.tapeDegree[band] > 0.0001f);
-
-    if (!anyActiveBand)
-        return;
-
-    // TAPE COLOR startup fix: stateless normalized tanh. Attack / Release and
-    // envelope states are intentionally removed from the gain path.
-    const float inputGain =
-        dbToGain(juce::jlimit(-24.f, 24.f, p.tapeInputGainDb));
-    const float outputGain =
-        dbToGain(juce::jlimit(-24.f, 24.f, p.tapeOutputGainDb));
-
-    // TAPE uses the same shared graph crossovers as UDMBC.
-    const float x1 = juce::jlimit(40.f, 1000.f, p.udmbcX1);
-    const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.udmbcX2);
-    const float x3 = juce::jlimit(
-        x2 + 200.f, static_cast<float>(sr * 0.42), p.udmbcX3);
-    const float crossoverQ = crossoverQFromOverlap(p.udmbcXoverOverlap);
-
-    updateCrossover(typeXover1, sr, x1, crossoverQ);
-    updateCrossover(typeXover2, sr, x2, crossoverQ);
-    updateCrossover(typeXover3, sr, x3, crossoverQ);
-
-    std::array<float, 4> driveParam {};
-    std::array<float, 4> staticMakeupMultiplier {};
-    std::array<float, 4> bandTrim {};
-    constexpr float kTypeAMaxDegree[4] = { 50.f, 60.f, 70.f, 90.f };
-    // Keep legacy parameter ranges for preset/automation compatibility.
-    // Full travel in every band now maps to the old 50-degree reference
-    // (depth 0.5), the requested ~3 dB maximum colour range.
-
-    // Parameter/update section: calculate each band's fixed drive and makeup
-    // once per audio block, avoiding per-sample division.
-    for (size_t band = 0; band < 4; ++band)
-    {
-        const float limitedDegree =
-            juce::jlimit(0.f, kTypeAMaxDegree[band], p.tapeDegree[band]);
-        const float controlNorm =
-            limitedDegree / juce::jmax(1.0f, kTypeAMaxDegree[band]);
-        const float depth =
-            juce::jlimit(0.f, 0.5f, controlNorm * 0.5f);
-        const float rawDriveParam = 1.0f + 1.5f * depth;
-        driveParam[band] = juce::jmax(1.0f, rawDriveParam);
-
-        float makeupDenominator = std::tanh(driveParam[band]);
-        makeupDenominator =
-            juce::jmax(makeupDenominator, 1.0e-6f);
-        staticMakeupMultiplier[band] = 1.0f / makeupDenominator;
-
-        bandTrim[band] = dbToGain(juce::jlimit(
-            -6.f, 6.f, p.tapeBandLevelDb[band]));
-    }
-
-    for (int ch = 0; ch < channels; ++ch)
-    {
-        auto* data = buffer.getWritePointer(ch);
-
-        for (int n = 0; n < buffer.getNumSamples(); ++n)
-        {
-            const float original = data[n];
-            const float x = original * inputGain;
-            const bool right = ch == 1;
-
-            // Exactly the same 4-band reconstruction used by UDMBC:
-            // LP(X1), BP(X1..X2), BP(X2..X3), HP(X3).
-            const float low =
-                typeXover1.low(x, right);
-            const float x1High =
-                typeXover1.high(x, right);
-            const float lowMid =
-                typeXover2.low(x1High, right);
-            const float x2High =
-                typeXover2.high(x1High, right);
-            const float midHigh =
-                typeXover3.low(x2High, right);
-            const float top =
-                typeXover3.high(x2High, right);
-
-            const float bands[4] = {
-                low, lowMid, midHigh, top
-            };
+            const float low = typeXover1.low(x, right);
+            const float x1High = typeXover1.high(x, right);
+            const float lowMid = typeXover2.low(x1High, right);
+            const float x2High = typeXover2.high(x1High, right);
+            const float midHigh = typeXover3.low(x2High, right);
+            const float top = typeXover3.high(x2High, right);
+            const float bands[4] = { low, lowMid, midHigh, top };
 
             float enhancement = 0.f;
-
             for (size_t band = 0; band < 4; ++band)
             {
-                if (p.tapeBandBypass[band])
+                if (!active[band] || depth[band] <= 0.f)
                     continue;
 
-                const float limitedDegree =
-                    juce::jlimit(0.f, kTypeAMaxDegree[band], p.tapeDegree[band]);
-                const float controlNorm =
-                    limitedDegree / juce::jmax(1.0f, kTypeAMaxDegree[band]);
-                const float depth =
-                    juce::jlimit(0.f, 0.5f, controlNorm * 0.5f);
-                if (depth <= 0.f)
-                    continue;
-
-                // Requested core:
-                // tanh(input * drive) / tanh(drive).
-                // For |input| <= 1, the 0 dBFS reference maps to unity.
-                const float driven =
-                    std::tanh(bands[band] * driveParam[band])
-                    * staticMakeupMultiplier[band];
+                const float driven = processTypeAAdAA(
+                    bands[band],
+                    driveParam[band],
+                    staticMakeupMultiplier[band],
+                    typeAAdAA[band][(size_t)ch]);
                 const float processed = driven * bandTrim[band];
-
-                enhancement += (processed - bands[band]) * depth;
+                enhancement += (processed - bands[band]) * depth[band];
             }
 
             const float wet = (x + enhancement) * outputGain;
@@ -1977,6 +2045,20 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
 void VVChainDSP::processMasterLimiter(juce::AudioBuffer<float>& buffer,
                                          bool active)
 {
+    const int nCh = juce::jmin(channels, buffer.getNumChannels());
+    const int numSamples = buffer.getNumSamples();
+
+    for (int ch = 0; ch < nCh; ++ch)
+    {
+        limiterDryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
+        auto* delayed = limiterDryBuffer.getWritePointer(ch);
+        for (int n = 0; n < numSamples; ++n)
+        {
+            limiterDryDelay.pushSample(ch, delayed[n]);
+            delayed[n] = limiterDryDelay.popSample(ch);
+        }
+    }
+
     juce::dsp::AudioBlock<const float> inputBlock(buffer);
     juce::dsp::AudioBlock<float> outputBlock(buffer);
     auto osBlock = limiterOversampler.processSamplesUp(inputBlock);
@@ -1986,18 +2068,18 @@ void VVChainDSP::processMasterLimiter(juce::AudioBuffer<float>& buffer,
 
     constexpr float ceilingDb = -1.0f;
     const float ceiling = dbToGain(ceilingDb);
-    const float attack =
-        timeCoeff(osSr, 0.05f);
-    const float release =
-        timeCoeff(osSr, 50.f);
+    const float attack = timeCoeff(osSr, 0.05f);
+    const float release = timeCoeff(osSr, 50.f);
+
+    bool anyGainReduction = limiterGain < 0.9999999f;
 
     for (size_t n = 0; n < osBlock.getNumSamples(); ++n)
     {
         float peak = 0.f;
-        for (int ch = 0; ch < channels; ++ch)
+        for (int ch = 0; ch < nCh; ++ch)
         {
-            const float* data = osBlock.getChannelPointer(
-                static_cast<size_t>(ch));
+            const float* data =
+                osBlock.getChannelPointer(static_cast<size_t>(ch));
             peak = std::max(peak, std::abs(data[n]));
         }
 
@@ -2006,30 +2088,35 @@ void VVChainDSP::processMasterLimiter(juce::AudioBuffer<float>& buffer,
                 ? ceiling / std::max(peak, 1.0e-9f)
                 : 1.0f;
 
-        // Gain is smoothed in dB/log space, not as a raw linear amplitude.
         const float targetDb = gainToDb(targetGain);
-        const float currentDb = gainToDb(
-            juce::jmax(limiterGain, 1.0e-9f));
-        const float alpha =
-            targetDb < currentDb ? attack : release;
-
+        const float currentDb = gainToDb(juce::jmax(limiterGain, 1.0e-9f));
+        const float alpha = targetDb < currentDb ? attack : release;
         const float smoothedDb =
             alpha * currentDb + (1.f - alpha) * targetDb;
-
         limiterGain = dbToGain(smoothedDb);
 
-        for (int ch = 0; ch < channels; ++ch)
-        {
-            float* data = osBlock.getChannelPointer(
-                static_cast<size_t>(ch));
+        if (targetGain >= 1.0f && limiterGain > 0.9999999f)
+            limiterGain = 1.0f;
+        if (targetGain < 1.0f || limiterGain < 0.9999999f)
+            anyGainReduction = true;
 
+        for (int ch = 0; ch < nCh; ++ch)
+        {
+            float* data =
+                osBlock.getChannelPointer(static_cast<size_t>(ch));
             limiterLookahead.pushSample(ch, data[n]);
-            data[n] =
-                limiterLookahead.popSample(ch) * limiterGain;
+            data[n] = limiterLookahead.popSample(ch) * limiterGain;
         }
     }
 
     limiterOversampler.processSamplesDown(outputBlock);
+
+    // If the limiter never reduced gain, use a pure integer-delay copy of its
+    // input. The oversampler still runs to keep state/true-peak detection warm,
+    // but neutral full-chain audio can null exactly against aligned dry.
+    if (!anyGainReduction)
+        for (int ch = 0; ch < nCh; ++ch)
+            buffer.copyFrom(ch, 0, limiterDryBuffer, ch, 0, numSamples);
 }
 
 void VVChainDSP::alignDryBuffer(int numSamples)
@@ -2060,10 +2147,29 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     const int numSamples = buffer.getNumSamples();
 
     jassert(nCh <= dryBuffer.getNumChannels());
-    jassert(numSamples <= dryBuffer.getNumSamples());
 
-    if (nCh > dryBuffer.getNumChannels() || numSamples > dryBuffer.getNumSamples())
+    if (nCh > dryBuffer.getNumChannels())
         return;
+
+    if (numSamples > preparedBlockCapacity)
+    {
+        int offset = 0;
+        while (offset < numSamples)
+        {
+            const int block = juce::jmin(preparedBlockCapacity, numSamples - offset);
+            std::array<float*, 2> channelData { nullptr, nullptr };
+            for (int ch = 0; ch < nCh; ++ch)
+                channelData[(size_t)ch] = buffer.getWritePointer(ch, offset);
+
+            juce::AudioBuffer<float> view(channelData.data(), nCh, block);
+            process(view, p);
+            offset += block;
+        }
+
+        for (int ch = nCh; ch < buffer.getNumChannels(); ++ch)
+            buffer.clear(ch, 0, numSamples);
+        return;
+    }
 
     for (int ch = 0; ch < nCh; ++ch)
         dryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
@@ -2073,9 +2179,8 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     applyEq(buffer, p);
     alignDryBuffer(numSamples);
 
-    applyOtt(buffer, p);
+    applyUdmbc(buffer, p);
     applyAType(buffer, p);
-
 
     // Dry/Wet is performed after the EQ latency has been matched.
     if (!p.mixBypass)
@@ -2107,18 +2212,16 @@ void VVChainDSP::process(juce::AudioBuffer<float>& buffer, const Parameters& p)
     const float soloQ = crossoverQFromOverlap(
         p.udmbcXoverOverlap);
 
-    updateCrossover(
-        soloPreXover1, sr, soloX1, soloQ);
-    updateCrossover(
-        soloPreXover2, sr, soloX2, soloQ);
-    updateCrossover(
-        soloPreXover3, sr, soloX3, soloQ);
-    updateCrossover(
-        soloPostXover1, sr, soloX1, soloQ);
-    updateCrossover(
-        soloPostXover2, sr, soloX2, soloQ);
-    updateCrossover(
-        soloPostXover3, sr, soloX3, soloQ);
+    if (!soloXoverCache.matches(sr, soloX1, soloX2, soloX3, soloQ))
+    {
+        updateCrossover(soloPreXover1, sr, soloX1, soloQ);
+        updateCrossover(soloPreXover2, sr, soloX2, soloQ);
+        updateCrossover(soloPreXover3, sr, soloX3, soloQ);
+        updateCrossover(soloPostXover1, sr, soloX1, soloQ);
+        updateCrossover(soloPostXover2, sr, soloX2, soloQ);
+        updateCrossover(soloPostXover3, sr, soloX3, soloQ);
+        soloXoverCache.set(sr, soloX1, soloX2, soloX3, soloQ);
+    }
 
     updateDynamicDetector(
         graphSoloPre, sr,

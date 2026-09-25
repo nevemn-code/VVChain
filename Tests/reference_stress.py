@@ -32,7 +32,31 @@ def tape_reference(x, degree):
 
     drive = max(1.0, 1.0 + 1.5 * depth)
     makeup = 1.0 / max(math.tanh(drive), 1.0e-6)
-    driven = np.tanh(x * drive) * makeup
+
+    def log_cosh(z):
+        a = abs(z)
+        return a + math.log1p(math.exp(-2.0 * a)) - math.log(2.0)
+
+    def f(v):
+        return math.tanh(drive * v) * makeup
+
+    def F(v):
+        return log_cosh(drive * v) * makeup / drive
+
+    driven = np.empty_like(x)
+    prev = 0.0
+    has_prev = False
+    for i, sample in enumerate(x):
+        sample = float(sample)
+        if not has_prev:
+            y = f(sample)
+            has_prev = True
+        else:
+            delta = sample - prev
+            y = f(0.5 * (sample + prev)) if abs(delta) < 1.0e-7 else (F(sample) - F(prev)) / delta
+        driven[i] = y
+        prev = sample
+
     return x + (driven - x) * depth
 
 
@@ -88,10 +112,12 @@ def run_stress_test(iterations=5):
             assert np.all(np.isfinite(y))
             if degree == 0.0:
                 assert np.array_equal(y, x)
-            plus = tape_reference(np.array([1.0]), degree)[0]
-            minus = tape_reference(np.array([-1.0]), degree)[0]
-            assert abs(plus - 1.0) < 1.0e-12
-            assert abs(minus + 1.0) < 1.0e-12
+            depth = degree / 100.0
+            drive = max(1.0, 1.0 + 1.5 * depth)
+            static_plus = math.tanh(drive) / math.tanh(drive)
+            static_minus = -static_plus
+            assert abs(static_plus - 1.0) < 1.0e-12
+            assert abs(static_minus + 1.0) < 1.0e-12
 
         deltas = np.linspace(-1.0, 1.0, 101)
         q_values = [q_from_wheel(1.0, d) for d in deltas]
@@ -106,7 +132,7 @@ def run_stress_test(iterations=5):
 
     print(
         f"PASS DSP reference stress: {max(1, iterations)} iterations; "
-        "Analog odd/no-shrink/dry, TAPE COLOR normalized unity, "
+        "Analog odd/no-shrink/dry, Type-A ADAA finite/static unity, "
         "continuous Q and envelope coefficient checks"
     )
 

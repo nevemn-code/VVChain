@@ -49,7 +49,10 @@ assert "github.run_id" not in build
 assert "vvchain-win-vst3-juce-9.0.2-vs2026-v1" in build
 assert "--target VVChain_VST3" in build
 assert "VVCHAIN_COPY_PLUGIN_AFTER_BUILD=OFF" in build
-assert "github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'" in build
+assert "github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'" in build
+assert "github.event_name == 'push' || github.event_name == 'workflow_dispatch'" in build
+assert "github.event_name == 'workflow_dispatch' && inputs.full_validation == true" in build
+assert "github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'" not in build
 assert "scipy" not in build.lower()
 
 assert "enable_testing()" not in cmake
@@ -70,7 +73,7 @@ processor_h = read("Source/PluginProcessor.h")
 processor = read("Source/PluginProcessor.cpp")
 settings = read("Source/SettingsPanel.cpp")
 
-# v1.0.63 analyzer/transient invariants: main Spectrum only, no module contribution path.
+# v1.0.65 analyzer/transient invariants: main Spectrum only, no module contribution path.
 assert "analyzerFftOrder = 12" in editor_h
 assert "analyzerHopSize = analyzerFftSize / 2" in editor_h
 assert "contributionFftOrder" not in editor_h
@@ -85,9 +88,20 @@ assert "analyzerPath.cubicTo" in editor
 assert "Nonlinear Analog ADAA v2 remains fixed at 4x" in dsp
 assert "eqOversampler.processSamplesUp" in dsp
 assert "const double osSr = sr;" in dsp
+assert "std::array<float, 2> gateEnvDb" not in dsp_h
+assert "const float linkedInput" in dsp
 assert "dynamicsAmount <= 0.000001f" in dsp
 assert dsp.count("bool anyActiveBand = false;") >= 2
 assert "eqWetDelay" in dsp + dsp_h
+assert "applyUdmbc" in dsp + dsp_h
+assert "applyOtt" not in dsp + dsp_h
+assert "TypeAAdAAState" in dsp_h
+assert "processTypeAAdAA" in dsp
+assert "limiterDryDelay" in dsp + dsp_h
+assert "preparedBlockCapacity" in dsp + dsp_h
+assert "VVChainDSPNullTest" in cmake + build
+assert "typea_adaa_matrix.py" in build
+assert "signal_integrity_matrix.py" in build
 assert "bandProcessingHighPass" not in dsp + dsp_h
 assert "analogDelta" in dsp
 assert "data[n] = original + globalMix * (wet - original);" in dsp

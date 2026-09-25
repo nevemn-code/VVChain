@@ -1,4 +1,12 @@
-# VVChain Validation Status（v1.0.64；歷史基準仍保留於下文）
+# VVChain Validation Status（v1.0.65；歷史基準仍保留於下文）
+
+## v1.0.65 stereo-link / ADAA / full-chain null
+- UDMBC：single linked detector/gain per band；Native/Web 同步 LR4 + branch phase compensation。
+- Type-A：Native/Web 同步 analytical first-order ADAA；不新增 oversampling latency。
+- CPU：UDMBC fixed time coefficients moved out of hot sample/channel/band loops；shared crossover coefficients cache by parameter tuple。
+- Safety：65536-sample preallocation + larger-block chunking；不再 silent return。
+- Neutral limiter：oversampler/state 繼續跑，但無 GR block 使用 pure delayed input；由 headless C++ test 驗證 full-chain null / DELTA。
+- 驗證：Fast Gate + manual Full Native/DSP workflow 為發版必要條件。
 
 ## v1.0.64 signal-integrity routing
 - 移除 hidden 30 Hz audible HPF。

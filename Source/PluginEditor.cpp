@@ -1540,7 +1540,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     g.strokePath(
         offsetResponse, juce::PathStrokeType(1.15f));
 
-    // Sonnox-style Target/Offset dynamic fill.
+    // Target/Offset Dynamic EQ fill.
     for (int band = 0; band < 4; ++band)
     {
         const auto n = juce::String(band + 1);
@@ -2482,7 +2482,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(ivoryTheme ? juce::Colour(0xff6c675f) : juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.64", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.65", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();

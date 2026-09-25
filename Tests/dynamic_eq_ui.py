@@ -128,11 +128,11 @@ def source_assertions():
         assert token in proc or token in cpp, token
 
     assert 'if(this.s.delta){yL=yL-l;yR=yR-r;}' in worklet
-    assert 'analogDelta' in worklet
-    assert 'zoneBands(y,c,"analogLp",s.udmbc.x)' in worklet
+    assert 'analogStage' in worklet
+    assert 'zoneBands(x,c,"analogLp",s.udmbc.x,this._xcoBase)' in worklet
     assert 'colorX2?.[b]?2:1' in worklet
 
-    # v1.0.60 keeps only the main Spectrum Analyzer.
+    # v1.0.65 keeps only the main Spectrum Analyzer.
     assert 'updateContributionAnalyzer' not in cpp and 'updateContributionAnalyzer' not in head
     assert 'popContributionSamples' not in proc
     assert 'setContributionAnalysisEnabled' not in proc
@@ -396,43 +396,49 @@ def test_transient_500_candidate_matrix():
 
 
 def test_v106_shared_four_band_modules_and_transient():
-
+    """Current four-band module routing and anti-alias contracts."""
     cpp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
     worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
     editor = CPP.read_text(encoding="utf-8")
 
     cpp_tape = cpp[cpp.index("void VVChainDSP::applyAType"):cpp.index("void VVChainDSP::processMasterLimiter")]
-    worklet_tape = worklet[worklet.index("if(!s.type.bypass){"):worklet.index("\n    return y;", worklet.index("if(!s.type.bypass){"))]
 
-    assert "std::tanh(bands[band] * driveParam[band])" in cpp_tape
+    # Type-A is four-band parallel delta with analytical first-order ADAA.
+    assert "processTypeAAdAA" in cpp_tape
     assert "staticMakeupMultiplier" in cpp_tape
     assert "typeFastEnv" not in cpp_tape
     assert "typeSlowEnv" not in cpp_tape
-    assert "targetGainDb" not in cpp_tape
     assert "const float crossoverQ = crossoverQFromOverlap" in cpp_tape
-    assert "updateCrossover(typeXover1, sr, x1, crossoverQ)" in cpp_tape
-    assert "updateCrossover(typeXover2, sr, x2, crossoverQ)" in cpp_tape
-    assert "updateCrossover(typeXover3, sr, x3, crossoverQ)" in cpp_tape
+    assert "typeXoverCache.matches" in cpp_tape
     assert "const float bands[4] = {" in cpp_tape
     assert "low, lowMid, midHigh, top" in cpp_tape
-    assert "Math.tanh(bands[b]*driveParams[b])*makeup[b]" in worklet_tape
-    assert "c.typeFast[b]" not in worklet_tape
-    assert "c.typeSlow[b]" not in worklet_tape
-    assert "const xs=s.udmbc.x;" in worklet_tape
-    assert 'this.zoneBands(ti,c,"typeLp",xs)' in worklet_tape
+    assert "std::tanh(bands[band] * driveParam[band])" not in cpp_tape
+    assert "typeAAdAA" in worklet
+    assert 'zoneBands(ti,c,"typeLp",s.udmbc.x,this._xcoType)' in worklet
+
+    # Shared band routing is LR4 in Web and Native; old one-pole preview is gone.
+    assert "xoverPair(x,z,coef)" in worklet
+    assert "lp[0]+=" not in worklet
+    assert "updateCrossover(typeXover1, sr, x1, crossoverQ)" in cpp
+
+    # Analog remains the protected 4x ADAA path with per-band X2 delta only.
+    assert "Nonlinear Analog ADAA v2 remains fixed at 4x" in cpp
+    assert "eqOversampler.processSamplesUp" in cpp
+    assert "analogADAA[band][(size_t)ch].processSample" in cpp
+    assert "const double x2 = p.eqColorX2[band] ? 2.0 : 1.0;" in cpp
+    assert "colorX2" in web
+
+    # UDMBC is stereo-linked and uses shared LR4/phase-compensated routing.
+    assert "void VVChainDSP::applyUdmbc" in cpp
+    assert "const float linkedInput" in cpp
+    assert "udmbcStereo" in worklet
+    assert "udLinked=Array.from" in worklet
+
     assert re.search(r"VVCHAIN v\d+\.\d+\.\d+", web)
     assert re.search(r"VVCHAIN v\d+\.\d+\.\d+", editor)
     assert "LAST " not in editor
 
-    # ANALOG v1.0.16 uses unity-normalized smooth algebraic saturation.
-    assert "v1.0.16 smooth zero-phase algebraic saturation" in cpp
-    assert "unityNorm" in cpp and "unityNorm" in worklet
-    assert "const double u = juce::jlimit(-1.0, 1.0, x);" in cpp
-    assert "protectedSaturated" in worklet
-    assert "return x+(protectedSaturated-u)*this.clamp(x2,1,2)" in worklet
-    assert "colorX2" in web
-    assert "p.eqColorX2[band] ? 2.0f : 1.0f" in cpp
 
 def test_dynamic_range_centered_500():
     """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
@@ -777,6 +783,7 @@ def main():
         test_dynamic_cross_zero_is_linear()
         test_eq_xy_drag_math()
         test_transient_500_candidate_matrix()
+        test_v106_shared_four_band_modules_and_transient()
         test_dynamic_range_centered_500()
         test_dynamic_target_preserves_eq_as_center()
         test_dynamic_target_is_linear()

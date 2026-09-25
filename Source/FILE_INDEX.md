@@ -5,4 +5,4 @@
 - `SettingsPanel.cpp` / `SettingsPanel.h`：SETTINGS vector gear、UI-only overlay、內部捲動與 reserved/disabled section 架構。
 - `PluginProcessor.cpp`：AudioProcessor、APVTS、processBlock、PDC、DSP 串接。
 - `PluginProcessor.h`：AudioProcessor 宣告與 DSP 成員。
-- `DSP/`：EQ / Dynamic EQ / TRANSIENT / Analog / UDMBC / TAPE COLOR 的 native DSP。
+- `DSP/`：EQ / Dynamic EQ / TRANSIENT / Analog 4× ADAA / stereo-linked UDMBC / Type-A analytical ADAA 的 native DSP。

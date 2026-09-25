@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.64
+// VVChain Web AudioWorklet DSP module · v1.0.65
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -18,6 +18,15 @@ class VVChainWorklet extends AudioWorkletProcessor {
     this.transientSlow=[0,0,0,0];
     this.transientGain=[1,1,1,1];
     this.transientInit=[false,false,false,false];
+    this.udLinked=Array.from({length:4},()=>({
+      gateEnvDb:0,lifterEnv:1,compEnvDb:0,
+      upRmsPower:0,upSlowRmsPower:0,downRmsPower:0,downSlowRmsPower:0
+    }));
+    this.udmbcStateLive=false;
+    this.typeStateLive=false;
+    this._xcoBase=null;
+    this._xcoType=null;
+    this._udCache=null;
     this.pendingRevision=0;
     this.activeRevision=0;
     this._errorReported=false;
@@ -46,17 +55,28 @@ class VVChainWorklet extends AudioWorkletProcessor {
       last:0,start:0,transition:1
     });
     const dynState=()=>({det:{z1:0,z2:0},eq:eqFilter(),env:-120});
+    const bq=()=>({z1:0,z2:0});
+    const xo=()=>({lp1:bq(),lp2:bq(),hp1:bq(),hp2:bq()});
+    const tree=()=>[xo(),xo(),xo()];
     return {
       eq:Array.from({length:4},eqFilter),
       dynMid:Array.from({length:4},dynState),
       dynSide:Array.from({length:4},dynState),
       analogAd:Array.from({length:4},()=>({prevX:0,hasPrev:false})),
-      bandProcessingHp:{z1:0,z2:0},
-      analogLp:[0,0,0], lp:[0,0,0], typeLp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,
-      lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0],
-      transientLp:[0,0,0], transientHp:{z1:0,z2:0}, soloPre:[0,0,0], soloPost:[0,0,0], graphSoloPre:{z1:0,z2:0}, graphSoloPost:{z1:0,z2:0}
+      typeAd:Array.from({length:4},()=>({prevX:0,hasPrev:false})),
+      analogLp:tree(),
+      lp:tree(),
+      udPhase2B1:xo(),udPhase3B1:xo(),udPhase3B2:xo(),
+      typeLp:tree(),
+      transientLp:tree(),
+      soloPre:tree(),
+      soloPost:tree(),
+      gate:0,lim:0,
+      transientHp:bq(),
+      graphSoloPre:bq(),graphSoloPost:bq()
     };
   }
+
   clamp(v,a,b){return Math.max(a,Math.min(b,v))}
   finite(v){return Number.isFinite(v)?v:0}
   db2g(db){return Math.pow(10,db/20)}
@@ -117,6 +137,33 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const sf=this.clamp(f,10,sampleRate*.45);
     const K=Math.tan(Math.PI*sf/sampleRate),inv=1/(1+K);
     return[inv,-inv,0,(K-1)*inv,0]
+  }
+
+  xoverQ(){
+    const ov=Number(this.s?.udmbc?.overlap?.[0]??50);
+    return .90-.35*this.clamp(ov,0,100)/100;
+  }
+  xoverCoefs(xs,firstMin=80,firstMax=900){
+    const x1=this.clamp(Number(xs?.[0]??90),firstMin,firstMax);
+    const x2=this.clamp(Number(xs?.[1]??2500),x1+80,5000);
+    const x3=this.clamp(Number(xs?.[2]??7000),x2+200,sampleRate*.42);
+    const q=this.xoverQ();
+    return [x1,x2,x3].map(f=>({lp:this.lp(f,q),hp:this.hp(f,q)}));
+  }
+  resetBq(z){z.z1=0;z.z2=0}
+  resetXover(z){
+    this.resetBq(z.lp1);this.resetBq(z.lp2);
+    this.resetBq(z.hp1);this.resetBq(z.hp2);
+  }
+  resetTree(tree){for(const z of tree)this.resetXover(z)}
+  xoverPair(x,z,coef){
+    const low=this.biquad(this.biquad(x,coef.lp,z.lp1),coef.lp,z.lp2);
+    const high=this.biquad(this.biquad(x,coef.hp,z.hp1),coef.hp,z.hp2);
+    return[low,high];
+  }
+  xoverAllPass(x,z,coef){
+    const p=this.xoverPair(x,z,coef);
+    return p[0]+p[1];
   }
 
   notch(f,q=.707){
@@ -339,15 +386,13 @@ class VVChainWorklet extends AudioWorkletProcessor {
       ? x+(saturated-u)*this.clamp(x2,1,2)
       : x;
   }
-  zoneBands(x,c,which,xs){
-    const lp=c[which];
-    const a1=1-Math.exp(-2*Math.PI*this.clamp(xs[0],40,1000)/sampleRate);
-    const a2=1-Math.exp(-2*Math.PI*this.clamp(xs[1],120,5000)/sampleRate);
-    const a3=1-Math.exp(-2*Math.PI*this.clamp(xs[2],1000,Math.min(18000,sampleRate*.42))/sampleRate);
-    lp[0]+=a1*(x-lp[0]); const h0=x-lp[0];
-    lp[1]+=a2*(h0-lp[1]); const h1=h0-lp[1];
-    lp[2]+=a3*(h1-lp[2]); const h2=h1-lp[2];
-    return [lp[0],lp[1],lp[2],h2];
+  zoneBands(x,c,which,xs,coefs=this._xcoBase){
+    const tree=c[which];
+    const cs=coefs||this.xoverCoefs(xs,80,900);
+    const p1=this.xoverPair(x,tree[0],cs[0]);
+    const p2=this.xoverPair(p1[1],tree[1],cs[1]);
+    const p3=this.xoverPair(p2[1],tree[2],cs[2]);
+    return[p1[0],p2[0],p3[0],p3[1]];
   }
   applyTransientStereo(l,r,stereo,xs){
     const amounts=Array.isArray(this.s.transient)?this.s.transient:[0,0,0,0];
@@ -416,122 +461,245 @@ class VVChainWorklet extends AudioWorkletProcessor {
     return [l+deltaL,stereo?r+deltaR:r];
   }
 
-  sample(x,ch,analogAlpha){
-    const s=this.s,c=this.ch[ch];let y=x;
-    // EQ/Dynamics and TRANSIENT are already upstream.
-
-    // ANALOG COLOR v1.0.56: true four-band routing.
-    // Shared X1/X2/X3 positions define four bands before independent COLOR/ADAA.
-    const analogBands=this.zoneBands(y,c,"analogLp",s.udmbc.x);
-    let analogDelta=0;
+  analogStage(x,chIndex,analogAlpha){
+    const s=this.s,c=this.ch[chIndex];
+    const bands=this.zoneBands(x,c,"analogLp",s.udmbc.x,this._xcoBase);
+    let delta=0;
     for(let b=0;b<4;b++){
-      const bandInput=analogBands[b];
+      const bandInput=bands[b];
       if(s.eq.globalBypass||s.eq.colorBypass[b]||analogAlpha[b]<=1e-6)continue;
       const x2=s.eq.colorX2?.[b]?2:1;
-      analogDelta+=this.analog(
-        bandInput,analogAlpha[b],c,b,x2
-      )-bandInput;
+      delta+=this.analog(bandInput,analogAlpha[b],c,b,x2)-bandInput;
     }
-    y+=analogDelta;
-    if(!s.udmbc.bypass){
-      const original=y,inputGain=this.db2g(this.clamp(s.udmbc.input,-24,24)),xs=s.udmbc.x,z=original*inputGain;
-      c.lp[0]+=(1-Math.exp(-2*Math.PI*xs[0]/sampleRate))*(z-c.lp[0]);const h0=z-c.lp[0];
-      c.lp[1]+=(1-Math.exp(-2*Math.PI*xs[1]/sampleRate))*(h0-c.lp[1]);const h1=h0-c.lp[1];
-      c.lp[2]+=(1-Math.exp(-2*Math.PI*xs[2]/sampleRate))*(h1-c.lp[2]);
-      const bands=[c.lp[0],c.lp[1],c.lp[2],h1-c.lp[2]];
-      const dryBands=bands.slice();
-      let amountSum=0,amountCount=0;
-      for(let b=0;b<4;b++){
-        if(s.bandBypass?.[b]||s.udmbc.bandBypass[b])continue;
+    return x+delta;
+  }
+
+  resetUdmbcState(){
+    for(const c of this.ch){
+      this.resetTree(c.lp);
+      this.resetXover(c.udPhase2B1);
+      this.resetXover(c.udPhase3B1);
+      this.resetXover(c.udPhase3B2);
+    }
+    this.udLinked=Array.from({length:4},()=>({
+      gateEnvDb:0,lifterEnv:1,compEnvDb:0,
+      upRmsPower:0,upSlowRmsPower:0,downRmsPower:0,downSlowRmsPower:0
+    }));
+    this.udmbcStateLive=false;
+  }
+  buildUdmbcCache(){
+    const s=this.s,active=[false,false,false,false];
+    let any=false,amountSum=0,amountCount=0;
+    const band=[];
+    for(let b=0;b<4;b++){
+      active[b]=!s.bandBypass?.[b]&&!s.udmbc.bandBypass[b]&&Number(s.udmbc.degree[b]||0)>1e-4;
+      any=any||active[b];
+      if(!s.udmbc.bandBypass[b]){
         amountSum+=this.clamp(Number(s.udmbc.degree[b]||0),0,100)/100;
         amountCount++;
       }
-      for(let b=0;b<4;b++){
-        if(s.bandBypass?.[b]||s.udmbc.bandBypass[b])continue;
-        const degree=this.clamp(Number(s.udmbc.degree[b]||0),0,100);
-        if(degree<=1e-4)continue;
-        let v=bands[b];
-        const gateDb=this.g2db(Math.abs(v)+1e-9),gt=s.udmbc.gate,knee=9,slope=5;
-        const kneeStart=gt-knee/2,kneeEnd=gt+knee/2;let gateTarget=0;
-        if(gateDb<kneeStart)gateTarget=(gateDb-gt)*slope;
-        else if(gateDb<kneeEnd){const t=this.clamp((gateDb-kneeStart)/knee,0,1);gateTarget=(gateDb-gt)*slope*(1-t)*(1-t);}
-        gateTarget=Math.min(0,gateTarget);
-        c.gateBand[b]=.99*c.gateBand[b]+.01*gateTarget;
-        v*=.9*this.db2g(c.gateBand[b])+.1;
-        const depth=degree/100,downRatio=1+depth*((b===3?100:66.7)-1),upRatio=1+depth*3;
-        const downDb=this.g2db(Math.abs(v)+1e-9),downThr=s.udmbc.compT[b],downSlope=1-1/downRatio;
-        const downTarget=downDb>downThr?(downDb-downThr)*downSlope:0;
-        const bandBaseAttackMs=Math.max(.1,Math.min(120,Number(s.udmbc.compA[b]||0))),k=Math.max(0,(120-bandBaseAttackMs)/.49);
-        const dynamicAttackMs=bandBaseAttackMs+k*(depth*depth),minAttackLimit=b===0?15:(b===1?8:1),finalAttackMs=Math.max(minAttackLimit,dynamicAttackMs);
-        const baseReleaseMs=Math.max(10,Math.min(2500,Number(s.udmbc.compR[b]||0))),finalReleaseMs=Math.max(20,baseReleaseMs+depth*100);
-        const attackCoef=Math.exp(-1000/(finalAttackMs*sampleRate)),releaseCoef=Math.exp(-1000/(finalReleaseMs*sampleRate));
-        const dr=releaseCoef;c.comp[b]=c.comp[b]*(downTarget>c.comp[b]?attackCoef:dr)+(1-(downTarget>c.comp[b]?attackCoef:dr))*downTarget;
-        const downMix=this.clamp(s.udmbc.compM[b]/100,0,1);v*=this.db2g(-c.comp[b]*downMix)+(1-downMix);
-        const upDb=this.g2db(Math.abs(v)+1e-9),upThr=s.udmbc.liftT[b],upSlope=1-1/upRatio,upTarget=upDb<upThr?(upThr-upDb)*upSlope:0;
-        const ua=this.tc(s.udmbc.liftA[b]),ur=this.tc(s.udmbc.liftR[b]),upGain=this.db2g(Math.min(12,Math.max(0,upTarget)));
-        c.lift[b]=c.lift[b]*(upGain>1?ua:ur)+(1-(upGain>1?ua:ur))*upGain;
-        const upMix=this.clamp(s.udmbc.liftM[b]/100,0,1);v*=c.lift[b]*upMix+(1-upMix);
-        v*=this.db2g(this.clamp(s.udmbc.level[b],-24,12));bands[b]=v;
-      }
-      let moduleDelta=0;
-      for(let b=0;b<4;b++){
-        if(s.bandBypass?.[b]||s.udmbc.bandBypass[b])continue;
-        if(this.clamp(Number(s.udmbc.degree[b]||0),0,100)<=1e-4)continue;
-        moduleDelta+=bands[b]-dryBands[b];
-      }
-      let sum=z+moduleDelta;
-      if(s.udmbc.clip)sum=Math.tanh(sum*1.7);
-      const autoTrim=this.db2g(-2.5*(amountCount?amountSum/amountCount:0));
-      sum*=this.db2g(this.clamp(s.udmbc.output,-24,24))*autoTrim;
-      const mix=this.clamp(s.udmbc.mix/100,0,1);
-      y=original+mix*(sum-original);
+      const depth=this.clamp(Number(s.udmbc.degree[b]||0),0,100)/100;
+      const baseAttack=this.clamp(Number(s.udmbc.compA[b]||0),.1,120);
+      const k=Math.max(0,(120-baseAttack)/.49);
+      const finalAttack=Math.max(b===0?15:(b===1?8:1),baseAttack+k*depth*depth);
+      const baseRelease=this.clamp(Number(s.udmbc.compR[b]||0),10,2500);
+      const finalRelease=Math.max(20,baseRelease+depth*100);
+      const upAttack=Number(s.udmbc.liftA[b]||1),upRelease=Number(s.udmbc.liftR[b]||50);
+      band.push({
+        depth,
+        downRatio:1+depth*((b===3?100:66.7)-1),
+        upRatio:1+depth*3,
+        compMix:this.clamp(Number(s.udmbc.compM[b]||0)/100,0,1),
+        lifterMix:this.clamp(Number(s.udmbc.liftM[b]||0)/100,0,1),
+        bandGain:this.db2g(this.clamp(Number(s.udmbc.level[b]||0),-24,12)),
+        finalAttack,finalRelease,upAttack,upRelease,
+        compRelease:this.tc(finalRelease),
+        downFastAttack:this.tc(finalAttack),
+        downFastRelease:this.tc(finalRelease),
+        downSlowAttack:this.tc(Math.max(finalAttack*4,5)),
+        downSlowRelease:this.tc(Math.max(finalRelease*1.75,20)),
+        upFastAttack:this.tc(upAttack),
+        upFastRelease:this.tc(Math.max(.5,upRelease*.35)),
+        upSlowAttack:this.tc(Math.max(upAttack*4,5)),
+        upSlowRelease:this.tc(Math.max(upRelease*1.75,20))
+      });
     }
-    if(!s.type.bypass){
-      const ti=y*this.db2g(s.type.input);
-      const mix=this.clamp(Number(s.type.mix)/100,0,1);
-
-      // TAPE COLOR is intentionally stateless. Attack / Release and envelope
-      // state are retained only for preset compatibility, not gain movement.
-      // These three crossover LP states are signal-splitting state, not dynamic gain state.
-      // TAPE follows the same X1/X2/X3 split as UDMBC.
-      const xs=s.udmbc.x;
-      const bands=this.zoneBands(ti,c,"typeLp",xs);
-
-      const driveParams=[0,0,0,0];
-      const makeup=[0,0,0,0];
-      const trims=[0,0,0,0];
-      for(let b=0;b<4;b++){
-        const typeMax=[50,60,70,90][b];
-        const limitedDegree=this.clamp(Number(s.type.degree[b]||0),0,typeMax);
-        const controlNorm=limitedDegree/Math.max(1,typeMax);
-        const depth=this.clamp(controlNorm*.5,0,.5);
-        const rawDriveParam=1+1.5*depth;
-        const driveParam=Math.max(1,rawDriveParam);
-        driveParams[b]=driveParam;
-        let makeupDenominator=Math.tanh(driveParam);
-        makeupDenominator=Math.max(makeupDenominator,1e-6);
-        makeup[b]=1/makeupDenominator;
-        trims[b]=this.db2g(this.clamp(Number(s.type.level[b]||0),-6,6));
-      }
-
-      let enhancement=0;
-      for(let b=0;b<4;b++){
-        if(s.bandBypass?.[b]||s.type.bandBypass[b])continue;
-        const typeMax=[50,60,70,90][b];
-        const limitedDegree=this.clamp(Number(s.type.degree[b]||0),0,typeMax);
-        const controlNorm=limitedDegree/Math.max(1,typeMax);
-        const depth=this.clamp(controlNorm*.5,0,.5);
-        if(depth<=0)continue;
-        const driven=Math.tanh(bands[b]*driveParams[b])*makeup[b];
-        const processed=driven*trims[b];
-        enhancement+=(processed-bands[b])*depth;
-      }
-
-      const wet=(ti+enhancement)*this.db2g(this.clamp(Number(s.type.output||0),-24,12));
-      y=y+mix*(wet-y);
-    }
-    return y;
+    return{
+      active,any,
+      globalActive:Math.abs(Number(s.udmbc.input||0))>1e-4||
+                   Math.abs(Number(s.udmbc.output||0))>1e-4||!!s.udmbc.clip,
+      mix:this.clamp(Number(s.udmbc.mix||0)/100,0,1),
+      inputGain:this.db2g(this.clamp(Number(s.udmbc.input||0),-24,24)),
+      outputGain:this.db2g(this.clamp(Number(s.udmbc.output||0),-24,24)),
+      autoTrim:this.db2g(-2.5*(amountCount?amountSum/amountCount:0)),
+      gateAttack:this.tc(100),gateRelease:this.tc(30),
+      band
+    };
   }
+  rmsPdr(input,st,fastKey,slowKey,attackMs,releaseMs,fa,fr,sa,sr){
+    const target=input*input;
+    st[fastKey]=(target>st[fastKey]?fa:fr)*st[fastKey]+(1-(target>st[fastKey]?fa:fr))*target;
+    st[slowKey]=(target>st[slowKey]?sa:sr)*st[slowKey]+(1-(target>st[slowKey]?sa:sr))*target;
+    const fastDb=this.g2db(Math.sqrt(Math.max(st[fastKey],1e-12)));
+    const slowDb=this.g2db(Math.sqrt(Math.max(st[slowKey],1e-12)));
+    const crest=fastDb-slowDb;
+    const blend=this.clamp((crest-1)/8,0,1);
+    const programRelease=releaseMs*this.clamp(2-1.8*blend,.2,2);
+    const power=st[fastKey]*blend+st[slowKey]*(1-blend);
+    return[this.g2db(Math.sqrt(Math.max(power,1e-12))),programRelease];
+  }
+  gateGain(det,st,thr,cache){
+    const knee=9,slope=5,inputDb=this.g2db(Math.max(Math.abs(det),1e-6));
+    const ks=thr-knee*.5,ke=thr+knee*.5;
+    let target=0;
+    if(inputDb<ks)target=(inputDb-thr)*slope;
+    else if(inputDb<ke){
+      const t=this.clamp((inputDb-ks)/knee,0,1);
+      target=(inputDb-thr)*slope*(1-t)*(1-t);
+    }
+    target=Math.min(0,target);
+    const a=target<st.gateEnvDb?cache.gateAttack:cache.gateRelease;
+    st.gateEnvDb=a*st.gateEnvDb+(1-a)*target;
+    return .90*this.db2g(st.gateEnvDb)+.10;
+  }
+  compGain(detDb,st,thr,ratio,mix,attack,release){
+    const slope=1-1/Math.max(1,ratio),knee=6,ks=thr-knee*.5,ke=thr+knee*.5;
+    let target=0;
+    if(detDb>ke)target=(detDb-thr)*slope;
+    else if(detDb>ks){const x=detDb-ks;target=slope/(2*knee)*x*x;}
+    const cur=-st.compEnvDb,a=target>cur?attack:release;
+    const sm=a*cur+(1-a)*target;
+    st.compEnvDb=-this.clamp(sm,0,60);
+    return this.db2g(st.compEnvDb)*mix+(1-mix);
+  }
+  liftGain(detDb,st,thr,ratio,mix,attackMs,releaseMs,attackCoef){
+    const slope=1-1/Math.max(1,ratio),knee=6,ks=thr-knee*.5,ke=thr+knee*.5;
+    let target=0;
+    if(detDb<ks)target=(thr-detDb)*slope;
+    else if(detDb<ke){const x=ke-detDb;target=slope/(2*knee)*x*x;}
+    const targetLinear=this.db2g(this.clamp(target,0,12));
+    const releaseCoef=this.tc(releaseMs);
+    const a=targetLinear>st.lifterEnv?attackCoef:releaseCoef;
+    st.lifterEnv=a*st.lifterEnv+(1-a)*targetLinear;
+    return st.lifterEnv*mix+(1-mix);
+  }
+  udmbcStereo(l,r,stereo){
+    const s=this.s,cache=this._udCache||this.buildUdmbcCache();
+    if(s.udmbc.bypass||cache.mix<=1e-6||(!cache.any&&!cache.globalActive)){
+      if(this.udmbcStateLive)this.resetUdmbcState();
+      return[l,r];
+    }
+    if(!cache.any){
+      if(this.udmbcStateLive)this.resetUdmbcState();
+      const proc=x=>{
+        const original=x;let wet=x*cache.inputGain;
+        if(s.udmbc.clip)wet=Math.tanh(wet*1.7);
+        wet*=cache.outputGain;
+        return original+cache.mix*(wet-original);
+      };
+      return[proc(l),stereo?proc(r):r];
+    }
+    this.udmbcStateLive=true;
+
+    const originals=[l,r],dry=[[],[]],work=[[],[]];
+    const nch=stereo?2:1;
+    for(let ch=0;ch<nch;ch++){
+      const c=this.ch[ch],x=originals[ch]*cache.inputGain;
+      const bands=this.zoneBands(x,c,"lp",s.udmbc.x,this._xcoBase);
+      bands[0]=this.xoverAllPass(bands[0],c.udPhase2B1,this._xcoBase[1]);
+      bands[0]=this.xoverAllPass(bands[0],c.udPhase3B1,this._xcoBase[2]);
+      bands[1]=this.xoverAllPass(bands[1],c.udPhase3B2,this._xcoBase[2]);
+      dry[ch]=bands.slice();work[ch]=bands.slice();
+    }
+
+    for(let b=0;b<4;b++){
+      if(!cache.active[b])continue;
+      const st=this.udLinked[b],bc=cache.band[b];
+      const linked=stereo
+        ?Math.sqrt(.5*(dry[0][b]*dry[0][b]+dry[1][b]*dry[1][b]))
+        :Math.abs(dry[0][b]);
+      const gg=this.gateGain(linked,st,Number(s.udmbc.gate||-80),cache);
+      for(let ch=0;ch<nch;ch++)work[ch][b]*=gg;
+      const gated=linked*gg;
+
+      const down=this.rmsPdr(
+        gated,st,"downRmsPower","downSlowRmsPower",
+        bc.finalAttack,bc.finalRelease,
+        bc.downFastAttack,bc.downFastRelease,bc.downSlowAttack,bc.downSlowRelease);
+      const cg=this.compGain(
+        down[0],st,Number(s.udmbc.compT[b]||-18),
+        bc.downRatio,bc.compMix,bc.downFastAttack,bc.compRelease);
+      for(let ch=0;ch<nch;ch++)work[ch][b]*=cg;
+
+      const up=this.rmsPdr(
+        gated*cg,st,"upRmsPower","upSlowRmsPower",
+        bc.upAttack,bc.upRelease,
+        bc.upFastAttack,bc.upFastRelease,bc.upSlowAttack,bc.upSlowRelease);
+      const lg=this.liftGain(
+        up[0],st,Math.max(Number(s.udmbc.liftT[b]||-48),-48),
+        bc.upRatio,bc.lifterMix,bc.upAttack,up[1],bc.upFastAttack);
+      for(let ch=0;ch<nch;ch++)work[ch][b]*=lg*bc.bandGain;
+    }
+
+    const result=[l,r];
+    for(let ch=0;ch<nch;ch++){
+      let delta=0;
+      for(let b=0;b<4;b++)if(cache.active[b])delta+=work[ch][b]-dry[ch][b];
+      let wet=originals[ch]*cache.inputGain+delta;
+      if(s.udmbc.clip)wet=Math.tanh(wet*1.7);
+      wet*=cache.outputGain*cache.autoTrim;
+      result[ch]=originals[ch]+cache.mix*(wet-originals[ch]);
+    }
+    return result;
+  }
+
+  typeAAdAA(x,drive,makeup,st){
+    const d=Math.max(1,Number(drive||1)),norm=Number(makeup||1);
+    const transfer=v=>Math.tanh(d*v)*norm;
+    const logCosh=z=>{const a=Math.abs(z);return a+Math.log1p(Math.exp(-2*a))-Math.log(2)};
+    const F=v=>logCosh(d*v)*norm/d;
+    let y=transfer(x);
+    if(st.hasPrev){
+      const delta=x-st.prevX;
+      y=Math.abs(delta)<1e-7?transfer(.5*(x+st.prevX)):(F(x)-F(st.prevX))/delta;
+    }
+    st.prevX=x;st.hasPrev=true;
+    return this.finite(y)?y:transfer(x);
+  }
+  resetTypeState(){
+    for(const c of this.ch){
+      this.resetTree(c.typeLp);
+      for(const st of c.typeAd){st.prevX=0;st.hasPrev=false;}
+    }
+    this.typeStateLive=false;
+  }
+  typeStage(x,chIndex){
+    const s=this.s,c=this.ch[chIndex];
+    const mix=this.clamp(Number(s.type.mix||0)/100,0,1);
+    const active=[0,1,2,3].map(b=>!s.bandBypass?.[b]&&!s.type.bandBypass[b]&&Number(s.type.degree[b]||0)>1e-4);
+    if(s.type.bypass||mix<=1e-6||!active.some(Boolean)){
+      if(this.typeStateLive)this.resetTypeState();
+      return x;
+    }
+    this.typeStateLive=true;
+    const original=x,ti=x*this.db2g(this.clamp(Number(s.type.input||0),-24,24));
+    const bands=this.zoneBands(ti,c,"typeLp",s.udmbc.x,this._xcoType);
+    const maxDegree=[50,60,70,90];
+    let enhancement=0;
+    for(let b=0;b<4;b++){
+      if(!active[b]){c.typeAd[b].prevX=0;c.typeAd[b].hasPrev=false;continue;}
+      const limited=this.clamp(Number(s.type.degree[b]||0),0,maxDegree[b]);
+      const depth=this.clamp((limited/Math.max(1,maxDegree[b]))*.5,0,.5);
+      const drive=Math.max(1,1+1.5*depth);
+      const makeup=1/Math.max(Math.tanh(drive),1e-6);
+      const driven=this.typeAAdAA(bands[b],drive,makeup,c.typeAd[b]);
+      const processed=driven*this.db2g(this.clamp(Number(s.type.level[b]||0),-6,6));
+      enhancement+=(processed-bands[b])*depth;
+    }
+    const wet=(ti+enhancement)*this.db2g(this.clamp(Number(s.type.output||0),-24,24));
+    return original+mix*(wet-original);
+  }
+
   process(inputs,outputs){
     const out=outputs[0],inp=inputs[0];
     try{
@@ -548,6 +716,9 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const L=inp[0],R=inp[1]||inp[0],stereo=inp.length>1;
     const mix=this.clamp((this.s.mix.bypass?100:this.s.mix.drywet)/100,0,1),og=this.db2g(this.clamp(this.s.mix.output,-24,12));
     const soloBand=Number(this.s.solo?.band??-1),graphSolo=!!this.s.solo?.graphActive,soloEnabled=graphSolo||(soloBand>=0&&soloBand<4),xs=this.s.udmbc.x;
+    this._xcoBase=this.xoverCoefs(xs,80,900);
+    this._xcoType=this.xoverCoefs(xs,40,1000);
+    this._udCache=this.buildUdmbcCache();
     const analogSmoothingCoeff=Math.exp(-1/(0.001*0.25*sampleRate));
     const analogAlpha=this.analogAlpha;
 
@@ -585,11 +756,11 @@ class VVChainWorklet extends AudioWorkletProcessor {
 
       // No hidden audible HPF: neutral user settings remain transparent.
       const transientOut=this.applyTransientStereo(dyn[0],dyn[1],stereo,xs);
-      const moduleL=this.sample(transientOut[0],0,analogAlpha);
-      const moduleR=this.sample(transientOut[1],1,analogAlpha);
-
-      let yL=moduleL;
-      let yR=moduleR;
+      let yL=this.analogStage(transientOut[0],0,analogAlpha);
+      let yR=stereo?this.analogStage(transientOut[1],1,analogAlpha):transientOut[1];
+      const ud=this.udmbcStereo(yL,yR,stereo);
+      yL=this.typeStage(ud[0],0);
+      yR=stereo?this.typeStage(ud[1],1):ud[1];
       yL=(l+mix*(yL-l))*og;yR=(r+mix*(yR-r))*og;
       if(this.s.solo && Number(this.s.solo.band)!==this._lastSoloBand){this.soloBlend=0;this._lastSoloBand=Number(this.s.solo.band)}
       if(this.s.solo && !!this.s.solo.post!==this._lastSoloPost){this.soloBlend=0;this._lastSoloPost=!!this.s.solo.post}
@@ -604,8 +775,8 @@ class VVChainWorklet extends AudioWorkletProcessor {
           preL=this.biquad(l,gc,this.ch[0].graphSoloPre);preR=this.biquad(r,gc,this.ch[1].graphSoloPre);
           postL=this.biquad(yL,gc,this.ch[0].graphSoloPost);postR=this.biquad(yR,gc,this.ch[1].graphSoloPost);
         }else{
-          preL=this.zoneBands(l,this.ch[0],"soloPre",xs)[soloBand];preR=this.zoneBands(r,this.ch[1],"soloPre",xs)[soloBand];
-          postL=this.zoneBands(yL,this.ch[0],"soloPost",xs)[soloBand];postR=this.zoneBands(yR,this.ch[1],"soloPost",xs)[soloBand];
+          preL=this.zoneBands(l,this.ch[0],"soloPre",xs,this._xcoType)[soloBand];preR=this.zoneBands(r,this.ch[1],"soloPre",xs,this._xcoType)[soloBand];
+          postL=this.zoneBands(yL,this.ch[0],"soloPost",xs,this._xcoType)[soloBand];postR=this.zoneBands(yR,this.ch[1],"soloPost",xs,this._xcoType)[soloBand];
         }
         const soloL=this.s.solo.post?postL:preL,soloR=this.s.solo.post?postR:preR;
         yL=yL*(1-this.soloBlend)+soloL*this.soloBlend;yR=yR*(1-this.soloBlend)+soloR*this.soloBlend;

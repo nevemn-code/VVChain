@@ -34,7 +34,7 @@ public:
 
         // Four independent Dynamic EQ bands. Each detector is frequency-selective
         // and stereo-linked so L/R dynamics cannot wander independently.
-        // Sonnox-style Dynamic EQ model:
+        // Target/Offset Dynamic EQ model:
         // Offset = resting EQ gain; Target defines the maximum dynamic span.
         // DYNAMICS is signed: -100..0% = downward compression,
         // 0..+100% = upward expansion. 0% is fully static.
@@ -303,15 +303,48 @@ private:
 
     struct BandDynamics
     {
-        // Independent state for each UDMBC band / channel.
-        // Gate, upward and downward envelopes never share detector state.
-        std::array<float, 2> gateEnvDb { 0.f, 0.f };
-        std::array<float, 2> lifterEnv { 1.f, 1.f };
-        std::array<float, 2> compEnvDb { 0.f, 0.f };
-        std::array<float, 2> upRmsPower { 0.f, 0.f };
-        std::array<float, 2> upSlowRmsPower { 0.f, 0.f };
-        std::array<float, 2> downRmsPower { 0.f, 0.f };
-        std::array<float, 2> downSlowRmsPower { 0.f, 0.f };
+        // One linked detector / gain state per UDMBC band.
+        // L/R audio remain separate, but both channels receive the same gain.
+        float gateEnvDb = 0.f;
+        float lifterEnv = 1.f;
+        float compEnvDb = 0.f;
+        float upRmsPower = 0.f;
+        float upSlowRmsPower = 0.f;
+        float downRmsPower = 0.f;
+        float downSlowRmsPower = 0.f;
+    };
+
+    struct TypeAAdAAState
+    {
+        double previousInput = 0.0;
+        bool hasPrevious = false;
+
+        void reset() noexcept
+        {
+            previousInput = 0.0;
+            hasPrevious = false;
+        }
+    };
+
+    struct XoverCache
+    {
+        double sampleRate = -1.0;
+        float x1 = -1.f, x2 = -1.f, x3 = -1.f, q = -1.f;
+
+        bool matches(double fs, float a, float b, float d, float cq) const noexcept
+        {
+            return sampleRate == fs && x1 == a && x2 == b && x3 == d && q == cq;
+        }
+
+        void set(double fs, float a, float b, float d, float cq) noexcept
+        {
+            sampleRate = fs; x1 = a; x2 = b; x3 = d; q = cq;
+        }
+
+        void invalidate() noexcept
+        {
+            sampleRate = -1.0; x1 = x2 = x3 = q = -1.f;
+        }
     };
 
     static void updateAnalogPeak(Biquad& filter, double fs, double f0,
@@ -342,13 +375,17 @@ private:
                                double sampleRate,
                                float& programReleaseMs,
                                float attackCoeffOverride = -1.0f,
-                               float releaseCoeffOverride = -1.0f) noexcept;
+                               float releaseCoeffOverride = -1.0f,
+                               float slowAttackCoeffOverride = -1.0f,
+                               float slowReleaseCoeffOverride = -1.0f) noexcept;
 
     static float applyLifterFromDetectorDb(float input, float detectorDb,
                                             float& env, float thresholdDb,
                                             float attackMs, float releaseMs,
                                             float mix, double sampleRate,
-                                            float ratio = 4.f);
+                                            float ratio = 4.f,
+                                            float attackCoeffOverride = -1.0f,
+                                            float releaseCoeffOverride = -1.0f);
 
     static float applyCompressorFromDetectorDb(float input, float detectorDb,
                                                 float& envDb, float thresholdDb,
@@ -360,13 +397,16 @@ private:
 
 
     static float applyGate(float input, float& envDb, float thresholdDb,
-                           double sampleRate);
+                           double sampleRate,
+                           float attackCoeffOverride = -1.0f,
+                           float releaseCoeffOverride = -1.0f);
 
-    static float applyLimiter(float input, float& envDb, double sampleRate);
+    static float processTypeAAdAA(float input, float drive, float makeup,
+                                  TypeAAdAAState& state) noexcept;
 
     void applyEq(juce::AudioBuffer<float>&, const Parameters&);
     void applyTransient(juce::AudioBuffer<float>&, const Parameters&);
-    void applyOtt(juce::AudioBuffer<float>&, const Parameters&);
+    void applyUdmbc(juce::AudioBuffer<float>&, const Parameters&);
     void applyAType(juce::AudioBuffer<float>&, const Parameters&);
 
     void processMasterLimiter(juce::AudioBuffer<float>& buffer, bool active);
@@ -433,9 +473,7 @@ private:
     Crossover4th typeXover1 {};
     Crossover4th typeXover2 {};
     Crossover4th typeXover3 {};
-    std::array<std::array<float, 2>, 4> typeFastEnv {};
-    std::array<std::array<float, 2>, 4> typeSlowEnv {};
-    std::array<std::array<float, 2>, 4> typeDc {};
+    std::array<std::array<TypeAAdAAState, 2>, 4> typeAAdAA {};
 
     // TRANSIENT is a base-rate parallel-delta stage before Analog.
     // Its crossover output is never used as the dry/base signal: only
@@ -465,9 +503,11 @@ private:
     juce::dsp::DelayLine<float> eqDryDelay { 4096 };
     juce::dsp::DelayLine<float> eqWetDelay { 4096 };
     juce::dsp::DelayLine<float> limiterLookahead { 8192 };
+    juce::dsp::DelayLine<float> limiterDryDelay { 8192 };
     juce::dsp::DelayLine<float> masterDryDelay { 8192 };
     juce::AudioBuffer<float> dryBuffer;
     juce::AudioBuffer<float> alignedDryBuffer;
+    juce::AudioBuffer<float> limiterDryBuffer;
 
     Crossover4th soloPreXover1 {}, soloPreXover2 {}, soloPreXover3 {};
     Crossover4th soloPostXover1 {}, soloPostXover2 {}, soloPostXover3 {};
@@ -477,8 +517,11 @@ private:
     int lastSoloBand = -2;
     bool lastSoloPost = false;
 
-    std::array<float, 2> gateEnvDb {};
-    std::array<float, 2> limiterEnvDb {};
+    XoverCache transientXoverCache {};
+    XoverCache analogXoverCache {};
+    XoverCache udmbcXoverCache {};
+    XoverCache typeXoverCache {};
+    XoverCache soloXoverCache {};
 
     float limiterGain = 1.f;
     float masterBypassBlend = 0.f;
@@ -486,6 +529,7 @@ private:
     int limiterOversamplingLatencySamples = 0;
     int limiterLookaheadSamples = 0;
     int totalLatencySamples = 0;
+    int preparedBlockCapacity = 0;
 
     double sr = 48000.0;
     int channels = 2;

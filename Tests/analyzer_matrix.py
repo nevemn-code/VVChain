@@ -35,13 +35,15 @@ def main() -> None:
     assert 'type:"analysisEnabled"' not in worklet
     assert 'type:"contributionSamples"' not in worklet
 
-    # CPU architecture invariants for v1.0.60.
+    # CPU architecture invariants for v1.0.65.
     assert "Nonlinear Analog ADAA v2 remains fixed at 4x" in dsp
     assert "eqOversampler.processSamplesUp" in dsp
     assert "const double osSr = sr;" in dsp
     assert "dynamicsAmount <= 0.000001f" in dsp
     assert dsp.count("bool anyActiveBand = false;") >= 2
     assert "eqWetDelay" in dsp
+    assert "applyUdmbc" in dsp
+    assert "processTypeAAdAA" in dsp
 
     print("PASS analyzer matrix: main Spectrum only + module analyzer removal + CPU lazy-path invariants")
 

@@ -1,4 +1,4 @@
-# VVChain Architecture（v1.0.64）
+# VVChain Architecture（v1.0.65）
 
 > 以下以目前程式實際執行為準；本次封閉測試的失敗和限制見 `TEST_REPORT.md`。
 
@@ -8,8 +8,8 @@ INPUT
 → 4-band Parametric / Dynamic EQ
 → 4-band TRANSIENT parallel-delta
 → 4-band Analog Color parallel-delta
-→ 4-band UDMBC parallel-delta
-→ 4-band TAPE COLOR delta
+→ 4-band stereo-linked UDMBC parallel-delta
+→ 4-band Type-A/TAPE COLOR ADAA delta
 → dry/wet
 → output level
 → master limiter
@@ -154,3 +154,12 @@ Native performs this switch by writing the Analyzer FIFO before DSP only when DE
 - ANALOG / UDMBC / TYPE-A contribution analyzers, six pre/post streams and Web Worklet contribution messages are removed.
 - DYNAMICS=0% uses a static coefficient path; active Dynamic EQ retains the realtime detector/gain path.
 - UDMBC and Type-A return before crossover/detector/waveshaper work when every band is effectively inactive.
+
+
+## v1.0.65 signal-integrity / CPU architecture
+- UDMBC 使用每頻段單一 stereo-linked detector/gain state；L/R 音訊本身保持獨立，只有控制增益共用。
+- UDMBC 固定 time coefficients 在每個 process block 預算；program-dependent lifter release 保留 sample-dependent 更新以維持既有動態行為。
+- Native / Web 的 shared X1/X2/X3 均使用 LR4 tree；UDMBC Band 1/2 補齊 branch all-pass phase compensation。
+- Type-A/TAPE COLOR 使用 normalized tanh 的解析式一階 ADAA：F(x)=log(cosh(drive*x))/(drive*tanh(drive))；不增加額外 PDC。
+- Final limiter 沒有任何 gain reduction 時回傳 pure integer-delay path，使 neutral full-chain / DELTA 可做實際 null。
+- process block 預配置 65536 samples；極端更大 block 以 view chunk 連續處理，不在 realtime thread realloc。

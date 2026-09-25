@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(VVChain VERSION 1.0.64 LANGUAGES C CXX)
+project(VVChain VERSION 1.0.65 LANGUAGES C CXX)
 
 include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(VVCHAIN_ENABLE_AAX "Build AAX target when the local environment provides the SDK" OFF)
 option(VVCHAIN_BUILD_STANDALONE "Build standalone target" ON)
 option(VVCHAIN_COPY_PLUGIN_AFTER_BUILD "Copy plugin to the local plugin folder after build" ON)
+option(VVCHAIN_BUILD_DSP_TESTS "Build the headless DSP integrity test executable" OFF)
 
 FetchContent_Declare(
     JUCE
@@ -77,3 +78,28 @@ target_link_libraries(VVChain PRIVATE
 
 juce_generate_juce_header(VVChain)
 
+
+
+if(VVCHAIN_BUILD_DSP_TESTS)
+    juce_add_console_app(VVChainDSPNullTest
+        PRODUCT_NAME "VVChainDSPNullTest"
+    )
+
+    target_sources(VVChainDSPNullTest PRIVATE
+        Tests/dsp_null_test.cpp
+        Source/DSP/ChainDSP.cpp
+        Source/DSP/ChainDSP.h
+    )
+
+    target_link_libraries(VVChainDSPNullTest PRIVATE
+        juce::juce_audio_basics
+        juce::juce_dsp
+    )
+
+    target_compile_definitions(VVChainDSPNullTest PRIVATE
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+    )
+
+    juce_generate_juce_header(VVChainDSPNullTest)
+endif()

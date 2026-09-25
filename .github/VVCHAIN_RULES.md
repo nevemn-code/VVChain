@@ -39,7 +39,7 @@ Commit / Release / PR / Issue / CI/CD / Web Preview 等需要標示版本的內�
 
 ANALOG COLOR 自 **v1.0.47** 起以「既有 unity-normalized smooth algebraic saturation + analytical first-order ADAA」為正式基準。
 
-- Native VST3 在既有 EQ 4x Oversampling 內執行 ADAA；Web AudioWorklet 使用相同 transfer、解析 antiderivative 與一階 ADAA 核心。
+- Native VST3 的 Linear EQ 固定在 host rate；只有 Analog nonlinear delta 進 dedicated 4x Oversampling。Web AudioWorklet 使用相同 transfer、解析 antiderivative 與一階 ADAA 核心，但在 Worklet rate 執行。
 - 核心 transfer：`f(x)=x/(1+alpha*x^2)^(1/4)`，並乘 `(1+alpha)^(1/4)` 做 `|x|=1` unity normalization。
 - TT / SS 均維持純奇對稱；TT 使用 `alpha = amount × 1.55`，SS 使用 `alpha = amount × 1.80`。不加入固定 `beta*x^2` 偶次注入，因此不主動製造 DC 偏移。
 - 每一頻段、每一聲道有獨立 ADAA previous shaping-domain sample；這是抗混疊所需的數值 state，不是額外的 EQ / HP / LP tone filter。
@@ -53,14 +53,15 @@ ANALOG COLOR 自 **v1.0.47** 起以「既有 unity-normalized smooth algebraic s
 
 ## UDMBC 規則
 
-- UDMBC 四頻段必須維持獨立的頻段 / 聲道狀態。
-- `currentEnv` 與 `currentGain` 必須放在 class state，不得在 process 迴圈內每次重新初始化。
-- Low 頻段 Attack 最低 8 ms、Release 最低 20 ms。
-- Low-Mid Attack 最低 3 ms。
-- High-Mid / High Attack 最低 0.5 ms。
-- 所有頻段 Release 最低 5 ms。
-- Gain 必須使用固定 5 ms 二次平滑以抑制 Click / zipper / transient tearing。
-- 修改 UDMBC 後必須確認 build、50 次 DSP stress test 與相關 regression test。
+- UDMBC 四頻段維持獨立 band state，但 detector / gain control 必須 stereo-linked；L/R 音訊分開處理、同一頻段套用相同 Gate / Down / Up gain，避免 stereo image wandering。
+- detector / envelope state 必須放在 class state，不得在 process 迴圈內重新初始化。
+- Low 頻段 Attack 最低 15 ms、Release 最低 20 ms。
+- Low-Mid Attack 最低 8 ms。
+- High-Mid / High Attack 最低 1 ms。
+- Amount 增加時，Downward Attack 依 Amount² 拉長，Release 依 Amount 線性延長；既有 ratio / threshold / mix 音色邏輯不變。
+- 固定 Attack / Release / Gate / RMS slow coefficient 必須在 block/parameter 更新階段預算，不得在 sample × channel × band 內重複 exp；只有真正 program-dependent 的 release 允許 sample-rate 更新。
+- Native 與 Web 必須使用相同 LR4 shared crossover、branch phase compensation 與 stereo-linked UDMBC detector 架構。
+- 修改 UDMBC 後必須確認 Native build、signal-integrity matrix、headless null test 與 DSP stress。
 
 ## 發版前檢查
 
@@ -102,7 +103,7 @@ ANALOG COLOR 自 **v1.0.47** 起以「既有 unity-normalized smooth algebraic s
 ### 同步驗收
 發版前必須確認：
 - Native VST3 與 Web Preview 核心 DSP 使用相同公式。
-- Native 在 EQ 4× oversampling、Web 在 Worklet 取樣率執行；須分別量測延遲及音訊輸出，不能把相同公式誤寫成逐 sample 相同。
+- Native Analog 在 dedicated 4× oversampling、Web Analog 在 Worklet 取樣率執行；兩端公式與 band routing 必須一致，但不得宣稱逐 sample 相同。Type-A 兩端皆使用同一解析式一階 ADAA transfer，不額外增加 PDC。
 - 兩端的頻段 crossover / phase / detector / smoothing / gain 結構一致。
 - 四頻段與左右聲道 state 定義一致。
 - 不得再出現「Native 已更新，但 Web 還在跑舊演算法」的情況。
@@ -112,8 +113,8 @@ ANALOG COLOR 自 **v1.0.47** 起以「既有 unity-normalized smooth algebraic s
 ### Fast Deploy 規則（v1.0.23 起，最高優先）
 - 一般 PR 的 Fast Gate 與 GitHub Pages 必須以 **3 分鐘內完成工作執行** 為目標；main push 不重跑已在 PR 通過的 Fast Gate。
 - Fast Gate 只保留會直接阻止錯版上線的必要項目：Native/Web 同步規則、版本規則、Web/Worklet JavaScript syntax、Web smoke、whole-project static audit ×10、UI/互動 regression。
-- 一般 PR **不得**再安裝整套 Linux audio/X11 開發套件，也不得每次重新跑 Linux VST3 全編譯、numpy/scipy 安裝、500-case ANALOG matrix 或 DSP stress。
-- 完整 Linux Native build、500-case ANALOG matrix、5 次 DSP stress 移至 `workflow_dispatch -> full_validation=true`；DSP stress 不得使用永遠自我抵銷的假 null test，且避免非必要 SciPy 依賴。
+- 一般 PR **不得**安裝整套 Linux audio/X11 開發套件，也不得每次重新跑 Linux VST3 全編譯、NumPy、500-case ANALOG matrix、headless null test 或 DSP stress。
+- 完整 Linux Native build、headless full-chain null / large-block test、500-case ANALOG matrix、Type-A ADAA anti-alias matrix 與 10 次 DSP stress 移至 `workflow_dispatch -> full_validation=true`；DSP stress 不得使用永遠自我抵銷的假 null test，且避免非必要 SciPy 依賴。
 - Windows VST3 正式 artifact 只在 **main push / 手動 workflow** 建置；PR 階段不重複做 Windows Release build。
 - Windows VST3 必須使用穩定、可重用的 incremental build cache；cache key 不得使用每次都變動的 `run_id`。正式建置只建 `VVChain_VST3` target，CI 不做本機 plugin copy。
 - GitHub Pages 必須獨立於重型 Native CI，使用 docs-only sparse checkout + 最少必要 syntax/structure 驗證，不能等待 VST3 build 才部署。
@@ -121,7 +122,7 @@ ANALOG COLOR 自 **v1.0.47** 起以「既有 unity-normalized smooth algebraic s
 - GitHub hosted runner 的「排隊等待時間」不受 repository workflow 控制，因此 3 分鐘目標指 workflow 實際開始執行後；若要保證牆鐘時間，需改用常駐 self-hosted runner。
 
 ### 深度驗證
-- GitHub 完整 DSP stress：**5 次**，只在 full validation 執行。
+- GitHub 完整 DSP stress：**10 次**，只在 full validation 執行。
 - ANALOG 修改後仍必須完成 500-case regression matrix，但不放在每次一般部署關卡。
 - GPT 在提交前後的自我驗證仍維持 **10 + 10 次**；此規則不要求把 20 次都搬進 GitHub hosted runner。
 - Native VST3 與 Web Preview 每次功能更新仍必須同步；Fast Deploy 只改驗證時機，不降低同步要求。

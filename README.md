@@ -1,6 +1,6 @@
 # VVChain
 
-## 目前實際狀態（v1.0.63）
+## 目前實際狀態（v1.0.65）
 
 v1.0.55 修復既有 Web smoke／UI regression 的過時 source guard，Fast Gate 改為 main push 也執行，並把 Web smoke、project static audit、UI/interaction regression 各重跑十輪。實際通過狀態以本版 GitHub Actions 結果為準；DAW／pluginval／AAX 仍屬獨立驗證。
 
@@ -52,6 +52,17 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
+
+### v1.0.65
+- UDMBC detector / gain control 改為真正 stereo-linked：每個頻段共用 Gate / Down / Up detector 與 gain state，L/R 套用相同動態增益，避免 stereo image wandering。
+- UDMBC 固定 Attack / Release / Gate / RMS slow coefficient 搬出 sample×channel×band 熱迴圈；只保留真正 program-dependent lifter release 的動態 coefficient。
+- Web shared X1/X2/X3 由 one-pole preview split 改為與 Native 同結構的 LR4 tree，UDMBC 同步 branch all-pass compensation 與 stereo-linked detector。
+- Type-A/TAPE COLOR 非線性由直接 48 kHz tanh 改為解析式一階 ADAA；不新增 oversampling/PDC，保留 normalized tanh 音色目標並降低 alias。
+- Large host block 改為預配置 65536-sample safety capacity，超過 capacity 時切塊連續處理，不再整個 process return。
+- Final true-peak limiter 在整個 block 未產生任何 gain reduction 時改輸出 pure delayed input；oversampler 仍持續運算維持 true-peak/state，neutral full-chain 可與 aligned dry null。
+- 新增 headless C++ full-chain neutral / DELTA / 70,000-sample large-block test、Type-A ADAA alias matrix 與 signal-integrity parity matrix。
+- CI 改回 Fast Deploy 規則：一般 PR 只跑 Fast Gate；Windows VST3 與 Full Native/DSP 由 main push / workflow_dispatch 分工。完整驗證使用 workflow_dispatch full_validation=true。
+- 清理 active source 的第三方風格命名與過期測試註記；同步文件與規則。
 
 ### v1.0.64
 - 移除未公開控制的 30 Hz 全頻高通；neutral 狀態不再偷偷削低頻。
