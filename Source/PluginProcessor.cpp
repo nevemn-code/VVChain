@@ -24,7 +24,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     p.push_back(std::make_unique<juce::AudioParameterBool>("EQ_BYPASS", "EQ Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("UDMBC_BYPASS", "UDMBC Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("TAPE_BYPASS", "TAPE Bypass", false));
-    p.push_back(std::make_unique<juce::AudioParameterBool>("DEESS_BYPASS", "DeEsser Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("DELTA_MONITOR", "Delta Monitor", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("EQ_COLOR_GLOBAL_BYPASS", "Analog Color Global Bypass", false));
     p.push_back(std::make_unique<juce::AudioParameterBool>("MIX_BYPASS", "Mix / Out Bypass", false));
@@ -161,22 +160,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     f("GRAPH_SOLO_Q", "Graph Frequency Solo Q",
       0.10f, 18.f, 0.707f, 0.35f);
 
-    // Reference-based DeEsser controls. Frequency is now directly selectable.
-    // Reference reference points remain documented at 12.5 kHz / 13.5 kHz;
-    // the active processor accepts the full selectable frequency range.
-    // DEESS_VOICE is retained for legacy preset compatibility but is no longer
-    // used by the realtime processor.
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(
-        "DEESS_VOICE", "Legacy DeEsser Voice",
-        juce::StringArray { "Male Vocal", "Female Vocal" }, 0));
-    f("DEESS_FREQ", "DeEsser Frequency", 6000.f, 18000.f, 7500.f);
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "DEESS_THRESHOLD", "DeEsser Threshold",
-        juce::NormalisableRange<float>(-36.f, 0.f, 0.1f), 0.f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        "DEESS_MODE", "DeEsser Response",
-        juce::NormalisableRange<float>(1.f, 4.f, 1.f), 2.f));
-    f("DEESS_OFFSET", "DeEsser Average Offset", -0.1f, 0.1f, 0.f);
+    // Four-band bipolar transient control. Shared X1/X2/X3 routing;
+    // 0% = exact/zero-work bypass, negative = soften, positive = enhance.
+    for (int i = 0; i < 4; ++i)
+    {
+        const juce::String n = juce::String(i + 1);
+        f("TRANSIENT" + n, "Transient Band " + n, -100.f, 100.f, 0.f);
+    }
 
     f("DRY_WET", "Dry / Wet", 0.f, 100.f, 100.f);
     f("OUTPUT_LEVEL", "Output Level", -24.f, 12.f, 0.f);
@@ -255,7 +245,6 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.masterBypass = value("MASTER_BYPASS") > 0.5f;
     p.udmbcBypass = value("UDMBC_BYPASS") > 0.5f;
     p.tapeBypass = value("TAPE_BYPASS") > 0.5f;
-    p.deessBypass = value("DEESS_BYPASS") > 0.5f;
     p.mixBypass = value("MIX_BYPASS") > 0.5f;
     p.eqColorGlobalBypass = value("EQ_COLOR_GLOBAL_BYPASS") > 0.5f;
 
@@ -290,6 +279,7 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         p.dynTriggerBelow[(size_t)i] = value("DYN_TRIGGER_BELOW" + n) > 0.5f;
         p.dynMSBalance[(size_t)i] = value("DYN_MS" + n);
         p.eqColor[(size_t)i] = value("EQ_COLOR" + n);
+        p.transientAmount[(size_t)i] = value("TRANSIENT" + n);
         p.eqColorBypass[(size_t)i] = value("EQ_COLOR_BYPASS" + n) > 0.5f;
         p.eqColorSolidState[(size_t)i] =
             value("EQ_COLOR_MODE" + n) > 0.5f;
@@ -337,10 +327,6 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.graphSoloFreq = value("GRAPH_SOLO_FREQ");
     p.graphSoloQ = value("GRAPH_SOLO_Q");
 
-    p.deessReferenceHz = value("DEESS_FREQ");
-    p.deessThresholdDb = value("DEESS_THRESHOLD");
-    p.deessMode = value("DEESS_MODE");
-    p.deessAverageOffset = value("DEESS_OFFSET");
     p.deltaMonitor = deltaMonitorOn;
 
     p.dryWet = value("DRY_WET");
