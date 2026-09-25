@@ -68,14 +68,14 @@ processor_h = read("Source/PluginProcessor.h")
 processor = read("Source/PluginProcessor.cpp")
 settings = read("Source/SettingsPanel.cpp")
 
-# v1.0.55 analyzer / contribution invariants.
+# v1.0.59 analyzer invariants: main Spectrum only, no module contribution path.
 assert "analyzerFftOrder = 12" in editor_h
 assert "analyzerHopSize = analyzerFftSize / 2" in editor_h
-assert "contributionFftOrder = 11" in editor_h
+assert "contributionFftOrder" not in editor_h
 assert "std::atomic<bool> analyzerEnabled { false }" in processor_h
-assert "popContributionSamples" in processor_h + processor
-assert "setContributionAnalysisEnabled" in dsp_h + processor
-assert "contributionStream" in dsp_h + processor
+assert "popContributionSamples" not in processor_h + processor
+assert "setContributionAnalysisEnabled" not in dsp_h + processor
+assert "contributionStream" not in dsp_h + processor
 assert "ANALOG / UDMBC / TYPE-A" in settings
 assert "ADDED DELTA" in settings
 assert "0xfff4a63a" in editor
@@ -91,7 +91,6 @@ assert "ContributionFFT" in web
 assert "const bool deltaMonitorOn" in processor
 assert "if (!deltaMonitorOn)" in processor
 assert "if (analyzerOn && p.deltaMonitor)" in processor
-assert "analyzerOn && !p.masterBypass && !p.deltaMonitor" in processor
 assert 'parameterValue("DELTA_MONITOR") > 0.5f' in editor
 assert "refreshAnalyzerTap" in web
 
