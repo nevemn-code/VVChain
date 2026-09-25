@@ -84,10 +84,12 @@ for token in required_worklet:
     assert token in worklet, token
 
 for token in [
-    "transientGains(l,r,stereo,xs)",
+    "applyTransientStereo(l,r,stereo,xs)",
     "transientFast",
     "transientSlow",
     "transientGain",
+    "deltaL+=bandsL[b]*d",
+    "const transientOut=this.applyTransientStereo",
 ]:
     assert token in worklet, token
 
