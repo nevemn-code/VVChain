@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.58
+// VVChain Web AudioWorklet DSP module · v1.0.59
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -18,20 +18,9 @@ class VVChainWorklet extends AudioWorkletProcessor {
     this.pendingRevision=0;
     this.activeRevision=0;
     this._errorReported=false;
-    this.analysisEnabled=false;
-    this.contribFrames=2048;
-    this.contribPos=0;
-    this.contribPacketCounter=0;
-    this.contribData=new Float32Array(this.contribFrames*6);
     this.ch=[this.makeCh(),this.makeCh()];
     this.port.onmessage=e=>{
       if(!e.data)return;
-      if(e.data.type==="analysisEnabled"){
-        this.analysisEnabled=!!e.data.enabled;
-        this.contribPos=0;
-        this.contribPacketCounter=0;
-        return;
-      }
       if(e.data.type!=="params")return;
       const next=e.data.state;
       if(!next||typeof next!=="object")return;
@@ -625,29 +614,6 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const dyn=this.dynamicStereo(l,r,stereo);
       const moduleL=this.sample(dyn[0],0,analogAlpha,bandProcessingHpCoef);
       const moduleR=this.sample(dyn[1],1,analogAlpha,bandProcessingHpCoef);
-
-      if(this.analysisEnabled&&!this.s.masterBypass&&!this.s.delta){
-        const lc=this.ch[0],rc=this.ch[1],base=this.contribPos*6;
-        this.contribData[base+0]=(lc.contribAnalogPre+rc.contribAnalogPre)*.5;
-        this.contribData[base+1]=(lc.contribAnalogPost+rc.contribAnalogPost)*.5;
-        this.contribData[base+2]=(lc.contribUdmbcPre+rc.contribUdmbcPre)*.5;
-        this.contribData[base+3]=(lc.contribUdmbcPost+rc.contribUdmbcPost)*.5;
-        this.contribData[base+4]=(lc.contribTypePre+rc.contribTypePre)*.5;
-        this.contribData[base+5]=(lc.contribTypePost+rc.contribTypePost)*.5;
-        this.contribPos++;
-        if(this.contribPos>=this.contribFrames){
-          this.contribPacketCounter++;
-          if((this.contribPacketCounter&1)===0){
-            const payload=this.contribData;
-            this.port.postMessage(
-              {type:"contributionSamples",frames:this.contribFrames,data:payload.buffer},
-              [payload.buffer]
-            );
-            this.contribData=new Float32Array(this.contribFrames*6);
-          }
-          this.contribPos=0;
-        }
-      }
 
       const deOut=this.deessStereo(
         moduleL,
