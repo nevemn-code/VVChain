@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include <array>
+#include <functional>
 #include <memory>
 #include <vector>
 #include <tuple>
@@ -105,12 +106,13 @@ private:
                     juce::Colour(0xff7f8790));
                 label.setMouseCursor(
                     juce::MouseCursor::IBeamCursor);
-                label.onTextChange = [this, &label, line]
+                auto* labelPtr = &label;
+                label.onTextChange = [this, labelPtr, line]
                 {
                     if (m_updatingText)
                         return;
                     if (m_commitHandler != nullptr)
-                        m_commitHandler(line, label.getText());
+                        m_commitHandler(line, labelPtr->getText());
                 };
             };
 
