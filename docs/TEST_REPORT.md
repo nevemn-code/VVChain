@@ -1,4 +1,4 @@
-# VVChain Validation Status（v1.0.50；既有測試基準仍為 v1.0.48）
+# VVChain Validation Status（v1.0.51；既有測試基準仍為 v1.0.48）
 
 This document records what the repository actually verifies. It is not a claim of DAW certification.
 
@@ -7,6 +7,8 @@ This document records what the repository actually verifies. It is not a claim o
 本版新增 Native / Web SETTINGS 齒輪與 overlay 容器，不修改 DSP。所有尚未完成 persistence / behavior 定義的設定均標成 RESERVED / DISABLED；AUDIO / QUALITY 沒有接入任何音訊參數。開啟／關閉 overlay 的程式路徑不呼叫 APVTS parameter write，也不向 Web AudioWorklet sendParams。
 
 既有五個測試腳本在 v1.0.49 已記錄有前置 source-guard / Python syntax 問題；本版不把那些既有失敗誤報成 Settings UI 已通過完整 CI。Windows VST3 / DAW / pluginval 仍需由 Actions artifact 與實際 host 驗證。
+
+v1.0.51 另修正 Web visible version 與 AudioWorklet cache query parity；此修正不改 DSP。
 
 
 ## 十輪本機封閉測試

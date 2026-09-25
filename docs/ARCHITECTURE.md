@@ -1,4 +1,4 @@
-# VVChain Architecture（v1.0.50）
+# VVChain Architecture（v1.0.51）
 
 > 以下以目前程式實際執行為準；本次封閉測試的失敗和限制見 `TEST_REPORT.md`。
 

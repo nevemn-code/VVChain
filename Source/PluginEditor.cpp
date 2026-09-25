@@ -2653,7 +2653,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.50", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.51", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();

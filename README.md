@@ -1,6 +1,6 @@
 # VVChain
 
-## 目前實際狀態（v1.0.50）
+## 目前實際狀態（v1.0.51）
 
 目前 `main` 的五個測試腳本在本機各重跑十輪均提前失敗，包含 `web_smoke.py` 的 Python 語法錯誤；完整位置和驗證限制見 [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md)。歷史版本日誌描述當時修改，現行行為請以 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 與實際程式為準。本次只更新說明，未更改 DSP。
 
@@ -55,6 +55,10 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
+
+### v1.0.51
+- 修正 Web Preview 顯示版本與 AudioWorklet cache query 不一致；cache 由 1.0.49 同步到 1.0.51。
+- Native / Web / Worklet / CMake 對外版本統一為 v1.0.51；不修改 DSP 與 Settings 行為。
 
 ### v1.0.50
 - Native JUCE 與 Web Preview 右上角在 DE-ESS 後新增 28×28 SETTINGS vector gear；既有 BYPASS / SOLO PRE / EQ / UDMBC / ANALOG / TAPE COLOR / DE-ESS 順序不變。
