@@ -270,7 +270,7 @@ function setAnalyzerEnabled(enabled){
   else{disconnectAnalyzerTap();stopAnalyzerLoop();analyzerCurve.fill(-90);drawEQ()}
 }
 analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
-document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
+document.addEventListener("visibilitychange",()=>{if(document.hidden){stopAnalyzerLoop();disconnectAnalyzerTap();}else if(analyzerEnabled){connectAnalyzerTap();if(playing)startAnalyzerLoop()}});
 setAnalyzerEnabled(true);
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.58
 function makeWorkletUrl(){
