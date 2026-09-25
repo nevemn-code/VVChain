@@ -70,7 +70,7 @@ const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive
 const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.49
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.49"+"-hpf30-eqtypes-oct6-ledrollback";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.49"+"-hpf30-eqtypes-oct6-ledrollback-dynright";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -929,7 +929,7 @@ function drawEQ(){
   }
 
 }
-let expandedDynamicBand=-1,hoverDynamicBand=-1,hoverXover=-1,dragMode=0,dragBand=-1,dragXover=-1,dragOverlapXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dragDynamicHandleBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynFreqGrabOffsetX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0,dynHandleStartY=0,dynHandleStartValue=0,overlapDragStartY=0,overlapDragStartValue=50,soloSpotX=0,soloSpotY=0,pendingRightBand=-1,pendingRightX=0,pendingRightY=0;
+let expandedDynamicBand=-1,hoverDynamicBand=-1,hoverXover=-1,dragMode=0,dragBand=-1,dragXover=-1,dragOverlapXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dragDynamicHandleBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynFreqGrabOffsetX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0,dynHandleStartY=0,dynHandleStartValue=0,overlapDragStartY=0,overlapDragStartValue=50,soloSpotX=0,soloSpotY=0,pendingRightBand=-1,pendingRightDynamic=false,pendingRightX=0,pendingRightY=0,rightSoloDynamic=false;
 function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRatio||1;eqCanvas.width=Math.max(1,Math.round(r.width*d));eqCanvas.height=Math.max(1,Math.round(r.height*d));eqCtx.setTransform(d,0,0,d,0,0);drawEQ();}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function showGraphHint(e,text){
@@ -1036,7 +1036,7 @@ document.addEventListener("pointerdown",e=>{if(!eqTypeMenu.hidden&&!eqTypeMenu.c
 eqCanvas.addEventListener("contextmenu",e=>e.preventDefault());
 function graphHoverTarget(x,y,w,h){
   // Pointer capture owns the readout until pointerup/cancel.
-  if(dragMode===7&&dragBand>=0)return {band:dragBand,mask:2};
+  if(dragMode===7&&dragBand>=0)return {band:dragBand,mask:rightSoloDynamic?4:2};
   if(dragMode===1&&dragBand>=0)return {band:dragBand,mask:2};
   if(dragMode===2&&dragBand>=0)return {band:dragBand,mask:4};
   if(dragMode===5&&dragDynamicHandleBand>=0)return {band:dragDynamicHandleBand,mask:4};
@@ -1089,10 +1089,20 @@ eqCanvas.addEventListener("mouseleave",()=>{
 eqCanvas.addEventListener("wheel",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
   if(e.buttons===2||e.button===2){
-    const band=pendingRightBand>=0?pendingRightBand:(dragBand>=0?dragBand:(hoverDynamicBand>=0?hoverDynamicBand:dynamicBandAtPointer(x,y,w,h)));
+    const hit=graphHoverTarget(x,y,w,h);
+    const band=pendingRightBand>=0
+      ?pendingRightBand
+      :(dragBand>=0?dragBand:hit.band);
     if(band>=0){
       e.preventDefault();
-      if(pendingRightBand>=0){pendingRightBand=-1;dragMode=7;dragBand=band;}
+      if(pendingRightBand>=0){
+        rightSoloDynamic=pendingRightDynamic;
+        pendingRightBand=-1;pendingRightDynamic=false;
+        dragMode=7;dragBand=band;
+      }else if(dragMode!==7){
+        rightSoloDynamic=!!(hit.mask&4);
+        dragMode=7;dragBand=band;
+      }
       if(isRollOffType(band)){
         const dir=e.deltaY>0?1:-1;
         state.eq.slope[band]=clamp(Math.round(Number(state.eq.slope[band]??1))+dir,0,6);
@@ -1103,7 +1113,7 @@ eqCanvas.addEventListener("wheel",e=>{
       soloSpotX=x;soloSpotY=y;
       state.solo.graphActive=true;state.solo.graphFreq=state.eq.freq[band];
       state.solo.graphQ=isRollOffType(band)?.70710678:state.eq.q[band];
-      showGraphHint(e,graphHintBandHtml(band,8));sendParams();drawEQ();return;
+      showGraphHint(e,graphHintBandHtml(band,rightSoloDynamic?4:8));sendParams();drawEQ();return;
     }
   }
   // Crossover curvature / OVERLAP is controlled ONLY by the bottom infinity marker.
@@ -1197,7 +1207,9 @@ eqCanvas.addEventListener("pointerdown",e=>{
     if(band>=0){
       e.preventDefault();closeEqTypeMenu();
       expandedDynamicBand=-1;dragDynamicMsBand=-1;dragMode=8;dragBand=-1;
-      pendingRightBand=band;pendingRightX=x;pendingRightY=y;
+      pendingRightBand=band;
+      pendingRightDynamic=!!(hit.mask&4);
+      pendingRightX=x;pendingRightY=y;
       eqCanvas.setPointerCapture(e.pointerId);hideGraphHint();drawEQ();return;
     }
   }
@@ -1289,21 +1301,43 @@ eqCanvas.addEventListener("pointermove",e=>{
   const r=eqCanvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,0,r.width),y=clamp(e.clientY-r.top,0,r.height),w=r.width,h=r.height;
   if(dragMode===8&&pendingRightBand>=0&&(e.buttons&2)){
     if(Math.hypot(x-pendingRightX,y-pendingRightY)<=3)return;
-    dragMode=7;dragBand=pendingRightBand;pendingRightBand=-1;
-    dynGainStartY=pendingRightY;dynGainStartOffset=state.eq.gain[dragBand];
+    dragMode=7;dragBand=pendingRightBand;
+    rightSoloDynamic=pendingRightDynamic;
+    pendingRightBand=-1;pendingRightDynamic=false;
     soloSpotX=x;soloSpotY=y;
-    state.solo.graphActive=true;state.solo.graphFreq=state.eq.freq[dragBand];state.solo.graphQ=state.eq.q[dragBand];
-    setGraphControls(["EQ"+(dragBand+1)+"_FREQ","EQ"+(dragBand+1)+"_GAIN"],false);
+    state.solo.graphActive=true;
+    state.solo.graphFreq=state.eq.freq[dragBand];
+    state.solo.graphQ=isRollOffType(dragBand)?.70710678:state.eq.q[dragBand];
+    setGraphControls(
+      rightSoloDynamic
+        ?["EQ"+(dragBand+1)+"_FREQ","DYN_DYNAMICS"+(dragBand+1)]
+        :["EQ"+(dragBand+1)+"_FREQ","EQ"+(dragBand+1)+"_GAIN"],
+      false);
     sendParams();
   }
   if(state.solo.graphActive&&(e.buttons&2)){soloSpotX=x;soloSpotY=y;}
   hoverDynamicBand=dynamicTargetAtPointer(x,y,w,h);
   if(dragMode===7&&dragBand>=0){
-    const hzv=invLog(clamp(x,0,w)/w),gain=yToDb(y,h);
-    state.eq.freq[dragBand]=hzv;state.eq.gain[dragBand]=gain;
-    state.solo.graphActive=true;state.solo.graphFreq=hzv;state.solo.graphQ=state.eq.q[dragBand];
-    setGraphControls(["EQ"+(dragBand+1)+"_FREQ","EQ"+(dragBand+1)+"_GAIN"],true);
-    showGraphHint(e,graphHintBandHtml(dragBand,1|2));sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
+    const hzv=invLog(clamp(x,0,w)/w);
+    state.eq.freq[dragBand]=hzv;
+
+    if(rightSoloDynamic){
+      const targetGain=yToDb(y,h);
+      const offset=clamp(Number(state.eq.gain[dragBand]||0),-18,18);
+      state.dyn.dynamics[dragBand]=clamp((targetGain-offset)/18*100,-100,100);
+      setGraphControls(["EQ"+(dragBand+1)+"_FREQ","DYN_DYNAMICS"+(dragBand+1)],true);
+      showGraphHint(e,graphHintBandHtml(dragBand,1|4));
+    }else{
+      const gain=yToDb(y,h);
+      state.eq.gain[dragBand]=gain;
+      setGraphControls(["EQ"+(dragBand+1)+"_FREQ","EQ"+(dragBand+1)+"_GAIN"],true);
+      showGraphHint(e,graphHintBandHtml(dragBand,1|2));
+    }
+
+    state.solo.graphActive=true;
+    state.solo.graphFreq=hzv;
+    state.solo.graphQ=isRollOffType(dragBand)?.70710678:state.eq.q[dragBand];
+    sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
   }
   if(dragDynamicMsBand>=0){
     const p=dynamicPopupBounds(dragDynamicMsBand,w,h),bar={x:p.x+12,y:p.y+50,w:p.w-24,h:11};
@@ -1356,17 +1390,18 @@ eqCanvas.addEventListener("pointermove",e=>{
 });
 eqCanvas.addEventListener("pointerup",e=>{
   if(dragMode===8&&pendingRightBand>=0){
-    const b=pendingRightBand;pendingRightBand=-1;
+    const b=pendingRightBand;
+    pendingRightBand=-1;pendingRightDynamic=false;
     openEqTypeMenu(b,e.clientX,e.clientY);
   }
   if(state.solo.graphActive){state.solo.graphActive=false;sendParams();}
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
   const hit=graphHoverTarget(x,y,w,h);
   if(hit.band>=0)showGraphHint(e,graphHintBandHtml(hit.band,hit.mask));else hideGraphHint();
-  dragMode=0;dragBand=-1;dragXover=-1;dragOverlapXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;dragDynamicHandleBand=-1;eqDragAxis=0;clearGraphControls();drawEQ();
+  dragMode=0;dragBand=-1;rightSoloDynamic=false;dragXover=-1;dragOverlapXover=-1;dragDynamicMsBand=-1;dragDynamicTargetBand=-1;dragDynamicHandleBand=-1;eqDragAxis=0;clearGraphControls();drawEQ();
 });
 eqCanvas.addEventListener("pointercancel",e=>{
-  pendingRightBand=-1;
+  pendingRightBand=-1;pendingRightDynamic=false;rightSoloDynamic=false;
   if(state.solo.graphActive){state.solo.graphActive=false;sendParams();}
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
   const hit=graphHoverTarget(x,y,w,h);
