@@ -1,6 +1,12 @@
-# VVChain Validation Status（v1.0.58；歷史基準仍保留於下文）
+# VVChain Validation Status（v1.0.59；歷史基準仍保留於下文）
 
 This document records what the repository actually verifies. It is not a claim of DAW certification.
+
+## v1.0.59 CPU / Analyzer refactor validation target
+
+本版移除 ANALOG / UDMBC / TYPE-A contribution Analyzer 的完整計算支線，並把 Native Linear EQ / Dynamic EQ 從 4× Analog oversampler 拆回 host rate。Analog ADAA v2 本身的 transfer、TT/SS、X2、per-band/channel state 與 4× oversampling 保留；Analog 全關時以 fixed-latency delay 取代昂貴的 up/down sampling。
+
+Source regression 另外檢查：module contribution symbols / FIFO / 2048 FFT / Worklet transport 不得存在；`applyEq` 不得呼叫 `processSamplesUp`；`applyAnalog` 必須保留 4× up/down path 與 Analog-off early return；UDMBC / TAPE 的 lazy/cache 路徑必須存在。這些 source checks 不等於實際 CPU profiler 或 DAW null test，Windows VST3 build 與 Actions 結果需另外記錄。
 
 ## v1.0.50 UI-only Settings scaffold
 
