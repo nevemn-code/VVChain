@@ -2925,10 +2925,10 @@ void VVChainAudioProcessorEditor::resized()
     const int cardY = 404;
     const int gap = 8;
     const int left = 18;
-    const int unitW = (w - left * 2 - gap * 5) / 5;
+    const int unitW = (w - left * 2 - gap * 4) / 5;
     const int cardW = unitW;
 
-    const std::array<int, 5> moduleWidths { 50, 52, 64, 66, 62 };
+    const std::array<int, 4> moduleWidths { 50, 52, 64, 66 };
     constexpr int topGap = 5;
     constexpr int masterW = 78;
     int total = masterW;
@@ -2962,7 +2962,7 @@ void VVChainAudioProcessorEditor::resized()
         soloModeButton->setBounds(topX + masterW + topGap, topY, soloModeW, 25);
 
     int xTop = topX + masterW + topGap + soloModeW + topGap;
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
     {
         if (bypassButtons[(size_t) i])
             bypassButtons[(size_t) i]->setBounds(
