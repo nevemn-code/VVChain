@@ -68,7 +68,7 @@ processor_h = read("Source/PluginProcessor.h")
 processor = read("Source/PluginProcessor.cpp")
 settings = read("Source/SettingsPanel.cpp")
 
-# v1.0.59 analyzer invariants: main Spectrum only, no module contribution path.
+# v1.0.60 analyzer/transient invariants: main Spectrum only, no module contribution path.
 assert "analyzerFftOrder = 12" in editor_h
 assert "analyzerHopSize = analyzerFftSize / 2" in editor_h
 assert "contributionFftOrder" not in editor_h
@@ -89,5 +89,15 @@ assert "if (!deltaMonitorOn)" in processor
 assert "if (analyzerOn && p.deltaMonitor)" in processor
 assert 'parameterValue("DELTA_MONITOR") > 0.5f' in editor
 assert "refreshAnalyzerTap" in web
+
+# TRANSIENT must precede Analog inside the shared audible split and De-Esser
+# must be physically absent from Native/Web realtime code.
+assert "transientAmount" in dsp_h + processor
+assert "vvFastLogPositive" in dsp
+assert "transientBand1SidechainHPF" in dsp_h + dsp
+assert "const float energySq" in dsp
+assert "const float bandSignal = bandsByChannel[ch][band] * transientGain[band]" in dsp
+for dead in ("DEESS_", "processDeEsser", "DeEssState", "deessStereo", "state.de"):
+    assert dead not in editor_h + editor + processor_h + processor + dsp_h + dsp + web + read("docs/vvchain-worklet.js"), dead
 
 print(f"PASS project static audit v{version.group(1)}")
