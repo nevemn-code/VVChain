@@ -1278,6 +1278,21 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     }
 
+    if (anyAnalogActive)
+    {
+        // Keep the cheap fixed-delay state warm while the 4x path is active.
+        // This avoids stale samples if automation later turns Analog fully off.
+        for (int ch = 0; ch < juce::jmin(channels, buffer.getNumChannels()); ++ch)
+        {
+            auto* data = buffer.getWritePointer(ch);
+            for (int n = 0; n < buffer.getNumSamples(); ++n)
+            {
+                eqWetDelay.pushSample(ch, data[n]);
+                juce::ignoreUnused(eqWetDelay.popSample(ch));
+            }
+        }
+    }
+
     if (!anyAnalogActive)
     {
         // Preserve fixed PDC without executing the 4x up/downsampler.
