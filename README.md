@@ -1,6 +1,6 @@
 # VVChain
 
-## 目前實際狀態（v1.0.60）
+## 目前實際狀態（v1.0.61）
 
 v1.0.55 修復既有 Web smoke／UI regression 的過時 source guard，Fast Gate 改為 main push 也執行，並把 Web smoke、project static audit、UI/interaction regression 各重跑十輪。實際通過狀態以本版 GitHub Actions 結果為準；DAW／pluginval／AAX 仍屬獨立驗證。
 
@@ -53,7 +53,7 @@ https://nevemn-code.github.io/VVChain/
 
 ## 版本日誌
 
-### v1.0.60
+### v1.0.61
 - 完整移除 Native / Web 的 De-Esser 參數、DSP state、處理路徑與專用 UI。
 - 四個 BAND 新增 bipolar TRANSIENT（-100%～+100%，0% 為 zero-work bypass）。
 - TRANSIENT 在 Analog 前以 host-rate parallel-delta 處理；使用相同 X1／X2／X3 頻段定義，但只把 (gain−1)×band 注入 untouched base signal，不讓 TRANSIENT 自己增加整條 full-band crossover phase rotation，也不會單獨喚醒 Analog 4× oversampler。

@@ -57,7 +57,7 @@ def source_guards():
         assert marker in cpp or marker in adaa,marker
     assert "std::sqrt(std::sqrt(1.0 + alpha))" in adaa
     assert "calcAntiderivative" in adaa
-    assert "p.eqColorX2[band] ? 2.0f : 1.0f" in cpp
+    assert "const double x2 = p.eqColorX2[band] ? 2.0 : 1.0;" in cpp
     assert "const float speed = fine ? 0.0075f : 0.075f;" in editor
 
 
