@@ -185,13 +185,13 @@ private:
                     / lengthSquared);
 
             const auto closest = anchor + segment * projection;
-            return p.getDistanceFrom(closest) <= 22.0f;
+            return p.getDistanceFrom(closest) <= 26.0f;
         }
 
         void updateInfo(const juce::String& line1Text,
                         const juce::String& line2Text,
                         const juce::String& line3Text,
-                        juce::Point<int> mousePos,
+                        juce::Point<int> anchorPos,
                         juce::Rectangle<int> parentBounds)
         {
             const bool textChanged =
@@ -200,7 +200,7 @@ private:
                 || m_line3.getText() != line3Text;
 
             if (!textChanged
-                && m_lastPos == mousePos
+                && m_lastPos == anchorPos
                 && isVisible())
                 return;
 
@@ -215,13 +215,13 @@ private:
                 m_line3.setText(
                     line3Text, juce::dontSendNotification);
             m_updatingText = false;
-            m_lastPos = mousePos;
-            m_anchorPos = mousePos;
+            m_lastPos = anchorPos;
+            m_anchorPos = anchorPos;
 
             constexpr int boxHeight = 66;
             constexpr int boxWidth = 150;
-            int targetX = mousePos.x - boxWidth / 2;
-            int targetY = mousePos.y - boxHeight - 14;
+            int targetX = anchorPos.x - boxWidth / 2;
+            int targetY = anchorPos.y - boxHeight - 14;
 
             if (targetX + boxWidth > parentBounds.getRight())
                 targetX = parentBounds.getRight() - boxWidth - 4;
@@ -229,7 +229,7 @@ private:
                 targetX = parentBounds.getX() + 4;
 
             if (targetY < parentBounds.getY())
-                targetY = mousePos.y + 14;
+                targetY = anchorPos.y + 14;
             if (targetY + boxHeight > parentBounds.getBottom())
                 targetY = parentBounds.getBottom() - boxHeight - 4;
 
