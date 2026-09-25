@@ -421,7 +421,7 @@ def test_v106_shared_four_band_modules_and_deess_presets():
     assert "protectedSaturated" in worklet
     assert "return x+(protectedSaturated-u)*this.clamp(x2,1,2)" in worklet
     assert "colorX2" in web
-    assert "p.eqColorX2[band] ? 2.0f : 1.0f" in cpp
+    assert "x2Multiplier[band] = p.eqColorX2[band] ? 2.0 : 1.0" in cpp
 
 def test_dynamic_range_centered_500():
     """500 deterministic cases: Dynamic EQ is centered on the static EQ gain."""
@@ -597,7 +597,7 @@ def test_v107_ui_controls():
     # ANALOG X2 is a saved parameter that multiplies only the current COLOR amount.
     assert 'EQ_COLOR_X2' in proc
     assert 'eqColorX2' in dsp
-    assert 'p.eqColorX2[band] ? 2.0f : 1.0f' in dsp
+    assert 'x2Multiplier[band] = p.eqColorX2[band] ? 2.0 : 1.0' in dsp
     assert 'colorX2' in web
     assert 'analogX2Btn' in web
     assert 'colorX2?.[b]?2:1' in worklet
