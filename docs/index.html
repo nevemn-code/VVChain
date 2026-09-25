@@ -70,7 +70,7 @@ const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive
 const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],uiTouched={udmbc:[false,false,false,false],analog:[false,false,false,false],tape:[false,false,false,false]},clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.49
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.49"+"-hpf30-eqtypes-oct6-ledrollback-dynright-edit-order";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.49"+"-hpf30-eqtypes-oct6-ledrollback-dynright-edit-order-tunnel";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -976,11 +976,13 @@ function drawEQ(){
   }
 
 }
-let expandedDynamicBand=-1,hoverDynamicBand=-1,hoverXover=-1,dragMode=0,dragBand=-1,dragXover=-1,dragOverlapXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dragDynamicHandleBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynFreqGrabOffsetX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0,dynHandleStartY=0,dynHandleStartValue=0,overlapDragStartY=0,overlapDragStartValue=50,soloSpotX=0,soloSpotY=0,pendingRightBand=-1,pendingRightDynamic=false,pendingRightX=0,pendingRightY=0,rightSoloDynamic=false;
+let expandedDynamicBand=-1,hoverDynamicBand=-1,hoverXover=-1,dragMode=0,dragBand=-1,dragXover=-1,dragOverlapXover=-1,dragDynamicMsBand=-1,dragDynamicTargetBand=-1,dragDynamicHandleBand=-1,eqDragAxis=0,dynFreqStartHz=0,dynFreqStartX=0,dynFreqGrabOffsetX=0,dynGainStartY=0,dynGainStartOffset=0,dynGainStartTarget=0,dynTargetStartFreq=0,dynTargetStartX=0,dynDynamicsStartY=0,dynDynamicsStartValue=0,dynHandleStartY=0,dynHandleStartValue=0,overlapDragStartY=0,overlapDragStartValue=50,soloSpotX=0,soloSpotY=0,pendingRightBand=-1,pendingRightDynamic=false,pendingRightX=0,pendingRightY=0,rightSoloDynamic=false,graphHintAnchorX=-1,graphHintAnchorY=-1;
 function resizeCanvas(){const r=eqCanvas.getBoundingClientRect(),d=devicePixelRatio||1;eqCanvas.width=Math.max(1,Math.round(r.width*d));eqCanvas.height=Math.max(1,Math.round(r.height*d));eqCtx.setTransform(d,0,0,d,0,0);drawEQ();}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function showGraphHint(e,text){
   const r=eqCanvas.getBoundingClientRect();
+  graphHintAnchorX=e.clientX;
+  graphHintAnchorY=e.clientY;
   graphHint.innerHTML=text;graphHint.hidden=false;
   const pad=6,gap=14,px=e.clientX-r.left,py=e.clientY-r.top;
   const x=clamp(px-graphHint.offsetWidth/2,pad,Math.max(pad,r.width-graphHint.offsetWidth-pad));
@@ -989,14 +991,47 @@ function showGraphHint(e,text){
   y=clamp(y,pad,Math.max(pad,r.height-graphHint.offsetHeight-pad));
   graphHint.style.left=x+"px";graphHint.style.top=y+"px";
 }
-function hideGraphHint(){if(!graphHint.contains(document.activeElement))graphHint.hidden=true;}
+function hideGraphHint(){
+  if(graphHint.contains(document.activeElement))return;
+  graphHint.hidden=true;
+  graphHintAnchorX=-1;graphHintAnchorY=-1;
+}
 function parseUiNumber(raw){
   return parseFloat(String(raw??"").replace(/[^0-9+\-.]/g,""));
 }
-function graphHintNear(clientX,clientY,margin=52){
+function graphHintNear(clientX,clientY){
   if(graphHint.hidden)return false;
+  if(graphHint.contains(document.activeElement))return true;
+
   const r=graphHint.getBoundingClientRect();
-  return clientX>=r.left-margin&&clientX<=r.right+margin&&clientY>=r.top-margin&&clientY<=r.bottom+margin;
+  const boxPadX=12,boxPadY=10;
+
+  // Small forgiveness around the editable box itself.
+  if(clientX>=r.left-boxPadX&&clientX<=r.right+boxPadX
+    &&clientY>=r.top-boxPadY&&clientY<=r.bottom+boxPadY)
+    return true;
+
+  if(graphHintAnchorX<0||graphHintAnchorY<0)return false;
+
+  const ax=graphHintAnchorX,ay=graphHintAnchorY;
+  if(Math.hypot(clientX-ax,clientY-ay)<=18)return true;
+
+  // Nearest point on the box edge from the original EQ/Dynamic node.
+  const tx=clamp(ax,r.left+8,r.right-8);
+  let ty=(r.top+r.bottom)*.5;
+  if(ay<r.top)ty=r.top;
+  else if(ay>r.bottom)ty=r.bottom;
+
+  const vx=tx-ax,vy=ty-ay,len2=vx*vx+vy*vy;
+  if(len2<=.0001)return false;
+
+  const wx=clientX-ax,wy=clientY-ay;
+  const t=clamp((wx*vx+wy*vy)/len2,0,1);
+  const cx=ax+vx*t,cy=ay+vy*t;
+
+  // Slightly wider than the visual gap so the user can comfortably reach
+  // the editable values, but sideways movement closes immediately.
+  return Math.hypot(clientX-cx,clientY-cy)<=22;
 }
 function commitGraphHintEdit(el){
   const b=Number(el.dataset.band),kind=el.dataset.kind,dyn=el.dataset.dyn==="1";
@@ -1172,7 +1207,7 @@ function graphHoverTarget(x,y,w,h){
 
 eqCanvas.addEventListener("mousemove",e=>{
   if(dragMode===1||dragMode===2||dragMode===5||dragMode===7)return;
-  if(graphHintNear(e.clientX,e.clientY,52))return;
+  if(graphHintNear(e.clientX,e.clientY))return;
   const r=eqCanvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
   const xo=state.udmbc.x.map(v=>logX(v,w));hoverXover=-1;
   for(let i=0;i<3;i++)if(Math.hypot(xo[i]-x,h-18-y)<=10){hoverXover=i;break;}
@@ -1182,7 +1217,7 @@ eqCanvas.addEventListener("mousemove",e=>{
   drawEQ();
 });
 eqCanvas.addEventListener("pointermove",e=>{
-  if(!e.buttons&&graphHintNear(e.clientX,e.clientY,52))return;
+  if(!e.buttons&&graphHintNear(e.clientX,e.clientY))return;
   const r=eqCanvas.getBoundingClientRect();
   const x=e.clientX-r.left,y=e.clientY-r.top,w=r.width,h=r.height;
   const hit=graphHoverTarget(x,y,w,h);
