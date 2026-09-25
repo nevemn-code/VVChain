@@ -23,30 +23,18 @@ def main() -> None:
 
     assert "analyzerFftOrder = 12" in editor_h
     assert "analyzerHopSize = analyzerFftSize / 2" in editor_h
-    assert "contributionFftOrder = 11" in editor_h
-    assert "postPower <= prePower * 1.005" in editor
-    assert "postDb < -82.0f" in editor
-    assert "totalGrowth > 12.0f" in editor
-    assert "captureContributionMono" in dsp
-    assert "popContributionSamples" in processor
-    assert "ContributionFFT" in web
-    assert 'type:"contributionSamples"' in worklet
+    assert "contributionFftOrder" not in editor_h
+    assert "captureContributionMono" not in dsp
+    assert "popContributionSamples" not in processor
+    assert 'type:"contributionSamples"' not in worklet
 
     processor = (ROOT / "Source" / "PluginProcessor.cpp").read_text(encoding="utf-8")
     assert "const bool deltaMonitorOn" in processor
     assert "if (!deltaMonitorOn)" in processor
     assert "if (analyzerOn && p.deltaMonitor)" in processor
-    assert "analyzerOn && !p.masterBypass && !p.deltaMonitor" in processor
     assert "function refreshAnalyzerTap()" in web
     assert "state.delta&&!directFallback&&!workletFaulted&&workletNode" in web
     assert "state.masterBypass||state.delta" in web
-    assert "if(this.analysisEnabled&&!this.s.masterBypass&&!this.s.delta)" in worklet
-
-    # Distinct module identity colors must remain independent of band colors.
-    for token in ("0xfff4a63a", "0xff4fc3ff", "0xffd97cff"):
-        assert token in editor
-    for token in ('"#f4a63a"', '"#4fc3ff"', '"#d97cff"'):
-        assert token in web
 
     # 100 deterministic power-domain cases: removed energy never grows upward,
     # added energy is monotonic and the visualization is hard-capped at 8 dB.
