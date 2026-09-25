@@ -365,6 +365,7 @@ private:
     static float applyLimiter(float input, float& envDb, double sampleRate);
 
     void applyEq(juce::AudioBuffer<float>&, const Parameters&);
+    void applyTransient(juce::AudioBuffer<float>&, const Parameters&);
     void applyOtt(juce::AudioBuffer<float>&, const Parameters&);
     void applyAType(juce::AudioBuffer<float>&, const Parameters&);
 
@@ -442,8 +443,14 @@ private:
     std::array<std::array<float, 2>, 4> typeSlowEnv {};
     std::array<std::array<float, 2>, 4> typeDc {};
 
-    // TRANSIENT runs inside the existing Analog shared four-band split, before
-    // Analog coloration, so enabling it does not add a second audible crossover.
+    // TRANSIENT is a base-rate parallel-delta stage before Analog.
+    // Its crossover output is never used as the dry/base signal: only
+    // (gain - 1) * filteredBand is injected into the untouched input.
+    // Therefore 0% is exact bypass and enabling TRANSIENT does not add a
+    // full-band crossover phase rotation or wake the Analog 4x oversampler.
+    Crossover4th transientXover1 {};
+    Crossover4th transientXover2 {};
+    Crossover4th transientXover3 {};
     std::array<float, 4> transientFastEnvSq { 0.f, 0.f, 0.f, 0.f };
     std::array<float, 4> transientSlowEnvSq { 0.f, 0.f, 0.f, 0.f };
     std::array<float, 4> transientSmoothGain { 1.f, 1.f, 1.f, 1.f };
