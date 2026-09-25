@@ -1,6 +1,6 @@
 # VVChain
 
-## 目前實際狀態（v1.0.53）
+## 目前實際狀態（v1.0.54）
 
 目前 `main` 的五個測試腳本在本機各重跑十輪均提前失敗，包含 `web_smoke.py` 的 Python 語法錯誤；完整位置和驗證限制見 [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md)。歷史版本日誌描述當時修改，現行行為請以 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 與實際程式為準。本次只更新說明，未更改 DSP。
 
@@ -55,6 +55,14 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
+
+### v1.0.54
+- Spectrum Analyzer 由 2048 升為 4096-point FFT，採 75% overlap（1024-sample hop），改善低頻解析度並降低 frame-to-frame 跳動。
+- 頻率方向改為約 1/12-octave RMS energy smoothing，低頻至少 3 FFT bins；再做 5-point Gaussian 平滑，避免 log-frequency 顯示鋸齒。
+- 時間方向使用 fast-attack / slow-release EMA；顯示另加入 4.5 dB/oct、1 kHz pivot 的 perceptual tilt，對齊 Pro-Q 類 analyzer 的自然視覺。
+- Native JUCE 與 Web Preview 都改用 256 個 logarithmic display points，並以 Catmull-Rom / cubic Bezier 曲線繪製，不再用直線逐點連接。
+- 修正 v1.0.53 Native Analyzer 成員誤放進 MetalLookAndFeel scope 導致 Windows VST3 編譯失敗；Analyzer 狀態與 FFT buffers 正式移回 Editor instance。
+- Analyzer 仍完全不進 DSP chain，不改 latency、APVTS、automation、Delta、Solo 或任何聲音參數。
 
 ### v1.0.53
 - 修正 v1.0.52 Web Preview runtime 初始化順序：Theme 初始化不再於 state 建立前呼叫 drawEQ()，避免頁面載入後 UI 全空白。

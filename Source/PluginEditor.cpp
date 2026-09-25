@@ -2701,7 +2701,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(ivoryTheme ? juce::Colour(0xff6c675f) : juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.53", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.54", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -2869,55 +2869,116 @@ void VVChainAudioProcessorEditor::updateAnalyzer()
         analyzerInputCount += take;
         src += take;
 
-        if (analyzerInputCount == analyzerFftSize)
+        if (analyzerInputCount < analyzerFftSize)
+            continue;
+
+        std::fill(analyzerFftData.begin(), analyzerFftData.end(), 0.0f);
+        std::copy(analyzerInput.begin(), analyzerInput.end(),
+                  analyzerFftData.begin());
+        analyzerWindow.multiplyWithWindowingTable(
+            analyzerFftData.data(), analyzerFftSize);
+        analyzerFft.performFrequencyOnlyForwardTransform(
+            analyzerFftData.data());
+
+        const float norm = 2.0f / static_cast<float>(analyzerFftSize);
+        const int maxBin = analyzerFftSize / 2;
+        std::array<float, analyzerDisplayPoints> spectralDb {};
+
+        for (int p = 0; p < analyzerDisplayPoints; ++p)
         {
-            std::fill(analyzerFftData.begin(), analyzerFftData.end(), 0.0f);
-            std::copy(analyzerInput.begin(), analyzerInput.end(),
-                      analyzerFftData.begin());
-            analyzerWindow.multiplyWithWindowingTable(
-                analyzerFftData.data(), analyzerFftSize);
-            analyzerFft.performFrequencyOnlyForwardTransform(
-                analyzerFftData.data());
+            const float t = static_cast<float>(p)
+                / static_cast<float>(analyzerDisplayPoints - 1);
+            const float centreHz = 20.0f * std::pow(1000.0f, t);
 
-            const float norm = 2.0f / static_cast<float>(analyzerFftSize);
-            const int maxBin = analyzerFftSize / 2;
+            // Constant-fractional-octave energy smoothing.  A nominal 1/12
+            // octave window removes FFT-bin teeth without blurring broad EQ
+            // trends.  Keep at least a 3-bin window in the bass where linear
+            // FFT spacing is coarsest.
+            const float halfOctave = 1.0f / 24.0f;
+            const float f0 = centreHz / std::pow(2.0f, halfOctave);
+            const float f1 = centreHz * std::pow(2.0f, halfOctave);
 
-            for (int p = 0; p < analyzerDisplayPoints; ++p)
+            int b0 = juce::jlimit(
+                1, maxBin,
+                static_cast<int>(std::floor(
+                    f0 * static_cast<float>(analyzerFftSize)
+                    / static_cast<float>(sr))));
+            int b1 = juce::jlimit(
+                b0, maxBin,
+                static_cast<int>(std::ceil(
+                    f1 * static_cast<float>(analyzerFftSize)
+                    / static_cast<float>(sr))));
+
+            if (b1 - b0 + 1 < 3)
             {
-                const float t0 = static_cast<float>(p)
-                    / static_cast<float>(analyzerDisplayPoints);
-                const float t1 = static_cast<float>(p + 1)
-                    / static_cast<float>(analyzerDisplayPoints);
-                const float f0 = 20.0f * std::pow(1000.0f, t0);
-                const float f1 = 20.0f * std::pow(1000.0f, t1);
-                int b0 = juce::jlimit(1, maxBin,
-                    static_cast<int>(std::floor(f0 * analyzerFftSize / sr)));
-                int b1 = juce::jlimit(b0, maxBin,
-                    static_cast<int>(std::ceil(f1 * analyzerFftSize / sr)));
-
-                float peak = 0.0f;
-                for (int b = b0; b <= b1; ++b)
-                    peak = juce::jmax(peak, analyzerFftData[(size_t)b] * norm);
-
-                const float db = juce::jlimit(
-                    -96.0f, 0.0f,
-                    juce::Decibels::gainToDecibels(peak, -96.0f));
-
-                const float old = analyzerDb[(size_t)p];
-                const float coeff = db > old ? 0.42f : 0.16f;
-                analyzerDb[(size_t)p] = old + coeff * (db - old);
+                const int centreBin = juce::jlimit(
+                    1, maxBin,
+                    static_cast<int>(std::lround(
+                        centreHz * static_cast<float>(analyzerFftSize)
+                        / static_cast<float>(sr))));
+                b0 = juce::jmax(1, centreBin - 1);
+                b1 = juce::jmin(maxBin, centreBin + 1);
             }
 
-            analyzerInputCount = 0;
-            updated = true;
+            double energy = 0.0;
+            int count = 0;
+            for (int b = b0; b <= b1; ++b)
+            {
+                const float mag = analyzerFftData[(size_t)b] * norm;
+                energy += static_cast<double>(mag) * mag;
+                ++count;
+            }
+
+            const float rms = count > 0
+                ? static_cast<float>(std::sqrt(energy / static_cast<double>(count)))
+                : 0.0f;
+            float db = juce::Decibels::gainToDecibels(rms, -96.0f);
+
+            // Pro-Q-style perceptual display tilt, pivoted at 1 kHz.
+            db += 4.5f * std::log2(juce::jmax(20.0f, centreHz) / 1000.0f);
+            spectralDb[(size_t)p] = juce::jlimit(-96.0f, 6.0f, db);
         }
+
+        // Gentle five-point Gaussian pass in log-frequency display space.
+        std::array<float, analyzerDisplayPoints> frequencySmoothed {};
+        for (int p = 0; p < analyzerDisplayPoints; ++p)
+        {
+            auto sampleAt = [&spectralDb](int i)
+            {
+                return spectralDb[(size_t)juce::jlimit(
+                    0, analyzerDisplayPoints - 1, i)];
+            };
+
+            frequencySmoothed[(size_t)p] =
+                (sampleAt(p - 2)
+                 + 4.0f * sampleAt(p - 1)
+                 + 6.0f * sampleAt(p)
+                 + 4.0f * sampleAt(p + 1)
+                 + sampleAt(p + 2)) / 16.0f;
+        }
+
+        // Fast attack / slower release, applied after frequency smoothing.
+        for (int p = 0; p < analyzerDisplayPoints; ++p)
+        {
+            const float target = frequencySmoothed[(size_t)p];
+            const float old = analyzerDb[(size_t)p];
+            const float coeff = target > old ? 0.46f : 0.13f;
+            analyzerDb[(size_t)p] = old + coeff * (target - old);
+        }
+
+        // 75% overlap: retain the newest 3072 samples and advance by 1024.
+        std::move(analyzerInput.begin() + analyzerHopSize,
+                  analyzerInput.end(),
+                  analyzerInput.begin());
+        analyzerInputCount = analyzerFftSize - analyzerHopSize;
+        updated = true;
     }
 
     if (!updated)
         return;
 
     const auto graph = eqGraphBounds();
-    analyzerPath.clear();
+    std::array<juce::Point<float>, analyzerDisplayPoints> points {};
 
     for (int p = 0; p < analyzerDisplayPoints; ++p)
     {
@@ -2926,14 +2987,32 @@ void VVChainAudioProcessorEditor::updateAnalyzer()
                 * static_cast<float>(p)
                 / static_cast<float>(analyzerDisplayPoints - 1);
         const float db = analyzerDb[(size_t)p];
-        const float yNorm = juce::jlimit(0.0f, 1.0f,
-            (db + 90.0f) / 90.0f);
-        const float y = graph.getBottom() - yNorm * graph.getHeight();
+        const float yNorm = juce::jlimit(
+            0.0f, 1.0f, (db + 90.0f) / 96.0f);
+        const float y = juce::jlimit(
+            graph.getY(), graph.getBottom(),
+            graph.getBottom() - yNorm * graph.getHeight());
+        points[(size_t)p] = { x, y };
+    }
 
-        if (p == 0)
-            analyzerPath.startNewSubPath(x, y);
-        else
-            analyzerPath.lineTo(x, y);
+    // Catmull-Rom -> cubic Bezier.  This removes the last visible straight-line
+    // corners without changing the measured display points.
+    analyzerPath.clear();
+    analyzerPath.startNewSubPath(points[0]);
+
+    for (int i = 0; i < analyzerDisplayPoints - 1; ++i)
+    {
+        const auto p0 = points[(size_t)juce::jmax(0, i - 1)];
+        const auto p1 = points[(size_t)i];
+        const auto p2 = points[(size_t)(i + 1)];
+        const auto p3 = points[(size_t)juce::jmin(analyzerDisplayPoints - 1, i + 2)];
+
+        auto c1 = p1 + (p2 - p0) * (1.0f / 6.0f);
+        auto c2 = p2 - (p3 - p1) * (1.0f / 6.0f);
+        c1.y = juce::jlimit(graph.getY(), graph.getBottom(), c1.y);
+        c2.y = juce::jlimit(graph.getY(), graph.getBottom(), c2.y);
+
+        analyzerPath.cubicTo(c1, c2, p2);
     }
 
     repaint(graph.toNearestInt());

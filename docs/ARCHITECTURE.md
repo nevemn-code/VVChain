@@ -1,4 +1,4 @@
-# VVChain Architecture（v1.0.53）
+# VVChain Architecture（v1.0.54）
 
 > 以下以目前程式實際執行為準；本次封閉測試的失敗和限制見 `TEST_REPORT.md`。
 
@@ -96,3 +96,18 @@ Native analysis path is intentionally outside the audio processing chain:
 The audio callback only copies a mono analysis tap while Analyzer is enabled. FFT and path generation happen on the editor timer, so no FFT, allocation, drawing, or locks are added to the DSP path. Analyzer OFF disables FIFO writes and clears the display.
 
 Web Preview keeps the production audio path unchanged. A parallel source branch feeds a 2048-point AnalyserNode and zero-gain sink only while Analyzer is enabled. This branch is disconnected when disabled. Analyzer settings remain UI-only and outside APVTS / host automation.
+
+
+## Spectrum smoothing (v1.0.54)
+
+The analyzer display now separates measurement smoothing from curve rendering:
+
+1. 4096-point Hann FFT.
+2. 75% overlap / 1024-sample hop.
+3. Log-frequency 1/12-octave RMS-energy aggregation, with a minimum three-bin window at low frequencies.
+4. Five-point Gaussian smoothing in display space.
+5. Asymmetric temporal EMA (fast attack, slower release).
+6. 4.5 dB/oct display tilt around 1 kHz.
+7. Catmull-Rom converted to cubic Bezier for the final path.
+
+These steps affect only metering/visualization. Audio samples are never reconstructed from the smoothed spectrum and DSP output remains unchanged.

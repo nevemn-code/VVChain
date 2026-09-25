@@ -1,4 +1,4 @@
-# VVChain Validation Status（v1.0.53；既有測試基準仍為 v1.0.48）
+# VVChain Validation Status（v1.0.54；既有測試基準仍為 v1.0.48）
 
 This document records what the repository actually verifies. It is not a claim of DAW certification.
 
@@ -64,3 +64,10 @@ The v1.0.9 independent reference run recorded very small transfer-function diffe
 v1.0.52 的 Pages workflow 雖通過 JavaScript syntax gate，但 Theme 初始化在 `state` 建立前呼叫 `drawEQ()`，屬於 runtime ordering error，因此瀏覽器會中止後續 UI 初始化。v1.0.53 移除該 early draw，Theme click 才在完整 state 建立後 redraw。
 
 Analyzer 新增的 Native FIFO tap / FFT 與 Web AnalyserNode branch 均為視覺分析用途，不屬於聲音處理鏈。Windows VST3 build 與 Pages runtime/deployment 仍以 Actions 結果為最終驗證。
+
+
+## v1.0.54 Analyzer smoothness / Native compile fix
+
+v1.0.53 Pages deployment passed, but Windows VST3 failed because Analyzer editor state was accidentally declared inside the nested MetalLookAndFeel class. v1.0.54 moves that state to VVChainAudioProcessorEditor and simultaneously upgrades visual smoothing to 4096 FFT, 75% overlap, fractional-octave RMS averaging, Gaussian display smoothing, asymmetric time smoothing and cubic rendering.
+
+The analyzer changes remain visualization-only; no DSP formula or audio parameter is changed.

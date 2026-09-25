@@ -535,20 +535,6 @@ private:
     public:
         bool monochrome = false;
         bool ivoryTheme = false;
-    bool analyzerEnabled = true;
-
-    static constexpr int analyzerFftOrder = 11;
-    static constexpr int analyzerFftSize = 1 << analyzerFftOrder;
-    static constexpr int analyzerDisplayPoints = 220;
-    juce::dsp::FFT analyzerFft { analyzerFftOrder };
-    juce::dsp::WindowingFunction<float> analyzerWindow {
-        analyzerFftSize, juce::dsp::WindowingFunction<float>::hann, false
-    };
-    std::array<float, analyzerFftSize> analyzerInput {};
-    std::array<float, analyzerFftSize * 2> analyzerFftData {};
-    std::array<float, analyzerDisplayPoints> analyzerDb {};
-    int analyzerInputCount = 0;
-    juce::Path analyzerPath;
 
         void drawRotarySlider(juce::Graphics&, int x, int y, int width, int height,
                               float sliderPosProportional, float rotaryStartAngle,
@@ -678,6 +664,21 @@ private:
     std::unique_ptr<SettingsPanel> settingsPanel;
     bool settingsPanelVisible = false;
     bool ivoryTheme = false;
+    bool analyzerEnabled = true;
+
+    static constexpr int analyzerFftOrder = 12;
+    static constexpr int analyzerFftSize = 1 << analyzerFftOrder;
+    static constexpr int analyzerHopSize = analyzerFftSize / 4;
+    static constexpr int analyzerDisplayPoints = 256;
+    juce::dsp::FFT analyzerFft { analyzerFftOrder };
+    juce::dsp::WindowingFunction<float> analyzerWindow {
+        analyzerFftSize, juce::dsp::WindowingFunction<float>::hann, false
+    };
+    std::array<float, analyzerFftSize> analyzerInput {};
+    std::array<float, analyzerFftSize * 2> analyzerFftData {};
+    std::array<float, analyzerDisplayPoints> analyzerDb {};
+    int analyzerInputCount = 0;
+    juce::Path analyzerPath;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> tapeBandBypassButtons;
     std::array<std::unique_ptr<BoolAttachment>, 4> udmbcBandBypassAttachments;
     std::array<std::unique_ptr<BoolAttachment>, 4> analogModeAttachments;

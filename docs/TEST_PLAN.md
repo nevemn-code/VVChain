@@ -1,4 +1,4 @@
-# VVChain Test Plan（v1.0.53）
+# VVChain Test Plan（v1.0.54）
 
 目前五個現有測試腳本在十輪本機封閉測試均未通過；詳見 `TEST_REPORT.md`。下列 CI 觸發描述的是配置，不代表驗證已成功。
 
@@ -88,3 +88,13 @@ Still required when preparing a distributable release:
 - Analyzer OFF must stop Native analysis writes/FFT and disconnect the Web analyzer branch/timer.
 - Web Analyzer branch must remain parallel to the source -> Worklet/fallback audio path and end in a zero-gain sink.
 - Switching Analyzer ON/OFF or DARK/IVORY must not change APVTS values, DSP output, latency, bypass/solo/delta state, or control geometry.
+
+
+## Analyzer smoothness regression (v1.0.54)
+
+- Native and Web must both use 4096-point FFT analysis and 256 log-frequency display points.
+- Frequency aggregation must use RMS energy over an approximately 1/12-octave window, with at least three bins at the bass end.
+- The display must use frequency smoothing plus asymmetric temporal attack/release smoothing.
+- Final rendering must use a cubic path rather than raw line-to-line FFT vertices.
+- Analyzer ON/OFF must still leave APVTS, DSP output and reported latency unchanged.
+- Windows VST3 build must verify Analyzer fields live in the editor instance, not in MetalLookAndFeel.
