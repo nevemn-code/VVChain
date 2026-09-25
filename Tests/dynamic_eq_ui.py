@@ -132,12 +132,11 @@ def source_assertions():
     assert 'zoneBands(y,c,"analogLp",s.udmbc.x)' in worklet
     assert 'colorX2?.[b]?2:1' in worklet
 
-    # Current analyzer / contribution integration is UI-only.
-    assert 'updateContributionAnalyzer' in cpp and 'updateContributionAnalyzer' in head
-    assert 'popContributionSamples' in proc
-    assert 'setContributionAnalysisEnabled' in proc
-    assert 'ContributionFFT' in web
-    assert 'type:"contributionSamples"' in worklet
+    # v1.0.59 keeps only the main Spectrum Analyzer.
+    assert 'updateContributionAnalyzer' not in cpp and 'updateContributionAnalyzer' not in head
+    assert 'popContributionSamples' not in proc
+    assert 'setContributionAnalysisEnabled' not in proc
+    assert 'type:"contributionSamples"' not in worklet
 
 
 def test_v1016_gain_scale_10():
