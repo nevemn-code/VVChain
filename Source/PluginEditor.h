@@ -596,6 +596,7 @@ private:
     void setGraphControlState(const juce::StringArray& ids, bool moving);
     void clearGraphControlState();
     void setGraphControlMoving(bool moving);
+    void pulseGraphControlMovement(const juce::StringArray& ids);
     bool isMasterBypassed() const noexcept;
     juce::Rectangle<float> dynamicMsPopupBounds(int band) const;
     juce::Point<float> dynamicTargetPoint(int band) const;
@@ -704,6 +705,8 @@ private:
     };
 
     GraphEqDragAxis graphEqDragAxis = GraphEqDragAxis::Undetermined;
+    juce::Point<float> graphLastDragPosition { -1.0f, -1.0f };
+    int graphMovementPulseGeneration = 0;
     float dynamicDragStartDynamics = 0.0f;
     bool lastMasterBypassUi = false;
 
