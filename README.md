@@ -1,12 +1,12 @@
 # VVChain
 
-## 目前實際狀態（v1.0.58）
+## 目前實際狀態（v1.0.59）
 
 v1.0.55 修復既有 Web smoke／UI regression 的過時 source guard，Fast Gate 改為 main push 也執行，並把 Web smoke、project static audit、UI/interaction regression 各重跑十輪。實際通過狀態以本版 GitHub Actions 結果為準；DAW／pluginval／AAX 仍屬獨立驗證。
 
-目前主鏈的實際順序：EQ／Dynamic EQ + 四段 Analog → UDMBC → TAPE COLOR → De-Esser → Mix／Out → Solo → true-peak limiter → 主 Bypass／Delta。X1／X2／X3 共用於 Analog、UDMBC、TAPE COLOR 和頻段 Solo；EQ 四個點各有自己的頻率。LF／HF Roll-Off 供 6–72 dB/oct 的離散選項，預設 12 dB/oct。
+目前主鏈的實際順序：base-rate EQ／Dynamic EQ → 條件式四段 Analog ADAA v2 4× → UDMBC → TAPE COLOR → De-Esser → Mix／Out → Solo → true-peak limiter → 主 Bypass／Delta。X1／X2／X3 共用於 Analog、UDMBC、TAPE COLOR 和頻段 Solo；EQ 四個點各有自己的頻率。LF／HF Roll-Off 供 6–72 dB/oct 的離散選項，預設 12 dB/oct。
 
-Analog 0% 的**非線性增量**為零；整條 EQ 路徑仍經過 oversampling 和分頻重建，未完成全鏈 bit-exact null 驗證。Native 的 Analog 在 4× EQ oversampling 內，Web 在 Worklet rate 運作，兩版不能視為逐 sample 相同。Windows VST3／DAW 實測尚未由這次封閉測試證實。
+Native 的線性 EQ／Dynamic EQ 不再跟著 Analog 進 4×。Analog 任一頻段實際啟用時仍維持原 4× oversampling、ADAA v2 transfer/state、TT/SS、X2 與 0.25 ms smoothing；Analog 全部 0%／Bypass 且淡化完成後，整個 Analog oversampler、crossover 與 ADAA 會休眠，固定 PDC 由輕量延遲路徑維持。Web 仍在 Worklet rate 運作，兩版不能視為逐 sample 相同。Windows VST3／DAW 實測以本版 Actions 與後續 host 驗證為準。
 
 四段式音訊鏈結 VST3 / AAX 專案，主介面固定為單一 plugin 視窗。
 
@@ -22,7 +22,7 @@ INPUT
 
 ## Main UI
 - 上方顯示 EQ response、Shared X-Over 與即時 Spectrum Analyzer。
-- 主 Spectrum 使用 4096-point Hann FFT；其上方另外顯示三個 ADDED-DELTA contribution layers：ANALOG（橘）、UDMBC（青）、TYPE-A（紫）。
+- 主 Spectrum 使用 4096-point Hann FFT；ANALOG／UDMBC／TYPE-A 的 module contribution Analyzer、pre/post taps、2048 FFT 與傳輸緩衝已移除，不再佔用 CPU。
 - 3 條可拖曳 Shared X-Over 線，分成 4 個頻段；線上滾輪調整 OVERLAP。
 - BAND 1–4：FREQ / GAIN / Q / ANALOG COLOR / UDMBC % / ATTACK / RELEASE / TAPE COLOR +。
 - 每個頻段的 ANALOG COLOR 完全獨立；使用者範圍 0–60%，0% = exact dry；X2 只把目前 ANALOG delta 放大為 ×2。
@@ -36,7 +36,7 @@ INPUT
 ## DSP
 - Native De-Esser 為 sample-domain split-band 處理；本身不再使用舊 8192-sample FFT/block PDC。
 - HP / CORNER 不參與聲音計算。
-- ANALOG COLOR 自 v1.0.47 起使用 unity-normalized smooth algebraic transfer + analytical first-order ADAA：0% exact dry；TT/SS 純奇對稱；Native 在 EQ 4x oversampling 內執行；ADAA state 逐 band/channel 隔離；shaping domain 限制 -1..+1；|x|=1 維持 unity；X2 仍只放大該段產生的 ANALOG delta ×2。
+- ANALOG COLOR 自 v1.0.47 起使用 unity-normalized smooth algebraic transfer + analytical first-order ADAA：TT/SS 純奇對稱；只要任一 Analog band 啟用，Native Analog 仍以 4× oversampling 執行；ADAA state 逐 band/channel 隔離；shaping domain 限制 -1..+1；|x|=1 維持 unity；X2 仍只放大該段產生的 ANALOG delta ×2。全部 Analog 0%／Bypass 時，非線性與 oversampler 都休眠，聲音走固定延遲的 linear path。
 - Master BYPASS 保持固定 PDC，完全旁通時輸出延遲乾聲。
 - AAX 目標受 VVCHAIN_ENABLE_AAX 控制，需合法 AAX SDK / 開發環境。
 
@@ -56,6 +56,16 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
+
+### v1.0.59
+- CPU 架構重整但不降低 Analog 品質：Linear EQ / Dynamic EQ 改在 host sample rate 執行；Analog ADAA v2 保持原 4× oversampling、TT/SS、X2、ADAA state 與 smoothing。
+- Analog 全部 0%／Bypass 且切換淡化完成後，直接停止 upsample / crossover / ADAA / downsample；固定 PDC 由預配置 delay 維持，避免 DAW latency 跳動。
+- Analog 只對實際啟用頻段執行 ADAA nonlinear transfer；未啟用頻段不跑 ADAA。
+- 靜態 EQ 加入參數係數 cache；Dynamics=0 時停止 detector/envelope 與逐 sample coefficient rebuild。UDMBC 將 invariant attack/release ratio/coefficients 移到 block-level，Degree=0/bypass band 不跑 detector；TAPE COLOR 0% band 不跑 tanh，shared crossover 也加入 cache。
+- 徹底移除 ANALOG / UDMBC / TYPE-A module contribution Analyzer：Native 六條 pre/post stream、FIFO、Analyzer-only downsampler、2048 FFT 與 Web Worklet contribution transport 全部刪除。主 4096 Spectrum Analyzer 與 DELTA 最終輸出顯示保留。
+- Main Analyzer 關閉或 Editor/Web 頁面不可見時停止資料／FFT 路徑；Web hidden 時直接 disconnect AnalyserNode。
+- 音訊 buffer 維持預配置，避免 realtime allocation；移除不再需要的 contribution buffers / copies。Web Worklet 同步將 UDMBC / TAPE 的固定係數移出 per-sample 熱迴圈並加入 zero-work lazy path。
+- 本版新增 source regression guards，確保 Linear EQ 不重新進 Analog oversampler、module contribution analyzer 不會被誤加回來。實際 Windows VST3 build / DAW / profiler 結果以 Actions 與 host 實測為準。
 
 ### v1.0.58
 - 修正 VVChain Fast CI/CD #1255 的 UI / interaction regression：測試仍引用舊的 `resetDynamics` 變數，但目前實作已是 `resetParameter("DYN_DYNAMICS" + n, 0.0f)`。
