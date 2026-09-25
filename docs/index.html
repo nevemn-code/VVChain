@@ -70,7 +70,7 @@ const state={masterBypass:false,delta:false,solo:{band:-1,post:false,graphActive
 const defaults=structuredClone(state),knobRefreshers=[],moduleMuteRefreshers=[],uiTouched={udmbc:[false,false,false,false],analog:[false,false,false,false],tape:[false,false,false,false]},clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),fmt=(v,d=1)=>Number(v).toFixed(d),logX=(hz,w)=>Math.log10(clamp(hz,20,20000)/20)/3*w,invLog=x=>20*Math.pow(1000,clamp(x,0,1));
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.49
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.49"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.49"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -1246,8 +1246,9 @@ eqCanvas.addEventListener("wheel",e=>{
       e.preventDefault();
       if(pendingRightBand>=0){
         rightSoloDynamic=pendingRightDynamic;
+        graphLastMoveX=x;graphLastMoveY=y;
         pendingRightBand=-1;pendingRightDynamic=false;
-        dragMode=7;dragBand=band;
+        dragMode=7;dragBand=band;clearGraphControls();
       }else if(dragMode!==7){
         rightSoloDynamic=!!(hit.mask&4);
         dragMode=7;dragBand=band;
@@ -1452,41 +1453,53 @@ eqCanvas.addEventListener("pointermove",e=>{
     if(Math.hypot(x-pendingRightX,y-pendingRightY)<=3)return;
     dragMode=7;dragBand=pendingRightBand;
     rightSoloDynamic=pendingRightDynamic;
+    graphLastMoveX=pendingRightX;graphLastMoveY=pendingRightY;
     pendingRightBand=-1;pendingRightDynamic=false;
     soloSpotX=x;soloSpotY=y;
     state.solo.graphActive=true;
     state.solo.graphFreq=state.eq.freq[dragBand];
     state.solo.graphQ=isRollOffType(dragBand)?.70710678:state.eq.q[dragBand];
-    setGraphControls(
-      rightSoloDynamic
-        ?["EQ"+(dragBand+1)+"_FREQ","DYN_DYNAMICS"+(dragBand+1)]
-        :["EQ"+(dragBand+1)+"_FREQ","EQ"+(dragBand+1)+"_GAIN"],
-      false);
+    clearGraphControls();
     sendParams();
   }
   if(state.solo.graphActive&&(e.buttons&2)){soloSpotX=x;soloSpotY=y;}
   hoverDynamicBand=dynamicTargetAtPointer(x,y,w,h);
   if(dragMode===7&&dragBand>=0){
     const hzv=invLog(clamp(x,0,w)/w);
-    state.eq.freq[dragBand]=hzv;
+    const movedX=Math.abs(x-graphLastMoveX)>.35,movedY=Math.abs(y-graphLastMoveY)>.35;
+    const ids=[];
+
+    if(movedX){
+      state.eq.freq[dragBand]=hzv;
+      state.solo.graphFreq=hzv;
+      ids.push("EQ"+(dragBand+1)+"_FREQ");
+    }
 
     if(rightSoloDynamic){
-      const targetGain=yToDb(y,h);
-      const offset=clamp(Number(state.eq.gain[dragBand]||0),-18,18);
-      state.dyn.dynamics[dragBand]=clamp((targetGain-offset)/18*100,-100,100);
-      setGraphControls(["EQ"+(dragBand+1)+"_FREQ","DYN_DYNAMICS"+(dragBand+1)],true);
+      if(movedY){
+        const targetGain=yToDb(y,h);
+        const offset=clamp(Number(state.eq.gain[dragBand]||0),-18,18);
+        state.dyn.dynamics[dragBand]=clamp((targetGain-offset)/18*100,-100,100);
+        ids.push("DYN_DYNAMICS"+(dragBand+1));
+      }
       showGraphHint(e,graphHintBandHtml(dragBand,1|4));
     }else{
-      const gain=yToDb(y,h);
-      state.eq.gain[dragBand]=gain;
-      setGraphControls(["EQ"+(dragBand+1)+"_FREQ","EQ"+(dragBand+1)+"_GAIN"],true);
+      if(movedY){
+        state.eq.gain[dragBand]=yToDb(y,h);
+        ids.push("EQ"+(dragBand+1)+"_GAIN");
+      }
       showGraphHint(e,graphHintBandHtml(dragBand,1|2));
     }
 
+    if(ids.length){
+      graphLastMoveX=x;graphLastMoveY=y;
+      pulseGraphControls(ids);
+      sendParams();knobRefreshers.forEach(fn=>fn());
+    }
     state.solo.graphActive=true;
-    state.solo.graphFreq=hzv;
+    state.solo.graphFreq=state.eq.freq[dragBand];
     state.solo.graphQ=isRollOffType(dragBand)?.70710678:state.eq.q[dragBand];
-    sendParams();drawEQ();knobRefreshers.forEach(fn=>fn());return;
+    drawEQ();return;
   }
   if(dragDynamicMsBand>=0){
     const p=dynamicPopupBounds(dragDynamicMsBand,w,h),bar={x:p.x+12,y:p.y+50,w:p.w-24,h:11};
