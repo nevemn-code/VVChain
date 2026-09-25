@@ -68,7 +68,7 @@ processor_h = read("Source/PluginProcessor.h")
 processor = read("Source/PluginProcessor.cpp")
 settings = read("Source/SettingsPanel.cpp")
 
-# v1.0.61 analyzer/transient invariants: main Spectrum only, no module contribution path.
+# v1.0.62 analyzer/transient invariants: main Spectrum only, no module contribution path.
 assert "analyzerFftOrder = 12" in editor_h
 assert "analyzerHopSize = analyzerFftSize / 2" in editor_h
 assert "contributionFftOrder" not in editor_h
