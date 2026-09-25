@@ -1,4 +1,13 @@
-# VVChain Validation Status（v1.0.58；歷史基準仍保留於下文）
+# VVChain Validation Status（v1.0.59；歷史基準仍保留於下文）
+
+## v1.0.59 CPU architecture change
+
+- Linear EQ / Dynamic EQ 已移出 Analog 4× domain；Analog ADAA v2 啟用時仍固定 4×。
+- Analog 全 0 / bypass 時不執行 oversampler，使用等 PDC delay；此項仍需要 Windows VST3 / DAW null、automation transition 與 latency 實測確認。
+- 模組 Contribution Analyzer 已自 Native / Web runtime 移除，只保留主 Spectrum Analyzer。
+- DYNAMICS=0、UDMBC 全 0、Type-A 全 0 的 lazy paths 已加入 source regression guards。
+- 本文件不把 source-level regression 當成 DAW 實測；最終聲音等同性仍需 artifact + host 驗證。
+
 
 This document records what the repository actually verifies. It is not a claim of DAW certification.
 
