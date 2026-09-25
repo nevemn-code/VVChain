@@ -1,78 +1,66 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import math
-import random
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-def growth_db(pre_power: float, post_power: float, delta_power: float, post_db: float) -> float:
-    if post_db < -82.0 or post_power <= pre_power * 1.005:
-        return 0.0
-    ratio = delta_power / max(1.0e-18, post_power)
-    return max(0.0, min(8.0, 1.7 * 10.0 * math.log10(1.0 + ratio)))
 
 def main() -> None:
     editor = (ROOT / "Source" / "PluginEditor.cpp").read_text(encoding="utf-8")
     editor_h = (ROOT / "Source" / "PluginEditor.h").read_text(encoding="utf-8")
     dsp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
+    dsp_h = (ROOT / "Source" / "DSP" / "ChainDSP.h").read_text(encoding="utf-8")
     processor = (ROOT / "Source" / "PluginProcessor.cpp").read_text(encoding="utf-8")
+    processor_h = (ROOT / "Source" / "PluginProcessor.h").read_text(encoding="utf-8")
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
     worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
 
+    # Main analyzer remains 4096 FFT / 50% overlap and is editor gated.
     assert "analyzerFftOrder = 12" in editor_h
     assert "analyzerHopSize = analyzerFftSize / 2" in editor_h
-    assert "contributionFftOrder = 11" in editor_h
-    assert "postPower <= prePower * 1.005" in editor
-    assert "postDb < -82.0f" in editor
-    assert "totalGrowth > 12.0f" in editor
-    assert "captureContributionMono" in dsp
-    assert "popContributionSamples" in processor
-    assert "ContributionFFT" in web
-    assert 'type:"contributionSamples"' in worklet
+    assert "audioProcessor.setAnalyzerEnabled(analyzerEnabled && isShowing())" in editor
+    assert "audioProcessor.setAnalyzerEnabled(false)" in editor
+    assert "std::atomic<bool> analyzerEnabled { false }" in processor_h
+    assert "if (!analyzerOn)" in processor
 
-    processor = (ROOT / "Source" / "PluginProcessor.cpp").read_text(encoding="utf-8")
+    # DELTA uses only the final audible output; normal mode uses pre-DSP input.
     assert "const bool deltaMonitorOn" in processor
     assert "if (!deltaMonitorOn)" in processor
     assert "if (analyzerOn && p.deltaMonitor)" in processor
-    assert "analyzerOn && !p.masterBypass && !p.deltaMonitor" in processor
     assert "function refreshAnalyzerTap()" in web
     assert "state.delta&&!directFallback&&!workletFaulted&&workletNode" in web
-    assert "state.masterBypass||state.delta" in web
-    assert "if(this.analysisEnabled&&!this.s.masterBypass&&!this.s.delta)" in worklet
+    assert "workletNode.connect(analyserNode)" in web
+    assert "source.connect(analyserNode)" in web
 
-    # Distinct module identity colors must remain independent of band colors.
-    for token in ("0xfff4a63a", "0xff4fc3ff", "0xffd97cff"):
-        assert token in editor
-    for token in ('"#f4a63a"', '"#4fc3ff"', '"#d97cff"'):
-        assert token in web
+    # Hidden Web UI must disconnect the AnalyserNode itself, not merely stop paint.
+    assert "disconnectAnalyzerTap()" in web
+    assert 'document.addEventListener("visibilitychange"' in web
+    assert "document.hidden){stopAnalyzerLoop();disconnectAnalyzerTap();" in web
 
-    # 100 deterministic power-domain cases: removed energy never grows upward,
-    # added energy is monotonic and the visualization is hard-capped at 8 dB.
-    rng = random.Random(1055)
-    previous = 0.0
-    for i in range(100):
-        pre = 10.0 ** rng.uniform(-8.0, -0.1)
-        added_ratio = i / 12.0
-        post = pre * (1.01 + added_ratio)
-        delta = post * added_ratio
-        post_db = 10.0 * math.log10(max(post, 1.0e-20))
-        g = growth_db(pre, post, delta, post_db)
-        assert math.isfinite(g)
-        assert 0.0 <= g <= 8.0
-        if post_db >= -82.0 and i > 1:
-            # The mapping is monotonic for the controlled ratio sweep.
-            controlled = growth_db(1.0, 1.1, added_ratio, 0.0)
-            assert controlled + 1.0e-9 >= previous
-            previous = controlled
+    # Module contribution analyzers were intentionally removed for zero CPU.
+    forbidden = (
+        "contributionFftOrder",
+        "ContributionFFT",
+        "processContributionSamples",
+        'type:"contributionSamples"',
+        "popContributionSamples",
+        "setContributionAnalysisEnabled",
+        "contributionStream",
+        "captureContributionMono",
+        "contributionEqDownsampler",
+    )
+    combined = "\n".join((editor, editor_h, dsp, dsp_h, processor, processor_h, web, worklet))
+    for token in forbidden:
+        assert token not in combined, token
 
-    assert growth_db(1.0, 0.9, 0.8, 0.0) == 0.0
-    assert growth_db(1.0, 1.004, 10.0, 0.0) == 0.0
-    assert growth_db(1.0e-10, 1.1e-10, 1.0e-10, -90.0) == 0.0
-    assert growth_db(1.0, 2.0, 1.0e12, 0.0) == 8.0
+    # Main spectrum still exists in both Native and Web.
+    assert "analyzerPath.cubicTo" in editor
+    assert "analyserNode.fftSize=4096" in web
+    assert "analyserNode.smoothingTimeConstant=0" in web
 
-    print("PASS analyzer matrix: 100 power cases + Native/Web contribution + DELTA analyzer invariants")
+    print("PASS analyzer matrix: main 4096 FFT + DELTA routing + zero module-contribution compute")
+
 
 if __name__ == "__main__":
     main()
