@@ -93,7 +93,7 @@ def source_assertions():
         'pointNearDynamicNode',
         'constexpr float staticNodeRadius = 7.0f',
         'resetParameter("EQ" + n + "_GAIN", 0.0f)',
-        'resetParameter("DYN_DYNAMICS" + n, resetDynamics)',
+        'resetParameter("DYN_DYNAMICS" + n, 0.0f)',
         'Static EQ point always wins when the pointer is actually on it.',
     ]:
         assert token in cpp or token in proc or token in head or token in engine, token

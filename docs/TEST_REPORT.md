@@ -1,4 +1,4 @@
-# VVChain Validation Status（v1.0.57；歷史基準仍保留於下文）
+# VVChain Validation Status（v1.0.58；歷史基準仍保留於下文）
 
 This document records what the repository actually verifies. It is not a claim of DAW certification.
 
@@ -94,3 +94,10 @@ The main analyzer/contribution calculation and color rules are unchanged from v1
 VVChain Fast CI/CD #1254 completed with overall failure because the Fast Gate stopped in `JavaScript / Web smoke x10` on an outdated source assertion. The Windows VST3 Release job itself passed, and the corresponding Pages deployment passed. v1.0.57 updates the stale smoke/static/UI guards and adds explicit Native/Web regression contracts for DELTA Analyzer source switching.
 
 The DELTA change is visualization routing only: the audio Delta formula remains `processed output - latency-aligned dry`; v1.0.57 only changes which signal the Spectrum Analyzer observes while DELTA is active.
+
+
+## #1254 / #1255 CI status and v1.0.58
+
+#1254 failed in Fast Gate before the requested repeated validation could complete. #1255 then passed Web smoke x10 and whole-project static audit x10, but stopped in UI / interaction regression because the test still expected the obsolete `resetDynamics` source token. The actual UI reset implementation is `resetParameter("DYN_DYNAMICS" + n, 0.0f)`.
+
+v1.0.58 updates that source guard only; DELTA Analyzer routing remains the v1.0.57 implementation: when DELTA is ON, the main spectrum source is the actual final Delta output and the original/reference spectrum plus module contribution overlays are suppressed.

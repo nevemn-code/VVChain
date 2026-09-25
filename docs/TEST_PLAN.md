@@ -1,4 +1,4 @@
-# VVChain Test Plan（v1.0.57）
+# VVChain Test Plan（v1.0.58）
 
 v1.0.55 已修正先前已知的 Web smoke Python 引號錯誤與 UI regression 過時固定版本／註解 guard。Fast Gate 現在在 PR、main push、手動執行三種情況都會跑；實際通過與否仍以本版 Actions 為準。
 
