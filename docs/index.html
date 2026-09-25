@@ -154,27 +154,6 @@ let analyzerEnabled=true;
 const analyzerCurve=new Float32Array(256).fill(-90);
 const analyzerRaw=new Float32Array(256).fill(-90);
 const analyzerFreqSmooth=new Float32Array(256).fill(-90);
-const contributionCurves=[new Float32Array(256),new Float32Array(256),new Float32Array(256)];
-const contributionRaw=new Float32Array(256),contributionSmooth=new Float32Array(256);
-
-class ContributionFFT{
-  constructor(n=2048){
-    this.n=n;this.levels=Math.round(Math.log2(n));
-    this.bitrev=new Uint16Array(n);this.cos=new Float32Array(n/2);this.sin=new Float32Array(n/2);
-    this.real=new Float32Array(n);this.imag=new Float32Array(n);this.window=new Float32Array(n);
-    for(let i=0;i<n;i++){let x=i,rev=0;for(let b=0;b<this.levels;b++){rev=(rev<<1)|(x&1);x>>=1}this.bitrev[i]=rev;this.window[i]=.5-.5*Math.cos(2*Math.PI*i/(n-1))}
-    for(let k=0;k<n/2;k++){const a=-2*Math.PI*k/n;this.cos[k]=Math.cos(a);this.sin[k]=Math.sin(a)}
-  }
-  magnitude(samples,out){
-    const n=this.n,re=this.real,im=this.imag;
-    for(let i=0;i<n;i++){const j=this.bitrev[i];re[j]=(samples[i]||0)*this.window[i];im[j]=0}
-    for(let size=2;size<=n;size<<=1){const half=size>>1,step=n/size;for(let base=0;base<n;base+=size){for(let j=0;j<half;j++){const k=j*step,a=base+j,b=a+half,tr=this.cos[k]*re[b]-this.sin[k]*im[b],ti=this.sin[k]*re[b]+this.cos[k]*im[b],ar=re[a],ai=im[a];re[b]=ar-tr;im[b]=ai-ti;re[a]=ar+tr;im[a]=ai+ti}}}
-    const norm=4/n;for(let k=0;k<n/2;k++)out[k]=Math.hypot(re[k],im[k])*norm;
-  }
-}
-const contributionFFT=new ContributionFFT(2048);
-const contributionPreTime=new Float32Array(2048),contributionPostTime=new Float32Array(2048),contributionDeltaTime=new Float32Array(2048);
-const contributionPreMag=new Float32Array(1024),contributionPostMag=new Float32Array(1024),contributionDeltaMag=new Float32Array(1024);
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
 const settingsGear=$("#settingsGear"),settingsPanel=$("#settingsPanel"),themeToggle=$("#themeToggle"),analyzerToggle=$("#analyzerToggle");
 let settingsPanelVisible=false,ivoryTheme=false;
@@ -281,19 +260,17 @@ function startAnalyzerLoop(){
     drawEQ();
   },42);
 }
-function processContributionSamples(){ /* removed in v1.0.59 */ }
 function stopAnalyzerLoop(){
   if(analyzerInterval){clearInterval(analyzerInterval);analyzerInterval=null}
 }
 function setAnalyzerEnabled(enabled){
   analyzerEnabled=!!enabled;
   analyzerToggle.textContent=analyzerEnabled?"ANALYZER  ON":"ANALYZER  OFF";
-  workletNode?.port?.postMessage({type:"analysisEnabled",enabled:analyzerEnabled&&!document.hidden});
   if(analyzerEnabled){connectAnalyzerTap();if(playing)startAnalyzerLoop()}
-  else{disconnectAnalyzerTap();stopAnalyzerLoop();analyzerCurve.fill(-90);contributionCurves.forEach(c=>c.fill(0));drawEQ()}
+  else{disconnectAnalyzerTap();stopAnalyzerLoop();analyzerCurve.fill(-90);drawEQ()}
 }
 analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
-document.addEventListener("visibilitychange",()=>{workletNode?.port?.postMessage({type:"analysisEnabled",enabled:analyzerEnabled&&!document.hidden});if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
+document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
 setAnalyzerEnabled(true);
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.59
 function makeWorkletUrl(){
@@ -371,7 +348,6 @@ async function ensureAudioGraph(){
       }
     };
     workletNode.connect(audioCtx.destination);
-    workletNode.port.postMessage({type:"analysisEnabled",enabled:analyzerEnabled&&!document.hidden});
     refreshAnalyzerTap();
     sendParams();
   }
@@ -810,7 +786,6 @@ const syncMonitor=()=>{deessPower.classList.toggle("on",!!state.masterBypass);de
 deessPower.onclick=()=>{state.masterBypass=!state.masterBypass;syncMaster();syncMonitor()};
 deltaBtn.onclick=()=>{
   state.delta=!state.delta;
-  if(state.delta)contributionCurves.forEach(c=>c.fill(0));
   analyzerCurve.fill(-90);
   refreshAnalyzerTap();
   syncMonitor();
@@ -1025,67 +1000,6 @@ function drawEQ(){
     const moduleColors=ivoryTheme
       ?["#d88b1e","#2a9fd8","#b35be0"]
       :["#f4a63a","#4fc3ff","#d97cff"];
-    const cumulative=new Float32Array(256),pxPerDb=h/90;
-    for(let module=0;module<3;module++){
-      const top=new Array(256),base=new Array(256);let visible=false;
-      for(let p=0;p<256;p++){
-        const total=contributionCurves[0][p]+contributionCurves[1][p]+contributionCurves[2][p];
-        const scale=total>12?12/total:1;
-        const baseY=clamp(points[p].y-cumulative[p]*scale*pxPerDb,0,h);
-        const growth=contributionCurves[module][p]*scale;
-        top[p]={x:points[p].x,y:clamp(baseY-growth*pxPerDb,0,h)};
-        base[p]={x:points[p].x,y:baseY};
-        cumulative[p]+=contributionCurves[module][p];
-        visible=visible||(!state.masterBypass&&!state.delta&&growth>.02);
-      }
-      if(!visible)continue;
-      eqCtx.beginPath();eqCtx.moveTo(top[0].x,top[0].y);
-      for(let p=1;p<256;p++)eqCtx.lineTo(top[p].x,top[p].y);
-      for(let p=255;p>=0;p--)eqCtx.lineTo(base[p].x,base[p].y);
-      eqCtx.closePath();eqCtx.globalAlpha=.15;eqCtx.fillStyle=moduleColors[module];eqCtx.fill();eqCtx.globalAlpha=1;
-
-      eqCtx.beginPath();eqCtx.moveTo(top[0].x,top[0].y);
-      for(let p=1;p<256;p++){
-        const prev=top[p-1],cur=top[p],mx=(prev.x+cur.x)*.5,my=(prev.y+cur.y)*.5;
-        eqCtx.quadraticCurveTo(prev.x,prev.y,mx,my);
-      }
-      eqCtx.lineTo(top[255].x,top[255].y);
-      eqCtx.globalAlpha=.82;eqCtx.strokeStyle=moduleColors[module];eqCtx.lineWidth=1;eqCtx.stroke();eqCtx.globalAlpha=1;
-    }
-
-    traceMain();eqCtx.strokeStyle=tc("#d8dbe17a","#56585c9e");eqCtx.lineWidth=1;eqCtx.stroke();
-
-    const legend=[["ANALOG",moduleColors[0]],["UDMBC",moduleColors[1]],["TYPE-A",moduleColors[2]]];
-    eqCtx.font="bold 7px Consolas";eqCtx.textBaseline="top";let lx=w-177;
-    for(const [name,color] of legend){
-      eqCtx.fillStyle=color;eqCtx.beginPath();eqCtx.arc(lx+2.5,9.5,2.5,0,Math.PI*2);eqCtx.fill();
-      eqCtx.fillText(name,lx+8,6);lx+=name==="UDMBC"?61:58;
-    }
-  }
-
-  // Gain axis: the full usable range is exactly -18 .. +18 dB.
-  // Every 3 dB is shown and the dB labels stay on the LEFT.
-  const dbTicks=[18,15,12,9,6,3,0,-3,-6,-9,-12,-15,-18];
-  dbTicks.forEach(db=>{
-    const y=dbToY(db,h);
-    eqCtx.beginPath();
-    eqCtx.moveTo(0,y);eqCtx.lineTo(w,y);
-    eqCtx.strokeStyle=db===0?"#facc1566":tc("#4b556044","#817a7044");
-    eqCtx.lineWidth=db===0?1.2:1;
-    eqCtx.stroke();
-  });
-
-  // Dense logarithmic frequency references for precise visual positioning.
-  const freqTicks=[
-    [20,"20"],[30,"30"],[40,"40"],[50,"50"],[70,"70"],[100,"100"],
-    [150,"150"],[200,"200"],[300,"300"],[500,"500"],[700,"700"],
-    [1000,"1k"],[2000,"2k"],[3000,"3k"],[5000,"5k"],[7000,"7k"],
-    [10000,"10k"],[15000,"15k"],[20000,"20k"]
-  ];
-  freqTicks.forEach(([hzv])=>{
-    const x=logX(hzv,w);
-    eqCtx.beginPath();
-    eqCtx.moveTo(x,0);eqCtx.lineTo(x,h);
     eqCtx.strokeStyle=tc("#4b556044","#817a7044");
     eqCtx.lineWidth=1;
     eqCtx.stroke();
