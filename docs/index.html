@@ -477,7 +477,6 @@ function makeKnob(parent,cfg){
     if(cfg.afterSet)cfg.afterSet(next);
     render();
     if(label==="UDMBC %"||label==="MAXIMUM REDUCTION")knobRefreshers.forEach(fn=>fn());
-    if(label==="MAXIMUM REDUCTION")document.querySelectorAll(".legacyRemovedZone").forEach(z=>z.closest(".band")?.classList.toggle("legacyMutedRemoved",state.de.threshold<=0.0001));
     sendParams();drawEQ()
   };
   const logarithmic=cfg.logWheel??(/FREQ|X-OVER|XOVER/.test(label));
