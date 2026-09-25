@@ -689,6 +689,9 @@ void VVChainDSP::reset()
     typeXover2.reset();
     typeXover3.reset();
 
+    transientXover1.reset();
+    transientXover2.reset();
+    transientXover3.reset();
     transientBand1SidechainHPF.reset();
 
     eqOversampler.reset();
@@ -896,6 +899,164 @@ float VVChainDSP::applyLimiter(float input, float& envDb, double sampleRate)
         + (1.f - alpha) * targetReductionDb;
 
     return input * dbToGain(envDb);
+}
+
+void VVChainDSP::applyTransient(
+    juce::AudioBuffer<float>& buffer,
+    const Parameters& p)
+{
+    std::array<bool, 4> active {};
+    bool anyActive = false;
+    for (size_t band = 0; band < 4; ++band)
+    {
+        active[band] = std::abs(p.transientAmount[band]) > 0.000001f;
+        anyActive = anyActive || active[band];
+
+        if (!active[band])
+        {
+            transientFastEnvSq[band] = 0.0f;
+            transientSlowEnvSq[band] = 0.0f;
+            transientSmoothGain[band] = 1.0f;
+            transientInitialized[band] = false;
+        }
+    }
+
+    if (!anyActive)
+    {
+        transientXover1.reset();
+        transientXover2.reset();
+        transientXover3.reset();
+        transientBand1SidechainHPF.reset();
+        return;
+    }
+
+    const int nCh = juce::jmin(buffer.getNumChannels(), 2);
+    const int numSamples = buffer.getNumSamples();
+    if (nCh <= 0 || numSamples <= 0)
+        return;
+
+    const float x1 = juce::jlimit(80.f, 900.f, p.udmbcX1);
+    const float x2 = juce::jlimit(x1 + 80.f, 5000.f, p.udmbcX2);
+    const float x3 = juce::jlimit(
+        x2 + 200.f, static_cast<float>(sr * 0.42), p.udmbcX3);
+    const float xoverQ = crossoverQFromOverlap(p.udmbcXoverOverlap);
+
+    updateCrossover(transientXover1, sr, x1, xoverQ);
+    updateCrossover(transientXover2, sr, x2, xoverQ);
+    updateCrossover(transientXover3, sr, x3, xoverQ);
+    updateHighPass(
+        transientBand1SidechainHPF,
+        sr,
+        70.0,
+        0.7071067811865476);
+
+    static constexpr float fastMs[4] = { 2.5f, 1.5f, 0.8f, 0.35f };
+    static constexpr float slowMs[4] = { 30.0f, 22.0f, 15.0f, 9.0f };
+    std::array<float, 4> fastCoeff {};
+    std::array<float, 4> slowCoeff {};
+    for (size_t band = 0; band < 4; ++band)
+    {
+        fastCoeff[band] = timeCoeff(sr, fastMs[band]);
+        slowCoeff[band] = timeCoeff(sr, slowMs[band]);
+    }
+
+    const float gainSmoothCoeff = timeCoeff(sr, 0.15f);
+    constexpr float epsilon = 1.0e-12f;
+    constexpr float tenOverLn10 = 4.342944819f;
+    constexpr float maxDbLimit = 12.0f;
+
+    for (int sample = 0; sample < numSamples; ++sample)
+    {
+        float inputByChannel[2] {};
+        float bandsByChannel[2][4] {};
+
+        for (int ch = 0; ch < nCh; ++ch)
+        {
+            auto* data = buffer.getWritePointer(ch);
+            const bool right = ch == 1;
+            const float input = data[sample];
+            inputByChannel[ch] = input;
+
+            const float low = transientXover1.low(input, right);
+            const float x1High = transientXover1.high(input, right);
+            const float lowMid = transientXover2.low(x1High, right);
+            const float x2High = transientXover2.high(x1High, right);
+            const float midHigh = transientXover3.low(x2High, right);
+            const float high = transientXover3.high(x2High, right);
+
+            bandsByChannel[ch][0] = low;
+            bandsByChannel[ch][1] = lowMid;
+            bandsByChannel[ch][2] = midHigh;
+            bandsByChannel[ch][3] = high;
+        }
+
+        std::array<float, 4> gains { 1.f, 1.f, 1.f, 1.f };
+        for (size_t band = 0; band < 4; ++band)
+        {
+            if (!active[band])
+                continue;
+
+            float detL = bandsByChannel[0][band];
+            float detR = nCh > 1 ? bandsByChannel[1][band] : detL;
+            if (band == 0)
+            {
+                detL = transientBand1SidechainHPF.process(detL, false);
+                detR = nCh > 1
+                    ? transientBand1SidechainHPF.process(detR, true)
+                    : detL;
+            }
+
+            const float energySq = nCh > 1
+                ? 0.5f * (detL * detL + detR * detR)
+                : detL * detL;
+
+            if (!transientInitialized[band])
+            {
+                const float seed = juce::jmax(energySq, epsilon);
+                transientFastEnvSq[band] = seed;
+                transientSlowEnvSq[band] = seed;
+                transientSmoothGain[band] = 1.0f;
+                transientInitialized[band] = true;
+            }
+            else
+            {
+                transientFastEnvSq[band] =
+                    fastCoeff[band] * transientFastEnvSq[band]
+                    + (1.0f - fastCoeff[band]) * energySq;
+                transientSlowEnvSq[band] =
+                    slowCoeff[band] * transientSlowEnvSq[band]
+                    + (1.0f - slowCoeff[band]) * energySq;
+            }
+
+            const float ratioSq =
+                (transientFastEnvSq[band] + epsilon)
+                / (transientSlowEnvSq[band] + epsilon);
+            const float transientDb =
+                tenOverLn10 * vvFastLogPositive(ratioSq);
+            const float amount = juce::jlimit(
+                -1.0f, 1.0f, p.transientAmount[band] * 0.01f);
+            const float scaled =
+                transientDb * amount * (1.0f / maxDbLimit);
+            const float clipped =
+                scaled / (1.0f + std::abs(scaled));
+            const float targetGain = dbToGain(clipped * maxDbLimit);
+
+            transientSmoothGain[band] =
+                gainSmoothCoeff * transientSmoothGain[band]
+                + (1.0f - gainSmoothCoeff) * targetGain;
+            gains[band] = transientSmoothGain[band];
+        }
+
+        for (int ch = 0; ch < nCh; ++ch)
+        {
+            float delta = 0.0f;
+            for (size_t band = 0; band < 4; ++band)
+                if (active[band])
+                    delta += bandsByChannel[ch][band] * (gains[band] - 1.0f);
+
+            buffer.getWritePointer(ch)[sample] = inputByChannel[ch] + delta;
+        }
+    }
 }
 
 void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
@@ -1278,21 +1439,18 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             data[sample] = bandProcessingHighPass.process(data[sample], right);
     }
 
+    // Base-rate TRANSIENT precedes Analog without entering the Analog 4x path.
+    applyTransient(buffer, p);
+
     std::array<bool, 4> analogActive {};
-    std::array<bool, 4> transientActive {};
     bool anyAnalogActive = false;
-    bool anyTransientActive = false;
     for (size_t band = 0; band < 4; ++band)
     {
         analogActive[band] =
             !p.eqColorGlobalBypass
             && !p.eqColorBypass[band]
             && p.eqColor[band] > 0.000001f;
-        transientActive[band] =
-            std::abs(p.transientAmount[band]) > 0.000001f;
-
         anyAnalogActive = anyAnalogActive || analogActive[band];
-        anyTransientActive = anyTransientActive || transientActive[band];
 
         if (!analogActive[band])
         {
@@ -1301,22 +1459,10 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             for (int ch = 0; ch < juce::jmin(channels, 2); ++ch)
                 analogADAA[band][(size_t)ch].resetState();
         }
-
-        if (!transientActive[band])
-        {
-            transientFastEnvSq[band] = 0.0f;
-            transientSlowEnvSq[band] = 0.0f;
-            transientSmoothGain[band] = 1.0f;
-            transientInitialized[band] = false;
-        }
     }
 
-    const bool anyBandStageActive = anyAnalogActive || anyTransientActive;
-
-    if (anyBandStageActive)
+    if (anyAnalogActive)
     {
-        // Keep the cheap fixed-delay state warm while the 4x path is active.
-        // This avoids stale samples if automation later turns Analog fully off.
         for (int ch = 0; ch < juce::jmin(channels, buffer.getNumChannels()); ++ch)
         {
             auto* data = buffer.getWritePointer(ch);
@@ -1328,9 +1474,8 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
         }
     }
 
-    if (!anyBandStageActive)
+    if (!anyAnalogActive)
     {
-        // Preserve fixed PDC without executing the 4x up/downsampler.
         for (int ch = 0; ch < juce::jmin(channels, buffer.getNumChannels()); ++ch)
         {
             auto* data = buffer.getWritePointer(ch);
@@ -1362,24 +1507,6 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
     updateCrossover(analogXover1, analogOsSr, analogX1, analogCrossoverQ);
     updateCrossover(analogXover2, analogOsSr, analogX2, analogCrossoverQ);
     updateCrossover(analogXover3, analogOsSr, analogX3, analogCrossoverQ);
-
-    // Band 1 detector-only HPF. This never touches the audible signal.
-    updateHighPass(
-        transientBand1SidechainHPF,
-        analogOsSr,
-        70.0,
-        0.7071067811865476);
-
-    static constexpr float transientFastMs[4] = { 2.5f, 1.5f, 0.8f, 0.35f };
-    static constexpr float transientSlowMs[4] = { 30.0f, 22.0f, 15.0f, 9.0f };
-    std::array<float, 4> transientFastCoeff {};
-    std::array<float, 4> transientSlowCoeff {};
-    for (size_t band = 0; band < 4; ++band)
-    {
-        transientFastCoeff[band] = timeCoeff(analogOsSr, transientFastMs[band]);
-        transientSlowCoeff[band] = timeCoeff(analogOsSr, transientSlowMs[band]);
-    }
-    const float transientGainSmoothCoeff = timeCoeff(analogOsSr, 0.15f);
 
     std::array<double, 4> analogTargetAlpha {};
     for (size_t band = 0; band < 4; ++band)
@@ -1419,14 +1546,12 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     (analogTargetAlpha[band] - analogAlpha[band])
                     * (1.0 - analogSmoothingCoeff);
 
-        float bandsByChannel[2][4] {};
         const int linkedChannels = juce::jmin(analogChannels, 2);
 
-        // Split once. TRANSIENT and Analog consume the exact same four band
-        // samples, preventing another audible crossover / phase stack.
         for (int ch = 0; ch < linkedChannels; ++ch)
         {
-            auto* data = analogOsBlock.getChannelPointer(static_cast<size_t>(ch));
+            auto* data =
+                analogOsBlock.getChannelPointer(static_cast<size_t>(ch));
             const bool right = ch == 1;
             const float input = data[sample];
 
@@ -1436,88 +1561,12 @@ void VVChainDSP::applyEq(juce::AudioBuffer<float>& buffer, const Parameters& p)
             const float x2High = analogXover2.high(x1High, right);
             const float midHigh = analogXover3.low(x2High, right);
             const float high = analogXover3.high(x2High, right);
+            const float bands[4] = { low, lowMid, midHigh, high };
 
-            bandsByChannel[ch][0] = low;
-            bandsByChannel[ch][1] = lowMid;
-            bandsByChannel[ch][2] = midHigh;
-            bandsByChannel[ch][3] = high;
-        }
-
-        std::array<float, 4> transientGain { 1.f, 1.f, 1.f, 1.f };
-        for (size_t band = 0; band < 4; ++band)
-        {
-            if (!transientActive[band])
-                continue;
-
-            float detL = bandsByChannel[0][band];
-            float detR = linkedChannels > 1
-                ? bandsByChannel[1][band]
-                : detL;
-
-            if (band == 0)
-            {
-                detL = transientBand1SidechainHPF.process(detL, false);
-                detR = linkedChannels > 1
-                    ? transientBand1SidechainHPF.process(detR, true)
-                    : detL;
-            }
-
-            const float energySq = linkedChannels > 1
-                ? 0.5f * (detL * detL + detR * detR)
-                : detL * detL;
-            constexpr float epsilon = 1.0e-12f;
-
-            if (!transientInitialized[band])
-            {
-                const float seed = juce::jmax(energySq, epsilon);
-                transientFastEnvSq[band] = seed;
-                transientSlowEnvSq[band] = seed;
-                transientSmoothGain[band] = 1.0f;
-                transientInitialized[band] = true;
-            }
-            else
-            {
-                transientFastEnvSq[band] =
-                    transientFastCoeff[band] * transientFastEnvSq[band]
-                    + (1.0f - transientFastCoeff[band]) * energySq;
-                transientSlowEnvSq[band] =
-                    transientSlowCoeff[band] * transientSlowEnvSq[band]
-                    + (1.0f - transientSlowCoeff[band]) * energySq;
-            }
-
-            const float ratioSq =
-                (transientFastEnvSq[band] + epsilon)
-                / (transientSlowEnvSq[band] + epsilon);
-
-            // 10*log10(power ratio) = (10/ln(10))*ln(ratio).
-            constexpr float tenOverLn10 = 4.342944819f;
-            constexpr float maxDbLimit = 12.0f;
-            const float transientDb =
-                tenOverLn10 * vvFastLogPositive(ratioSq);
-            const float amount =
-                juce::jlimit(-1.0f, 1.0f, p.transientAmount[band] * 0.01f);
-            const float scaled =
-                transientDb * amount * (1.0f / maxDbLimit);
-            const float clipped =
-                scaled / (1.0f + std::abs(scaled));
-            const float controlDb = clipped * maxDbLimit;
-            const float targetGain = dbToGain(controlDb);
-
-            transientSmoothGain[band] =
-                transientGainSmoothCoeff * transientSmoothGain[band]
-                + (1.0f - transientGainSmoothCoeff) * targetGain;
-            transientGain[band] = transientSmoothGain[band];
-        }
-
-        for (int ch = 0; ch < linkedChannels; ++ch)
-        {
-            auto* data = analogOsBlock.getChannelPointer(static_cast<size_t>(ch));
             float reconstructed = 0.0f;
-
             for (size_t band = 0; band < 4; ++band)
             {
-                // TRANSIENT is first in the per-band chain.
-                float bandSignal = bandsByChannel[ch][band] * transientGain[band];
+                float bandSignal = bands[band];
 
                 if (analogActive[band])
                 {
