@@ -13,7 +13,7 @@ INPUT
 → master limiter
 → OUTPUT
 
-實際 Native 順序：EQ／Dynamic EQ（host rate）→ 四段 TRANSIENT → 四段 Analog Color（nonlinear stage 固定 4×）→ UDMBC → TAPE COLOR → Mix／Out → Solo → 4× true-peak limiter → 主 Bypass／Delta。TRANSIENT 與 Analog 在 Native 共用同一組 X1／X2／X3 audible split，TRANSIENT 先於 Analog。
+實際 Native 順序：EQ／Dynamic EQ（host rate）→ 四段 TRANSIENT（host-rate parallel delta）→ 四段 Analog Color（nonlinear stage 固定 4×）→ UDMBC → TAPE COLOR → Mix／Out → Solo → 4× true-peak limiter → 主 Bypass／Delta。TRANSIENT 與 Analog 共用 X1／X2／X3 頻段設定，但 TRANSIENT 不重建整條 split signal；只注入各頻段的 gain delta，TRANSIENT 先於 Analog。
 
 ## Parametric / Dynamic EQ
 
@@ -47,7 +47,7 @@ Each EQ band has an independent Analog Color amount, TT/SS mode, bypass and X2.
 - Stereo detector 使用 squared energy，不做 sqrt；Fast/Slow squared envelope 以一次 log-ratio 產生 transient control。
 - Band 1 的 70 Hz / 12 dB/oct HPF 僅在 detector sidechain，audible signal 不經該 HPF。
 - Rational soft-knee 使用 x/(1+|x|)，最大控制增益 12 dB 為漸近安全上限；最後增益做極短 smoothing。
-- Native TRANSIENT 與 Analog 共用同一組 audible crossover band samples，因此不因 TRANSIENT 再新增一組 split/recombine。
+- Native TRANSIENT 在 host rate 以獨立 detector/filter state 取得四段 band signal，但 audible base path 保持原樣，只注入 (gain−1)×band；因此 0% exact bypass，啟用時也不增加整條 full-band split/recombine phase rotation。
 - TRANSIENT 位於 Analog 前，讓後續 Analog / UDMBC / TYPE-A 接住被強化或削弱的 attack。
 
 ## Plugin latency
