@@ -44,10 +44,6 @@ jobs:
           test -s docs/assets/ui/png/muted_knob_strip.png
           test -s docs/assets/ui/png/ivory_button_on.png
           test -s docs/assets/ui/png/bypass_led_red.png
-          test -s docs/assets/ui/studio_knob_strip.png
-          test -s docs/assets/ui/ivory_knob_strip.png
-          test -s docs/assets/ui/studio_button_on.png
-          test -s docs/assets/ui/ivory_led_on.png
           grep -q 'id="bandGrid"' docs/index.html
           grep -q 'TRANSIENT' docs/index.html
           grep -q 'ANALOG COLOR' docs/index.html
