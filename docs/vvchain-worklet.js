@@ -350,33 +350,34 @@ class VVChainWorklet extends AudioWorkletProcessor {
     lp[2]+=a3*(h1-lp[2]); const h2=h1-lp[2];
     return [lp[0],lp[1],lp[2],h2];
   }
-  transientGains(l,r,stereo,xs){
+  applyTransientStereo(l,r,stereo,xs){
     const amounts=Array.isArray(this.s.transient)?this.s.transient:[0,0,0,0];
+    const active=[false,false,false,false];
     let any=false;
     for(let b=0;b<4;b++){
-      const active=Math.abs(Number(amounts[b]||0))>1e-6;
-      any=any||active;
-      if(!active){
+      active[b]=Math.abs(Number(amounts[b]||0))>1e-6;
+      any=any||active[b];
+      if(!active[b]){
         this.transientFast[b]=0;
         this.transientSlow[b]=0;
         this.transientGain[b]=1;
         this.transientInit[b]=false;
       }
     }
-    if(!any)return [1,1,1,1];
+    if(!any)return [l,r];
 
-    const detL=this.zoneBands(l,this.ch[0],"transientLp",xs);
-    const detR=stereo?this.zoneBands(r,this.ch[1],"transientLp",xs):detL;
+    const bandsL=this.zoneBands(l,this.ch[0],"transientLp",xs);
+    const bandsR=stereo?this.zoneBands(r,this.ch[1],"transientLp",xs):bandsL;
     const hp70=this.hp(70,.7071067811865476);
     const fastMs=[2.5,1.5,.8,.35],slowMs=[30,22,15,9];
     const smooth=this.tc(.15);
-    const result=[1,1,1,1];
+    const gains=[1,1,1,1];
 
     for(let b=0;b<4;b++){
+      if(!active[b])continue;
       const amount=this.clamp(Number(amounts[b]||0)/100,-1,1);
-      if(Math.abs(amount)<=1e-6)continue;
 
-      let dl=detL[b],dr=detR[b];
+      let dl=bandsL[b],dr=bandsR[b];
       if(b===0){
         dl=this.biquad(dl,hp70,this.ch[0].transientHp);
         dr=stereo?this.biquad(dr,hp70,this.ch[1].transientHp):dl;
@@ -403,20 +404,22 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const clipped=scaled/(1+Math.abs(scaled));
       const target=this.db2g(clipped*maxDb);
       this.transientGain[b]=smooth*this.transientGain[b]+(1-smooth)*target;
-      result[b]=this.transientGain[b];
+      gains[b]=this.transientGain[b];
     }
-    return result;
+
+    let deltaL=0,deltaR=0;
+    for(let b=0;b<4;b++){
+      if(!active[b])continue;
+      const d=gains[b]-1;
+      deltaL+=bandsL[b]*d;
+      if(stereo)deltaR+=bandsR[b]*d;
+    }
+    return [l+deltaL,stereo?r+deltaR:r];
   }
 
-  sample(x,ch,analogAlpha,bandProcessingHpCoef,transientGain){
+  sample(x,ch,analogAlpha){
     const s=this.s,c=this.ch[ch];let y=x;
-    // Static + Dynamic EQ are both applied once in dynamicStereo() so the
-    // selected filter type never gets duplicated here.
-    // One shared BAND-processing low cut: 30 Hz, 12 dB/oct Butterworth.
-    // It runs once after EQ/Dynamics and before ANALOG -> UDMBC -> TAPE.
-    // This is an IIR filter, so it adds phase rotation near 30 Hz but zero samples
-    // of latency; no separate per-module HPFs are used.
-    y=this.biquad(y,bandProcessingHpCoef,c.bandProcessingHp);
+    // EQ/Dynamics and the one shared 30 Hz floor are already upstream.
     c.contribAnalogPre=y;
 
     // ANALOG COLOR v1.0.56: true four-band routing.
@@ -424,7 +427,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const analogBands=this.zoneBands(y,c,"analogLp",s.udmbc.x);
     let analogReconstructed=0;
     for(let b=0;b<4;b++){
-      const bandInput=analogBands[b]*(transientGain?.[b]??1);
+      const bandInput=analogBands[b];
       if(s.eq.globalBypass||s.eq.colorBypass[b]||analogAlpha[b]<=1e-6){
         analogReconstructed+=bandInput;
       }else{
@@ -578,9 +581,15 @@ class VVChainWorklet extends AudioWorkletProcessor {
       }
       const l=L[n]||0,r=R[n]||0;
       const dyn=this.dynamicStereo(l,r,stereo);
-      const transientGain=this.transientGains(dyn[0],dyn[1],stereo,xs);
-      const moduleL=this.sample(dyn[0],0,analogAlpha,bandProcessingHpCoef,transientGain);
-      const moduleR=this.sample(dyn[1],1,analogAlpha,bandProcessingHpCoef,transientGain);
+
+      // One shared audible 30 Hz floor, then base-rate TRANSIENT, then Analog.
+      const floorL=this.biquad(dyn[0],bandProcessingHpCoef,this.ch[0].bandProcessingHp);
+      const floorR=stereo
+        ? this.biquad(dyn[1],bandProcessingHpCoef,this.ch[1].bandProcessingHp)
+        : dyn[1];
+      const transientOut=this.applyTransientStereo(floorL,floorR,stereo,xs);
+      const moduleL=this.sample(transientOut[0],0,analogAlpha);
+      const moduleR=this.sample(transientOut[1],1,analogAlpha);
 
       let yL=moduleL;
       let yR=moduleR;
