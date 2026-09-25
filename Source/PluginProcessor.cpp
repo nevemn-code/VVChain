@@ -88,7 +88,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     for (int i = 0; i < 4; ++i)
     {
         const auto n = juce::String(i + 1);
-        f("EQ_COLOR" + n, "EQ " + n + " Analog Color", 0.f, 60.f, 35.f);
+        f("EQ_COLOR" + n, "EQ " + n + " Analog Color", 0.f, 60.f, 0.f);
         p.push_back(std::make_unique<juce::AudioParameterBool>(
             "EQ_COLOR_BYPASS" + n, "EQ " + n + " Analog Color Bypass", false));
         p.push_back(std::make_unique<juce::AudioParameterBool>(
@@ -114,7 +114,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
         const juce::String n = juce::String(i + 1);
         p.push_back(std::make_unique<juce::AudioParameterBool>(
             "UDMBC_BAND_BYPASS" + n, "UDMBC Band " + n + " Bypass", false));
-        const float udmbcDegreeDefaults[4] = { 25.f, 25.f, 22.f, 18.f };
+        const float udmbcDegreeDefaults[4] = { 0.f, 0.f, 0.f, 0.f };
         const float udmbcLifterMixDefaults[4] = { 70.f, 70.f, 60.f, 50.f };
         f("UDMBC_DEGREE" + n, "UDMBC Band " + n + " Degree", 0.f, 100.f, udmbcDegreeDefaults[i]);
         f("UDMBC_LIFT_T" + n, "UDMBC Band " + n + " Lifter Threshold", -80.f, 0.f, -35.f);
@@ -133,7 +133,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout VVChainAudioProcessor::creat
     for (int i = 0; i < 4; ++i)
     {
         const juce::String n = juce::String(i + 1);
-        const float defaults[4] = { 6.f, 12.f, 28.f, 22.f };
+        const float defaults[4] = { 0.f, 0.f, 0.f, 0.f };
         const float levels[4] = { 0.f, 0.f, 1.f, 1.f };
         const float maxDegrees[4] = { 50.f, 60.f, 70.f, 90.f };
         p.push_back(std::make_unique<juce::AudioParameterBool>(
