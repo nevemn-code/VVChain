@@ -154,27 +154,6 @@ let analyzerEnabled=true;
 const analyzerCurve=new Float32Array(256).fill(-90);
 const analyzerRaw=new Float32Array(256).fill(-90);
 const analyzerFreqSmooth=new Float32Array(256).fill(-90);
-const contributionCurves=[new Float32Array(256),new Float32Array(256),new Float32Array(256)];
-const contributionRaw=new Float32Array(256),contributionSmooth=new Float32Array(256);
-
-class ContributionFFT{
-  constructor(n=2048){
-    this.n=n;this.levels=Math.round(Math.log2(n));
-    this.bitrev=new Uint16Array(n);this.cos=new Float32Array(n/2);this.sin=new Float32Array(n/2);
-    this.real=new Float32Array(n);this.imag=new Float32Array(n);this.window=new Float32Array(n);
-    for(let i=0;i<n;i++){let x=i,rev=0;for(let b=0;b<this.levels;b++){rev=(rev<<1)|(x&1);x>>=1}this.bitrev[i]=rev;this.window[i]=.5-.5*Math.cos(2*Math.PI*i/(n-1))}
-    for(let k=0;k<n/2;k++){const a=-2*Math.PI*k/n;this.cos[k]=Math.cos(a);this.sin[k]=Math.sin(a)}
-  }
-  magnitude(samples,out){
-    const n=this.n,re=this.real,im=this.imag;
-    for(let i=0;i<n;i++){const j=this.bitrev[i];re[j]=(samples[i]||0)*this.window[i];im[j]=0}
-    for(let size=2;size<=n;size<<=1){const half=size>>1,step=n/size;for(let base=0;base<n;base+=size){for(let j=0;j<half;j++){const k=j*step,a=base+j,b=a+half,tr=this.cos[k]*re[b]-this.sin[k]*im[b],ti=this.sin[k]*re[b]+this.cos[k]*im[b],ar=re[a],ai=im[a];re[b]=ar-tr;im[b]=ai-ti;re[a]=ar+tr;im[a]=ai+ti}}}
-    const norm=4/n;for(let k=0;k<n/2;k++)out[k]=Math.hypot(re[k],im[k])*norm;
-  }
-}
-const contributionFFT=new ContributionFFT(2048);
-const contributionPreTime=new Float32Array(2048),contributionPostTime=new Float32Array(2048),contributionDeltaTime=new Float32Array(2048);
-const contributionPreMag=new Float32Array(1024),contributionPostMag=new Float32Array(1024),contributionDeltaMag=new Float32Array(1024);
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
 const settingsGear=$("#settingsGear"),settingsPanel=$("#settingsPanel"),themeToggle=$("#themeToggle"),analyzerToggle=$("#analyzerToggle");
 let settingsPanelVisible=false,ivoryTheme=false;
@@ -281,50 +260,17 @@ function startAnalyzerLoop(){
     drawEQ();
   },42);
 }
-function processContributionSamples(buffer,frames){
-  if(!analyzerEnabled||state.masterBypass||state.delta||!buffer||frames<2048)return;
-  const data=new Float32Array(buffer),start=frames-2048,sr=audioCtx?.sampleRate||48000,binHz=(sr*.5)/1024;
-  const moduleActive=[
-    !state.eq.globalBypass&&state.eq.color.some((v,b)=>!state.eq.colorBypass[b]&&Number(v)>1e-4),
-    !state.udmbc.bypass&&(state.udmbc.clip||Math.abs(Number(state.udmbc.input||0))>.001||Math.abs(Number(state.udmbc.output||0))>.001||state.udmbc.degree.some((v,b)=>!state.udmbc.bandBypass[b]&&Number(v)>1e-4)),
-    !state.type.bypass&&(Math.abs(Number(state.type.input||0))>.001||Math.abs(Number(state.type.output||0))>.001||state.type.degree.some((v,b)=>!state.type.bandBypass[b]&&Number(v)>1e-4))
-  ];
-  for(let module=0;module<3;module++){
-    const curve=contributionCurves[module];
-    if(!moduleActive[module]){
-      for(let p=0;p<256;p++)curve[p]*=.55;
-      continue;
-    }
-    const preIndex=module*2,postIndex=preIndex+1;
-    for(let n=0;n<2048;n++){const base=(start+n)*6,pre=data[base+preIndex]||0,post=data[base+postIndex]||0;contributionPreTime[n]=pre;contributionPostTime[n]=post;contributionDeltaTime[n]=post-pre}
-    contributionFFT.magnitude(contributionPreTime,contributionPreMag);contributionFFT.magnitude(contributionPostTime,contributionPostMag);contributionFFT.magnitude(contributionDeltaTime,contributionDeltaMag);
-    for(let p=0;p<256;p++){
-      const t=p/255,centre=20*Math.pow(1000,t),halfOct=1/48,f0=centre/Math.pow(2,halfOct),f1=centre*Math.pow(2,halfOct),b0=clamp(Math.floor(f0/binHz),1,1023),b1=clamp(Math.ceil(f1/binHz),b0,1023);
-      let preP=0,postP=0,deltaP=0,count=0;
-      for(let b=b0;b<=b1;b++){const pre=contributionPreMag[b],post=contributionPostMag[b],delta=contributionDeltaMag[b];preP+=pre*pre;postP+=post*post;deltaP+=delta*delta;count++}
-      preP/=Math.max(1,count);postP/=Math.max(1,count);deltaP/=Math.max(1,count);
-      const postDb=postP>1e-24?10*Math.log10(postP):-120;
-      contributionRaw[p]=(postDb<-82||postP<=preP*1.005)?0:clamp(1.7*10*Math.log10(1+deltaP/Math.max(1e-18,postP)),0,8);
-    }
-    const cg=i=>contributionRaw[clamp(i,0,255)];
-    for(let p=0;p<256;p++)contributionSmooth[p]=(cg(p-2)+4*cg(p-1)+6*cg(p)+4*cg(p+1)+cg(p+2))/16;
-    const attack=.78,release=.34;
-    for(let p=0;p<256;p++){const target=contributionSmooth[p],old=curve[p];curve[p]=old+(target>old?attack:release)*(target-old)}
-  }
-  drawEQ();
-}
 function stopAnalyzerLoop(){
   if(analyzerInterval){clearInterval(analyzerInterval);analyzerInterval=null}
 }
 function setAnalyzerEnabled(enabled){
   analyzerEnabled=!!enabled;
   analyzerToggle.textContent=analyzerEnabled?"ANALYZER  ON":"ANALYZER  OFF";
-  workletNode?.port?.postMessage({type:"analysisEnabled",enabled:analyzerEnabled&&!document.hidden});
   if(analyzerEnabled){connectAnalyzerTap();if(playing)startAnalyzerLoop()}
-  else{disconnectAnalyzerTap();stopAnalyzerLoop();analyzerCurve.fill(-90);contributionCurves.forEach(c=>c.fill(0));drawEQ()}
+  else{disconnectAnalyzerTap();stopAnalyzerLoop();analyzerCurve.fill(-90);drawEQ()}
 }
 analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
-document.addEventListener("visibilitychange",()=>{workletNode?.port?.postMessage({type:"analysisEnabled",enabled:analyzerEnabled&&!document.hidden});if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
+document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
 setAnalyzerEnabled(true);
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.58
 function makeWorkletUrl(){
@@ -400,10 +346,8 @@ async function ensureAudioGraph(){
         drawEQ();
         return;
       }
-      if(e.data?.type==="contributionSamples"){workletHeartbeatSeen=true;processContributionSamples(e.data.data,Number(e.data.frames||0))}
     };
     workletNode.connect(audioCtx.destination);
-    workletNode.port.postMessage({type:"analysisEnabled",enabled:analyzerEnabled&&!document.hidden});
     refreshAnalyzerTap();
     sendParams();
   }
@@ -842,7 +786,6 @@ const syncMonitor=()=>{deessPower.classList.toggle("on",!!state.masterBypass);de
 deessPower.onclick=()=>{state.masterBypass=!state.masterBypass;syncMaster();syncMonitor()};
 deltaBtn.onclick=()=>{
   state.delta=!state.delta;
-  if(state.delta)contributionCurves.forEach(c=>c.fill(0));
   analyzerCurve.fill(-90);
   refreshAnalyzerTap();
   syncMonitor();
@@ -1054,45 +997,7 @@ function drawEQ(){
     traceMain();eqCtx.lineTo(w,h);eqCtx.lineTo(0,h);eqCtx.closePath();
     eqCtx.fillStyle=tc("#d8dbe11f","#56585c1a");eqCtx.fill();
 
-    const moduleColors=ivoryTheme
-      ?["#d88b1e","#2a9fd8","#b35be0"]
-      :["#f4a63a","#4fc3ff","#d97cff"];
-    const cumulative=new Float32Array(256),pxPerDb=h/90;
-    for(let module=0;module<3;module++){
-      const top=new Array(256),base=new Array(256);let visible=false;
-      for(let p=0;p<256;p++){
-        const total=contributionCurves[0][p]+contributionCurves[1][p]+contributionCurves[2][p];
-        const scale=total>12?12/total:1;
-        const baseY=clamp(points[p].y-cumulative[p]*scale*pxPerDb,0,h);
-        const growth=contributionCurves[module][p]*scale;
-        top[p]={x:points[p].x,y:clamp(baseY-growth*pxPerDb,0,h)};
-        base[p]={x:points[p].x,y:baseY};
-        cumulative[p]+=contributionCurves[module][p];
-        visible=visible||(!state.masterBypass&&!state.delta&&growth>.02);
-      }
-      if(!visible)continue;
-      eqCtx.beginPath();eqCtx.moveTo(top[0].x,top[0].y);
-      for(let p=1;p<256;p++)eqCtx.lineTo(top[p].x,top[p].y);
-      for(let p=255;p>=0;p--)eqCtx.lineTo(base[p].x,base[p].y);
-      eqCtx.closePath();eqCtx.globalAlpha=.15;eqCtx.fillStyle=moduleColors[module];eqCtx.fill();eqCtx.globalAlpha=1;
-
-      eqCtx.beginPath();eqCtx.moveTo(top[0].x,top[0].y);
-      for(let p=1;p<256;p++){
-        const prev=top[p-1],cur=top[p],mx=(prev.x+cur.x)*.5,my=(prev.y+cur.y)*.5;
-        eqCtx.quadraticCurveTo(prev.x,prev.y,mx,my);
-      }
-      eqCtx.lineTo(top[255].x,top[255].y);
-      eqCtx.globalAlpha=.82;eqCtx.strokeStyle=moduleColors[module];eqCtx.lineWidth=1;eqCtx.stroke();eqCtx.globalAlpha=1;
-    }
-
     traceMain();eqCtx.strokeStyle=tc("#d8dbe17a","#56585c9e");eqCtx.lineWidth=1;eqCtx.stroke();
-
-    const legend=[["ANALOG",moduleColors[0]],["UDMBC",moduleColors[1]],["TYPE-A",moduleColors[2]]];
-    eqCtx.font="bold 7px Consolas";eqCtx.textBaseline="top";let lx=w-177;
-    for(const [name,color] of legend){
-      eqCtx.fillStyle=color;eqCtx.beginPath();eqCtx.arc(lx+2.5,9.5,2.5,0,Math.PI*2);eqCtx.fill();
-      eqCtx.fillText(name,lx+8,6);lx+=name==="UDMBC"?61:58;
-    }
   }
 
   // Gain axis: the full usable range is exactly -18 .. +18 dB.
