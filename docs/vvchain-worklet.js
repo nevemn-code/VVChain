@@ -606,6 +606,10 @@ class VVChainWorklet extends AudioWorkletProcessor {
       !!this.s.udmbc.clip||Math.abs(Number(this.s.udmbc.input||0))>1e-6||
       Math.abs(Number(this.s.udmbc.output||0))>1e-6
     ));
+    cfg.anyType=cfg.anyType||(!this.s.type.bypass&&(
+      Math.abs(Number(this.s.type.input||0))>1e-6||
+      Math.abs(Number(this.s.type.output||0))>1e-6
+    ));
 
     for(let b=0;b<4;b++){
       const active=!this.s.eq.globalBypass&&!this.s.eq.colorBypass[b]&&Number(this.s.eq.color[b]||0)>1e-6;
