@@ -1,4 +1,11 @@
-# VVChain Validation Status（v1.0.59；歷史基準仍保留於下文）
+# VVChain Validation Status（v1.0.60；歷史基準仍保留於下文）
+
+## v1.0.60 Transient implementation
+- Branch: `feature/transient-v1.0.60`.
+- De-Esser realtime DSP / APVTS / dedicated Native UI / Web UI and Worklet processing removed.
+- Four-band TRANSIENT added before Analog. Native shares the existing Analog X1/X2/X3 audible split instead of adding a second audible crossover.
+- Stereo-linked squared-energy detector, detector-only Band 1 70 Hz HPF, single log-ratio and rational soft-knee implemented.
+- CI / VST3 validation status is recorded by the PR workflow; host listening and pluginval remain separate host validation.
 
 ## v1.0.59 CPU architecture change
 
