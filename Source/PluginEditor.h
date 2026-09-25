@@ -136,8 +136,56 @@ private:
         bool isWithinInteractionZone(
             juce::Point<int> parentPoint) const noexcept
         {
-            return isVisible()
-                && getBounds().expanded(54, 46).contains(parentPoint);
+            if (!isVisible())
+                return false;
+
+            const auto box = getBounds();
+
+            // Small forgiveness around the actual editable box.
+            if (box.expanded(12, 10).contains(parentPoint))
+                return true;
+
+            if (m_anchorPos.x < 0 || m_anchorPos.y < 0)
+                return false;
+
+            // Keep a small area around the source EQ/Dynamic node alive.
+            if (parentPoint.getDistanceFrom(m_anchorPos) <= 18.0f)
+                return true;
+
+            // Directional "mouse tunnel" from the source node to the nearest
+            // edge of the floating box.  Moving toward the box stays alive;
+            // moving sideways/outside this corridor closes it immediately.
+            const auto anchor = m_anchorPos.toFloat();
+            const auto p = parentPoint.toFloat();
+
+            const float targetX = juce::jlimit(
+                static_cast<float>(box.getX() + 8),
+                static_cast<float>(box.getRight() - 8),
+                anchor.x);
+
+            float targetY = static_cast<float>(box.getCentreY());
+            if (anchor.y < static_cast<float>(box.getY()))
+                targetY = static_cast<float>(box.getY());
+            else if (anchor.y > static_cast<float>(box.getBottom()))
+                targetY = static_cast<float>(box.getBottom());
+
+            const juce::Point<float> target { targetX, targetY };
+            const auto segment = target - anchor;
+            const float lengthSquared =
+                segment.x * segment.x + segment.y * segment.y;
+
+            if (lengthSquared <= 0.0001f)
+                return false;
+
+            const auto fromAnchor = p - anchor;
+            const float projection = juce::jlimit(
+                0.0f, 1.0f,
+                (fromAnchor.x * segment.x
+                 + fromAnchor.y * segment.y)
+                    / lengthSquared);
+
+            const auto closest = anchor + segment * projection;
+            return p.getDistanceFrom(closest) <= 22.0f;
         }
 
         void updateInfo(const juce::String& line1Text,
@@ -168,6 +216,7 @@ private:
                     line3Text, juce::dontSendNotification);
             m_updatingText = false;
             m_lastPos = mousePos;
+            m_anchorPos = mousePos;
 
             constexpr int boxHeight = 66;
             constexpr int boxWidth = 150;
@@ -198,6 +247,7 @@ private:
             if (isVisible())
                 setVisible(false);
             m_lastPos = { -1, -1 };
+            m_anchorPos = { -1, -1 };
         }
 
         void resized() override
@@ -223,6 +273,7 @@ private:
         juce::Label m_line3;
         CommitHandler m_commitHandler;
         juce::Point<int> m_lastPos { -1, -1 };
+        juce::Point<int> m_anchorPos { -1, -1 };
         bool m_updatingText = false;
     };
 
