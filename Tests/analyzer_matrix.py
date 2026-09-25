@@ -1,17 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import math
-import random
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-
-def growth_db(pre_power: float, post_power: float, delta_power: float, post_db: float) -> float:
-    if post_db < -82.0 or post_power <= pre_power * 1.005:
-        return 0.0
-    ratio = delta_power / max(1.0e-18, post_power)
-    return max(0.0, min(8.0, 1.7 * 10.0 * math.log10(1.0 + ratio)))
 
 def main() -> None:
     editor = (ROOT / "Source" / "PluginEditor.cpp").read_text(encoding="utf-8")
@@ -34,33 +26,24 @@ def main() -> None:
     assert "if (analyzerOn && p.deltaMonitor)" in processor
     assert "function refreshAnalyzerTap()" in web
     assert "state.delta&&!directFallback&&!workletFaulted&&workletNode" in web
-    assert "state.masterBypass||state.delta" in web
 
-    # 100 deterministic power-domain cases: removed energy never grows upward,
-    # added energy is monotonic and the visualization is hard-capped at 8 dB.
-    rng = random.Random(1055)
-    previous = 0.0
-    for i in range(100):
-        pre = 10.0 ** rng.uniform(-8.0, -0.1)
-        added_ratio = i / 12.0
-        post = pre * (1.01 + added_ratio)
-        delta = post * added_ratio
-        post_db = 10.0 * math.log10(max(post, 1.0e-20))
-        g = growth_db(pre, post, delta, post_db)
-        assert math.isfinite(g)
-        assert 0.0 <= g <= 8.0
-        if post_db >= -82.0 and i > 1:
-            # The mapping is monotonic for the controlled ratio sweep.
-            controlled = growth_db(1.0, 1.1, added_ratio, 0.0)
-            assert controlled + 1.0e-9 >= previous
-            previous = controlled
+    # Main Spectrum must remain present while module contribution analyzers
+    # and their runtime buffers/FFT/Worklet messages are fully absent.
+    assert "analyzerPath.cubicTo" in editor
+    assert "ContributionFFT" not in web
+    assert "contributionCurves" not in web
+    assert 'type:"analysisEnabled"' not in worklet
+    assert 'type:"contributionSamples"' not in worklet
 
-    assert growth_db(1.0, 0.9, 0.8, 0.0) == 0.0
-    assert growth_db(1.0, 1.004, 10.0, 0.0) == 0.0
-    assert growth_db(1.0e-10, 1.1e-10, 1.0e-10, -90.0) == 0.0
-    assert growth_db(1.0, 2.0, 1.0e12, 0.0) == 8.0
+    # CPU architecture invariants for v1.0.59.
+    assert "Nonlinear Analog ADAA v2 remains fixed at 4x" in dsp
+    assert "eqOversampler.processSamplesUp" in dsp
+    assert "const double osSr = sr;" in dsp
+    assert "dynamicsAmount <= 0.000001f" in dsp
+    assert dsp.count("bool anyActiveBand = false;") >= 2
+    assert "eqWetDelay" in dsp
 
-    print("PASS analyzer matrix: 100 power cases + Native/Web contribution + DELTA analyzer invariants")
+    print("PASS analyzer matrix: main Spectrum only + module analyzer removal + CPU lazy-path invariants")
 
 if __name__ == "__main__":
     main()
