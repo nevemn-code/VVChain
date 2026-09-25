@@ -1,4 +1,4 @@
-# VVChain Test Plan（v1.0.59）
+# VVChain Test Plan（v1.0.60）
 
 v1.0.55 已修正先前已知的 Web smoke Python 引號錯誤與 UI regression 過時固定版本／註解 guard。Fast Gate 現在在 PR、main push、手動執行三種情況都會跑；實際通過與否仍以本版 Actions 為準。
 
@@ -41,7 +41,7 @@ Manual `full_validation=true` is reserved for expensive checks:
 - Four independent UDMBC bands and bypass states.
 - Four TAPE COLOR bands sharing the crossover ranges.
 - Four independent Analog Color bands, 0–60 processing range, TT/SS, bypass and X2 delta ×2; active Analog remains 4× while all-zero/bypass must skip the oversampler.
-- De-Esser 6–18 kHz, 0–8 dB maximum reduction, four response modes.
+- TRANSIENT 四段 -100%～+100%；0% 必須 zero-work / neutral，Band 1 detector-only 70 Hz HPF，Stereo linked squared-energy。
 - LF／HF Roll-Off 6／12／24／36／48／60／72 dB/oct，預設 12；逐格 OCT 控制須實測滑鼠滾輪。
 - Compact two-line EQ / DYN EQ graph readout.
 - Master bypass / dry path latency alignment.
@@ -65,7 +65,7 @@ Still required when preparing a distributable release:
 
 ## Settings overlay regression (v1.0.50)
 
-- Confirm top-row order remains BYPASS / SOLO PRE / EQ / UDMBC / ANALOG / TAPE COLOR / DE-ESS / SETTINGS.
+- Confirm top-row order remains BYPASS / SOLO PRE / EQ / UDMBC / ANALOG / TAPE COLOR / SETTINGS.
 - Confirm SETTINGS is 28×28 px, vector-rendered, right-aligned, and opens a 330 px panel toward the left/bottom.
 - Confirm second gear click, outside click and Escape close the overlay.
 - Confirm panel overflow is internal and the plugin/page itself never gains a scrollbar.
@@ -123,3 +123,13 @@ Still required when preparing a distributable release:
 - ANALOG / UDMBC / TYPE-A contribution layers are cleared/suppressed while DELTA is ON.
 - DELTA OFF restores the normal original-reference + three contribution-layer view.
 - Analyzer routing changes must not alter DSP samples, APVTS values, PDC or host automation.
+
+
+## v1.0.60 Transient / phase safety
+- 0% / all-zero exact neutral path test.
+- Mono, dual-mono and asymmetric stereo transient tests; L/R must share one gain command.
+- Band 1: 40/50/60/80/100 Hz sine tests verify detector HPF avoids waveform-riding modulation.
+- Impulse and sine-burst tests verify no pre-ringing, NaN/Inf or uncontrolled gain.
+- Analog ON/OFF combinations verify TRANSIENT precedes Analog and shares the same audible split; no second Transient crossover may be added.
+- Dry/Wet, Master Bypass and DELTA remain fixed-PDC/aligned.
+- Main Analyzer remains 4096-point only; no TRANSIENT contribution analyzer.
