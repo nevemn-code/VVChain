@@ -18,6 +18,20 @@ class VVChainWorklet extends AudioWorkletProcessor {
     this.pendingRevision=0;
     this.activeRevision=0;
     this._errorReported=false;
+    // Reused per-render-quantum parameter cache. Expensive invariant maths
+    // lives outside the per-sample loop.
+    this.blockCfg={
+      analogActive:new Uint8Array(4),anyAnalog:false,
+      udmbcActive:new Uint8Array(4),anyUdmbc:false,
+      udAttack:new Float32Array(4),udRelease:new Float32Array(4),
+      udDownRatio:new Float32Array(4),udUpRatio:new Float32Array(4),
+      udCompMix:new Float32Array(4),udLiftMix:new Float32Array(4),
+      udLiftThreshold:new Float32Array(4),udBandGain:new Float32Array(4),
+      udUpAttack:new Float32Array(4),udUpRelease:new Float32Array(4),
+      typeActive:new Uint8Array(4),anyType:false,
+      typeDepth:new Float32Array(4),typeDrive:new Float32Array(4),
+      typeMakeup:new Float32Array(4),typeTrim:new Float32Array(4)
+    };
     this.ch=[this.makeCh(),this.makeCh()];
     this.port.onmessage=e=>{
       if(!e.data)return;
@@ -446,32 +460,33 @@ class VVChainWorklet extends AudioWorkletProcessor {
     // of latency; no separate per-module HPFs are used.
     y=this.biquad(y,bandProcessingHpCoef,c.bandProcessingHp);
 
-    // ANALOG COLOR v1.0.56: true four-band routing.
-    // Shared X1/X2/X3 positions define four bands before independent COLOR/ADAA.
-    const analogBands=this.zoneBands(y,c,"analogLp",s.udmbc.x);
-    let analogReconstructed=0;
-    for(let b=0;b<4;b++){
-      const bandInput=analogBands[b];
-      if(s.eq.globalBypass||s.eq.colorBypass[b]||analogAlpha[b]<=1e-6){
-        analogReconstructed+=bandInput;
-      }else{
-        const x2=s.eq.colorX2?.[b]?2:1;
-        analogReconstructed+=this.analog(
-          bandInput,analogAlpha[b],c,b,x2
-        );
+    // ANALOG COLOR: the split/ADAA path is dormant when every band is off.
+    // Active bands retain the exact existing ADAA transfer/state behavior.
+    const cfg=this.blockCfg;
+    if(cfg.anyAnalog){
+      const analogBands=this.zoneBands(y,c,"analogLp",s.udmbc.x);
+      let analogReconstructed=0;
+      for(let b=0;b<4;b++){
+        const bandInput=analogBands[b];
+        if(!cfg.analogActive[b]||analogAlpha[b]<=1e-6){
+          analogReconstructed+=bandInput;
+        }else{
+          const x2=s.eq.colorX2?.[b]?2:1;
+          analogReconstructed+=this.analog(
+            bandInput,analogAlpha[b],c,b,x2
+          );
+        }
       }
+      y=analogReconstructed;
     }
-    y=analogReconstructed;
-    if(!s.udmbc.bypass){
+    if(!s.udmbc.bypass&&cfg.anyUdmbc){
       const original=y,inputGain=this.db2g(this.clamp(s.udmbc.input,-24,24)),xs=s.udmbc.x,z=original*inputGain;
       c.lp[0]+=(1-Math.exp(-2*Math.PI*xs[0]/sampleRate))*(z-c.lp[0]);const h0=z-c.lp[0];
       c.lp[1]+=(1-Math.exp(-2*Math.PI*xs[1]/sampleRate))*(h0-c.lp[1]);const h1=h0-c.lp[1];
       c.lp[2]+=(1-Math.exp(-2*Math.PI*xs[2]/sampleRate))*(h1-c.lp[2]);
       const bands=[c.lp[0],c.lp[1],c.lp[2],h1-c.lp[2]];
       for(let b=0;b<4;b++){
-        if(s.bandBypass?.[b]||s.udmbc.bandBypass[b])continue;
-        const degree=this.clamp(Number(s.udmbc.degree[b]||0),0,100);
-        if(degree<=1e-4)continue;
+        if(!cfg.udmbcActive[b])continue;
         let v=bands[b];
         const gateDb=this.g2db(Math.abs(v)+1e-9),gt=s.udmbc.gate,knee=9,slope=5;
         const kneeStart=gt-knee/2,kneeEnd=gt+knee/2;let gateTarget=0;
@@ -480,20 +495,17 @@ class VVChainWorklet extends AudioWorkletProcessor {
         gateTarget=Math.min(0,gateTarget);
         c.gateBand[b]=.99*c.gateBand[b]+.01*gateTarget;
         v*=.9*this.db2g(c.gateBand[b])+.1;
-        const depth=degree/100,downRatio=1+depth*((b===3?100:66.7)-1),upRatio=1+depth*3;
+        const downRatio=cfg.udDownRatio[b],upRatio=cfg.udUpRatio[b];
         const downDb=this.g2db(Math.abs(v)+1e-9),downThr=s.udmbc.compT[b],downSlope=1-1/downRatio;
         const downTarget=downDb>downThr?(downDb-downThr)*downSlope:0;
-        const bandBaseAttackMs=Math.max(.1,Math.min(120,Number(s.udmbc.compA[b]||0))),k=Math.max(0,(120-bandBaseAttackMs)/.49);
-        const dynamicAttackMs=bandBaseAttackMs+k*(depth*depth),minAttackLimit=b===0?15:(b===1?8:1),finalAttackMs=Math.max(minAttackLimit,dynamicAttackMs);
-        const baseReleaseMs=Math.max(10,Math.min(2500,Number(s.udmbc.compR[b]||0))),finalReleaseMs=Math.max(20,baseReleaseMs+depth*100);
-        const attackCoef=Math.exp(-1000/(finalAttackMs*sampleRate)),releaseCoef=Math.exp(-1000/(finalReleaseMs*sampleRate));
-        const dr=releaseCoef;c.comp[b]=c.comp[b]*(downTarget>c.comp[b]?attackCoef:dr)+(1-(downTarget>c.comp[b]?attackCoef:dr))*downTarget;
-        const downMix=this.clamp(s.udmbc.compM[b]/100,0,1);v*=this.db2g(-c.comp[b]*downMix)+(1-downMix);
-        const upDb=this.g2db(Math.abs(v)+1e-9),upThr=s.udmbc.liftT[b],upSlope=1-1/upRatio,upTarget=upDb<upThr?(upThr-upDb)*upSlope:0;
-        const ua=this.tc(s.udmbc.liftA[b]),ur=this.tc(s.udmbc.liftR[b]),upGain=this.db2g(Math.min(12,Math.max(0,upTarget)));
+        const attackCoef=cfg.udAttack[b],releaseCoef=cfg.udRelease[b];
+        c.comp[b]=c.comp[b]*(downTarget>c.comp[b]?attackCoef:releaseCoef)+(1-(downTarget>c.comp[b]?attackCoef:releaseCoef))*downTarget;
+        const downMix=cfg.udCompMix[b];v*=this.db2g(-c.comp[b]*downMix)+(1-downMix);
+        const upDb=this.g2db(Math.abs(v)+1e-9),upThr=cfg.udLiftThreshold[b],upSlope=1-1/upRatio,upTarget=upDb<upThr?(upThr-upDb)*upSlope:0;
+        const ua=cfg.udUpAttack[b],ur=cfg.udUpRelease[b],upGain=this.db2g(Math.min(12,Math.max(0,upTarget)));
         c.lift[b]=c.lift[b]*(upGain>1?ua:ur)+(1-(upGain>1?ua:ur))*upGain;
-        const upMix=this.clamp(s.udmbc.liftM[b]/100,0,1);v*=c.lift[b]*upMix+(1-upMix);
-        v*=this.db2g(this.clamp(s.udmbc.level[b],-24,12));bands[b]=v;
+        const upMix=cfg.udLiftMix[b];v*=c.lift[b]*upMix+(1-upMix);
+        v*=cfg.udBandGain[b];bands[b]=v;
       }
       let sum=bands[0]+bands[1]+bands[2]+bands[3];
       if(s.udmbc.clip)sum=Math.tanh(sum*1.7);
@@ -504,7 +516,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const mix=this.clamp(s.udmbc.mix/100,0,1);
       y=original*(1-mix)+sum*mix;
     }
-    if(!s.type.bypass){
+    if(!s.type.bypass&&cfg.anyType){
       const ti=y*this.db2g(s.type.input);
       const mix=this.clamp(Number(s.type.mix)/100,0,1);
 
@@ -515,34 +527,12 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const xs=s.udmbc.x;
       const bands=this.zoneBands(ti,c,"typeLp",xs);
 
-      const driveParams=[0,0,0,0];
-      const makeup=[0,0,0,0];
-      const trims=[0,0,0,0];
-      for(let b=0;b<4;b++){
-        const typeMax=[50,60,70,90][b];
-        const limitedDegree=this.clamp(Number(s.type.degree[b]||0),0,typeMax);
-        const controlNorm=limitedDegree/Math.max(1,typeMax);
-        const depth=this.clamp(controlNorm*.5,0,.5);
-        const rawDriveParam=1+1.5*depth;
-        const driveParam=Math.max(1,rawDriveParam);
-        driveParams[b]=driveParam;
-        let makeupDenominator=Math.tanh(driveParam);
-        makeupDenominator=Math.max(makeupDenominator,1e-6);
-        makeup[b]=1/makeupDenominator;
-        trims[b]=this.db2g(this.clamp(Number(s.type.level[b]||0),-6,6));
-      }
-
       let enhancement=0;
       for(let b=0;b<4;b++){
-        if(s.bandBypass?.[b]||s.type.bandBypass[b])continue;
-        const typeMax=[50,60,70,90][b];
-        const limitedDegree=this.clamp(Number(s.type.degree[b]||0),0,typeMax);
-        const controlNorm=limitedDegree/Math.max(1,typeMax);
-        const depth=this.clamp(controlNorm*.5,0,.5);
-        if(depth<=0)continue;
-        const driven=Math.tanh(bands[b]*driveParams[b])*makeup[b];
-        const processed=driven*trims[b];
-        enhancement+=(processed-bands[b])*depth;
+        if(!cfg.typeActive[b])continue;
+        const driven=Math.tanh(bands[b]*cfg.typeDrive[b])*cfg.typeMakeup[b];
+        const processed=driven*cfg.typeTrim[b];
+        enhancement+=(processed-bands[b])*cfg.typeDepth[b];
       }
 
       y=(ti+enhancement*mix)*this.db2g(this.clamp(Number(s.type.output||0),-24,12));
@@ -573,6 +563,49 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const analogSmoothingCoeff=Math.exp(-1/(0.001*0.25*sampleRate));
     const analogAlpha=this.analogAlpha;
     const bandProcessingHpCoef=this.hp(30,.7071067811865476);
+    const cfg=this.blockCfg;
+    cfg.anyAnalog=false;cfg.anyUdmbc=false;cfg.anyType=false;
+    const typeMax=[50,60,70,90];
+
+    for(let b=0;b<4;b++){
+      const analogOn=!this.s.eq.globalBypass&&!this.s.eq.colorBypass[b]&&Number(this.s.eq.color[b]||0)>1e-6;
+      cfg.analogActive[b]=analogOn?1:0;cfg.anyAnalog=cfg.anyAnalog||analogOn;
+
+      const degree=this.clamp(Number(this.s.udmbc.degree[b]||0),0,100);
+      const udOn=!this.s.udmbc.bypass&&!this.s.bandBypass?.[b]&&!this.s.udmbc.bandBypass[b]&&degree>1e-4;
+      cfg.udmbcActive[b]=udOn?1:0;cfg.anyUdmbc=cfg.anyUdmbc||udOn;
+      if(udOn){
+        const depth=degree/100,baseA=Math.max(.1,Math.min(120,Number(this.s.udmbc.compA[b]||0)));
+        const k=Math.max(0,(120-baseA)/.49),dynA=baseA+k*depth*depth,minA=b===0?15:(b===1?8:1);
+        const finalA=Math.max(minA,dynA),baseR=Math.max(10,Math.min(2500,Number(this.s.udmbc.compR[b]||0))),finalR=Math.max(20,baseR+depth*100);
+        cfg.udAttack[b]=Math.exp(-1000/(finalA*sampleRate));
+        cfg.udRelease[b]=Math.exp(-1000/(finalR*sampleRate));
+        cfg.udDownRatio[b]=1+depth*((b===3?100:66.7)-1);
+        cfg.udUpRatio[b]=1+depth*3;
+        cfg.udCompMix[b]=this.clamp(this.s.udmbc.compM[b]/100,0,1);
+        cfg.udLiftMix[b]=this.clamp(this.s.udmbc.liftM[b]/100,0,1);
+        cfg.udLiftThreshold[b]=Math.max(Number(this.s.udmbc.liftT[b]||-48),-48);
+        cfg.udBandGain[b]=this.db2g(this.clamp(this.s.udmbc.level[b],-24,12));
+        cfg.udUpAttack[b]=this.tc(this.s.udmbc.liftA[b]);
+        cfg.udUpRelease[b]=this.tc(this.s.udmbc.liftR[b]);
+      }
+
+      const limitedType=this.clamp(Number(this.s.type.degree[b]||0),0,typeMax[b]);
+      const typeDepth=this.clamp((limitedType/Math.max(1,typeMax[b]))*.5,0,.5);
+      const typeOn=!this.s.type.bypass&&!this.s.bandBypass?.[b]&&!this.s.type.bandBypass[b]&&typeDepth>0;
+      cfg.typeActive[b]=typeOn?1:0;cfg.anyType=cfg.anyType||typeOn;
+      cfg.typeDepth[b]=typeDepth;
+      const drive=Math.max(1,1+1.5*typeDepth);
+      cfg.typeDrive[b]=drive;
+      cfg.typeMakeup[b]=1/Math.max(Math.tanh(drive),1e-6);
+      cfg.typeTrim[b]=this.db2g(this.clamp(Number(this.s.type.level[b]||0),-6,6));
+    }
+
+    // Preserve non-band UDMBC controls even when every degree is zero.
+    cfg.anyUdmbc=cfg.anyUdmbc||(!this.s.udmbc.bypass&&(
+      !!this.s.udmbc.clip||Math.abs(Number(this.s.udmbc.input||0))>1e-6||
+      Math.abs(Number(this.s.udmbc.output||0))>1e-6
+    ));
 
     for(let b=0;b<4;b++){
       const active=!this.s.eq.globalBypass&&!this.s.eq.colorBypass[b]&&Number(this.s.eq.color[b]||0)>1e-6;
