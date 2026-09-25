@@ -204,4 +204,5 @@ jobs:
     - name: Full DSP validation
       run: |
         python3 Tests/analog_matrix.py
+        python3 Tests/transient_matrix.py
         python3 Tests/reference_stress.py --iterations 10
