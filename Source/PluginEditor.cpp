@@ -1383,124 +1383,12 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             : juce::Colour(0xffd5d8de).withAlpha(0.12f));
         g.fillPath(fill);
 
-        // Module contribution overlay. These are not absolute dBFS traces:
-        // each layer is the ADDED-only local Post-Pre Delta contribution,
-        // visually stacked upward from the main spectrum.
-        const std::array<juce::Colour, 3> contributionColours
-        {
-            ivoryTheme ? juce::Colour(0xffd88b1e) : juce::Colour(0xfff4a63a),
-            ivoryTheme ? juce::Colour(0xff2a9fd8) : juce::Colour(0xff4fc3ff),
-            ivoryTheme ? juce::Colour(0xffb35be0) : juce::Colour(0xffd97cff)
-        };
-
-        std::array<float, analyzerDisplayPoints> cumulativeDb {};
-        const float pixelsPerDb = graph.getHeight() / 90.0f;
-
-        for (int module = 0; module < 3; ++module)
-        {
-            std::array<juce::Point<float>, analyzerDisplayPoints> basePoints {};
-            std::array<juce::Point<float>, analyzerDisplayPoints> topPoints {};
-            bool anyVisible = false;
-
-            for (int p = 0; p < analyzerDisplayPoints; ++p)
-            {
-                const float x = graph.getX()
-                    + graph.getWidth()
-                        * static_cast<float>(p)
-                        / static_cast<float>(analyzerDisplayPoints - 1);
-
-                const float mainNorm = juce::jlimit(
-                    0.0f, 1.0f,
-                    (analyzerDb[(size_t)p] + 90.0f) / 90.0f);
-                const float mainY =
-                    graph.getBottom() - mainNorm * graph.getHeight();
-
-                float totalGrowth = 0.0f;
-                for (int m = 0; m < 3; ++m)
-                    totalGrowth += contributionGrowthDb[(size_t)m][(size_t)p];
-
-                const float stackScale =
-                    totalGrowth > 12.0f ? 12.0f / totalGrowth : 1.0f;
-
-                const float baseGrowth =
-                    cumulativeDb[(size_t)p] * stackScale;
-                const float moduleGrowth =
-                    contributionGrowthDb[(size_t)module][(size_t)p]
-                    * stackScale;
-
-                const float baseY = juce::jlimit(
-                    graph.getY(), graph.getBottom(),
-                    mainY - baseGrowth * pixelsPerDb);
-                const float topY = juce::jlimit(
-                    graph.getY(), graph.getBottom(),
-                    baseY - moduleGrowth * pixelsPerDb);
-
-                basePoints[(size_t)p] = { x, baseY };
-                topPoints[(size_t)p] = { x, topY };
-                cumulativeDb[(size_t)p] +=
-                    contributionGrowthDb[(size_t)module][(size_t)p];
-
-                anyVisible = anyVisible || moduleGrowth > 0.02f;
-            }
-
-            if (!anyVisible)
-                continue;
-
-            juce::Path area;
-            area.startNewSubPath(topPoints[0]);
-            for (int p = 1; p < analyzerDisplayPoints; ++p)
-                area.lineTo(topPoints[(size_t)p]);
-            for (int p = analyzerDisplayPoints - 1; p >= 0; --p)
-                area.lineTo(basePoints[(size_t)p]);
-            area.closeSubPath();
-
-            g.setColour(
-                contributionColours[(size_t)module].withAlpha(0.15f));
-            g.fillPath(area);
-
-            juce::Path topPath;
-            topPath.startNewSubPath(topPoints[0]);
-            for (int p = 1; p < analyzerDisplayPoints; ++p)
-            {
-                const auto previous = topPoints[(size_t)p - 1];
-                const auto current = topPoints[(size_t)p];
-                const auto mid = (previous + current) * 0.5f;
-                topPath.quadraticTo(previous, mid);
-            }
-            topPath.lineTo(topPoints.back());
-
-            g.setColour(
-                contributionColours[(size_t)module].withAlpha(0.82f));
-            g.strokePath(topPath, juce::PathStrokeType(1.0f));
-        }
-
-        // Keep the measured main spectrum edge readable under the colored
-        // additions.
+        // Main Spectrum only. Module contribution analyzers were removed
+        // completely to keep visualization work out of the audio product path.
         g.setColour(ivoryTheme
             ? juce::Colour(0xff56585c).withAlpha(0.62f)
             : juce::Colour(0xffd8dbe1).withAlpha(0.48f));
         g.strokePath(analyzerPath, juce::PathStrokeType(1.0f));
-
-        // Tiny fixed legend: module identity is color, not frequency-band color.
-        const std::array<juce::String, 3> names {
-            "ANALOG", "UDMBC", "TYPE-A"
-        };
-        g.setFont(juce::FontOptions(7.2f).withStyle("Bold"));
-        int legendX = (int)graph.getRight() - 181;
-        const int legendY = (int)graph.getY() + 7;
-        for (int module = 0; module < 3; ++module)
-        {
-            g.setColour(contributionColours[(size_t)module]);
-            g.fillEllipse(
-                static_cast<float>(legendX),
-                static_cast<float>(legendY + 3),
-                5.0f, 5.0f);
-            g.drawText(
-                names[(size_t)module],
-                legendX + 8, legendY, 48, 11,
-                juce::Justification::centredLeft);
-            legendX += module == 1 ? 61 : 58;
-        }
     }
 
     g.setColour(ivoryTheme ? juce::Colour(0xff9f9589) : juce::Colours::black.withAlpha(.95f));
