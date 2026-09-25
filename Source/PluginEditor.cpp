@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "VVChain_DynEQ_Engine.h"
+#include "VVChainAssets.h"
 
 namespace
 {
@@ -22,146 +23,127 @@ float invLogMap(float t, float min, float max)
 }
 }
 
+
+std::unique_ptr<juce::Drawable>
+VVChainAudioProcessorEditor::MetalLookAndFeel::loadDrawable(const void* data, int size)
+{
+    return juce::Drawable::createFromImageData(data, (size_t) size);
+}
+
+void VVChainAudioProcessorEditor::MetalLookAndFeel::drawDrawable(
+    juce::Graphics& g, const juce::Drawable* d,
+    juce::Rectangle<float> bounds, float opacity)
+{
+    if (d != nullptr)
+        d->drawWithin(g, bounds, juce::RectanglePlacement::stretchToFit, opacity);
+}
+
+VVChainAudioProcessorEditor::MetalLookAndFeel::MetalLookAndFeel()
+{
+#define VV_LOAD(TARGET, PREFIX, MEMBER, FILE) \
+    TARGET.MEMBER = loadDrawable( \
+        VVChainAssets::PREFIX##_##FILE##_svg, \
+        VVChainAssets::PREFIX##_##FILE##_svgSize)
+
+    VV_LOAD(studioAssets, studio_teal, panel, panel);
+    VV_LOAD(studioAssets, studio_teal, graph, graph);
+    VV_LOAD(studioAssets, studio_teal, knobSmall, knob_small);
+    VV_LOAD(studioAssets, studio_teal, knobLarge, knob_large);
+    VV_LOAD(studioAssets, studio_teal, buttonOff, button_off);
+    VV_LOAD(studioAssets, studio_teal, buttonOn, button_on);
+    VV_LOAD(studioAssets, studio_teal, ledOff, led_off);
+    VV_LOAD(studioAssets, studio_teal, ledOn, led_on);
+    VV_LOAD(studioAssets, studio_teal, powerOff, power_off);
+    VV_LOAD(studioAssets, studio_teal, powerOn, power_on);
+    VV_LOAD(studioAssets, studio_teal, screw, screw);
+
+    VV_LOAD(ivoryAssets, ivory_gold, panel, panel);
+    VV_LOAD(ivoryAssets, ivory_gold, graph, graph);
+    VV_LOAD(ivoryAssets, ivory_gold, knobSmall, knob_small);
+    VV_LOAD(ivoryAssets, ivory_gold, knobLarge, knob_large);
+    VV_LOAD(ivoryAssets, ivory_gold, buttonOff, button_off);
+    VV_LOAD(ivoryAssets, ivory_gold, buttonOn, button_on);
+    VV_LOAD(ivoryAssets, ivory_gold, ledOff, led_off);
+    VV_LOAD(ivoryAssets, ivory_gold, ledOn, led_on);
+    VV_LOAD(ivoryAssets, ivory_gold, powerOff, power_off);
+    VV_LOAD(ivoryAssets, ivory_gold, powerOn, power_on);
+    VV_LOAD(ivoryAssets, ivory_gold, screw, screw);
+
+    VV_LOAD(mutedAssets, muted, panel, panel);
+    VV_LOAD(mutedAssets, muted, graph, graph);
+    VV_LOAD(mutedAssets, muted, knobSmall, knob_small);
+    VV_LOAD(mutedAssets, muted, knobLarge, knob_large);
+    VV_LOAD(mutedAssets, muted, buttonOff, button_off);
+    VV_LOAD(mutedAssets, muted, buttonOn, button_on);
+    VV_LOAD(mutedAssets, muted, ledOff, led_off);
+    VV_LOAD(mutedAssets, muted, ledOn, led_on);
+    VV_LOAD(mutedAssets, muted, powerOff, power_off);
+    VV_LOAD(mutedAssets, muted, powerOn, power_on);
+    VV_LOAD(mutedAssets, muted, screw, screw);
+#undef VV_LOAD
+}
+
+const VVChainAudioProcessorEditor::MetalLookAndFeel::HardwareAssets&
+VVChainAudioProcessorEditor::MetalLookAndFeel::assets(bool localMuted) const noexcept
+{
+    if (monochrome || localMuted)
+        return mutedAssets;
+    return ivoryTheme ? ivoryAssets : studioAssets;
+}
+
+void VVChainAudioProcessorEditor::MetalLookAndFeel::drawPanelSurface(
+    juce::Graphics& g, juce::Rectangle<float> bounds) const
+{
+    drawDrawable(g, assets().panel.get(), bounds);
+}
+
+void VVChainAudioProcessorEditor::MetalLookAndFeel::drawGraphSurface(
+    juce::Graphics& g, juce::Rectangle<float> bounds) const
+{
+    drawDrawable(g, assets().graph.get(), bounds);
+}
+
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
     juce::Graphics& g, int x, int y, int width, int height,
     float sliderPosProportional, float rotaryStartAngle, float rotaryEndAngle,
     juce::Slider& slider)
 {
-    const auto area = juce::Rectangle<float>(
-        (float)x, (float)y, (float)width, (float)height).reduced(3.0f);
-    const float cx = area.getCentreX();
-    const float cy = area.getCentreY() - 3.0f;
-    const float radius =
-        juce::jmin(area.getWidth(), area.getHeight()) * 0.5f - 6.0f;
+    auto area = juce::Rectangle<float>((float)x, (float)y, (float)width, (float)height).reduced(1.0f);
+    const bool localMuted = static_cast<bool>(slider.getProperties().getWithDefault("moduleMuted", false));
+    const auto& a = assets(localMuted);
+    const bool useLarge = width >= 92 || height >= 92;
+    const float side = juce::jmin(area.getWidth(), area.getHeight());
+    auto knobBounds = juce::Rectangle<float>(side, side).withCentre({area.getCentreX(), area.getCentreY() - 2.0f});
+    drawDrawable(g, useLarge ? a.knobLarge.get() : a.knobSmall.get(), knobBounds, localMuted ? .82f : 1.0f);
 
-    const bool localMuted = static_cast<bool>(
-        slider.getProperties().getWithDefault("moduleMuted", false));
     const bool grey = monochrome || localMuted;
-    const auto tone = [grey](juce::Colour c)
-    {
-        return grey ? c.withSaturation(0.0f) : c;
-    };
-
-    const auto accent = tone(
-        slider.findColour(juce::Slider::rotarySliderFillColourId));
-    const auto frame = tone(
-        ivoryTheme ? juce::Colour(0xffb27a24)
-                   : juce::Colour(0xffb36b45));
-    const auto faceTop = tone(
-        ivoryTheme ? juce::Colour(0xfff6f1e8)
-                   : juce::Colour(0xffe4e4df));
-    const auto faceBottom = tone(
-        ivoryTheme ? juce::Colour(0xff817a70)
-                   : juce::Colour(0xff545b5e));
-    const float angle = juce::jmap(
-        sliderPosProportional, rotaryStartAngle, rotaryEndAngle);
-
-    // Contact shadow / recessed socket.
-    g.setColour(juce::Colours::black.withAlpha(
-        ivoryTheme ? 0.34f : 0.58f));
-    g.fillEllipse(cx - radius - 5.0f, cy - radius - 2.0f,
-                  (radius + 5.0f) * 2.0f,
-                  (radius + 5.0f) * 2.0f);
-
-    // Dark knurled outer body.
-    juce::ColourGradient socket(
-        tone(ivoryTheme ? juce::Colour(0xff6d655b)
-                        : juce::Colour(0xff202629)),
-        cx, cy - radius,
-        tone(ivoryTheme ? juce::Colour(0xff201d19)
-                        : juce::Colour(0xff080b0d)),
-        cx, cy + radius + 5.0f, false);
-    g.setGradientFill(socket);
-    g.fillEllipse(cx - radius - 2.8f, cy - radius - 2.8f,
-                  (radius + 2.8f) * 2.0f,
-                  (radius + 2.8f) * 2.0f);
-
-    // Copper / champagne machined ring.
-    g.setColour(frame.darker(0.32f));
-    g.fillEllipse(cx - radius, cy - radius,
-                  radius * 2.0f, radius * 2.0f);
-    g.setColour(frame.brighter(0.24f).withAlpha(0.95f));
-    g.drawEllipse(cx - radius + 1.0f, cy - radius + 1.0f,
-                  (radius - 1.0f) * 2.0f,
-                  (radius - 1.0f) * 2.0f, 1.5f);
-
-    // Brushed metal face with stronger specular highlight.
-    juce::ColourGradient face(
-        faceTop, cx - radius * 0.45f, cy - radius * 0.72f,
-        faceBottom, cx + radius * 0.55f, cy + radius * 0.88f, false);
-    face.addColour(0.45, tone(
-        ivoryTheme ? juce::Colour(0xffcfc7bb)
-                   : juce::Colour(0xffa7aaab)));
-    g.setGradientFill(face);
-    g.fillEllipse(cx - radius + 4.1f, cy - radius + 4.1f,
-                  (radius - 4.1f) * 2.0f,
-                  (radius - 4.1f) * 2.0f);
-
-    g.setColour(juce::Colours::white.withAlpha(
-        grey ? 0.12f : (ivoryTheme ? 0.26f : 0.22f)));
-    juce::Path shine;
-    shine.addCentredArc(cx - radius * 0.08f, cy - radius * 0.08f,
-                        radius * 0.70f, radius * 0.70f, 0.0f,
-                        4.05f, 5.35f, true);
-    g.strokePath(shine, juce::PathStrokeType(2.0f));
-
-    // Sharp hardware ticks.
-    const auto tick = tone(
-        ivoryTheme ? juce::Colour(0xff443b31)
-                   : juce::Colour(0xffd4dadd));
-    for (int i = 0; i <= 20; ++i)
-    {
-        const float a = juce::jmap(
-            (float)i, 0.0f, 20.0f,
-            rotaryStartAngle, rotaryEndAngle)
-            - juce::MathConstants<float>::halfPi;
-        const float r0 = radius + 3.0f;
-        const float r1 = radius + (i % 5 == 0 ? 7.0f : 5.3f);
-        g.setColour(tick.withAlpha(i % 5 == 0 ? 0.82f : 0.46f));
-        g.drawLine(cx + std::cos(a) * r0,
-                   cy + std::sin(a) * r0,
-                   cx + std::cos(a) * r1,
-                   cy + std::sin(a) * r1,
-                   i % 5 == 0 ? 1.15f : 0.75f);
-    }
+    auto accent = slider.findColour(juce::Slider::rotarySliderFillColourId);
+    if (grey) accent = accent.withSaturation(0.0f);
+    const float cx=knobBounds.getCentreX(), cy=knobBounds.getCentreY(), radius=side*.29f;
+    const float angle=juce::jmap(sliderPosProportional,rotaryStartAngle,rotaryEndAngle);
 
     juce::Path ring;
-    ring.addCentredArc(cx, cy, radius + 1.7f, radius + 1.7f, 0.0f,
-                       rotaryStartAngle, rotaryEndAngle, true);
-    g.setColour(accent.withAlpha(localMuted ? 0.34f : 0.92f));
-    g.strokePath(ring, juce::PathStrokeType(1.55f));
+    ring.addCentredArc(cx,cy,radius+1.5f,radius+1.5f,0.0f,rotaryStartAngle,rotaryEndAngle,true);
+    g.setColour(accent.withAlpha(localMuted ? .28f : .82f));
+    g.strokePath(ring,juce::PathStrokeType(1.4f));
 
-    if (auto* wheelSlider = dynamic_cast<WheelSlider*>(&slider))
-    {
+    if (auto* wheelSlider=dynamic_cast<WheelSlider*>(&slider))
         if (wheelSlider->isGraphControlActive())
         {
-            const bool moving = wheelSlider->isGraphControlMoving();
-            const bool visible = !moving
-                || ((juce::Time::getMillisecondCounter() / 180u) % 2u == 0u);
+            const bool moving=wheelSlider->isGraphControlMoving();
+            const bool visible=!moving || ((juce::Time::getMillisecondCounter()/180u)%2u==0u);
             if (visible)
             {
-                g.setColour(juce::Colours::white.withAlpha(.98f));
-                g.drawEllipse(cx - radius - 6.f, cy - radius - 6.f,
-                              (radius + 6.f) * 2.f,
-                              (radius + 6.f) * 2.f,
-                              moving ? 2.2f : 2.0f);
+                g.setColour(juce::Colours::white.withAlpha(.96f));
+                g.drawEllipse(cx-radius-7.f,cy-radius-7.f,(radius+7.f)*2.f,(radius+7.f)*2.f,moving?2.1f:1.8f);
             }
         }
-    }
 
-    const float pointerLength = radius * 0.53f;
-    const float pa = angle - juce::MathConstants<float>::halfPi;
-    const float px = cx + std::cos(pa) * pointerLength;
-    const float py = cy + std::sin(pa) * pointerLength;
-    g.setColour(juce::Colours::black.withAlpha(0.86f));
-    g.drawLine(cx, cy, px, py, 5.0f);
-    const auto pointer = tone(
-        ivoryTheme ? juce::Colour(0xffefe5d5)
-                   : juce::Colour(0xff65f1ed));
-    g.setColour(pointer.withAlpha(localMuted ? 0.52f : 0.98f));
-    g.drawLine(cx, cy, px, py, 2.0f);
-    g.setColour(juce::Colours::black.withAlpha(.55f));
-    g.fillEllipse(cx - 2.0f, cy - 2.0f, 4.0f, 4.0f);
+    const float pa=angle-juce::MathConstants<float>::halfPi;
+    const float px=cx+std::cos(pa)*radius*.62f, py=cy+std::sin(pa)*radius*.62f;
+    g.setColour(juce::Colours::black.withAlpha(.82f)); g.drawLine(cx,cy,px,py,4.6f);
+    g.setColour(grey ? juce::Colour(0xffe2e2e2) : (ivoryTheme ? juce::Colour(0xff28231e) : juce::Colour(0xff65f1ed)));
+    g.drawLine(cx,cy,px,py,2.0f);
 }
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
@@ -210,182 +192,52 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
     juce::Graphics& g, juce::ToggleButton& button,
     bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown)
 {
-    const bool localMuted = static_cast<bool>(
-        button.getProperties().getWithDefault("moduleMuted", false));
-    const bool grey = monochrome || localMuted;
-    const auto tone = [grey](juce::Colour c)
-    {
-        return grey ? c.withSaturation(0.0f) : c;
-    };
-    const auto accent = tone(
-        button.findColour(juce::ToggleButton::tickColourId));
-    const auto metalFrame = tone(
-        ivoryTheme ? juce::Colour(0xffb27a24)
-                   : juce::Colour(0xffa96343));
-    const auto faceTop = tone(
-        ivoryTheme ? juce::Colour(0xff30291f)
-                   : juce::Colour(0xff1d272a));
-    const auto faceBottom = tone(
-        ivoryTheme ? juce::Colour(0xff100e0b)
-                   : juce::Colour(0xff070b0d));
+    juce::ignoreUnused(shouldDrawButtonAsHighlighted);
+    const bool localMuted=static_cast<bool>(button.getProperties().getWithDefault("moduleMuted",false));
+    const auto& a=assets(localMuted);
+    auto accent=button.findColour(juce::ToggleButton::tickColourId);
+    if (monochrome||localMuted) accent=accent.withSaturation(0.0f);
+    const auto r=button.getLocalBounds().toFloat().reduced(.5f);
+    const auto drawButton=[&](bool lit){drawDrawable(g,lit?a.buttonOn.get():a.buttonOff.get(),r,shouldDrawButtonAsDown?.84f:1.0f);};
+    const auto drawLed=[&](juce::Rectangle<float> lr,bool lit){drawDrawable(g,lit?a.ledOn.get():a.ledOff.get(),lr);};
 
-    const auto drawFace = [&](juce::Rectangle<float> r,
-                              bool lit, juce::Colour activeAccent)
+    if (button.getWidth()<=36 && button.getHeight()<=36)
     {
-        g.setColour(juce::Colours::black.withAlpha(0.52f));
-        g.fillRoundedRectangle(r.translated(0.0f, 2.0f), 4.5f);
-        juce::ColourGradient face(
-            faceTop.brighter(shouldDrawButtonAsHighlighted ? 0.08f : 0.0f),
-            r.getX(), r.getY(),
-            faceBottom, r.getX(), r.getBottom(), false);
-        g.setGradientFill(face);
-        g.fillRoundedRectangle(r, 4.5f);
-        g.setColour((lit ? activeAccent : metalFrame)
-                        .withAlpha(lit ? 0.94f : 0.68f));
-        g.drawRoundedRectangle(r, 4.5f,
-                               shouldDrawButtonAsDown ? 1.7f : 1.25f);
-        g.setColour(juce::Colours::white.withAlpha(0.10f));
-        g.drawLine(r.getX() + 4.0f, r.getY() + 2.0f,
-                   r.getRight() - 4.0f, r.getY() + 2.0f, 0.8f);
-    };
-
-    const auto drawLed = [&](float cx, float cy, float diameter,
-                             bool lit, juce::Colour ledColour)
-    {
-        g.setColour(juce::Colours::black.withAlpha(0.80f));
-        g.fillEllipse(cx - diameter * 0.67f,
-                      cy - diameter * 0.67f,
-                      diameter * 1.34f, diameter * 1.34f);
-        g.setColour(tone(ivoryTheme ? juce::Colour(0xff766047)
-                                    : juce::Colour(0xff68432f)));
-        g.drawEllipse(cx - diameter * 0.58f,
-                      cy - diameter * 0.58f,
-                      diameter * 1.16f, diameter * 1.16f, 1.2f);
-        if (lit)
-        {
-            g.setColour(ledColour.withAlpha(localMuted ? 0.10f : 0.18f));
-            g.fillEllipse(cx - diameter * 0.90f,
-                          cy - diameter * 0.90f,
-                          diameter * 1.80f, diameter * 1.80f);
-        }
-        juce::ColourGradient led(
-            lit ? ledColour.brighter(0.75f)
-                : tone(juce::Colour(0xff5a6062)),
-            cx - diameter * 0.20f, cy - diameter * 0.28f,
-            lit ? ledColour.darker(0.78f)
-                : tone(juce::Colour(0xff171b1d)),
-            cx + diameter * 0.25f, cy + diameter * 0.35f, true);
-        g.setGradientFill(led);
-        g.fillEllipse(cx - diameter * 0.50f,
-                      cy - diameter * 0.50f, diameter, diameter);
-        g.setColour(juce::Colours::white.withAlpha(lit ? 0.55f : 0.14f));
-        g.fillEllipse(cx - diameter * 0.26f,
-                      cy - diameter * 0.30f,
-                      diameter * 0.22f, diameter * 0.16f);
-    };
-
-    if (button.getComponentID() == "MODULE_BYPASS")
-    {
-        const auto r = button.getLocalBounds().toFloat().reduced(1.0f);
-        const bool active = !button.getToggleState();
-        drawFace(r, active, accent);
-        drawLed(r.getX() + 6.2f, r.getCentreY(), 6.6f, active, accent);
-
-        g.setColour(tone(ivoryTheme ? juce::Colour(0xfff3eadc)
-                                    : juce::Colour(0xffedf6f6)));
-        const float moduleFont =
-            button.getWidth() <= 54 ? 7.4f : 7.8f;
-        g.setFont(juce::FontOptions(moduleFont).withStyle("Bold"));
-        g.drawText(button.getButtonText(),
-                   juce::Rectangle<int>((int)r.getX() + 13, (int)r.getY(),
-                                        (int)r.getWidth() - 15,
-                                        (int)r.getHeight()),
-                   juce::Justification::centred);
+        const bool forceOff=static_cast<bool>(button.getProperties().getWithDefault("forceLedOff",false));
+        drawLed(r.reduced(1.f),!button.getToggleState()&&!forceOff);
         return;
     }
-
-    if (button.getComponentID() == "DYN_MODE")
+    if (button.getComponentID()=="MODULE_BYPASS")
     {
-        const auto r = button.getLocalBounds().toFloat().reduced(1.0f);
-        const bool on = button.getToggleState();
-        drawFace(r, on, accent);
-        g.setColour(tone(ivoryTheme ? juce::Colour(0xfff4eadb)
-                                    : juce::Colour(0xffedf6f6)));
-        g.setFont(juce::FontOptions(8.3f).withStyle("Bold"));
-        g.drawText(button.getButtonText(), r.toNearestInt().reduced(3, 1),
-                   juce::Justification::centred);
+        const bool active=!button.getToggleState(); drawButton(active);
+        const float ls=juce::jmin(16.f,r.getHeight()-5.f);
+        drawLed({r.getX()+1.5f,r.getCentreY()-ls*.5f,ls,ls},active);
+        g.setColour(monochrome||localMuted?juce::Colour(0xffeeeeee):(ivoryTheme?juce::Colour(0xffffefd1):juce::Colour(0xffeef7f7)));
+        g.setFont(juce::FontOptions(button.getWidth()<=54?7.2f:7.9f).withStyle("Bold"));
+        g.drawText(button.getButtonText(), juce::Rectangle<int>{(int)r.getX()+14,(int)r.getY(),juce::jmax(8,(int)r.getWidth()-16),(int)r.getHeight()}, juce::Justification::centred);
         return;
     }
-
-    if (button.getComponentID() == "ANALOG_MODE")
+    if (button.getComponentID()=="ANALOG_MODE")
     {
-        auto r = button.getLocalBounds().toFloat().reduced(1.0f);
-        const bool ss = button.getToggleState();
-        drawFace(r, true, accent);
-        const float half = r.getWidth() * 0.5f;
-        g.setColour(ss ? faceBottom : accent.withAlpha(.28f));
-        g.fillRoundedRectangle(r.getX() + 1.5f, r.getY() + 1.5f,
-                               half - 2.0f, r.getHeight() - 3.0f, 3.0f);
-        g.setColour(ss ? accent.withAlpha(.28f) : faceBottom);
-        g.fillRoundedRectangle(r.getX() + half + 0.5f, r.getY() + 1.5f,
-                               half - 2.0f, r.getHeight() - 3.0f, 3.0f);
+        drawButton(true); const bool ss=button.getToggleState(); const auto half=r.getWidth()*.5f;
+        g.setColour(accent.withAlpha(.22f)); g.fillRoundedRectangle(ss?r.getX()+half:r.getX()+2.f,r.getY()+2.f,half-3.f,r.getHeight()-4.f,3.f);
         g.setFont(juce::FontOptions(7.2f).withStyle("Bold"));
-        g.setColour(ss ? tone(juce::Colour(0xffb9bfc2))
-                       : tone(juce::Colour(0xfff7f4ee)));
-        g.drawText("TT", r.withWidth(half).toNearestInt(),
-                   juce::Justification::centred);
-        g.setColour(ss ? tone(juce::Colour(0xfff7f4ee))
-                       : tone(juce::Colour(0xffb9bfc2)));
-        g.drawText("SS",
-                   r.withX(r.getX() + half).withWidth(half).toNearestInt(),
-                   juce::Justification::centred);
+        g.setColour(juce::Colours::white.withAlpha(ss?.58f:.98f)); g.drawText("TT",r.withWidth(half).toNearestInt(),juce::Justification::centred);
+        g.setColour(juce::Colours::white.withAlpha(ss?.98f:.58f)); g.drawText("SS",r.withX(r.getX()+half).withWidth(half).toNearestInt(),juce::Justification::centred);
         return;
     }
-
-    if (button.getComponentID() == "ANALOG_X2")
+    if (button.getComponentID()=="ANALOG_X2")
     {
-        const auto r = button.getLocalBounds().toFloat().reduced(1.0f);
-        const bool on = button.getToggleState();
-        drawFace(r, on, accent);
-        g.setColour(on ? tone(juce::Colour(0xffffffff))
-                       : tone(juce::Colour(0xff92999b)));
-        g.setFont(juce::FontOptions(7.2f).withStyle("Bold"));
-        g.drawText("X2", r.toNearestInt(), juce::Justification::centred);
-        return;
+        const bool on=button.getToggleState(); drawButton(on);
+        g.setColour(juce::Colours::white.withAlpha(on?.98f:.58f)); g.setFont(juce::FontOptions(7.2f).withStyle("Bold"));
+        g.drawText("X2",r.toNearestInt(),juce::Justification::centred); return;
     }
-
-    if (button.getWidth() <= 36 && button.getHeight() <= 36)
-    {
-        const float d = juce::jmax(
-            5.0f,
-            (float)juce::jmin(button.getWidth(), button.getHeight()) - 10.0f);
-        const float cx = button.getLocalBounds().getCentreX();
-        const float cy = button.getLocalBounds().getCentreY();
-        const bool forceLedOff = static_cast<bool>(
-            button.getProperties().getWithDefault("forceLedOff", false));
-        const bool active = !button.getToggleState() && !forceLedOff;
-        drawLed(cx, cy, d, active, accent);
-        return;
-    }
-
-    const auto r = button.getLocalBounds().toFloat().reduced(1.0f);
-    const bool on = button.getToggleState();
-    drawFace(r, on, accent);
-    if (on)
-        drawLed(r.getX() + 9.5f, r.getCentreY(), 7.0f, true, accent);
-
-    g.setColour(tone(ivoryTheme ? juce::Colour(0xfff3eadc)
-                                : juce::Colour(0xffeef6f6)));
-    g.setFont(juce::FontOptions(8.4f).withStyle("Bold"));
-    auto textArea = r.toNearestInt().reduced(4, 1);
-    if (on && textArea.getWidth() > 30)
-    {
-        textArea.setX(textArea.getX() + 10);
-        textArea.setWidth(juce::jmax(8, textArea.getWidth() - 10));
-    }
-    g.drawText(button.getButtonText(),
-               textArea,
-               juce::Justification::centred);
+    const bool on=button.getToggleState(); drawButton(on);
+    if (on&&r.getWidth()>38){const float ls=juce::jmin(14.f,r.getHeight()-6.f);drawLed({r.getX()+2.f,r.getCentreY()-ls*.5f,ls,ls},true);}
+    g.setColour(monochrome||localMuted?juce::Colour(0xffeeeeee):(ivoryTheme?juce::Colour(0xffffefd1):juce::Colour(0xffeef7f7)));
+    g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
+    auto ta=r.toNearestInt().reduced(4,1); if(on&&ta.getWidth()>38){ta.setX(ta.getX()+10);ta.setWidth(juce::jmax(8,ta.getWidth()-10));}
+    g.drawText(button.getButtonText(),ta,juce::Justification::centred);
 }
 
 VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& p)
@@ -1291,15 +1143,7 @@ float VVChainAudioProcessorEditor::dynamicSideGainChangeDb(int band) const
 void VVChainAudioProcessorEditor::drawEqGraph(
     juce::Graphics& g, juce::Rectangle<float> graph)
 {
-    juce::ColourGradient bg(
-        uiColour(ivoryTheme ? juce::Colour(0xff1b1a15)
-                            : juce::Colour(0xff06262c)),
-        graph.getX(), graph.getY(),
-        uiColour(ivoryTheme ? juce::Colour(0xff090a08)
-                            : juce::Colour(0xff071316)),
-        graph.getRight(), graph.getBottom(), false);
-    g.setGradientFill(bg);
-    g.fillRoundedRectangle(graph, 8.f);
+    metalLook.drawGraphSurface(g, graph);
 
     if (analyzerEnabled && !analyzerPath.isEmpty())
     {
@@ -2084,12 +1928,6 @@ void VVChainAudioProcessorEditor::drawCard(
     juce::Graphics& g, juce::Rectangle<float> r, juce::Colour accent,
     const juce::String& title, const juce::String& subtitle)
 {
-    const auto top = uiColour(
-        ivoryTheme ? juce::Colour(0xfff2eadc)
-                   : juce::Colour(0xff303638));
-    const auto bottom = uiColour(
-        ivoryTheme ? juce::Colour(0xffd1c3af)
-                   : juce::Colour(0xff11181b));
     const auto frame = uiColour(
         ivoryTheme ? juce::Colour(0xffa9792d)
                    : juce::Colour(0xff9b593d));
@@ -2098,10 +1936,7 @@ void VVChainAudioProcessorEditor::drawCard(
         ivoryTheme ? .24f : .52f));
     g.fillRoundedRectangle(r.translated(0.f, 3.f), 8.f);
 
-    juce::ColourGradient bg(top, r.getX(), r.getY(),
-                            bottom, r.getRight(), r.getBottom(), false);
-    g.setGradientFill(bg);
-    g.fillRoundedRectangle(r, 8.f);
+    metalLook.drawPanelSurface(g, r);
 
     g.setColour(frame.withAlpha(.90f));
     g.drawRoundedRectangle(r, 8.f, 1.35f);
@@ -2626,6 +2461,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 {
     g.fillAll(uiColour(ivoryTheme ? juce::Colour(0xffded4c4)
                                   : juce::Colour(0xff101719)));
+    metalLook.drawPanelSurface(g, getLocalBounds().toFloat());
 
     juce::ColourGradient top(
         uiColour(ivoryTheme ? juce::Colour(0xfff5efe5)
@@ -2653,7 +2489,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff6a5b49)
                                     : juce::Colour(0xffb8c1c3)));
     g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.64", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.66", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();
