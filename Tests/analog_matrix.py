@@ -29,8 +29,23 @@ def analog_reference(x,amount,solid_state,x2=1.0):
 def run():
     from pathlib import Path
     cpp=Path("Source/DSP/ChainDSP.cpp").read_text(encoding="utf-8");h=Path("Source/DSP/ChainDSP.h").read_text(encoding="utf-8");ah=Path("Source/DSP/VVChain_AnalogADAA_v2.h").read_text(encoding="utf-8")
-    for marker in ('#include "VVChain_AnalogADAA_v2.h"',"const double modeAlpha = solidState ? 1.80 : 1.55;","const double shapingInput = juce::jlimit(-1.0, 1.0, x);","analogADAA[band][ch].processSample","const double delta = saturated - shapingInput","x + delta * static_cast<double>(safeColourMultiplier)","constexpr double kSmoothingMs = 0.25;"):assert marker in cpp,marker
+    for marker in (
+        "void VVChainDSP::applyAnalog",
+        "analogOversampler.processSamplesUp",
+        "analogOversampler.processSamplesDown",
+        "const double modeAlpha =",
+        "p.eqColorSolidState[band] ? 1.80 : 1.55",
+        "const double shapingInput =",
+        "analogADAA[band][(size_t)ch].processSample",
+        "const double delta = saturated - shapingInput",
+        "+ delta * x2Multiplier[band]",
+        "constexpr double kAnalogSmoothingMs = 0.25",
+        "if (!analogRequested && analogPathMix <= 0.0f)",
+    ):assert marker in cpp,marker
+    assert '#include "VVChain_AnalogADAA_v2.h"' in h
     assert "std::array<std::array<VVChain_AnalogADAA_v2, 2>, 4> analogADAA" in h
+    eq_block=cpp[cpp.index("void VVChainDSP::applyEq"):cpp.index("void VVChainDSP::applyAnalog")]
+    assert "processSamplesUp" not in eq_block
     for marker in ("calcAntiderivative","m_hasPrev","std::sqrt(std::sqrt(1.0 + alpha))","(u075 - 1.0)"):assert marker in ah,marker
     rng=np.random.default_rng(20260924);rates=[44100.0,48000.0,88200.0,96000.0];min_tt_ss=np.inf;max_out=0.0
     for case in range(500):
