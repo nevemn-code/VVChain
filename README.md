@@ -4,7 +4,7 @@
 
 v1.0.55 修復既有 Web smoke／UI regression 的過時 source guard，Fast Gate 改為 main push 也執行，並把 Web smoke、project static audit、UI/interaction regression 各重跑十輪。實際通過狀態以本版 GitHub Actions 結果為準；DAW／pluginval／AAX 仍屬獨立驗證。
 
-目前主鏈的實際順序：EQ／Dynamic EQ → 四段 TRANSIENT → 四段 Analog → UDMBC → TAPE COLOR → Mix／Out → Solo → true-peak limiter → 主 Bypass／Delta。TRANSIENT 與 Analog 共用同一組 X1／X2／X3 音訊分頻後直接接續處理，避免再疊一組 audible crossover；UDMBC、TAPE COLOR 與頻段 Solo 沿用相同 crossover 設定。
+目前主鏈的實際順序：EQ／Dynamic EQ → 四段 TRANSIENT → 四段 Analog → UDMBC → TAPE COLOR → Mix／Out → Solo → true-peak limiter → 主 Bypass／Delta。TRANSIENT 使用同一組 X1／X2／X3 頻段設定，但在 host rate 採 parallel-delta 架構：原始 base signal 不經額外 split/recombine，只注入各頻段的增益差值，因此不新增整條 full-band crossover phase rotation；UDMBC、TAPE COLOR 與頻段 Solo 沿用相同 crossover 設定。
 
 Linear EQ / Dynamic EQ 現在固定在 host sample rate；只有實際啟用 Analog ADAA v2 時才進入 4× oversampling（48 kHz → 192 kHz）。Analog 四段全部 0% 或 Bypass 時，整個 upsample → ADAA → downsample 路徑完全跳過，以等延遲純 delay 維持固定 PDC。Windows VST3／DAW 實測仍以 CI artifact 與 host 驗證為準。
 
@@ -56,7 +56,7 @@ https://nevemn-code.github.io/VVChain/
 ### v1.0.60
 - 完整移除 Native / Web 的 De-Esser 參數、DSP state、處理路徑與專用 UI。
 - 四個 BAND 新增 bipolar TRANSIENT（-100%～+100%，0% 為 zero-work bypass）。
-- TRANSIENT 在 Analog 前處理，Native 與 Analog 共用同一組四頻段 split，不新增第二組 audible crossover。
+- TRANSIENT 在 Analog 前以 host-rate parallel-delta 處理；使用相同 X1／X2／X3 頻段定義，但只把 (gain−1)×band 注入 untouched base signal，不讓 TRANSIENT 自己增加整條 full-band crossover phase rotation，也不會單獨喚醒 Analog 4× oversampler。
 - Stereo-linked squared-energy detector；Band 1 偵測路徑加入 70 Hz / 12 dB/oct HPF，audio path 不經此 HPF。
 - Fast/Slow squared envelope 使用單次 log-ratio、rational soft-knee 與極短 gain smoothing；L/R 套用同一控制增益，避免 stereo image wandering。
 - 不恢復任何 module contribution Analyzer；主 4096 Spectrum 與最終 DELTA Analyzer 架構維持不變。
