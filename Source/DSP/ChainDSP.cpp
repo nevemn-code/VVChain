@@ -1535,16 +1535,6 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
     const float xoverQ = crossoverQFromOverlap(p.udmbcXoverOverlap);
 
-    updateCrossover(udmbcXover1, sr, x1, xoverQ);
-    updateCrossover(udmbcXover2, sr, x2, xoverQ);
-    updateCrossover(udmbcXover3, sr, x3, xoverQ);
-
-    // Equalize the number of crossover sections traversed by each branch.
-    // B1: X1 -> add all-pass X2 + X3. B2: X1+X2 -> add all-pass X3.
-    updateCrossover(udmbcPhase2_B1, sr, x2, xoverQ);
-    updateCrossover(udmbcPhase3_B1, sr, x3, xoverQ);
-    updateCrossover(udmbcPhase3_B2, sr, x3, xoverQ);
-
     const float inputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.udmbcInputGainDb));
     const float globalMix =
@@ -1552,11 +1542,54 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
     const float outputGain =
         dbToGain(juce::jlimit(-24.f, 24.f, p.udmbcOutputGainDb));
 
+    std::array<bool, 4> bandActive {};
+    bool anyBandActive = false;
+    for (size_t band = 0; band < 4; ++band)
+    {
+        bandActive[band] =
+            !p.udmbcBandBypass[band]
+            && p.udmbcDegree[band] > 0.0001f;
+        anyBandActive = anyBandActive || bandActive[band];
+    }
+
+    // True neutral UDMBC no longer pays crossover/detector/envelope cost.
+    if (globalMix <= 0.000001f
+        || (!anyBandActive
+            && !p.udmbcClipper
+            && std::abs(p.udmbcInputGainDb) <= 0.000001f
+            && std::abs(p.udmbcOutputGainDb) <= 0.000001f))
+        return;
+
+    const bool xoverChanged =
+        !udmbcXoverCache.valid
+        || udmbcXoverCache.x1 != x1
+        || udmbcXoverCache.x2 != x2
+        || udmbcXoverCache.x3 != x3
+        || udmbcXoverCache.q != xoverQ;
+
+    if (xoverChanged)
+    {
+        updateCrossover(udmbcXover1, sr, x1, xoverQ);
+        updateCrossover(udmbcXover2, sr, x2, xoverQ);
+        updateCrossover(udmbcXover3, sr, x3, xoverQ);
+
+        // Equalize the number of crossover sections traversed by each branch.
+        updateCrossover(udmbcPhase2_B1, sr, x2, xoverQ);
+        updateCrossover(udmbcPhase3_B1, sr, x3, xoverQ);
+        updateCrossover(udmbcPhase3_B2, sr, x3, xoverQ);
+
+        udmbcXoverCache.valid = true;
+        udmbcXoverCache.x1 = x1;
+        udmbcXoverCache.x2 = x2;
+        udmbcXoverCache.x3 = x3;
+        udmbcXoverCache.q = xoverQ;
+    }
+
     float amountSum = 0.0f;
     int amountCount = 0;
     for (int band = 0; band < 4; ++band)
     {
-        if (p.udmbcBandBypass[(size_t) band])
+        if (!bandActive[(size_t) band])
             continue;
         amountSum += juce::jlimit(
             0.0f, 100.0f, p.udmbcDegree[(size_t) band]) / 100.0f;
@@ -1568,6 +1601,77 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
     // Nominal level compensation: 70% Amount -> -1.75dB.
     const float autoTrimDb = -2.5f * averageAmount;
     const float autoTrimGain = dbToGain(autoTrimDb);
+
+    std::array<float, 4> finalAttackMs {};
+    std::array<float, 4> finalReleaseMs {};
+    std::array<float, 4> attackCoef {};
+    std::array<float, 4> releaseCoef {};
+    std::array<float, 4> downRatio {};
+    std::array<float, 4> upRatio {};
+    std::array<float, 4> compMix {};
+    std::array<float, 4> lifterMix {};
+    std::array<float, 4> liftThreshold {};
+    std::array<float, 4> bandGain {};
+
+    for (size_t band = 0; band < 4; ++band)
+    {
+        if (!bandActive[band])
+            continue;
+
+        const float degree =
+            juce::jlimit(0.f, 100.f, p.udmbcDegree[band]);
+        const float depth = degree / 100.f;
+        const float downMaxRatio =
+            band == 3 ? 100.f : kCompressorRatio;
+
+        downRatio[band] =
+            1.f + depth * (downMaxRatio - 1.f);
+        upRatio[band] =
+            1.f + depth * (kLifterRatio - 1.f);
+        compMix[band] =
+            juce::jlimit(0.f, 100.f, p.udmbcCompMix[band]);
+        lifterMix[band] =
+            juce::jlimit(0.f, 100.f, p.udmbcLifterMix[band]);
+
+        const float baseAttackMs =
+            juce::jlimit(0.1f, 120.0f, p.udmbcCompAttack[band]);
+        const float k =
+            juce::jmax(
+                0.0f,
+                (120.0f - baseAttackMs) / 0.49f);
+        const float dynamicAttackMs =
+            baseAttackMs + k * (depth * depth);
+        const float minAttackLimit =
+            band == 0 ? 15.0f : (band == 1 ? 8.0f : 1.0f);
+
+        finalAttackMs[band] =
+            juce::jmax(minAttackLimit, dynamicAttackMs);
+
+        const float baseReleaseMs =
+            juce::jlimit(
+                10.0f, 2500.0f,
+                p.udmbcCompRelease[band]);
+        finalReleaseMs[band] =
+            juce::jmax(
+                20.0f,
+                baseReleaseMs + depth * 100.0f);
+
+        attackCoef[band] =
+            std::exp(
+                -1000.0f
+                / (finalAttackMs[band] * static_cast<float>(sr)));
+        releaseCoef[band] =
+            std::exp(
+                -1000.0f
+                / (finalReleaseMs[band] * static_cast<float>(sr)));
+        liftThreshold[band] =
+            juce::jmax(p.udmbcLifterThreshold[band], -48.f);
+        bandGain[band] =
+            dbToGain(
+                juce::jlimit(
+                    -24.f, 12.f,
+                    p.udmbcBandLevelDb[band]));
+    }
 
     for (int ch = 0; ch < channels; ++ch)
     {
@@ -1596,13 +1700,7 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
 
             for (int band = 0; band < 4; ++band)
             {
-                if (p.udmbcBandBypass[(size_t) band])
-                    continue;
-
-                const float degree =
-                    juce::jlimit(0.f, 100.f, p.udmbcDegree[(size_t) band]);
-
-                if (degree <= 0.0001f)
+                if (!bandActive[(size_t) band])
                     continue;
 
                 auto& state = udmbcDynamics[(size_t) band];
@@ -1610,71 +1708,9 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                 float& lifterEnv = state.lifterEnv[(size_t) ch];
                 float& compEnv = state.compEnvDb[(size_t) ch];
 
-                // The existing GATE control is now independent per frequency band.
                 float v = applyGate(
                     bands[band], gateEnv,
                     p.udmbcGateThresholdDb, sr);
-
-                // Degree=0 means true unity ratio. Degree=100 reaches the
-                // UDMBC-style maximum ratios while preserving the user's
-                // existing per-band controls.
-                const float depth = degree / 100.f;
-
-                // Classic UDMBC-style scaling: upward reaches 4:1.
-                // Downward is intentionally much stronger, matching the
-                // documented Ableton/Xfer family character. The top band
-                // uses the slightly harder target.
-                const float downMaxRatio = band == 3 ? 100.f : kCompressorRatio;
-                const float downRatio =
-                    1.f + depth * (downMaxRatio - 1.f);
-                const float upRatio =
-                    1.f + depth * (kLifterRatio - 1.f);
-
-                const float compMix =
-                    juce::jlimit(0.f, 100.f, p.udmbcCompMix[(size_t) band]);
-                const float lifterMix =
-                    juce::jlimit(0.f, 100.f, p.udmbcLifterMix[(size_t) band]);
-
-                // Standard UDMBC order: downward first, upward second.
-                // The user's Attack is automatically lengthened as UDMBC Amount
-                // (degree) rises, reducing high-depth click / transient tearing.
-                const float amount = depth;
-
-                // The Compressor Attack parameter is the actual user base time.
-                // Defaults are Low=15ms, LowMid=8ms, HighMid=3ms, High=1ms.
-                const float baseAttackMs =
-                    juce::jlimit(0.1f, 120.0f,
-                                 p.udmbcCompAttack[(size_t) band]);
-
-                // Amount^2 curve: Amount=70% maps exactly to 120ms.
-                const float targetLimitMs = 120.0f;
-                const float k =
-                    juce::jmax(0.0f,
-                               (targetLimitMs - baseAttackMs) / 0.49f);
-                const float dynamicAttackMs =
-                    baseAttackMs + k * (amount * amount);
-
-                const float minAttackLimit =
-                    (band == 0) ? 15.0f
-                                : ((band == 1) ? 8.0f : 1.0f);
-
-                const float finalAttackMs =
-                    juce::jmax(minAttackLimit, dynamicAttackMs);
-
-                const float baseReleaseMs =
-                    juce::jlimit(10.0f, 2500.0f,
-                                 p.udmbcCompRelease[(size_t) band]);
-                const float dynamicReleaseMs =
-                    baseReleaseMs + (amount * 100.0f);
-                const float finalReleaseMs =
-                    juce::jmax(20.0f, dynamicReleaseMs);
-
-                const float attackCoef =
-                    std::exp(-1000.0f
-                             / (finalAttackMs * static_cast<float>(sr)));
-                const float releaseCoef =
-                    std::exp(-1000.0f
-                             / (finalReleaseMs * static_cast<float>(sr)));
 
                 // Each stage has its own RMS detector state for this band/channel.
                 float downReleaseMs = p.udmbcCompRelease[(size_t) band];
@@ -1682,21 +1718,21 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     v,
                     state.downRmsPower[(size_t) ch],
                     state.downSlowRmsPower[(size_t) ch],
-                    finalAttackMs,
-                    finalReleaseMs,
+                    finalAttackMs[(size_t) band],
+                    finalReleaseMs[(size_t) band],
                     sr,
                     downReleaseMs,
-                    attackCoef,
-                    releaseCoef);
+                    attackCoef[(size_t) band],
+                    releaseCoef[(size_t) band]);
 
                 v = applyCompressorFromDetectorDb(
                     v, downDb, compEnv,
                     p.udmbcCompThreshold[(size_t) band],
-                    finalAttackMs,
-                    finalReleaseMs,
-                    compMix, sr, downRatio,
-                    attackCoef,
-                    releaseCoef);
+                    finalAttackMs[(size_t) band],
+                    finalReleaseMs[(size_t) band],
+                    compMix[(size_t) band], sr, downRatio[(size_t) band],
+                    attackCoef[(size_t) band],
+                    releaseCoef[(size_t) band]);
 
                 float upReleaseMs = p.udmbcLifterRelease[(size_t) band];
                 const float upDb = rmsDetectPDR(
@@ -1708,19 +1744,14 @@ void VVChainDSP::applyOtt(juce::AudioBuffer<float>& buffer, const Parameters& p)
                     sr,
                     upReleaseMs);
 
-                const float liftThreshold =
-                    juce::jmax(p.udmbcLifterThreshold[(size_t) band], -48.f);
-
                 v = applyLifterFromDetectorDb(
                     v, upDb, lifterEnv,
-                    liftThreshold,
+                    liftThreshold[(size_t) band],
                     p.udmbcLifterAttack[(size_t) band],
                     upReleaseMs,
-                    lifterMix, sr, upRatio);
+                    lifterMix[(size_t) band], sr, upRatio[(size_t) band]);
 
-                v *= dbToGain(
-                    juce::jlimit(-24.f, 12.f,
-                        p.udmbcBandLevelDb[(size_t) band]));
+                v *= bandGain[(size_t) band];
 
                 bands[band] = v;
             }
