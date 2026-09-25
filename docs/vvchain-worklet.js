@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.59
+// VVChain Web AudioWorklet DSP module · v1.0.60
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -6,7 +6,6 @@ class VVChainWorklet extends AudioWorkletProcessor {
     this.N=512;
     this.masterBlend=0;
     this.soloBlend=0;
-    this.deessLinkedGain=0;
     this._lastSoloBand=-9;
     this._lastSoloPost=false;
     this._meterBlocks=0;
@@ -15,6 +14,10 @@ class VVChainWorklet extends AudioWorkletProcessor {
     this.analogAlpha=[0,0,0,0];
     this.analogAlphaInitialized=[false,false,false,false];
     this.analogMode=[false,false,false,false];
+    this.transientFast=[0,0,0,0];
+    this.transientSlow=[0,0,0,0];
+    this.transientGain=[1,1,1,1];
+    this.transientInit=[false,false,false,false];
     this.pendingRevision=0;
     this.activeRevision=0;
     this._errorReported=false;
@@ -51,7 +54,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       bandProcessingHp:{z1:0,z2:0},
       analogLp:[0,0,0], lp:[0,0,0], typeLp:[0,0,0], gate:0, gateBand:[0,0,0,0], lim:0,
       lift:[1,1,1,1], comp:[0,0,0,0], typeFast:[0,0,0,0], typeSlow:[0,0,0,0], typeDc:[0,0,0,0],
-      deLp:{z1:0,z2:0}, deLp2:{z1:0,z2:0}, deHp:{z1:0,z2:0}, deHp2:{z1:0,z2:0}, deBroad:0, deHfFast:0, deHfSlow:0, deGain:0, soloPre:[0,0,0], soloPost:[0,0,0], graphSoloPre:{z1:0,z2:0}, graphSoloPost:{z1:0,z2:0},
+      transientLp:[0,0,0], transientHp:{z1:0,z2:0}, soloPre:[0,0,0], soloPost:[0,0,0], graphSoloPre:{z1:0,z2:0}, graphSoloPost:{z1:0,z2:0},
       contribAnalogPre:0,contribAnalogPost:0,contribUdmbcPre:0,contribUdmbcPost:0,contribTypePre:0,contribTypePost:0
     };
   }
@@ -337,96 +340,6 @@ class VVChainWorklet extends AudioWorkletProcessor {
       ? x+(saturated-u)*this.clamp(x2,1,2)
       : x;
   }
-  deessStereo(l,r,stereo,coef){
-    const st=this.s.de;
-    if(st.bypass){
-      this.deessLinkedGain=0;
-      this.ch[0].deGain=0; this.ch[1].deGain=0;
-      return[l,r];
-    }
-
-    const modes=[
-      {attack:2.5,release:120,knee:2.0},
-      {attack:1.5,release:70,knee:1.75},
-      {attack:.9,release:45,knee:1.5},
-      {attack:.6,release:30,knee:1.25}
-    ];
-    const mode=Math.max(0,Math.min(3,Math.round(Number(st.mode||2))-1));
-    const preset=modes[mode];
-    const maxReduction=8;
-    const thresholdDb=this.clamp(
-      Number(st.threshold??-6)+Number(st.offset||0),
-      -36,0
-    );
-    const broadAttack=this.tc(12), broadRelease=this.tc(180);
-    const hfFastAttack=this.tc(preset.attack), hfFastRelease=this.tc(preset.release);
-    const hfSlowAttack=this.tc(8), hfSlowRelease=this.tc(Math.max(60,preset.release*1.5));
-    const gainAttack=this.tc(preset.attack), gainRelease=this.tc(preset.release);
-    const gainReleaseSlow=this.tc(Math.max(60,preset.release*1.8));
-    const detectorFloor=this.db2g(-60);
-
-    const count=stereo?2:1;
-    const inputs=stereo?[l,r]:[l];
-    const hf=[0,0], broad=[0,0], low=[0,0], high=[0,0];
-
-    for(let ch=0;ch<count;ch++){
-      const x=inputs[ch]||0, state=this.ch[ch];
-      const lp1=this.biquad(x,coef.lp,state.deLp);
-      low[ch]=this.biquad(lp1,coef.lp,state.deLp2);
-      const hp1=this.biquad(x,coef.hp,state.deHp);
-      high[ch]=this.biquad(hp1,coef.hp,state.deHp2);
-
-      const absInput=Math.abs(x), absHigh=Math.abs(high[ch]);
-      const bc=absInput>state.deBroad?broadAttack:broadRelease;
-      state.deBroad=bc*state.deBroad+(1-bc)*absInput;
-      const fc=absHigh>state.deHfFast?hfFastAttack:hfFastRelease;
-      state.deHfFast=fc*state.deHfFast+(1-fc)*absHigh;
-      const sc=absHigh>state.deHfSlow?hfSlowAttack:hfSlowRelease;
-      state.deHfSlow=sc*state.deHfSlow+(1-sc)*absHigh;
-
-      hf[ch]=.72*state.deHfFast+.28*state.deHfSlow;
-      broad[ch]=state.deBroad;
-    }
-
-    let hfPower=0,broadPower=0;
-    for(let ch=0;ch<count;ch++){
-      hfPower+=hf[ch]*hf[ch];
-      broadPower+=broad[ch]*broad[ch];
-    }
-    hfPower/=count; broadPower/=count;
-
-    let targetGR=0;
-    const floorPower=detectorFloor*detectorFloor;
-    if(broadPower>floorPower&&hfPower>1e-10){
-      const relativeHf=Math.sqrt(hfPower/Math.max(broadPower,1e-12));
-      const relativeHfDb=this.g2db(relativeHf);
-      const kneeWidthDb=Math.max(.25,preset.knee);
-      const kneeT=this.clamp(
-        (relativeHfDb-thresholdDb)/kneeWidthDb,
-        0,1
-      );
-      const trigger=kneeT*kneeT*(3-2*kneeT);
-      targetGR=-maxReduction*trigger;
-    }
-
-    const depth=this.clamp(Math.abs(this.deessLinkedGain)/Math.max(maxReduction,1e-6),0,1);
-    const releaseCoeff=gainRelease+(gainReleaseSlow-gainRelease)*depth;
-    const gainCoeff=targetGR<this.deessLinkedGain?gainAttack:releaseCoeff;
-    this.deessLinkedGain=gainCoeff*this.deessLinkedGain+(1-gainCoeff)*targetGR;
-    this.deessLinkedGain=this.clamp(this.deessLinkedGain,-maxReduction,0);
-
-    this.ch[0].deGain=this.deessLinkedGain;
-    this.ch[1].deGain=this.deessLinkedGain;
-
-    if(this.deessLinkedGain>-0.001)
-      return[l,r];
-
-    const g=this.db2g(this.deessLinkedGain);
-    const yL=low[0]+high[0]*g;
-    if(!stereo)return[yL,r];
-    const yR=low[1]+high[1]*g;
-    return[yL,yR];
-  }
   zoneBands(x,c,which,xs){
     const lp=c[which];
     const a1=1-Math.exp(-2*Math.PI*this.clamp(xs[0],40,1000)/sampleRate);
@@ -437,7 +350,65 @@ class VVChainWorklet extends AudioWorkletProcessor {
     lp[2]+=a3*(h1-lp[2]); const h2=h1-lp[2];
     return [lp[0],lp[1],lp[2],h2];
   }
-  sample(x,ch,analogAlpha,bandProcessingHpCoef){
+  transientGains(l,r,stereo,xs){
+    const amounts=Array.isArray(this.s.transient)?this.s.transient:[0,0,0,0];
+    let any=false;
+    for(let b=0;b<4;b++){
+      const active=Math.abs(Number(amounts[b]||0))>1e-6;
+      any=any||active;
+      if(!active){
+        this.transientFast[b]=0;
+        this.transientSlow[b]=0;
+        this.transientGain[b]=1;
+        this.transientInit[b]=false;
+      }
+    }
+    if(!any)return [1,1,1,1];
+
+    const detL=this.zoneBands(l,this.ch[0],"transientLp",xs);
+    const detR=stereo?this.zoneBands(r,this.ch[1],"transientLp",xs):detL;
+    const hp70=this.hp(70,.7071067811865476);
+    const fastMs=[2.5,1.5,.8,.35],slowMs=[30,22,15,9];
+    const smooth=this.tc(.15);
+    const result=[1,1,1,1];
+
+    for(let b=0;b<4;b++){
+      const amount=this.clamp(Number(amounts[b]||0)/100,-1,1);
+      if(Math.abs(amount)<=1e-6)continue;
+
+      let dl=detL[b],dr=detR[b];
+      if(b===0){
+        dl=this.biquad(dl,hp70,this.ch[0].transientHp);
+        dr=stereo?this.biquad(dr,hp70,this.ch[1].transientHp):dl;
+      }
+
+      const energy=stereo?.5*(dl*dl+dr*dr):dl*dl;
+      const eps=1e-12;
+      if(!this.transientInit[b]){
+        const seed=Math.max(energy,eps);
+        this.transientFast[b]=seed;
+        this.transientSlow[b]=seed;
+        this.transientGain[b]=1;
+        this.transientInit[b]=true;
+      }else{
+        const fc=this.tc(fastMs[b]),sc=this.tc(slowMs[b]);
+        this.transientFast[b]=fc*this.transientFast[b]+(1-fc)*energy;
+        this.transientSlow[b]=sc*this.transientSlow[b]+(1-sc)*energy;
+      }
+
+      const ratio=(this.transientFast[b]+eps)/(this.transientSlow[b]+eps);
+      const transientDb=(10/Math.LN10)*Math.log(Math.max(ratio,eps));
+      const maxDb=12;
+      const scaled=transientDb*amount/maxDb;
+      const clipped=scaled/(1+Math.abs(scaled));
+      const target=this.db2g(clipped*maxDb);
+      this.transientGain[b]=smooth*this.transientGain[b]+(1-smooth)*target;
+      result[b]=this.transientGain[b];
+    }
+    return result;
+  }
+
+  sample(x,ch,analogAlpha,bandProcessingHpCoef,transientGain){
     const s=this.s,c=this.ch[ch];let y=x;
     // Static + Dynamic EQ are both applied once in dynamicStereo() so the
     // selected filter type never gets duplicated here.
@@ -453,7 +424,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     const analogBands=this.zoneBands(y,c,"analogLp",s.udmbc.x);
     let analogReconstructed=0;
     for(let b=0;b<4;b++){
-      const bandInput=analogBands[b];
+      const bandInput=analogBands[b]*(transientGain?.[b]??1);
       if(s.eq.globalBypass||s.eq.colorBypass[b]||analogAlpha[b]<=1e-6){
         analogReconstructed+=bandInput;
       }else{
@@ -570,11 +541,6 @@ class VVChainWorklet extends AudioWorkletProcessor {
       this.port.postMessage({type:"ready"});
     }
     const L=inp[0],R=inp[1]||inp[0],stereo=inp.length>1;
-    const deFreq=this.clamp(Number(this.s.de.freq||7500),6000,18000);
-    const deCoef={
-      lp:this.lp(deFreq,.70710678118),
-      hp:this.hp(deFreq,.70710678118)
-    };
     const mix=this.clamp((this.s.mix.bypass?100:this.s.mix.drywet)/100,0,1),og=this.db2g(this.clamp(this.s.mix.output,-24,12));
     const soloBand=Number(this.s.solo?.band??-1),graphSolo=!!this.s.solo?.graphActive,soloEnabled=graphSolo||(soloBand>=0&&soloBand<4),xs=this.s.udmbc.x;
     const analogSmoothingCoeff=Math.exp(-1/(0.001*0.25*sampleRate));
@@ -612,17 +578,12 @@ class VVChainWorklet extends AudioWorkletProcessor {
       }
       const l=L[n]||0,r=R[n]||0;
       const dyn=this.dynamicStereo(l,r,stereo);
-      const moduleL=this.sample(dyn[0],0,analogAlpha,bandProcessingHpCoef);
-      const moduleR=this.sample(dyn[1],1,analogAlpha,bandProcessingHpCoef);
+      const transientGain=this.transientGains(dyn[0],dyn[1],stereo,xs);
+      const moduleL=this.sample(dyn[0],0,analogAlpha,bandProcessingHpCoef,transientGain);
+      const moduleR=this.sample(dyn[1],1,analogAlpha,bandProcessingHpCoef,transientGain);
 
-      const deOut=this.deessStereo(
-        moduleL,
-        moduleR,
-        stereo,
-        deCoef
-      );
-      let yL=deOut[0];
-      let yR=deOut[1];
+      let yL=moduleL;
+      let yR=moduleR;
       yL=(l+mix*(yL-l))*og;yR=(r+mix*(yR-r))*og;
       if(this.s.solo && Number(this.s.solo.band)!==this._lastSoloBand){this.soloBlend=0;this._lastSoloBand=Number(this.s.solo.band)}
       if(this.s.solo && !!this.s.solo.post!==this._lastSoloPost){this.soloBlend=0;this._lastSoloPost=!!this.s.solo.post}
