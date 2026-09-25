@@ -47,12 +47,7 @@ jobs:
           )
           for f in "${files[@]}"; do
             test -s "$f"
-            python - "$f" <<'PY'
-import sys
-p=sys.argv[1]
-with open(p,'rb') as fh:
-    assert fh.read(8)==b'\x89PNG\r\n\x1a\n', p
-PY
+            python -c 'import sys; p=sys.argv[1]; fh=open(p,"rb"); assert fh.read(8)==b"\x89PNG\r\n\x1a\n", p' "$f"
           done
 
       - name: Commit rendered PNGs
