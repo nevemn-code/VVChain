@@ -575,7 +575,6 @@ private:
     void setIvoryTheme(bool ivory);
     void setAnalyzerEnabled(bool enabled);
     void updateAnalyzer();
-    void updateContributionAnalyzer();
 
     Knob* findKnob(const juce::String& id);
     void placeKnob(const juce::String& id, juce::Rectangle<int> area);
@@ -682,21 +681,6 @@ private:
     std::array<float, analyzerDisplayPoints> analyzerDb {};
     int analyzerInputCount = 0;
     juce::Path analyzerPath;
-
-    static constexpr int contributionFftOrder = 11;
-    static constexpr int contributionFftSize = 1 << contributionFftOrder;
-    static constexpr int contributionDisplayPoints = analyzerDisplayPoints;
-    juce::dsp::FFT contributionFft { contributionFftOrder };
-    juce::dsp::WindowingFunction<float> contributionWindow {
-        contributionFftSize, juce::dsp::WindowingFunction<float>::hann, false
-    };
-    std::array<std::array<float, contributionFftSize>, 6> contributionInput {};
-    std::array<float, contributionFftSize * 2> contributionPreFft {};
-    std::array<float, contributionFftSize * 2> contributionPostFft {};
-    std::array<float, contributionFftSize * 2> contributionDeltaFft {};
-    std::array<std::array<float, contributionDisplayPoints>, 3> contributionGrowthDb {};
-    int contributionInputCount = 0;
-    int contributionFrameCounter = 0;
     std::array<std::unique_ptr<juce::ToggleButton>, 4> tapeBandBypassButtons;
     std::array<std::unique_ptr<BoolAttachment>, 4> udmbcBandBypassAttachments;
     std::array<std::unique_ptr<BoolAttachment>, 4> analogModeAttachments;
