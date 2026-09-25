@@ -274,7 +274,7 @@ document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnalyze
 setAnalyzerEnabled(true);
 // Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.60
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.59"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.60"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
