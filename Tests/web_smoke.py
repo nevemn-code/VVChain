@@ -101,24 +101,15 @@ for token in [
     "state.delta&&!directFallback&&!workletFaulted&&workletNode",
     "workletNode.connect(analyserNode)",
     "state.masterBypass||state.delta",
-    "!state.masterBypass&&!state.delta&&growth>.02",
 ]:
     assert token in text, token
-assert "if(this.analysisEnabled&&!this.s.masterBypass&&!this.s.delta)" in worklet
-
-# Analyzer / module contribution smoke.
+# Main Spectrum remains; module contribution analyzer is removed.
 for token in [
     "analyserNode.fftSize=4096",
     "analyserNode.smoothingTimeConstant=0",
-    "ContributionFFT",
-    "processContributionSamples",
-    "contributionCurves",
-    '["#f4a63a","#4fc3ff","#d97cff"]',
-    'type:"analysisEnabled"',
-    'type:"contributionSamples"',
-    "postP<=preP*1.005",
 ]:
-    assert token in text or token in worklet, token
+    assert token in text, token
+assert 'type:"contributionSamples"' not in worklet
 
 assert "void VVChainAudioProcessorEditor::mouseDoubleClick" in source
 assert 'resetParameter("EQ" + n + "_GAIN", 0.0f)' in source
