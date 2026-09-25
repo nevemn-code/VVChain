@@ -1790,13 +1790,11 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
         x2 + 200.f, static_cast<float>(sr * 0.42), p.udmbcX3);
     const float crossoverQ = crossoverQFromOverlap(p.udmbcXoverOverlap);
 
-    updateCrossover(typeXover1, sr, x1, crossoverQ);
-    updateCrossover(typeXover2, sr, x2, crossoverQ);
-    updateCrossover(typeXover3, sr, x3, crossoverQ);
-
     std::array<float, 4> driveParam {};
     std::array<float, 4> staticMakeupMultiplier {};
     std::array<float, 4> bandTrim {};
+    std::array<float, 4> depth {};
+    std::array<bool, 4> bandActive {};
     constexpr float kTypeAMaxDegree[4] = { 50.f, 60.f, 70.f, 90.f };
     // Keep legacy parameter ranges for preset/automation compatibility.
     // Full travel in every band now maps to the old 50-degree reference
@@ -1810,9 +1808,12 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
             juce::jlimit(0.f, kTypeAMaxDegree[band], p.tapeDegree[band]);
         const float controlNorm =
             limitedDegree / juce::jmax(1.0f, kTypeAMaxDegree[band]);
-        const float depth =
+        depth[band] =
             juce::jlimit(0.f, 0.5f, controlNorm * 0.5f);
-        const float rawDriveParam = 1.0f + 1.5f * depth;
+        bandActive[band] =
+            !p.tapeBandBypass[band] && depth[band] > 0.0f;
+
+        const float rawDriveParam = 1.0f + 1.5f * depth[band];
         driveParam[band] = juce::jmax(1.0f, rawDriveParam);
 
         float makeupDenominator = std::tanh(driveParam[band]);
@@ -1822,6 +1823,42 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
 
         bandTrim[band] = dbToGain(juce::jlimit(
             -6.f, 6.f, p.tapeBandLevelDb[band]));
+    }
+
+    const bool anyBandActive =
+        bandActive[0] || bandActive[1]
+        || bandActive[2] || bandActive[3];
+
+    if (!anyBandActive)
+    {
+        // No nonlinear Type-A work: preserve only the documented input/output
+        // gain behavior and skip every crossover/tanh calculation.
+        const float transparentGain = inputGain * outputGain;
+        if (std::abs(transparentGain - 1.0f) <= 0.000001f)
+            return;
+
+        buffer.applyGain(transparentGain);
+        return;
+    }
+
+    const bool xoverChanged =
+        !typeXoverCache.valid
+        || typeXoverCache.x1 != x1
+        || typeXoverCache.x2 != x2
+        || typeXoverCache.x3 != x3
+        || typeXoverCache.q != crossoverQ;
+
+    if (xoverChanged)
+    {
+        updateCrossover(typeXover1, sr, x1, crossoverQ);
+        updateCrossover(typeXover2, sr, x2, crossoverQ);
+        updateCrossover(typeXover3, sr, x3, crossoverQ);
+
+        typeXoverCache.valid = true;
+        typeXoverCache.x1 = x1;
+        typeXoverCache.x2 = x2;
+        typeXoverCache.x3 = x3;
+        typeXoverCache.q = crossoverQ;
     }
 
     for (int ch = 0; ch < channels; ++ch)
@@ -1857,16 +1894,7 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
 
             for (size_t band = 0; band < 4; ++band)
             {
-                if (p.tapeBandBypass[band])
-                    continue;
-
-                const float limitedDegree =
-                    juce::jlimit(0.f, kTypeAMaxDegree[band], p.tapeDegree[band]);
-                const float controlNorm =
-                    limitedDegree / juce::jmax(1.0f, kTypeAMaxDegree[band]);
-                const float depth =
-                    juce::jlimit(0.f, 0.5f, controlNorm * 0.5f);
-                if (depth <= 0.f)
+                if (!bandActive[band])
                     continue;
 
                 // Requested core:
@@ -1877,7 +1905,7 @@ void VVChainDSP::applyAType(juce::AudioBuffer<float>& buffer, const Parameters& 
                     * staticMakeupMultiplier[band];
                 const float processed = driven * bandTrim[band];
 
-                enhancement += (processed - bands[band]) * depth;
+                enhancement += (processed - bands[band]) * depth[band];
             }
 
             data[n] =
