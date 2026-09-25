@@ -115,17 +115,6 @@ public:
 
     int getLatencySamples() const noexcept { return totalLatencySamples; }
 
-    // UI-only analyzer taps. These never feed the audio path.
-    void setContributionAnalysisEnabled(bool enabled) noexcept
-    {
-        contributionAnalysisEnabled = enabled;
-    }
-
-    const juce::AudioBuffer<float>& contributionStream(int index) const noexcept
-    {
-        return contributionStreams[(size_t)juce::jlimit(0, 5, index)];
-    }
-
 private:
 
     struct Biquad
@@ -316,6 +305,25 @@ private:
         }
     };
 
+    struct EqStaticCache
+    {
+        bool valid = false;
+        double frequency = 0.0;
+        float gain = 0.0f;
+        double q = 0.0;
+        int type = -1;
+        int slope = -1;
+    };
+
+    struct XoverCache
+    {
+        bool valid = false;
+        float x1 = 0.0f;
+        float x2 = 0.0f;
+        float x3 = 0.0f;
+        float q = 0.0f;
+    };
+
     struct BandDynamics
     {
         // Independent state for each UDMBC band / channel.
@@ -392,14 +400,12 @@ private:
     void processDeEsser(juce::AudioBuffer<float>& buffer, const Parameters& p);
 
     void applyEq(juce::AudioBuffer<float>&, const Parameters&);
+    void applyAnalog(juce::AudioBuffer<float>&, const Parameters&);
     void applyOtt(juce::AudioBuffer<float>&, const Parameters&);
     void applyAType(juce::AudioBuffer<float>&, const Parameters&);
 
     void processMasterLimiter(juce::AudioBuffer<float>& buffer, bool active);
     void alignDryBuffer(int numSamples);
-    void captureContributionMono(int stream,
-                                 const juce::AudioBuffer<float>& source,
-                                 int numSamples) noexcept;
 
     std::array<Biquad, 4> eq {};
     std::array<EqFilter, 4> dynMidEq {};
@@ -431,7 +437,9 @@ private:
     std::array<float, 4> dynSideActivation { 0.f, 0.f, 0.f, 0.f };
 
     // Feed-forward detector source shared by all four Dynamic EQ bands.
+    // Base-rate only: linear EQ / Dynamic EQ never enter Analog oversampling.
     juce::AudioBuffer<float> dynamicDetectorInput;
+    std::array<EqStaticCache, 4> staticEqCache {};
 
     // One nonlinear ADAA state per Analog band/channel.
     std::array<std::array<VVChain_AnalogADAA_v2, 2>, 4> analogADAA {};
@@ -449,9 +457,11 @@ private:
     Crossover4th analogXover1 {};
     Crossover4th analogXover2 {};
     Crossover4th analogXover3 {};
+    XoverCache analogXoverCache {};
     Crossover4th udmbcXover1 {};
     Crossover4th udmbcXover2 {};
     Crossover4th udmbcXover3 {};
+    XoverCache udmbcXoverCache {};
 
     // Phase-alignment dummy crossovers for the unequal-depth UDMBC branches:
     // Band 1 skips X2/X3; Band 2 skips X3.
@@ -468,6 +478,7 @@ private:
     Crossover4th typeXover1 {};
     Crossover4th typeXover2 {};
     Crossover4th typeXover3 {};
+    XoverCache typeXoverCache {};
     std::array<std::array<float, 2>, 4> typeFastEnv {};
     std::array<std::array<float, 2>, 4> typeSlowEnv {};
     std::array<std::array<float, 2>, 4> typeDc {};
@@ -475,41 +486,27 @@ private:
     std::array<DeEssState, 2> deess {};
     Crossover4th deessSplit {};
     float deessLinkedGainDb = 0.f;
-    juce::dsp::Oversampling<float> eqOversampler
+    juce::dsp::Oversampling<float> analogOversampler
     {
         2, 2,
         juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple,
         true, true
     };
 
-    // Analyzer-only companion downsampler. It is active only while the editor
-    // Analyzer is visible and Analog contribution is non-zero. It never feeds
-    // the audible signal; it converts the exact oversampled pre-Analog tap back
-    // to base rate so Post-Pre truly represents the Analog module delta.
-    juce::dsp::Oversampling<float> contributionEqDownsampler
-    {
-        2, 2,
-        juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple,
-        true, true
-    };
     juce::dsp::Oversampling<float> limiterOversampler
     {
         2, 2,
         juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR,
         true, true
     };
-    juce::dsp::DelayLine<float> eqDryDelay { 4096 };
+    juce::dsp::DelayLine<float> analogDryDelay { 4096 };
+    juce::dsp::DelayLine<float> analogBypassDelay { 4096 };
     juce::dsp::DelayLine<float> limiterLookahead { 8192 };
     juce::dsp::DelayLine<float> masterDryDelay { 8192 };
     juce::AudioBuffer<float> dryBuffer;
     juce::AudioBuffer<float> alignedDryBuffer;
-
-    // Six mono base-rate streams:
-    // 0/1 ANALOG pre/post, 2/3 UDMBC pre/post, 4/5 TYPE-A pre/post.
-    std::array<juce::AudioBuffer<float>, 6> contributionStreams;
-    juce::AudioBuffer<float> contributionPreAnalogBase;
-    bool contributionAnalysisEnabled = false;
-    bool contributionPreAnalogReady = false;
+    juce::AudioBuffer<float> analogBypassBuffer;
+    float analogPathMix = 0.0f;
 
     Crossover4th soloPreXover1 {}, soloPreXover2 {}, soloPreXover3 {};
     Crossover4th soloPostXover1 {}, soloPostXover2 {}, soloPostXover3 {};
@@ -524,7 +521,7 @@ private:
 
     float limiterGain = 1.f;
     float masterBypassBlend = 0.f;
-    int eqLatencySamples = 0;
+    int analogLatencySamples = 0;
     int limiterOversamplingLatencySamples = 0;
     int limiterLookaheadSamples = 0;
     int totalLatencySamples = 0;
