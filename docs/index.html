@@ -444,7 +444,7 @@ function makeKnob(parent,cfg){
   const d=document.createElement("div");d.className="dial";
   const t=document.createElement("div");t.className="knobTitle";t.textContent=label;
   const v=document.createElement("div");v.className="knobValue";
-  const discreteMode=cfg.controlId==="DEESS_MODE";
+  const discreteMode=false;
   if(discreteMode){
     d.classList.add("legacyModeDialRemoved");
     ["I","II","III","IV"].forEach((labelText,index)=>{
