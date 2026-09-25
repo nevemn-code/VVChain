@@ -367,7 +367,12 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
         const auto accent = monochrome
             ? button.findColour(juce::ToggleButton::tickColourId).withSaturation(0.0f)
             : button.findColour(juce::ToggleButton::tickColourId);
-        const bool active = !button.getToggleState();
+        const bool forceLedOff =
+            static_cast<bool>(
+                button.getProperties().getWithDefault(
+                    "forceLedOff", false));
+        const bool active =
+            !button.getToggleState() && !forceLedOff;
 
         g.setColour(juce::Colours::black.withAlpha(.8f));
         g.fillEllipse(cx - d * .5f - 3.f, cy - d * .5f - 3.f, d + 6.f, d + 6.f);
@@ -2506,6 +2511,39 @@ void VVChainAudioProcessorEditor::timerCallback()
         if (analogX2Buttons[(size_t)b])
             analogX2Buttons[(size_t)b]->setAlpha(
                 analogMuted ? 0.42f : 1.0f);
+
+        const auto setLedForceOff =
+            [](juce::ToggleButton* button, bool forceOff)
+            {
+                if (button == nullptr)
+                    return;
+
+                button->getProperties().set(
+                    "forceLedOff", forceOff);
+                button->repaint();
+            };
+
+        // LED indicates actual processing amount, not merely "not bypassed".
+        // At the untouched default of 0 the knob stays fully visible but the
+        // LED remains dark. Moving above 0 lights it; returning to 0 turns it
+        // dark again.
+        setLedForceOff(
+            udmbcBandBypassButtons[(size_t)b].get(),
+            parameterValue("UDMBC_DEGREE" + n) <= 0.0001f);
+        setLedForceOff(
+            analogBypassButtons[(size_t)b].get(),
+            parameterValue("EQ_COLOR" + n) <= 0.0001f);
+        setLedForceOff(
+            tapeBandBypassButtons[(size_t)b].get(),
+            parameterValue("TAPE_DEGREE" + n) <= 0.0001f);
+    }
+
+    if (deessLocalBypassButton)
+    {
+        deessLocalBypassButton->getProperties().set(
+            "forceLedOff",
+            parameterValue("DEESS_THRESHOLD") >= -0.0001f);
+        deessLocalBypassButton->repaint();
     }
 
     const bool deessMuted =
