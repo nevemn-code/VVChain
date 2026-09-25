@@ -68,31 +68,41 @@ processor_h = read("Source/PluginProcessor.h")
 processor = read("Source/PluginProcessor.cpp")
 settings = read("Source/SettingsPanel.cpp")
 
-# v1.0.55 analyzer / contribution invariants.
+# v1.0.59 analyzer / CPU invariants.
 assert "analyzerFftOrder = 12" in editor_h
 assert "analyzerHopSize = analyzerFftSize / 2" in editor_h
-assert "contributionFftOrder = 11" in editor_h
 assert "std::atomic<bool> analyzerEnabled { false }" in processor_h
-assert "popContributionSamples" in processor_h + processor
-assert "setContributionAnalysisEnabled" in dsp_h + processor
-assert "contributionStream" in dsp_h + processor
-assert "ANALOG / UDMBC / TYPE-A" in settings
-assert "ADDED DELTA" in settings
-assert "0xfff4a63a" in editor
-assert "0xff4fc3ff" in editor
-assert "0xffd97cff" in editor
-assert "postPower <= prePower * 1.005" in editor
-assert "postDb < -82.0f" in editor
-assert "totalGrowth > 12.0f" in editor
 assert "analyzerPath.cubicTo" in editor
 assert "visibilitychange" in web
-assert 'type:"contributionSamples"' in read("docs/vvchain-worklet.js")
-assert "ContributionFFT" in web
 assert "const bool deltaMonitorOn" in processor
 assert "if (!deltaMonitorOn)" in processor
 assert "if (analyzerOn && p.deltaMonitor)" in processor
-assert "analyzerOn && !p.masterBypass && !p.deltaMonitor" in processor
-assert 'parameterValue("DELTA_MONITOR") > 0.5f' in editor
 assert "refreshAnalyzerTap" in web
+
+# Module contribution analysis is physically absent, not merely hidden.
+for dead in (
+    "contributionFftOrder",
+    "popContributionSamples",
+    "setContributionAnalysisEnabled",
+    "contributionStream",
+    "captureContributionMono",
+    "ContributionFFT",
+    'type:"contributionSamples"',
+):
+    assert dead not in editor_h + editor + processor_h + processor + dsp_h + dsp + web + read("docs/vvchain-worklet.js"), dead
+
+# Linear EQ/Dynamic EQ must stay at host rate; only Analog owns the 4x path.
+eq_block = dsp[dsp.index("void VVChainDSP::applyEq"):dsp.index("void VVChainDSP::applyAnalog")]
+analog_block = dsp[dsp.index("void VVChainDSP::applyAnalog"):dsp.index("void VVChainDSP::applyOtt")]
+assert "processSamplesUp" not in eq_block
+assert "const double osSr = sr;" in eq_block
+assert "analogOversampler.processSamplesUp" in analog_block
+assert "analogOversampler.processSamplesDown" in analog_block
+assert "if (!analogRequested && analogPathMix <= 0.0f)" in analog_block
+assert "analogBypassDelay" in dsp_h + dsp
+assert "staticEqCache" in dsp_h + dsp
+assert "udmbcXoverCache" in dsp_h + dsp
+assert "typeXoverCache" in dsp_h + dsp
+assert "if (!bandActive[(size_t) band])" in dsp
 
 print(f"PASS project static audit v{version.group(1)}")
