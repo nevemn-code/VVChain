@@ -237,7 +237,9 @@ def test_eq_xy_drag_math():
     assert 'GAIN / FREQ / Q' in cpp
     assert 'function graphHintBandHtml' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
-    assert 'GAIN' in hint_block and 'FREQ' in hint_block and 'Q' in hint_block
+    assert 'data-kind="gain"' in hint_block
+    assert 'data-kind="freq"' in hint_block
+    assert '"Q "+fmt(state.eq.q[b],3)' in hint_block
 
 
 def test_dynamic_target_preserves_eq_as_center():
