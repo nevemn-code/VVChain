@@ -94,31 +94,33 @@ assert cmake_version.group(1) == shown_version.group(1) == cache_version.group(1
 assert not (ROOT / "docs" / "legacy analog-copper.html").exists(), "obsolete legacy analog page must remain deleted"
 
 # DELTA analyzer: original/input reference is disconnected and the final
-# Worklet output becomes the only main analyzer source. Contribution overlays
-# are suppressed in DELTA mode.
+# Worklet output becomes the only main analyzer source.
 for token in [
     "function refreshAnalyzerTap()",
     "state.delta&&!directFallback&&!workletFaulted&&workletNode",
     "workletNode.connect(analyserNode)",
-    "state.masterBypass||state.delta",
-    "!state.masterBypass&&!state.delta&&growth>.02",
+    "source.connect(analyserNode)",
 ]:
     assert token in text, token
-assert "if(this.analysisEnabled&&!this.s.masterBypass&&!this.s.delta)" in worklet
 
-# Analyzer / module contribution smoke.
+# Main analyzer stays; module contribution analyzer/transport is physically gone.
 for token in [
     "analyserNode.fftSize=4096",
     "analyserNode.smoothingTimeConstant=0",
+    'document.addEventListener("visibilitychange"',
+    "disconnectAnalyzerTap()",
+]:
+    assert token in text, token
+
+for dead in [
     "ContributionFFT",
     "processContributionSamples",
     "contributionCurves",
-    '["#f4a63a","#4fc3ff","#d97cff"]',
     'type:"analysisEnabled"',
     'type:"contributionSamples"',
     "postP<=preP*1.005",
 ]:
-    assert token in text or token in worklet, token
+    assert dead not in text + worklet, dead
 
 assert "void VVChainAudioProcessorEditor::mouseDoubleClick" in source
 assert 'resetParameter("EQ" + n + "_GAIN", 0.0f)' in source
@@ -139,4 +141,4 @@ for forbidden in [
 ]:
     assert forbidden not in text, f"legacy/forbidden remains: {forbidden}"
 
-print(f"PASS Web smoke: v{cmake_version.group(1)} parity + smooth main analyzer + 3 module contribution overlays")
+print(f"PASS Web smoke: v{cmake_version.group(1)} parity + smooth main analyzer + zero module-contribution compute")
