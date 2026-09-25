@@ -214,7 +214,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
         drawLed({r.getX()+1.5f,r.getCentreY()-ls*.5f,ls,ls},active);
         g.setColour(monochrome||localMuted?juce::Colour(0xffeeeeee):(ivoryTheme?juce::Colour(0xffffefd1):juce::Colour(0xffeef7f7)));
         g.setFont(juce::FontOptions(button.getWidth()<=54?7.2f:7.9f).withStyle("Bold"));
-        g.drawText(button.getButtonText(),{(int)r.getX()+14,(int)r.getY(),juce::jmax(8,(int)r.getWidth()-16),(int)r.getHeight()},juce::Justification::centred);
+        g.drawText(button.getButtonText(), juce::Rectangle<int>{(int)r.getX()+14,(int)r.getY(),juce::jmax(8,(int)r.getWidth()-16),(int)r.getHeight()}, juce::Justification::centred);
         return;
     }
     if (button.getComponentID()=="ANALOG_MODE")
@@ -2489,7 +2489,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff6a5b49)
                                     : juce::Colour(0xffb8c1c3)));
     g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.65", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.66", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();
