@@ -1,10 +1,10 @@
 # VVChain
 
-## 目前實際狀態（v1.0.59）
+## 目前實際狀態（v1.0.60）
 
 v1.0.55 修復既有 Web smoke／UI regression 的過時 source guard，Fast Gate 改為 main push 也執行，並把 Web smoke、project static audit、UI/interaction regression 各重跑十輪。實際通過狀態以本版 GitHub Actions 結果為準；DAW／pluginval／AAX 仍屬獨立驗證。
 
-目前主鏈的實際順序：EQ／Dynamic EQ + 四段 Analog → UDMBC → TAPE COLOR → De-Esser → Mix／Out → Solo → true-peak limiter → 主 Bypass／Delta。X1／X2／X3 共用於 Analog、UDMBC、TAPE COLOR 和頻段 Solo；EQ 四個點各有自己的頻率。LF／HF Roll-Off 供 6–72 dB/oct 的離散選項，預設 12 dB/oct。
+目前主鏈的實際順序：EQ／Dynamic EQ → 四段 TRANSIENT → 四段 Analog → UDMBC → TAPE COLOR → Mix／Out → Solo → true-peak limiter → 主 Bypass／Delta。TRANSIENT 與 Analog 共用同一組 X1／X2／X3 音訊分頻後直接接續處理，避免再疊一組 audible crossover；UDMBC、TAPE COLOR 與頻段 Solo 沿用相同 crossover 設定。
 
 Linear EQ / Dynamic EQ 現在固定在 host sample rate；只有實際啟用 Analog ADAA v2 時才進入 4× oversampling（48 kHz → 192 kHz）。Analog 四段全部 0% 或 Bypass 時，整個 upsample → ADAA → downsample 路徑完全跳過，以等延遲純 delay 維持固定 PDC。Windows VST3／DAW 實測仍以 CI artifact 與 host 驗證為準。
 
@@ -12,10 +12,11 @@ Linear EQ / Dynamic EQ 現在固定在 host sample rate；只有實際啟用 Ana
 
 ## Signal Flow
 INPUT
-→ 4-Band Parametric EQ + per-band Analog Color
+→ 4-Band Parametric EQ / Dynamic EQ
+→ 4-Band TRANSIENT
+→ 4-Band Analog Color
 → 4-Band UDMBC
 → 4-Band TAPE COLOR
-→ Two-Edge Split-Band De-Esser
 → MIX
 → OUT
 → OUTPUT
@@ -24,17 +25,14 @@ INPUT
 - 上方顯示 EQ response、Shared X-Over 與即時 Spectrum Analyzer。
 - 主 Spectrum 使用 4096-point Hann FFT。ANALOG / UDMBC / TYPE-A 的 contribution Analyzer、六條 pre/post stream 與其 2048 FFT 已全部移除。
 - 3 條可拖曳 Shared X-Over 線，分成 4 個頻段；線上滾輪調整 OVERLAP。
-- BAND 1–4：FREQ / GAIN / Q / ANALOG COLOR / UDMBC % / ATTACK / RELEASE / TAPE COLOR +。
+- BAND 1–4：FREQ / GAIN / Q / ANALOG COLOR / UDMBC % / ATTACK / RELEASE / TAPE COLOR + / TRANSIENT。
 - 每個頻段的 ANALOG COLOR 完全獨立；使用者範圍 0–60%，0% = exact dry；X2 只把目前 ANALOG delta 放大為 ×2。
 - ANALOG COLOR 上方有 TT / SS 撥桿：TT = Tube Saturation；SS = Solid-State Saturation。
 - 各 BAND 的 UDMBC / TAPE COLOR BYPASS 小燈固定位於對應旋鈕右上方；亮 = 啟用，暗 = BYPASS。
-- DE-ESSER 框內四顆旋鈕垂直排列：DE-ESS FREQ / MAXIMUM REDUCTION / MIX / OUT。
-- MAXIMUM REDUCTION 範圍 0–8 dB，預設 0 dB；DE-ESSER 預設不改變聲音。
 - Master BYPASS 位於右上角，為全鏈旁通；啟用時 UI 灰階化。
 - +ADV 開啟後，點視窗外即可關閉。
 
 ## DSP
-- Native De-Esser 為 sample-domain split-band 處理；本身不再使用舊 8192-sample FFT/block PDC。
 - HP / CORNER 不參與聲音計算。
 - ANALOG COLOR 使用 unity-normalized smooth algebraic transfer + analytical first-order ADAA：0% exact dry；TT/SS 純奇對稱；只有 Analog nonlinear stage 固定 4× oversampling；ADAA state 逐 band/channel 隔離；shaping domain 限制 -1..+1；|x|=1 維持 unity；X2 仍只放大該段產生的 ANALOG delta ×2。
 - Master BYPASS 保持固定 PDC，完全旁通時輸出延遲乾聲。
@@ -43,9 +41,7 @@ INPUT
 ## Web Preview
 - LOAD AUDIO：選取音檔後解碼，再 PLAY / STOP / RESET。
 - Master BYPASS 會切至原始輸入並將整個介面灰階化。
-- DE-ESSER 強度為 0 dB 時直接 bypass；大於 0 dB 時啟用 sample-domain split-band reduction。
 - Worklet 發生處理錯誤時，狀態列顯示 DSP ERROR。
-- DE-ESSER 的 MIX / OUT 與 Native UI 同樣放在 DE-ESSER 框內。
 
 Online preview:
 https://nevemn-code.github.io/VVChain/
@@ -56,6 +52,15 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
+
+### v1.0.60
+- 完整移除 Native / Web 的 De-Esser 參數、DSP state、處理路徑與專用 UI。
+- 四個 BAND 新增 bipolar TRANSIENT（-100%～+100%，0% 為 zero-work bypass）。
+- TRANSIENT 在 Analog 前處理，Native 與 Analog 共用同一組四頻段 split，不新增第二組 audible crossover。
+- Stereo-linked squared-energy detector；Band 1 偵測路徑加入 70 Hz / 12 dB/oct HPF，audio path 不經此 HPF。
+- Fast/Slow squared envelope 使用單次 log-ratio、rational soft-knee 與極短 gain smoothing；L/R 套用同一控制增益，避免 stereo image wandering。
+- 不恢復任何 module contribution Analyzer；主 4096 Spectrum 與最終 DELTA Analyzer 架構維持不變。
+
 
 ### v1.0.59
 - 修正 VVChain Fast CI/CD #1255 的 UI / interaction regression：測試仍引用舊的 `resetDynamics` 變數，但目前實作已是 `resetParameter("DYN_DYNAMICS" + n, 0.0f)`。
