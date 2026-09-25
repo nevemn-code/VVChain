@@ -67,6 +67,10 @@ required_html = [
     "state.dyn.dynamics[dynamicBand]=0",
     "dynDetectBlend",
     "moduleMuteRefreshers",
+    'id="uiThemeQuick"',
+    "UI STUDIO",
+    "UI IVORY",
+    "vvchain-v1064-dual-hardware-skins",
 ]
 for token in required_html:
     assert token in text, token

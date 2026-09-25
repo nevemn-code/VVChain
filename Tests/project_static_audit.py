@@ -93,6 +93,12 @@ assert "const bool deltaMonitorOn" in processor
 assert "if (!deltaMonitorOn)" in processor
 assert "if (analyzerOn && p.deltaMonitor)" in processor
 assert 'parameterValue("DELTA_MONITOR") > 0.5f' in editor
+assert "uiThemeButton" in editor_h + editor
+assert '"moduleMuted"' in editor
+assert "UI IVORY" in editor and "UI STUDIO" in editor
+assert 'id="uiThemeQuick"' in web
+assert "vvchain-v1064-dual-hardware-skins" in web
+assert ".globalBypass{filter:grayscale(1) saturate(0)!important}" in web
 assert "refreshAnalyzerTap" in web
 
 # TRANSIENT is base-rate, precedes Analog, uses a stereo-linked detector,

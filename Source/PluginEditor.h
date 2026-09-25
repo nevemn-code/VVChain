@@ -655,6 +655,7 @@ private:
     std::unique_ptr<juce::ToggleButton> soloModeButton;
     std::unique_ptr<SettingsDismissOverlay> settingsDismissOverlay;
     std::unique_ptr<SettingsGearButton> settingsButton;
+    std::unique_ptr<juce::TextButton> uiThemeButton;
     std::unique_ptr<SettingsPanel> settingsPanel;
     bool settingsPanelVisible = false;
     bool ivoryTheme = false;
