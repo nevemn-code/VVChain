@@ -1002,6 +1002,34 @@ function drawEQ(){
     eqCtx.stroke();
   }
 
+  // Gain axis: the full usable range is exactly -18 .. +18 dB.
+  // Every 3 dB is shown and the dB labels stay on the LEFT.
+  const dbTicks=[18,15,12,9,6,3,0,-3,-6,-9,-12,-15,-18];
+  dbTicks.forEach(db=>{
+    const y=dbToY(db,h);
+    eqCtx.beginPath();
+    eqCtx.moveTo(0,y);eqCtx.lineTo(w,y);
+    eqCtx.strokeStyle=db===0?"#facc1566":tc("#4b556044","#817a7044");
+    eqCtx.lineWidth=db===0?1.2:1;
+    eqCtx.stroke();
+  });
+
+  // Dense logarithmic frequency references for precise visual positioning.
+  const freqTicks=[
+    [20,"20"],[30,"30"],[40,"40"],[50,"50"],[70,"70"],[100,"100"],
+    [150,"150"],[200,"200"],[300,"300"],[500,"500"],[700,"700"],
+    [1000,"1k"],[2000,"2k"],[3000,"3k"],[5000,"5k"],[7000,"7k"],
+    [10000,"10k"],[15000,"15k"],[20000,"20k"]
+  ];
+  freqTicks.forEach(([hzv])=>{
+    const x=logX(hzv,w);
+    eqCtx.beginPath();
+    eqCtx.moveTo(x,0);eqCtx.lineTo(x,h);
+    eqCtx.strokeStyle=tc("#4b556044","#817a7044");
+    eqCtx.lineWidth=1;
+    eqCtx.stroke();
+  });
+
   eqCtx.fillStyle=tc("#b8bec6","#4f5358");
   eqCtx.font="bold 7px Consolas";
   eqCtx.textAlign="left";
