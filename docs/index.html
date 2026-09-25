@@ -86,7 +86,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.56</div></div><div class="sub"></div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.57</div></div><div class="sub"></div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · ANALOG COLOR · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -128,7 +128,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
       <div class="settingsRow" aria-disabled="true"><span>CPU / latency display</span><span>RESERVED</span></div>
     </section>
     <section class="settingsSection"><div class="settingsSectionTitle">SYSTEM / ABOUT</div>
-      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.56</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.57</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Build number / commit</span><span>GitHub build metadata</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset UI Settings</span><span>DISABLED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset All Settings</span><span>DISABLED</span></div>
@@ -231,15 +231,29 @@ function ensureWebAnalyser(){
     analyserSink.connect(audioCtx.destination);
   }
 }
+function refreshAnalyzerTap(){
+  if(!analyserNode)return;
+  if(source){try{source.disconnect(analyserNode)}catch{}}
+  if(workletNode){try{workletNode.disconnect(analyserNode)}catch{}}
+  if(!analyzerEnabled||!source||!audioCtx)return;
+
+  // Normal mode keeps the original/pre-DSP spectrum as the gray reference.
+  // DELTA mode must show only what is actually being heard: the final
+  // Worklet output after OUTPUT-dry subtraction. No original trace remains.
+  if(state.delta&&!directFallback&&!workletFaulted&&workletNode){
+    try{workletNode.connect(analyserNode)}catch{}
+  }else{
+    try{source.connect(analyserNode)}catch{}
+  }
+}
 function connectAnalyzerTap(){
   if(!source||!audioCtx||!analyzerEnabled)return;
   ensureWebAnalyser();
-  try{source.connect(analyserNode)}catch{}
+  refreshAnalyzerTap();
 }
 function disconnectAnalyzerTap(){
-  if(source&&analyserNode){
-    try{source.disconnect(analyserNode)}catch{}
-  }
+  if(source&&analyserNode){try{source.disconnect(analyserNode)}catch{}}
+  if(workletNode&&analyserNode){try{workletNode.disconnect(analyserNode)}catch{}}
 }
 function startAnalyzerLoop(){
   if(analyzerInterval||!analyzerEnabled)return;
@@ -268,7 +282,7 @@ function startAnalyzerLoop(){
   },42);
 }
 function processContributionSamples(buffer,frames){
-  if(!analyzerEnabled||state.masterBypass||!buffer||frames<2048)return;
+  if(!analyzerEnabled||state.masterBypass||state.delta||!buffer||frames<2048)return;
   const data=new Float32Array(buffer),start=frames-2048,sr=audioCtx?.sampleRate||48000,binHz=(sr*.5)/1024;
   const moduleActive=[
     !state.eq.globalBypass&&state.eq.color.some((v,b)=>!state.eq.colorBypass[b]&&Number(v)>1e-4),
@@ -312,9 +326,9 @@ function setAnalyzerEnabled(enabled){
 analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
 document.addEventListener("visibilitychange",()=>{workletNode?.port?.postMessage({type:"analysisEnabled",enabled:analyzerEnabled&&!document.hidden});if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
 setAnalyzerEnabled(true);
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.56
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.57
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.56"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.57"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -390,6 +404,7 @@ async function ensureAudioGraph(){
     };
     workletNode.connect(audioCtx.destination);
     workletNode.port.postMessage({type:"analysisEnabled",enabled:analyzerEnabled&&!document.hidden});
+    refreshAnalyzerTap();
     sendParams();
   }
 }
@@ -825,7 +840,15 @@ bg.appendChild(monitor);
 const deessPower=monitor.querySelector(".deessPower"),deltaBtn=monitor.querySelector(".deltaBtn"),monitorKnobs=monitor.querySelector(".monitorKnobRow");
 const syncMonitor=()=>{deessPower.classList.toggle("on",!!state.masterBypass);deltaBtn.classList.toggle("on",!!state.delta)};
 deessPower.onclick=()=>{state.masterBypass=!state.masterBypass;syncMaster();syncMonitor()};
-deltaBtn.onclick=()=>{state.delta=!state.delta;syncMonitor();sendParams()};
+deltaBtn.onclick=()=>{
+  state.delta=!state.delta;
+  if(state.delta)contributionCurves.forEach(c=>c.fill(0));
+  analyzerCurve.fill(-90);
+  refreshAnalyzerTap();
+  syncMonitor();
+  sendParams();
+  drawEQ();
+};
 makeKnob(monitorKnobs,{label:"MIX",controlId:"DRY_WET",get:()=>state.mix.drywet,set:v=>state.mix.drywet=v,min:0,max:100,suffix:" %",accent:"#38bdf8",formatDigits:0});
 makeKnob(monitorKnobs,{label:"OUT",controlId:"OUTPUT_LEVEL",get:()=>state.mix.output,set:v=>state.mix.output=v,min:-24,max:12,suffix:" dB",accent:"#9ed85c",formatDigits:1});
 syncMonitor();
@@ -1045,7 +1068,7 @@ function drawEQ(){
         top[p]={x:points[p].x,y:clamp(baseY-growth*pxPerDb,0,h)};
         base[p]={x:points[p].x,y:baseY};
         cumulative[p]+=contributionCurves[module][p];
-        visible=visible||(!state.masterBypass&&growth>.02);
+        visible=visible||(!state.masterBypass&&!state.delta&&growth>.02);
       }
       if(!visible)continue;
       eqCtx.beginPath();eqCtx.moveTo(top[0].x,top[0].y);

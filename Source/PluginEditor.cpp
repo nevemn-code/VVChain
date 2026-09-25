@@ -2823,7 +2823,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(ivoryTheme ? juce::Colour(0xff6c675f) : juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.56", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.57", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -3224,7 +3224,8 @@ void VVChainAudioProcessorEditor::updateContributionAnalyzer()
     if (!analyzerEnabled || !isShowing())
         return;
 
-    if (isMasterBypassed())
+    if (isMasterBypassed()
+        || parameterValue("DELTA_MONITOR") > 0.5f)
     {
         contributionInputCount = 0;
         contributionFrameCounter = 0;

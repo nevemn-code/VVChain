@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.56
+// VVChain Web AudioWorklet DSP module · v1.0.57
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -626,7 +626,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const moduleL=this.sample(dyn[0],0,analogAlpha,bandProcessingHpCoef);
       const moduleR=this.sample(dyn[1],1,analogAlpha,bandProcessingHpCoef);
 
-      if(this.analysisEnabled&&!this.s.masterBypass){
+      if(this.analysisEnabled&&!this.s.masterBypass&&!this.s.delta){
         const lc=this.ch[0],rc=this.ch[1],base=this.contribPos*6;
         this.contribData[base+0]=(lc.contribAnalogPre+rc.contribAnalogPre)*.5;
         this.contribData[base+1]=(lc.contribAnalogPost+rc.contribAnalogPost)*.5;

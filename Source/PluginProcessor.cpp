@@ -206,8 +206,16 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     juce::ScopedNoDenormals noDenormals;
     juce::ignoreUnused(midi);
 
-    if (analyzerEnabled.load(std::memory_order_relaxed))
+    const bool analyzerOn =
+        analyzerEnabled.load(std::memory_order_relaxed);
+    const bool deltaMonitorOn =
+        apvts.getRawParameterValue("DELTA_MONITOR")->load() > 0.5f;
+
+    const auto pushMainAnalyzer = [&]()
     {
+        if (!analyzerOn)
+            return;
+
         const int numSamples = buffer.getNumSamples();
         const int numChannels = juce::jmax(1, buffer.getNumChannels());
         const auto regions = analyzerFifo.write(numSamples);
@@ -228,7 +236,13 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
         writeRegion(regions.startIndex1, regions.blockSize1);
         writeRegion(regions.startIndex2, regions.blockSize2);
-    }
+    };
+
+    // Normal analyzer = original/pre-DSP spectrum. DELTA mode deliberately
+    // suppresses that original trace; it is captured from the final audible
+    // Delta output after dsp.process() instead.
+    if (!deltaMonitorOn)
+        pushMainAnalyzer();
 
     VVChainDSP::Parameters p;
 
@@ -327,20 +341,20 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     p.deessThresholdDb = value("DEESS_THRESHOLD");
     p.deessMode = value("DEESS_MODE");
     p.deessAverageOffset = value("DEESS_OFFSET");
-    p.deltaMonitor = value("DELTA_MONITOR") > 0.5f;
+    p.deltaMonitor = deltaMonitorOn;
 
     p.dryWet = value("DRY_WET");
     p.outputDb = value("OUTPUT_LEVEL");
 
-    const bool analyzerOn =
-        analyzerEnabled.load(std::memory_order_relaxed);
-
     dsp.setContributionAnalysisEnabled(
-        analyzerOn && !p.masterBypass);
+        analyzerOn && !p.masterBypass && !p.deltaMonitor);
 
     dsp.process(buffer, p);
 
-    if (analyzerOn && !p.masterBypass)
+    if (analyzerOn && p.deltaMonitor)
+        pushMainAnalyzer();
+
+    if (analyzerOn && !p.masterBypass && !p.deltaMonitor)
     {
         const int numSamples = juce::jmin(
             buffer.getNumSamples(),

@@ -32,6 +32,16 @@ def main() -> None:
     assert "ContributionFFT" in web
     assert 'type:"contributionSamples"' in worklet
 
+    processor = (ROOT / "Source" / "PluginProcessor.cpp").read_text(encoding="utf-8")
+    assert "const bool deltaMonitorOn" in processor
+    assert "if (!deltaMonitorOn)" in processor
+    assert "if (analyzerOn && p.deltaMonitor)" in processor
+    assert "analyzerOn && !p.masterBypass && !p.deltaMonitor" in processor
+    assert "function refreshAnalyzerTap()" in web
+    assert "state.delta&&!directFallback&&!workletFaulted&&workletNode" in web
+    assert "state.masterBypass||state.delta" in web
+    assert "if(this.analysisEnabled&&!this.s.masterBypass&&!this.s.delta)" in worklet
+
     # Distinct module identity colors must remain independent of band colors.
     for token in ("0xfff4a63a", "0xff4fc3ff", "0xffd97cff"):
         assert token in editor
@@ -62,7 +72,7 @@ def main() -> None:
     assert growth_db(1.0e-10, 1.1e-10, 1.0e-10, -90.0) == 0.0
     assert growth_db(1.0, 2.0, 1.0e12, 0.0) == 8.0
 
-    print("PASS analyzer matrix: 100 power cases + Native/Web contribution invariants")
+    print("PASS analyzer matrix: 100 power cases + Native/Web contribution + DELTA analyzer invariants")
 
 if __name__ == "__main__":
     main()

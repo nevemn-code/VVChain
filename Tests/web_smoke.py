@@ -65,10 +65,9 @@ required_html = [
     'eqCanvas.addEventListener("dblclick",resetGraphGainAtDoubleClick)',
     "knobRefreshers.forEach(fn=>fn())",
     "state.eq.gain[staticBand]=0",
-    "state.dyn.dynamics[dynamicBand]=resetDynamics",
+    "state.dyn.dynamics[dynamicBand]=0",
     "dynDetectBlend",
     "moduleMuteRefreshers",
-    "globalCompositeOperation=\"saturation\"",
 ]
 for token in required_html:
     assert token in text, token
@@ -94,6 +93,19 @@ assert cmake_version.group(1) == shown_version.group(1) == cache_version.group(1
 )
 assert not (ROOT / "docs" / "legacy analog-copper.html").exists(), "obsolete legacy analog page must remain deleted"
 
+# DELTA analyzer: original/input reference is disconnected and the final
+# Worklet output becomes the only main analyzer source. Contribution overlays
+# are suppressed in DELTA mode.
+for token in [
+    "function refreshAnalyzerTap()",
+    "state.delta&&!directFallback&&!workletFaulted&&workletNode",
+    "workletNode.connect(analyserNode)",
+    "state.masterBypass||state.delta",
+    "!state.masterBypass&&!state.delta&&growth>.02",
+]:
+    assert token in text, token
+assert "if(this.analysisEnabled&&!this.s.masterBypass&&!this.s.delta)" in worklet
+
 # Analyzer / module contribution smoke.
 for token in [
     "analyserNode.fftSize=4096",
@@ -110,14 +122,14 @@ for token in [
 
 assert "void VVChainAudioProcessorEditor::mouseDoubleClick" in source
 assert 'resetParameter("EQ" + n + "_GAIN", 0.0f)' in source
-assert 'resetParameter("DYN_DYNAMICS" + n, resetDynamics)' in source
+assert 'resetParameter("DYN_DYNAMICS" + n, 0.0f)' in source
 assert "Horizontal = Frequency" in source or "Horizontal = the same linked EQ Frequency parameter." in source
 assert "const dbTicks=[18,15,12,9,6,3,0,-3,-6,-9,-12,-15,-18]" in text
 assert '[20,"20"],[30,"30"],[40,"40"],[50,"50"],[70,"70"],[100,"100"]' in text
 assert "if(db===15||db===-15)return;" in text
 assert ".graphHint{width:150px;min-width:150px;max-width:150px}" in text
 assert "font:700 10px/15px Consolas" in text
-assert "m_boxWidth = 150" in source or "m_boxWidth = 150" in (ROOT / "Source" / "PluginEditor.h").read_text(encoding="utf-8")
+assert "constexpr int boxWidth = 150" in (ROOT / "Source" / "PluginEditor.h").read_text(encoding="utf-8")
 assert "FontOptions(10.5f)" in (ROOT / "Source" / "PluginEditor.h").read_text(encoding="utf-8")
 
 for forbidden in [

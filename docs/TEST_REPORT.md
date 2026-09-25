@@ -1,4 +1,4 @@
-# VVChain Validation Status（v1.0.56；歷史基準仍保留於下文）
+# VVChain Validation Status（v1.0.57；歷史基準仍保留於下文）
 
 This document records what the repository actually verifies. It is not a claim of DAW certification.
 
@@ -87,3 +87,10 @@ DAW、pluginval、實際 CPU profiler、AAX 簽署與跨 sample-rate host 實測
 v1.0.55 Pages deployment passed. Fast Gate reached the Web smoke step but stopped on a pre-existing Python syntax defect in the forbidden-files loop (`for` keyword missing), so later x10 gates were correctly skipped rather than falsely reported as passing. v1.0.56 repairs that test syntax and removes a stale project-audit assertion that checked only the literal text `X1/X2/X3` in the rules document rather than the real DSP crossover invariants.
 
 The main analyzer/contribution calculation and color rules are unchanged from v1.0.55. v1.0.56 also clears contribution layers during Master BYPASS and bounds contribution FIFO copies to the preallocated analyzer-stream size, preventing stale overlays and analysis-buffer overrun in an oversized host block.
+
+
+## #1254 result and v1.0.57 follow-up
+
+VVChain Fast CI/CD #1254 completed with overall failure because the Fast Gate stopped in `JavaScript / Web smoke x10` on an outdated source assertion. The Windows VST3 Release job itself passed, and the corresponding Pages deployment passed. v1.0.57 updates the stale smoke/static/UI guards and adds explicit Native/Web regression contracts for DELTA Analyzer source switching.
+
+The DELTA change is visualization routing only: the audio Delta formula remains `processed output - latency-aligned dry`; v1.0.57 only changes which signal the Spectrum Analyzer observes while DELTA is active.

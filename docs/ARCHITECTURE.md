@@ -1,4 +1,4 @@
-# VVChain Architecture（v1.0.56）
+# VVChain Architecture（v1.0.57）
 
 > 以下以目前程式實際執行為準；本次封閉測試的失敗和限制見 `TEST_REPORT.md`。
 
@@ -135,3 +135,12 @@ Analyzer collection is disabled when the Analyzer is OFF or the Native editor is
 ## Analyzer safety refinements (v1.0.56)
 
 Master BYPASS suppresses and clears module contribution layers so stale pre-bypass Delta data is never left on screen. Contribution FIFO copies are bounded by the preallocated analyzer stream size; analyzer metering may drop excess analysis samples from an abnormal oversized host block, but it must never enlarge or alter the audible processing buffer.
+
+
+## DELTA analyzer source switching (v1.0.57)
+
+Normal Analyzer mode remains a pre-DSP/original spectrum reference plus the three module contribution overlays. When `DELTA_MONITOR` is ON, the main Analyzer source changes to the actual final Delta monitor signal after the normal output path has already performed `processed - latency-aligned dry`. The original input spectrum is not drawn in this mode.
+
+Module contribution overlays are disabled and cleared while DELTA is active, because the audible Delta spectrum already represents the total difference signal and stacking per-module added-energy overlays on top would mix two incompatible display meanings.
+
+Native performs this switch by writing the Analyzer FIFO before DSP only when DELTA is OFF, and after `dsp.process()` only when DELTA is ON. Web switches the AnalyserNode connection from `source` to the AudioWorklet output. Turning DELTA OFF reconnects the original analyzer reference automatically.

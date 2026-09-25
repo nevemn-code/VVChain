@@ -1,6 +1,6 @@
 # VVChain
 
-## 目前實際狀態（v1.0.56）
+## 目前實際狀態（v1.0.57）
 
 v1.0.55 修復既有 Web smoke／UI regression 的過時 source guard，Fast Gate 改為 main push 也執行，並把 Web smoke、project static audit、UI/interaction regression 各重跑十輪。實際通過狀態以本版 GitHub Actions 結果為準；DAW／pluginval／AAX 仍屬獨立驗證。
 
@@ -56,6 +56,13 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
+
+### v1.0.57
+- DELTA 開啟時，Spectrum Analyzer 不再保留原始輸入波形：Native 改抓 `dsp.process()` 完成後的實際 Delta 輸出；Web 改把 Analyzer tap 從 source 切到 AudioWorklet 最終輸出。
+- DELTA 模式只顯示目前耳朵實際聽到的 `OUTPUT − aligned DRY` 頻譜；ANALOG / UDMBC / TYPE-A contribution layers 暫停並清空，避免又疊回原音參考。
+- DELTA 關閉後自動回到原本模式：灰色主 Spectrum = 原始／pre-DSP reference，三色 contribution layer 顯示各模組增加的頻譜內容。
+- 修正 #1254 Fast Gate 抓到的過時 Web smoke 斷言，並更新 project static audit 與 UI regression 為目前 source contracts。
+- 版本同步 Native / Web / Worklet / CMake / Windows VST3 artifact 至 v1.0.57。
 
 ### v1.0.56
 - 修正 v1.0.55 Fast Gate 在 Web smoke 的既有 Python 語法錯誤：遺漏的 `for forbidden in [...]` 已補回。

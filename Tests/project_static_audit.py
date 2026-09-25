@@ -84,9 +84,15 @@ assert "0xffd97cff" in editor
 assert "postPower <= prePower * 1.005" in editor
 assert "postDb < -82.0f" in editor
 assert "totalGrowth > 12.0f" in editor
-assert "Monotone cubic" in editor
+assert "analyzerPath.cubicTo" in editor
 assert "visibilitychange" in web
 assert 'type:"contributionSamples"' in read("docs/vvchain-worklet.js")
 assert "ContributionFFT" in web
+assert "const bool deltaMonitorOn" in processor
+assert "if (!deltaMonitorOn)" in processor
+assert "if (analyzerOn && p.deltaMonitor)" in processor
+assert "analyzerOn && !p.masterBypass && !p.deltaMonitor" in processor
+assert 'parameterValue("DELTA_MONITOR") > 0.5f' in editor
+assert "refreshAnalyzerTap" in web
 
 print(f"PASS project static audit v{version.group(1)}")

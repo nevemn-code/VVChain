@@ -1,4 +1,4 @@
-# VVChain Test Plan（v1.0.56）
+# VVChain Test Plan（v1.0.57）
 
 v1.0.55 已修正先前已知的 Web smoke Python 引號錯誤與 UI regression 過時固定版本／註解 guard。Fast Gate 現在在 PR、main push、手動執行三種情況都會跑；實際通過與否仍以本版 Actions 為準。
 
@@ -111,3 +111,13 @@ Still required when preparing a distributable release:
 - Analyzer OFF / editor closed must remove contribution FFT/FIFO work while leaving DSP output, latency and parameters unchanged.
 - Visual growth is capped at 8 dB per module and 12 dB combined.
 - Fast Gate runs Web smoke x10, whole-project static audit x10 and UI/interaction regression x10 on the main push.
+
+
+## DELTA analyzer regression (v1.0.57)
+
+- DELTA OFF: main Analyzer uses original/pre-DSP reference.
+- DELTA ON: main Analyzer uses only the final audible Delta output.
+- DELTA ON must not retain or redraw the original input spectrum.
+- ANALOG / UDMBC / TYPE-A contribution layers are cleared/suppressed while DELTA is ON.
+- DELTA OFF restores the normal original-reference + three contribution-layer view.
+- Analyzer routing changes must not alter DSP samples, APVTS values, PDC or host automation.
