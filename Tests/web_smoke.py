@@ -91,7 +91,7 @@ for token in [
 ]:
     assert token in worklet, token
 
-for forbidden in ["DEESS_", "deessStereo", "state.de", "DE-ESSER"]:
+for forbidden in ["DEESS_", "deessStereo", "state.de.", "de:{", "DE-ESSER"]:
     assert forbidden not in text + worklet + source, forbidden
 
 cmake_version = re.search(r"project\(VVChain VERSION (\d+\.\d+\.\d+)", cmake)
