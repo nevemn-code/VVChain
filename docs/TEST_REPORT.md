@@ -1,4 +1,4 @@
-# VVChain Validation Status（v1.0.55；歷史基準仍保留於下文）
+# VVChain Validation Status（v1.0.56；歷史基準仍保留於下文）
 
 This document records what the repository actually verifies. It is not a claim of DAW certification.
 
@@ -80,3 +80,10 @@ The analyzer changes remain visualization-only; no DSP formula or audio paramete
 Analyzer 本版新增的 pre/post taps、Delta FFT 與彩色 contribution layer 均為 metering 支線。Native Analog 的 pre-tap 使用獨立 analyzer-only downsampling path，結果只送往 analyzer FIFO；不回寫 `buffer`。因此設計意圖是不改變 DSP / PDC，但是否成功編譯及所有 source guards 是否通過，必須以 v1.0.55 Actions 實際結果為準。
 
 DAW、pluginval、實際 CPU profiler、AAX 簽署與跨 sample-rate host 實測仍不由 source regression 取代。
+
+
+## v1.0.55 Fast Gate result / v1.0.56 fix
+
+v1.0.55 Pages deployment passed. Fast Gate reached the Web smoke step but stopped on a pre-existing Python syntax defect in the forbidden-files loop (`for` keyword missing), so later x10 gates were correctly skipped rather than falsely reported as passing. v1.0.56 repairs that test syntax and removes a stale project-audit assertion that checked only the literal text `X1/X2/X3` in the rules document rather than the real DSP crossover invariants.
+
+The main analyzer/contribution calculation and color rules are unchanged from v1.0.55. v1.0.56 also clears contribution layers during Master BYPASS and bounds contribution FIFO copies to the preallocated analyzer-stream size, preventing stale overlays and analysis-buffer overrun in an oversized host block.

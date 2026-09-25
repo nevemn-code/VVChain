@@ -1,6 +1,6 @@
 # VVChain
 
-## 目前實際狀態（v1.0.55）
+## 目前實際狀態（v1.0.56）
 
 v1.0.55 修復既有 Web smoke／UI regression 的過時 source guard，Fast Gate 改為 main push 也執行，並把 Web smoke、project static audit、UI/interaction regression 各重跑十輪。實際通過狀態以本版 GitHub Actions 結果為準；DAW／pluginval／AAX 仍屬獨立驗證。
 
@@ -56,6 +56,13 @@ https://nevemn-code.github.io/VVChain/
 - AAX switch guarded by VVCHAIN_ENABLE_AAX
 
 ## 版本日誌
+
+### v1.0.56
+- 修正 v1.0.55 Fast Gate 在 Web smoke 的既有 Python 語法錯誤：遺漏的 `for forbidden in [...]` 已補回。
+- 清除 project static audit 對舊規則文字 `X1/X2/X3` 的無效字面斷言；實際 crossover 架構仍由 DSP source invariants 驗證。
+- Analyzer 主演算法與三色 Contribution 規則不變；補強 Master BYPASS 時清空／停止 contribution 顯示，避免舊資料殘留。
+- Contribution FIFO 寫入量限制在預配置 analyzer stream 容量內，避免極端 host block 大於分析緩衝時越界；音訊 DSP 本身不因此改變。
+- 本版重新跑 Web smoke ×10、static audit ×10、UI/interaction regression ×10、Analyzer matrix ×10、Windows VST3 與 Pages。
 
 ### v1.0.55
 - 主 Spectrum 改為 4096-point Hann / 50% overlap / 256 log points，使用 power-domain fractional-octave averaging、7-tap binomial smoothing、約 35 ms attack / 180 ms release、4.5 dB/oct @ 1 kHz tilt 與 monotone cubic Hermite 顯示。

@@ -1,4 +1,4 @@
-// VVChain Web AudioWorklet DSP module · v1.0.55
+// VVChain Web AudioWorklet DSP module · v1.0.56
 class VVChainWorklet extends AudioWorkletProcessor {
   constructor(){
     super();
@@ -315,7 +315,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     if(stereo)return[(mid+side)*invSqrt2,(mid-side)*invSqrt2];
     return[mid,r];
   }
-  // v1.0.55 analytical first-order ADAA over the same
+  // v1.0.56 analytical first-order ADAA over the same
   // unity-normalized algebraic transfer used by Native.
   analog(x,alpha,ch,b,x2=1){
     alpha=this.clamp(Number(alpha||0),0,1.25);
@@ -459,7 +459,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
     y=this.biquad(y,bandProcessingHpCoef,c.bandProcessingHp);
     c.contribAnalogPre=y;
 
-    // ANALOG COLOR v1.0.55: true four-band routing.
+    // ANALOG COLOR v1.0.56: true four-band routing.
     // Shared X1/X2/X3 positions define four bands before independent COLOR/ADAA.
     const analogBands=this.zoneBands(y,c,"analogLp",s.udmbc.x);
     let analogReconstructed=0;
@@ -626,7 +626,7 @@ class VVChainWorklet extends AudioWorkletProcessor {
       const moduleL=this.sample(dyn[0],0,analogAlpha,bandProcessingHpCoef);
       const moduleR=this.sample(dyn[1],1,analogAlpha,bandProcessingHpCoef);
 
-      if(this.analysisEnabled){
+      if(this.analysisEnabled&&!this.s.masterBypass){
         const lc=this.ch[0],rc=this.ch[1],base=this.contribPos*6;
         this.contribData[base+0]=(lc.contribAnalogPre+rc.contribAnalogPre)*.5;
         this.contribData[base+1]=(lc.contribAnalogPost+rc.contribAnalogPost)*.5;

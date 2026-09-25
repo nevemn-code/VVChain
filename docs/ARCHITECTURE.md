@@ -1,4 +1,4 @@
-# VVChain Architecture（v1.0.55）
+# VVChain Architecture（v1.0.56）
 
 > 以下以目前程式實際執行為準；本次封閉測試的失敗和限制見 `TEST_REPORT.md`。
 
@@ -130,3 +130,8 @@ The three layers stack from the current main-spectrum edge in processing order A
 Contribution analysis uses a separate 2048-point Hann FFT path with lighter frequency smoothing and faster ballistics so harmonics remain visible. Native carries six synchronized mono analysis streams (Analog pre/post, UDMBC pre/post, Type-A pre/post). Analog's pre-tap is converted from the existing 4x EQ/Analog domain by an analyzer-only companion downsampler; that signal never feeds the audible chain.
 
 Analyzer collection is disabled when the Analyzer is OFF or the Native editor is not showing. Web also suspends contribution traffic when the page is hidden. None of these analyzer taps write APVTS, host automation, latency, or audible samples.
+
+
+## Analyzer safety refinements (v1.0.56)
+
+Master BYPASS suppresses and clears module contribution layers so stale pre-bypass Delta data is never left on screen. Contribution FIFO copies are bounded by the preallocated analyzer stream size; analyzer metering may drop excess analysis samples from an abnormal oversized host block, but it must never enlarge or alter the audible processing buffer.

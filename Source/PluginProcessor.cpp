@@ -342,7 +342,9 @@ void VVChainAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     if (analyzerOn && !p.masterBypass)
     {
-        const int numSamples = buffer.getNumSamples();
+        const int numSamples = juce::jmin(
+            buffer.getNumSamples(),
+            dsp.contributionStream(0).getNumSamples());
         const auto regions = contributionFifo.write(numSamples);
         int written = 0;
 

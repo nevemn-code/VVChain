@@ -86,7 +86,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.55</div></div><div class="sub"></div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.56</div></div><div class="sub"></div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · ANALOG COLOR · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -128,7 +128,7 @@ body{display:grid;place-items:center}.app{position:relative;width:min(1500px,cal
       <div class="settingsRow" aria-disabled="true"><span>CPU / latency display</span><span>RESERVED</span></div>
     </section>
     <section class="settingsSection"><div class="settingsSectionTitle">SYSTEM / ABOUT</div>
-      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.55</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.56</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Build number / commit</span><span>GitHub build metadata</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset UI Settings</span><span>DISABLED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset All Settings</span><span>DISABLED</span></div>
@@ -268,7 +268,7 @@ function startAnalyzerLoop(){
   },42);
 }
 function processContributionSamples(buffer,frames){
-  if(!analyzerEnabled||!buffer||frames<2048)return;
+  if(!analyzerEnabled||state.masterBypass||!buffer||frames<2048)return;
   const data=new Float32Array(buffer),start=frames-2048,sr=audioCtx?.sampleRate||48000,binHz=(sr*.5)/1024;
   const moduleActive=[
     !state.eq.globalBypass&&state.eq.color.some((v,b)=>!state.eq.colorBypass[b]&&Number(v)>1e-4),
@@ -312,9 +312,9 @@ function setAnalyzerEnabled(enabled){
 analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
 document.addEventListener("visibilitychange",()=>{workletNode?.port?.postMessage({type:"analysisEnabled",enabled:analyzerEnabled&&!document.hidden});if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
 setAnalyzerEnabled(true);
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.55
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.56
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.55"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.56"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -1045,7 +1045,7 @@ function drawEQ(){
         top[p]={x:points[p].x,y:clamp(baseY-growth*pxPerDb,0,h)};
         base[p]={x:points[p].x,y:baseY};
         cumulative[p]+=contributionCurves[module][p];
-        visible=visible||growth>.02;
+        visible=visible||(!state.masterBypass&&growth>.02);
       }
       if(!visible)continue;
       eqCtx.beginPath();eqCtx.moveTo(top[0].x,top[0].y);

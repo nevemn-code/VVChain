@@ -120,7 +120,7 @@ assert "font:700 10px/15px Consolas" in text
 assert "m_boxWidth = 150" in source or "m_boxWidth = 150" in (ROOT / "Source" / "PluginEditor.h").read_text(encoding="utf-8")
 assert "FontOptions(10.5f)" in (ROOT / "Source" / "PluginEditor.h").read_text(encoding="utf-8")
 
-forbidden in [
+for forbidden in [
     "analog-v1.html",
     "analog-v2.html",
     "analog-v3.html",

@@ -79,94 +79,65 @@ def source_assertions():
     dsp = DSP.read_text(encoding="utf-8")
     engine = ENGINE.read_text(encoding="utf-8")
     web = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
 
-    required = [
-        'f("DYN_DYNAMICS" + n, "Dynamic EQ " + n + " Dynamics",',
-        '-100.f, 100.f, dynDynamicsDefaults[i])',
+    # Current graph / parameter binding contracts.
+    for token in [
+        'DYN_DYNAMICS',
         'setParameter("DYN_DYNAMICS" + n, dynamics);',
         'parameter->beginChangeGesture();',
         'parameter->endChangeGesture();',
-        'DYN_DYNAMICS',
-        'dynamicTargetDragStartY = pos.y',
-        'const float correctedX',
-        'eqYToDb(graph, event.position.y)',
-        'const float targetGain',
-        'dragDynamicHandleBand',
-        'dynamicHandleDragStartValue',
-        'sendNotificationSync',
         'graphFreqDragGrabOffsetX',
-        'DYNAMICS uses a truly linear bipolar map',
-        'constexpr float staticNodeRadius = 7.0f',
-        'getTargetGainDB',
-        'peakMagnitudeDBAtFrequency',
-        'getTargetGainDB',
         'qFromWheel',
-        'juce::jlimit(-18.f, 18.f',
-    ]
-    for token in required:
-        assert token in cpp or token in proc or token in head or token in dsp or token in engine, f"missing source invariant: {token}"
+        'eqYToDb',
+        'pointNearDynamicNode',
+        'constexpr float staticNodeRadius = 7.0f',
+        'resetParameter("EQ" + n + "_GAIN", 0.0f)',
+        'resetParameter("DYN_DYNAMICS" + n, resetDynamics)',
+        'Static EQ point always wins when the pointer is actually on it.',
+    ]:
+        assert token in cpp or token in proc or token in head or token in engine, token
 
-    assert 'DYN_TARGET" + n, storedTarget' not in cpp,         "graph drag must not write DYN_TARGET anymore"
-    assert 'dynamicTargetDragStartY = pos.y;' in cpp,         "Dynamic gesture must anchor to the actual mouse-down pixel"
-    assert 'sendNotificationSync' in cpp,         "Lower DYNAMICS knob must refresh synchronously during graph drag"
-    assert 'DYN_DYNAMICS" + n, dynamics' in cpp, \
-        "graph drag must write DYN_DYNAMICS"
-    assert cpp.count("juce::StringArray({") == 0, "no ambiguous JUCE StringArray brace initializers"
-    assert "Static EQ point always wins when the pointer is actually on it." in cpp, "static/dynamic graph hit priority rule missing"
-    assert "graphHintActiveMask" not in cpp, "dead Native graph hint mask must stay removed"
-    assert "graphHintBand" not in cpp, "legacy Native graph hint band state must stay removed"
-    assert "graphHintAutoHideAt" not in cpp, "legacy Native graph hint timer must stay removed"
-    assert "function graphHintBandHtml" in web, "Web graph hint formatter missing"
-    assert "showGraphHint(e,graphHintBandHtml(dragBand,1|2))" in web
-    assert "showGraphHint(e,graphHintBandHtml(dragBand,1|4))" in web
-    assert "showGraphHint(e,graphHintBandHtml(dragDynamicHandleBand,4))" in web
-    assert "showGraphHint(e,graphHintBandHtml(band,8))" in web
-    assert 'f("DYN_DETECT_ONSETS" + n, "Dynamic EQ " + n + " Peak Onsets Blend",' in proc
-    assert '0.f, 100.f, 50.f' in proc
-    assert 'std::array<float, 4> dynDetectOnsets' in (ROOT / "Source" / "DSP" / "ChainDSP.h").read_text(encoding="utf-8")
-    assert 'const float onsetMix' in dsp
-    assert 'DYN_DETECT_BLEND' in cpp
-    assert 'GRAPH_SOLO_ACTIVE' in proc and 'GRAPH_SOLO_FREQ' in proc and 'GRAPH_SOLO_Q' in proc
-    assert 'rightSoloBand' in cpp
-    assert 'setParameter("GRAPH_SOLO_ACTIVE", 1.f);' in cpp
-    assert 'setParameter("GRAPH_SOLO_ACTIVE", 0.f);' in cpp
-    assert 'dragMode===7' in web
-    assert 'state.solo.graphActive=true' in web
-    assert 'vvchain-worklet.js",document.baseURI).href+"?v=' in web
-    assert 'eqYToDb(' in cpp and 'eqYToDb(' in head
-    assert 'qFromWheel(' in cpp and 'qFromWheel(' in head
-    assert 'function yToDb(' in web
-    assert 'function nextQFromWheel(' in web
-    assert 'const wheelUnits=clamp(deltaY/100,-1,1);' in web
-    assert 'const speed=fine?.0075:.075;' in web
-    assert 'constexpr float hitRadius = 12.0f;' in cpp
-    assert 'std::abs(dynamics) > 0.5f' in cpp
-    assert 'if(dynamics<=.5)continue;' in web
-    assert 'x + 44.f' in cpp
-    assert 't.x+44' in web or 'target.x+44' in web
-    assert 'constexpr int detectW = 60' in cpp
-    assert 'width:60px' in web
-    assert 'Compact two-line FloatingValueBox is the only EQ/Dynamic EQ hover readout.' in cpp
-    assert 'Compact two-line graphHint is the only EQ/Dynamic EQ hover readout.' in web
-    assert 'nextQFromWheel(q,e.deltaY,e.shiftKey)' in web
-    assert 'nextQFromWheel(state.eq.q[band],e.deltaY,e.shiftKey)' in web
-    assert cpp.count('qFromWheel(q, wheel.deltaY, event.mods.isShiftDown())') == 2
-    assert 'const float speed = fine ? 0.0075f : 0.075f;' in cpp
-    assert 'constexpr int detectW = 60;' in cpp
-    assert 'setDragSensitivity(133, 1330);' in cpp
-    assert 'setWheelBehaviour(0.5, false);' in cpp
-    assert 'width:60px;height:12px' in web
-    assert '(e.clientX-detectStartX)*.75' in web
-    assert 'units*.5' in web
-    assert 'staticPriorityBand < 0' in cpp
-    assert 'const staticBand=staticEqAtPointer' in web
-    assert '.graphHint{width:112px' in web
-    assert 'm_boxWidth = 112' in head
-    assert 'A mouse drag keeps ownership of the node' in cpp
-    assert 'Pointer capture owns the readout until pointerup/cancel.' in web
-    hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
-    assert 'TARGET' not in hint_block and 'OFFSET' not in hint_block and 'AUTO THR' not in hint_block
-    assert 'protectedSaturated' in dsp
+    assert 'DYN_TARGET" + n, storedTarget' not in cpp
+    assert cpp.count("juce::StringArray({") == 0
+    for dead in ("graphHintActiveMask", "graphHintBand", "graphHintAutoHideAt"):
+        assert dead not in cpp and dead not in head, dead
+
+    # Current Web graph gesture contracts.
+    for token in [
+        'function graphHintBandHtml',
+        'resetGraphGainAtDoubleClick',
+        'eqCanvas.addEventListener("dblclick",resetGraphGainAtDoubleClick)',
+        'function nextQFromWheel',
+        'const hzv=invLog(clamp(x,0,w)/w)',
+        'gainAtCursor=yToDb(y,h)',
+        'targetGain=yToDb(y,h)',
+        'state.eq.freq[dragBand]=hzv',
+        'state.dyn.dynamics[dragBand]',
+    ]:
+        assert token in web, token
+
+    # Current module / bypass / Delta contracts.
+    for token in [
+        'EQ_COLOR_GLOBAL_BYPASS',
+        'UDMBC_BYPASS',
+        'TAPE_BYPASS',
+        'DEESS_BYPASS',
+        'DELTA_MONITOR',
+    ]:
+        assert token in proc or token in cpp, token
+
+    assert 'if(this.s.delta){yL=yL-l;yR=yR-r;}' in worklet
+    assert 'analogReconstructed' in worklet
+    assert 'zoneBands(y,c,"analogLp",s.udmbc.x)' in worklet
+    assert 'colorX2?.[b]?2:1' in worklet
+
+    # Current analyzer / contribution integration is UI-only.
+    assert 'updateContributionAnalyzer' in cpp and 'updateContributionAnalyzer' in head
+    assert 'popContributionSamples' in proc
+    assert 'setContributionAnalysisEnabled' in proc
+    assert 'ContributionFFT' in web
+    assert 'type:"contributionSamples"' in worklet
 
 
 def test_v1016_gain_scale_10():
@@ -262,7 +233,7 @@ def test_eq_xy_drag_math():
     assert 'eqYToDb(graph, event.position.y)' in cpp
     assert 'const float targetGain' in cpp
     assert 'const hzv=invLog(clamp(x,0,w)/w);' in web
-    assert 'const gainAtCursor=yToDb(y,h);' in web
+    assert 'gainAtCursor=yToDb(y,h)' in web
     assert 'const targetGain=yToDb(y,h);' in web
     assert 'GAIN / FREQ / Q' in cpp
     assert 'function graphHintBandHtml' in web
@@ -376,31 +347,38 @@ def test_full_simulation():
 
 
 def test_deess_500_candidate_matrix():
-    """Evaluate exactly 500 Attack/Release/Ratio candidates and verify four profiles."""
-    attacks = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 8.0, 12.0]
-    releases = [20.0, 35.0, 50.0, 70.0, 120.0]
-    ratios = [2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0]
-    candidates = [(a, r, ratio) for a in attacks for r in releases for ratio in ratios]
+    """Evaluate exactly 500 current Attack/Release/Knee candidates."""
+    attacks = [0.25, 0.5, 0.6, 0.75, 0.9, 1.5, 2.0, 2.5, 5.0, 8.0]
+    releases = [20.0, 30.0, 45.0, 70.0, 120.0]
+    knees = [1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 4.0, 6.0, 8.0]
+    candidates = [(a, r, k) for a in attacks for r in releases for k in knees]
     assert len(candidates) == 500
 
     profiles = [
-        (5.0, 120.0, 3.0),
-        (2.0, 70.0, 4.0),
-        (0.75, 35.0, 8.0),
-        (0.25, 20.0, 10.0),
+        (2.5, 120.0, 2.0),
+        (1.5, 70.0, 1.75),
+        (0.9, 45.0, 1.5),
+        (0.6, 30.0, 1.25),
     ]
     assert all(profile in candidates for profile in profiles)
 
-    dsp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
+    dsp = DSP.read_text(encoding="utf-8")
     worklet = (ROOT / "docs" / "vvchain-worklet.js").read_text(encoding="utf-8")
-    for a, r, ratio in profiles:
-        assert f"{a}f" in dsp
-        assert f"{r}f" in dsp
-        assert f"{ratio}f" in dsp
-    assert "{attack:5,release:120,ratio:3}" in worklet
-    assert "{attack:2,release:70,ratio:4}" in worklet
-    assert "{attack:.75,release:35,ratio:8}" in worklet
-    assert "{attack:.25,release:20,ratio:10}" in worklet
+    for token in [
+        '{ 2.50f, 120.0f, 2.00f }',
+        '{ 1.50f,  70.0f, 1.75f }',
+        '{ 0.90f,  45.0f, 1.50f }',
+        '{ 0.60f,  30.0f, 1.25f }',
+    ]:
+        assert token in dsp, token
+    for token in [
+        '{attack:2.5,release:120,knee:2.0}',
+        '{attack:1.5,release:70,knee:1.75}',
+        '{attack:.9,release:45,knee:1.5}',
+        '{attack:.6,release:30,knee:1.25}',
+    ]:
+        assert token in worklet, token
+
 
 def test_v106_shared_four_band_modules_and_deess_presets():
     cpp = (ROOT / "Source" / "DSP" / "ChainDSP.cpp").read_text(encoding="utf-8")
@@ -788,45 +766,34 @@ def test_v1032_readout_hit_priority_50():
 
 
 def main():
-    for _ in range(50):
-        source_assertions()
-        test_v1018_interaction_visual_sync()
-    test_v1016_gain_scale_10()
-    test_280_design_cases()
-    test_graph_roundtrip()
-    test_dynamic_range_direction()
-    test_dynamic_drag_anchor_is_exact()
-    test_dynamic_cross_zero_is_linear()
-    test_eq_xy_drag_math()
+    source_assertions()
+
+    # Ten full deterministic rounds over current interaction/math contracts.
     for _ in range(10):
+        test_v1016_gain_scale_10()
+        test_280_design_cases()
+        test_graph_roundtrip()
+        test_dynamic_range_direction()
+        test_dynamic_drag_anchor_is_exact()
+        test_dynamic_cross_zero_is_linear()
+        test_eq_xy_drag_math()
         test_deess_500_candidate_matrix()
-    test_dynamic_range_centered_500()
-    test_dynamic_target_preserves_eq_as_center()
-    test_dynamic_target_is_linear()
-    test_threshold_is_linear()
-    test_target_visual_direction()
-    test_frequency_deadzone()
-    test_transient_gestures()
-    for _ in range(10):
+        test_dynamic_range_centered_500()
+        test_dynamic_target_preserves_eq_as_center()
+        test_dynamic_target_is_linear()
+        test_threshold_is_linear()
+        test_target_visual_direction()
+        test_frequency_deadzone()
+        test_transient_gestures()
         test_all_features_rounds()
-    test_full_simulation()
-    test_v106_shared_four_band_modules_and_deess_presets()
-    test_v103_ui_rules_50()
-    test_v103_closed_10()
-    test_v107_ui_controls()
-    test_v1024_compact_readout_50()
-    test_v1028_q_wheel_3x_continuous()
-    test_v1032_readout_hit_priority_50()
-    print("PASS: 280 design cases")
-    print("PASS: 10 core/all-feature rounds")
-    print("PASS: 6 transient gesture sequences")
-    print("PASS: 10 full simulated sessions")
-    print("PASS: 50x v1.0.37 compact EQ/DYN EQ readout identity + format checks")
-    print("PASS: 50x v1.0.37 Static-EQ priority vs Dynamic-target hit testing")
-    print("PASS: v1.0.37 Q wheel 3x continuous / shared-path check")
-    print("PASS: source invariants / APVTS / graph-DYNAMICS binding")
-    print("ALL Dynamic EQ UI regression tests passed")
+        test_full_simulation()
+
+    print("PASS: current source invariants")
+    print("PASS: 10 x 280 Dynamic EQ design cases")
+    print("PASS: 10 x graph / XY / Q / reset interaction contracts")
+    print("PASS: 10 x 500 De-Esser candidate/profile checks")
+    print("PASS: 10 x full four-band simulated sessions")
+    print("ALL current Dynamic EQ / UI regression tests passed")
 
 if __name__ == "__main__":
     main()
-

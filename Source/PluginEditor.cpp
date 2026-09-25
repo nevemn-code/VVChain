@@ -2823,7 +2823,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(ivoryTheme ? juce::Colour(0xff6c675f) : juce::Colour(0xff7f8893));
     g.setFont(juce::FontOptions(7.5f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.55", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.56", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -3223,6 +3223,26 @@ void VVChainAudioProcessorEditor::updateContributionAnalyzer()
 {
     if (!analyzerEnabled || !isShowing())
         return;
+
+    if (isMasterBypassed())
+    {
+        contributionInputCount = 0;
+        contributionFrameCounter = 0;
+        for (auto& curve : contributionGrowthDb)
+            curve.fill(0.0f);
+
+        std::array<std::array<float, 2048>, 6> discard {};
+        std::array<float*, 6> destinations {};
+        for (int stream = 0; stream < 6; ++stream)
+            destinations[(size_t)stream] = discard[(size_t)stream].data();
+
+        while (audioProcessor.popContributionSamples(destinations, 2048) > 0)
+        {
+        }
+
+        repaint(eqGraphBounds().toNearestInt());
+        return;
+    }
 
     std::array<std::array<float, contributionFftSize>, 6> incoming {};
     std::array<float*, 6> destinations {};
