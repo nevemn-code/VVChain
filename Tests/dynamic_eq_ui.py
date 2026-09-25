@@ -122,7 +122,7 @@ def source_assertions():
         'EQ_COLOR_GLOBAL_BYPASS',
         'UDMBC_BYPASS',
         'TAPE_BYPASS',
-        'TRANSIENT1',
+        '"TRANSIENT" + n',
         'DELTA_MONITOR',
     ]:
         assert token in proc or token in cpp, token
