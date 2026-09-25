@@ -49,7 +49,12 @@ def run():
         if amount>0:assert np.min(np.abs(sy)-np.abs(p))>=-1e-12;assert np.max(np.abs(static_transfer(np.array([-1.,0.,1.]),amount,ss)-np.array([-1.,0.,1.])))<=1e-12
         tt=analog_reference(x,max(amount,.01),False);ssy=analog_reference(x,max(amount,.01),True);min_tt_ss=min(min_tt_ss,float(np.max(np.abs(tt-ssy))))
         b=analog_reference(x[:1024],amount,ss,1);z=analog_reference(x[:1024],amount,ss,2);assert np.max(np.abs((z-x[:1024])-(b-x[:1024])*2))<1e-9
-        pair=np.concatenate([x,-x]);yp=analog_reference(pair,amount,ss);assert np.max(np.abs(yp[:n]+yp[n:]))<1e-9
+        # ADAA carries previous-sample state, so odd-symmetry must be
+        # compared from identical fresh states. Concatenating x and -x into
+        # one stream incorrectly tests a state discontinuity at the midpoint.
+        yp=analog_reference(x,amount,ss)
+        yn=analog_reference(-x,amount,ss)
+        assert np.max(np.abs(yp+yn))<1e-9
     for ss in (False,True):
         amount=.60;alpha=amount*(1.80 if ss else 1.55);norm=(1+alpha)**.25;x=.437;direct=x/(1+alpha*x*x)**.25*norm;assert abs(adaa_reference(np.array([x]),amount,ss)[0]-direct)<1e-12
     assert min_tt_ss>1e-7
