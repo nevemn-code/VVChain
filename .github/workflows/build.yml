@@ -103,7 +103,7 @@ jobs:
           python3 Tests/dynamic_eq_ui.py
         done
 
-    - name: Analyzer contribution matrix x10
+    - name: Main analyzer / zero-contribution matrix x10
       shell: bash
       run: |
         for i in {1..10}; do
