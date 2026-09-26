@@ -1,0 +1,128 @@
+name: One-time UI Runtime Binary Ingest
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: vvchain-ui-runtime-ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    if: >
+      github.event.issue.number == 45 &&
+      github.actor == github.repository_owner &&
+      contains(github.event.comment.body, 'INGEST_UI_RUNTIME')
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout Master-lock branch
+        uses: actions/checkout@v7
+        with:
+          ref: ui-master-lock-v1.0.72
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve exact GitHub attachment URL
+        id: attachment
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os,re,sys
+          body=os.environ["COMMENT_BODY"]
+          urls=re.findall(r'https://[^\s)>"]+', body)
+          allowed=[]
+          for u in urls:
+              clean=u.rstrip('].,')
+              if not clean.lower().split('?',1)[0].endswith('.zip'):
+                  continue
+              if clean.startswith('https://github.com/user-attachments/files/') or clean.startswith('https://private-user-images.githubusercontent.com/'):
+                  allowed.append(clean)
+          if len(allowed) != 1:
+              raise SystemExit(f"Expected exactly one allowed GitHub ZIP attachment URL, found {len(allowed)}")
+          print("url="+allowed[0])
+          PY
+
+      - name: Download and verify immutable source archive
+        env:
+          URL: ${{ steps.attachment.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --output /tmp/VVChain_UI_Runtime_Engineering_v1.0.74.zip "$URL"
+          test "$(stat -c%s /tmp/VVChain_UI_Runtime_Engineering_v1.0.74.zip)" = "7322749"
+          echo "1fca9eca20ccc1852310287fe41fbd59341aa018726c3ce764e934b2a7e6c297  /tmp/VVChain_UI_Runtime_Engineering_v1.0.74.zip" | sha256sum --check -
+
+      - name: Extract exact PNG payload only
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/vvchain-ui-ingest
+          mkdir -p /tmp/vvchain-ui-ingest
+          unzip -q /tmp/VVChain_UI_Runtime_Engineering_v1.0.74.zip -d /tmp/vvchain-ui-ingest
+          SRC="/tmp/vvchain-ui-ingest/VVChain_UI_Runtime_Engineering_v1.0.74"
+          test -d "$SRC/backgrounds"
+          test -d "$SRC/components"
+          test -d "$SRC/knobs"
+          test "$(find "$SRC" -type f -name '*.png' | wc -l)" = "46"
+
+          mkdir -p assets/ui/runtime/backgrounds assets/ui/runtime/components assets/ui/runtime/knobs
+          rm -f assets/ui/runtime/backgrounds/*.png
+          rm -f assets/ui/runtime/components/*.png
+          rm -f assets/ui/runtime/knobs/*.png
+          cp -a "$SRC/backgrounds/"*.png assets/ui/runtime/backgrounds/
+          cp -a "$SRC/components/"*.png assets/ui/runtime/components/
+          cp -a "$SRC/knobs/"*.png assets/ui/runtime/knobs/
+          test "$(find assets/ui/runtime -type f -name '*.png' | wc -l)" = "46"
+
+      - name: Validate every PNG against locked manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 Tests/ui_master_lock.py
+          python3 Tools/validate_master_runtime.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          for p in [Path("assets/ui/runtime/binary_manifest.json"),
+                    Path("assets/ui/runtime/staged_manifest.json")]:
+              obj=json.loads(p.read_text(encoding="utf-8"))
+              obj["status"]="locked"
+              p.write_text(json.dumps(obj,indent=2)+"\n",encoding="utf-8")
+          PY
+          python3 Tools/validate_master_runtime.py
+
+      - name: Activate only after byte-exact PASS
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 Tools/approve_master_runtime.py
+          python3 Tools/validate_master_runtime.py --require-approved
+          python3 Tests/ui_master_lock.py
+
+      - name: Commit exact binaries to Master-lock branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/ui/runtime
+          git diff --cached --check
+          git diff --cached --quiet && { echo "No binary changes to commit"; exit 0; }
+          git commit -m "[v1.0.83] Ingest exact approved Master runtime PNGs"
+          git push origin HEAD:ui-master-lock-v1.0.72
+
+      - name: Confirm handoff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh issue comment 45 --repo "${{ github.repository }}" --body "Binary ingest PASS: exact archive SHA verified, 46/46 PNGs matched the locked per-file manifest, APPROVED.lock created, and assets committed to `ui-master-lock-v1.0.72`. CI will now validate the activated Native/Web runtime."
