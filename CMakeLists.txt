@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(VVChain VERSION 1.0.86 LANGUAGES C CXX)
+project(VVChain VERSION 1.0.87 LANGUAGES C CXX)
 
 include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
@@ -32,6 +32,7 @@ set(VVCHAIN_MASTER_LOCK_SENTINEL "${CMAKE_SOURCE_DIR}/assets/ui/runtime/APPROVED
 set(VVCHAIN_MASTER_RUNTIME_ASSETS
     assets/ui/runtime/backgrounds/black_full_panel.png
     assets/ui/runtime/backgrounds/ivory_full_panel.png
+    assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png
     assets/ui/runtime/knobs/knob_gold_64.png
     assets/ui/runtime/knobs/knob_blue_64.png
     assets/ui/runtime/knobs/knob_green_64.png
