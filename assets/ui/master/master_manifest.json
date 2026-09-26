@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "pending_ingest",
+  "status": "locked",
   "policy": "UI_MASTER_LOCK.md",
   "masters": {
     "black": {
@@ -29,5 +29,9 @@
         255
       ]
     }
+  },
+  "ingest": {
+    "method": "byte_exact_base64_bridge",
+    "verified_against_locked_identity": true
   }
 }

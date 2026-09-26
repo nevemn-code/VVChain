@@ -28,7 +28,7 @@ void SettingsGearButton::setIvoryTheme(bool ivory)
 void SettingsGearButton::paintButton(
     juce::Graphics& g, bool highlighted, bool down)
 {
-    // Use the editor LookAndFeel for the button body. In v1.0.81 that body is
+    // Use the editor LookAndFeel for the button body. In v1.0.82 that body is
     // the same clean PNG button asset as the rest of the hardware UI.
     getLookAndFeel().drawButtonBackground(
         g, *this, juce::Colours::transparentBlack,

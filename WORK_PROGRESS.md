@@ -6,11 +6,11 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.81
+v1.0.82
 
 ## Current checkpoint
 
-**Checkpoint 10 — Byte-exact runtime integrity contract**
+**Checkpoint 11 — Exact Visual Masters committed**
 
 ## Master paths
 
@@ -48,6 +48,8 @@ Their locked identities remain:
 - Added `Tools/validate_master_runtime.py`. It validates existing runtime files and becomes strict when APPROVED.lock exists.
 - Added `Tools/approve_master_runtime.py`. It is validation-only: it never renders pixels and can create APPROVED.lock only after the exact Masters and every runtime PNG pass byte/hash/dimension/RGBA checks.
 - CI and Pages are wired to the runtime integrity validator.
+- The exact original Black and Ivory Visual Master PNG binaries are now committed at their permanent locked paths.
+- Master manifest status is now `locked`; the committed binaries match the previously locked SHA-256, byte counts, dimensions and RGBA contract exactly.
 
 ## Accepted runtime assets
 
@@ -59,15 +61,14 @@ All current legacy files under `docs/assets/ui/png/` remain Candidate/unapproved
 
 ## Remaining
 
-1. Commit the two exact original Visual Master PNG binaries.
-2. Commit all 46 exact runtime PNG binaries matching `binary_manifest.json`.
-3. Run `Tests/ui_master_lock.py` and `Tools/validate_master_runtime.py`.
-4. Perform final visual acceptance against both Masters.
-5. Run `Tools/approve_master_runtime.py` to create APPROVED.lock only after PASS.
-6. Verify Native and Web both activate the same runtime PNG source.
-7. Remove the rejected Candidate runtime after the approved path is confirmed.
-8. Run final Black/Ivory, six-colour knob, platinum 1.5×, bypass, high-DPI, Web and VST3 validation.
-9. Set Remaining to 0 only after the final approved build/deploy passes.
+1. Commit all 46 exact runtime PNG binaries matching `binary_manifest.json`.
+2. Run `Tests/ui_master_lock.py` and `Tools/validate_master_runtime.py`.
+3. Perform final visual acceptance against both Masters.
+4. Run `Tools/approve_master_runtime.py` to create APPROVED.lock only after PASS.
+5. Verify Native and Web both activate the same runtime PNG source.
+6. Remove the rejected Candidate runtime after the approved path is confirmed.
+7. Run final Black/Ivory, six-colour knob, platinum 1.5×, bypass, high-DPI, Web and VST3 validation.
+8. Set Remaining to 0 only after the final approved build/deploy passes.
 
 ## Safety / compatibility constraint
 
