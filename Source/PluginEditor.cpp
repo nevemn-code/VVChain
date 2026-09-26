@@ -36,6 +36,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawImage(
 {
     if (!image.isValid())
         return;
+
     g.setOpacity(opacity);
     g.drawImage(image, bounds, juce::RectanglePlacement::stretchToFit);
     g.setOpacity(1.0f);
@@ -47,20 +48,27 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawKnobFrame(
 {
     if (!strip.isValid())
         return;
+
     constexpr int columns = 8;
     constexpr int rows = 8;
-    frameIndex = juce::jlimit(0, columns * rows - 1, frameIndex);
-    const int frameW = strip.getWidth() / columns;
-    const int frameH = strip.getHeight() / rows;
-    const int sx = (frameIndex % columns) * frameW;
-    const int sy = (frameIndex / columns) * frameH;
+    constexpr int frameWidth = 128;
+    constexpr int frameHeight = 128;
+    constexpr int frameCount = columns * rows;
+
+    jassert(strip.getWidth() == frameWidth * columns);
+    jassert(strip.getHeight() == frameHeight * rows);
+
+    frameIndex = juce::jlimit(0, frameCount - 1, frameIndex);
+    const int sx = (frameIndex % columns) * frameWidth;
+    const int sy = (frameIndex / columns) * frameHeight;
+
     g.setOpacity(opacity);
     g.drawImage(strip,
-                (int)std::round(bounds.getX()),
-                (int)std::round(bounds.getY()),
-                (int)std::round(bounds.getWidth()),
-                (int)std::round(bounds.getHeight()),
-                sx, sy, frameW, frameH, false);
+                (int) std::round(bounds.getX()),
+                (int) std::round(bounds.getY()),
+                (int) std::round(bounds.getWidth()),
+                (int) std::round(bounds.getHeight()),
+                sx, sy, frameWidth, frameHeight, false);
     g.setOpacity(1.0f);
 }
 
@@ -72,6 +80,7 @@ VVChainAudioProcessorEditor::MetalLookAndFeel::MetalLookAndFeel()
         VVChainAssets::PREFIX##_##FILE##_pngSize)
 
     VV_IMG(studioAssets, studio, panel, panel);
+    VV_IMG(studioAssets, studio, module, module);
     VV_IMG(studioAssets, studio, graph, graph);
     VV_IMG(studioAssets, studio, knobStrip, knob_strip);
     VV_IMG(studioAssets, studio, buttonOff, button_off);
@@ -82,9 +91,11 @@ VVChainAudioProcessorEditor::MetalLookAndFeel::MetalLookAndFeel()
     VV_IMG(studioAssets, studio, powerOff, power_off);
     VV_IMG(studioAssets, studio, powerOn, power_on);
     VV_IMG(studioAssets, studio, screw, screw);
-    VV_IMG(studioAssets, studio, slider, slider);
+    VV_IMG(studioAssets, studio, sliderTrack, slider_track);
+    VV_IMG(studioAssets, studio, sliderThumb, slider_thumb);
 
     VV_IMG(ivoryAssets, ivory, panel, panel);
+    VV_IMG(ivoryAssets, ivory, module, module);
     VV_IMG(ivoryAssets, ivory, graph, graph);
     VV_IMG(ivoryAssets, ivory, knobStrip, knob_strip);
     VV_IMG(ivoryAssets, ivory, buttonOff, button_off);
@@ -95,9 +106,12 @@ VVChainAudioProcessorEditor::MetalLookAndFeel::MetalLookAndFeel()
     VV_IMG(ivoryAssets, ivory, powerOff, power_off);
     VV_IMG(ivoryAssets, ivory, powerOn, power_on);
     VV_IMG(ivoryAssets, ivory, screw, screw);
-    VV_IMG(ivoryAssets, ivory, slider, slider);
+    VV_IMG(ivoryAssets, ivory, sliderTrack, slider_track);
+    VV_IMG(ivoryAssets, ivory, sliderThumb, slider_thumb);
 
     VV_IMG(mutedAssets, muted, panel, panel);
+    VV_IMG(mutedAssets, muted, module, module);
+    VV_IMG(mutedAssets, muted, graph, graph);
     VV_IMG(mutedAssets, muted, knobStrip, knob_strip);
     VV_IMG(mutedAssets, muted, buttonOff, button_off);
     VV_IMG(mutedAssets, muted, buttonOn, button_on);
@@ -106,16 +120,22 @@ VVChainAudioProcessorEditor::MetalLookAndFeel::MetalLookAndFeel()
     VV_IMG(mutedAssets, muted, ledOn, led_on);
     VV_IMG(mutedAssets, muted, powerOff, power_off);
     VV_IMG(mutedAssets, muted, powerOn, power_on);
-    VV_IMG(mutedAssets, muted, slider, slider);
+    VV_IMG(mutedAssets, muted, screw, screw);
+    VV_IMG(mutedAssets, muted, sliderTrack, slider_track);
+    VV_IMG(mutedAssets, muted, sliderThumb, slider_thumb);
 #undef VV_IMG
 
+    disabledButton = loadImage(
+        VVChainAssets::button_disabled_png,
+        VVChainAssets::button_disabled_pngSize);
     bypassLedRed = loadImage(
         VVChainAssets::bypass_led_red_png,
         VVChainAssets::bypass_led_red_pngSize);
 }
 
 const VVChainAudioProcessorEditor::MetalLookAndFeel::HardwareAssets&
-VVChainAudioProcessorEditor::MetalLookAndFeel::assets(bool localMuted) const noexcept
+VVChainAudioProcessorEditor::MetalLookAndFeel::assets(
+    bool localMuted) const noexcept
 {
     if (monochrome || localMuted)
         return mutedAssets;
@@ -123,9 +143,17 @@ VVChainAudioProcessorEditor::MetalLookAndFeel::assets(bool localMuted) const noe
 }
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawPanelSurface(
-    juce::Graphics& g, juce::Rectangle<float> bounds, bool localMuted) const
+    juce::Graphics& g, juce::Rectangle<float> bounds,
+    bool localMuted) const
 {
     drawImage(g, assets(localMuted).panel, bounds, 1.0f);
+}
+
+void VVChainAudioProcessorEditor::MetalLookAndFeel::drawModuleSurface(
+    juce::Graphics& g, juce::Rectangle<float> bounds,
+    bool localMuted) const
+{
+    drawImage(g, assets(localMuted).module, bounds, 1.0f);
 }
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawGraphSurface(
@@ -141,154 +169,199 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawGraphSurface(
     }
 }
 
+void VVChainAudioProcessorEditor::MetalLookAndFeel::drawScrew(
+    juce::Graphics& g, juce::Rectangle<float> bounds,
+    bool localMuted) const
+{
+    drawImage(g, assets(localMuted).screw, bounds, 1.0f);
+}
+
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
     juce::Graphics& g, int x, int y, int width, int height,
-    float sliderPosProportional, float rotaryStartAngle, float rotaryEndAngle,
-    juce::Slider& slider)
+    float sliderPosProportional, float rotaryStartAngle,
+    float rotaryEndAngle, juce::Slider& slider)
 {
     juce::ignoreUnused(rotaryStartAngle, rotaryEndAngle);
+
     auto area = juce::Rectangle<float>(
-        (float)x, (float)y, (float)width, (float)height).reduced(0.5f);
+        (float) x, (float) y, (float) width, (float) height).reduced(0.5f);
+
     const bool localMuted = static_cast<bool>(
         slider.getProperties().getWithDefault("moduleMuted", false));
     const auto& a = assets(localMuted);
+
     const float side = juce::jmin(area.getWidth(), area.getHeight());
     auto knobBounds = juce::Rectangle<float>(side, side)
-        .withCentre({ area.getCentreX(), area.getCentreY() - 1.0f });
+        .withCentre({ area.getCentreX(), area.getCentreY() });
+
     const int frame = juce::jlimit(
-        0, 63, (int)std::lround(
+        0, 63,
+        (int) std::lround(
             juce::jlimit(0.0f, 1.0f, sliderPosProportional) * 63.0f));
-    drawKnobFrame(g, a.knobStrip, frame, knobBounds,
-                  localMuted ? 0.88f : 1.0f);
+
+    drawKnobFrame(g, a.knobStrip, frame, knobBounds, 1.0f);
 
     if (auto* wheelSlider = dynamic_cast<WheelSlider*>(&slider))
+    {
         if (wheelSlider->isGraphControlActive())
         {
             const bool moving = wheelSlider->isGraphControlMoving();
             const bool visible = !moving
                 || ((juce::Time::getMillisecondCounter() / 180u) % 2u == 0u);
+
             if (visible)
             {
                 g.setColour(juce::Colours::white.withAlpha(.96f));
-                g.drawEllipse(knobBounds.expanded(2.0f),
-                              moving ? 2.1f : 1.7f);
+                g.drawEllipse(
+                    knobBounds.reduced(5.0f),
+                    moving ? 2.0f : 1.6f);
             }
         }
+    }
 }
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawLinearSlider(
     juce::Graphics& g, int x, int y, int width, int height,
     float sliderPosProportional, float sliderAsymmetry,
-    float sliderStart,
-    juce::Slider::SliderStyle style, juce::Slider& slider)
+    float sliderStart, juce::Slider::SliderStyle style,
+    juce::Slider& slider)
 {
     juce::ignoreUnused(sliderAsymmetry, sliderStart, style);
+
     const bool localMuted = static_cast<bool>(
         slider.getProperties().getWithDefault("moduleMuted", false));
     const auto& a = assets(localMuted);
+
     auto r = juce::Rectangle<float>(
-        (float)x, (float)y, (float)width, (float)height).reduced(1.0f);
+        (float) x, (float) y, (float) width, (float) height).reduced(1.0f);
+
+    drawImage(g, a.sliderTrack, r, 1.0f);
+
+    const float t = juce::jlimit(0.0f, 1.0f, sliderPosProportional);
+    const float thumbSide = juce::jlimit(
+        12.0f, 22.0f, r.getHeight() * 1.15f);
+    const float px = r.getX() + t * r.getWidth();
+
+    juce::Rectangle<float> thumb {
+        px - thumbSide * 0.5f,
+        r.getCentreY() - thumbSide * 0.5f,
+        thumbSide, thumbSide
+    };
+    drawImage(g, a.sliderThumb, thumb, 1.0f);
 
     if (slider.getComponentID() == "DYN_DETECT_BLEND")
     {
-        drawImage(g, a.slider, r, localMuted ? .82f : 1.0f);
-        const float t = juce::jlimit(0.f, 1.f, sliderPosProportional);
-        const auto blue = (monochrome || localMuted)
-            ? juce::Colour(0xff9a9a9a)
-            : juce::Colour(0xff60a5fa);
-        const auto fill = r.reduced(4.0f).withWidth(
-            juce::jmax(2.0f, r.reduced(4.0f).getWidth() * t));
-        g.setColour(blue.withAlpha(.34f));
-        g.fillRoundedRectangle(fill, 3.0f);
-        g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
-        g.setColour(ivoryTheme && !monochrome
-            ? juce::Colour(0xff2a2d31)
-            : juce::Colours::white.withAlpha(.94f));
-        auto left = r.removeFromLeft(r.getWidth() * 0.5f);
-        g.drawText("PEAK", left.toNearestInt(), juce::Justification::centred);
-        g.drawText("RMS", r.toNearestInt(), juce::Justification::centred);
-        return;
-    }
+        g.setFont(juce::FontOptions(8.0f).withStyle("Bold"));
+        g.setColour((monochrome || localMuted)
+            ? juce::Colour(0xffe0e0e0)
+            : (ivoryTheme ? juce::Colour(0xff33291f)
+                          : juce::Colour(0xffeaf4f4)));
 
-    drawImage(g, a.slider, r, localMuted ? .82f : 1.0f);
-    const float px = r.getX() + juce::jlimit(0.f,1.f,sliderPosProportional) * r.getWidth();
-    const auto accent = (monochrome || localMuted)
-        ? juce::Colour(0xffa5a5a5)
-        : (ivoryTheme ? juce::Colour(0xffffb21f) : juce::Colour(0xff4fe4df));
-    g.setColour(juce::Colours::black.withAlpha(.75f));
-    g.fillEllipse(px - 5.5f, r.getCentreY() - 5.5f, 11.f, 11.f);
-    g.setColour(accent);
-    g.fillEllipse(px - 3.5f, r.getCentreY() - 3.5f, 7.f, 7.f);
+        auto left = r.removeFromLeft(r.getWidth() * 0.5f);
+        g.drawText("PEAK", left.toNearestInt(),
+                   juce::Justification::centred);
+        g.drawText("RMS", r.toNearestInt(),
+                   juce::Justification::centred);
+    }
 }
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
     juce::Graphics& g, juce::ToggleButton& button,
-    bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown)
+    bool shouldDrawButtonAsHighlighted,
+    bool shouldDrawButtonAsDown)
 {
     juce::ignoreUnused(shouldDrawButtonAsHighlighted);
+
     const bool localMuted = static_cast<bool>(
         button.getProperties().getWithDefault("moduleMuted", false));
     const auto& a = assets(localMuted);
     const auto r = button.getLocalBounds().toFloat().reduced(.5f);
+
     const auto drawButton = [&](bool on)
     {
-        const auto& image = shouldDrawButtonAsDown
-            ? a.buttonPressed : (on ? a.buttonOn : a.buttonOff);
-        drawImage(g, image, r, shouldDrawButtonAsDown ? .92f : 1.0f);
+        const juce::Image* image = nullptr;
+        if (localMuted || monochrome)
+            image = disabledButton.isValid()
+                ? &disabledButton : &a.buttonOff;
+        else if (shouldDrawButtonAsDown)
+            image = &a.buttonPressed;
+        else
+            image = on ? &a.buttonOn : &a.buttonOff;
+
+        if (image != nullptr)
+            drawImage(g, *image, r, 1.0f);
     };
-    const auto drawLed = [&](juce::Rectangle<float> lr, bool on)
+
+    const auto drawLed = [&](juce::Rectangle<float> ledBounds, bool on)
     {
-        drawImage(g, on ? a.ledOn : a.ledOff, lr);
+        drawImage(g, on ? a.ledOn : a.ledOff, ledBounds, 1.0f);
     };
 
     if (button.getWidth() <= 36 && button.getHeight() <= 36)
     {
         const bool forceOff = static_cast<bool>(
             button.getProperties().getWithDefault("forceLedOff", false));
-        drawLed(r.reduced(1.f), !button.getToggleState() && !forceOff);
+        drawLed(r.reduced(1.0f),
+                !button.getToggleState() && !forceOff);
         return;
     }
 
     if (button.getComponentID() == "MODULE_BYPASS")
     {
         const bool bypassed = button.getToggleState();
-        drawButton(false);
-        const float ls = juce::jmin(16.f, r.getHeight() - 5.f);
-        const juce::Rectangle<float> lr {
-            r.getX() + 1.5f, r.getCentreY() - ls * .5f, ls, ls
+        drawButton(!bypassed);
+
+        const float ledSide = juce::jmin(
+            16.0f, r.getHeight() - 5.0f);
+        const juce::Rectangle<float> ledBounds {
+            r.getX() + 1.5f,
+            r.getCentreY() - ledSide * .5f,
+            ledSide, ledSide
         };
-        if (bypassed && bypassLedRed.isValid())
-            drawImage(g, bypassLedRed, lr);
+
+        if (bypassed && !localMuted && !monochrome
+            && bypassLedRed.isValid())
+            drawImage(g, bypassLedRed, ledBounds, 1.0f);
         else
-            drawLed(lr, !bypassed);
+            drawLed(ledBounds, !bypassed);
 
         g.setColour((monochrome || localMuted)
-            ? juce::Colour(0xffeeeeee)
-            : (ivoryTheme ? juce::Colour(0xffffefd1)
+            ? juce::Colour(0xffececec)
+            : (ivoryTheme ? juce::Colour(0xfffff0d2)
                           : juce::Colour(0xffeef7f7)));
         g.setFont(juce::FontOptions(
-            button.getWidth() <= 54 ? 7.2f : 7.9f).withStyle("Bold"));
-        g.drawText(button.getButtonText(),
-                   juce::Rectangle<int>{
-                       (int)r.getX()+14, (int)r.getY(),
-                       juce::jmax(8,(int)r.getWidth()-16),
-                       (int)r.getHeight()},
-                   juce::Justification::centred);
+            button.getWidth() <= 54 ? 7.2f : 7.9f)
+            .withStyle("Bold"));
+        g.drawText(
+            button.getButtonText(),
+            juce::Rectangle<int> {
+                (int) r.getX() + 14,
+                (int) r.getY(),
+                juce::jmax(8, (int) r.getWidth() - 16),
+                (int) r.getHeight()
+            },
+            juce::Justification::centred);
         return;
     }
 
     if (button.getComponentID() == "ANALOG_MODE")
     {
-        drawButton(button.getToggleState());
+        drawButton(true);
         const bool ss = button.getToggleState();
         const auto half = r.getWidth() * .5f;
+
         g.setFont(juce::FontOptions(7.2f).withStyle("Bold"));
-        g.setColour(juce::Colours::white.withAlpha(ss ? .58f : .98f));
+        g.setColour(juce::Colours::white.withAlpha(
+            ss ? .58f : .98f));
         g.drawText("TT", r.withWidth(half).toNearestInt(),
                    juce::Justification::centred);
-        g.setColour(juce::Colours::white.withAlpha(ss ? .98f : .58f));
-        g.drawText("SS", r.withX(r.getX()+half).withWidth(half).toNearestInt(),
-                   juce::Justification::centred);
+        g.setColour(juce::Colours::white.withAlpha(
+            ss ? .98f : .58f));
+        g.drawText(
+            "SS",
+            r.withX(r.getX() + half)
+                .withWidth(half).toNearestInt(),
+            juce::Justification::centred);
         return;
     }
 
@@ -296,67 +369,108 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
     {
         const bool on = button.getToggleState();
         drawButton(on);
-        g.setColour(juce::Colours::white.withAlpha(on ? .98f : .62f));
+        g.setColour(juce::Colours::white.withAlpha(
+            on ? .98f : .62f));
         g.setFont(juce::FontOptions(7.2f).withStyle("Bold"));
-        g.drawText("X2", r.toNearestInt(), juce::Justification::centred);
+        g.drawText("X2", r.toNearestInt(),
+                   juce::Justification::centred);
         return;
     }
 
     const bool on = button.getToggleState();
     drawButton(on);
-    if (on && r.getWidth() > 38)
+
+    if (on && r.getWidth() > 38
+        && !localMuted && !monochrome)
     {
-        const float ls = juce::jmin(14.f, r.getHeight() - 6.f);
-        drawLed({ r.getX()+2.f, r.getCentreY()-ls*.5f, ls, ls }, true);
+        const float ledSide = juce::jmin(
+            14.0f, r.getHeight() - 6.0f);
+        drawLed({
+            r.getX() + 2.0f,
+            r.getCentreY() - ledSide * .5f,
+            ledSide, ledSide
+        }, true);
     }
 
     g.setColour((monochrome || localMuted)
-        ? juce::Colour(0xffeeeeee)
-        : (ivoryTheme ? juce::Colour(0xffffefd1)
+        ? juce::Colour(0xffececec)
+        : (ivoryTheme ? juce::Colour(0xfffff0d2)
                       : juce::Colour(0xffeef7f7)));
     g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
-    auto ta = r.toNearestInt().reduced(4,1);
-    if (on && ta.getWidth() > 38)
+
+    auto textArea = r.toNearestInt().reduced(4, 1);
+    if (on && textArea.getWidth() > 38)
     {
-        ta.setX(ta.getX()+10);
-        ta.setWidth(juce::jmax(8,ta.getWidth()-10));
+        textArea.setX(textArea.getX() + 10);
+        textArea.setWidth(
+            juce::jmax(8, textArea.getWidth() - 10));
     }
-    g.drawText(button.getButtonText(), ta, juce::Justification::centred);
+
+    g.drawText(button.getButtonText(), textArea,
+               juce::Justification::centred);
 }
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawButtonBackground(
     juce::Graphics& g, juce::Button& button,
     const juce::Colour& backgroundColour,
-    bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown)
+    bool shouldDrawButtonAsHighlighted,
+    bool shouldDrawButtonAsDown)
 {
-    juce::ignoreUnused(backgroundColour, shouldDrawButtonAsHighlighted);
+    juce::ignoreUnused(
+        backgroundColour, shouldDrawButtonAsHighlighted);
+
     const bool localMuted = static_cast<bool>(
         button.getProperties().getWithDefault("moduleMuted", false));
     const auto& a = assets(localMuted);
     const auto r = button.getLocalBounds().toFloat().reduced(.5f);
+
+    if (localMuted || monochrome)
+    {
+        drawImage(
+            g,
+            disabledButton.isValid()
+                ? disabledButton : a.buttonOff,
+            r, 1.0f);
+        return;
+    }
+
     const auto& image = shouldDrawButtonAsDown
         ? a.buttonPressed
-        : (button.getToggleState() ? a.buttonOn : a.buttonOff);
+        : (button.getToggleState()
+            ? a.buttonOn : a.buttonOff);
+
     drawImage(g, image, r, 1.0f);
 }
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawButtonText(
     juce::Graphics& g, juce::TextButton& button,
-    bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown)
+    bool shouldDrawButtonAsHighlighted,
+    bool shouldDrawButtonAsDown)
 {
-    juce::ignoreUnused(shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
+    juce::ignoreUnused(
+        shouldDrawButtonAsHighlighted,
+        shouldDrawButtonAsDown);
+
     const bool localMuted = static_cast<bool>(
         button.getProperties().getWithDefault("moduleMuted", false));
+
     g.setColour((monochrome || localMuted)
-        ? juce::Colour(0xffececec)
-        : (ivoryTheme ? juce::Colour(0xffffefd1)
-                      : juce::Colour(0xffeef7f7)));
+        ? juce::Colour(0xffe7e7e7)
+        : (ivoryTheme
+            ? juce::Colour(0xfffff0d2)
+            : juce::Colour(0xffeef7f7)));
+
     g.setFont(juce::FontOptions(
-        juce::jlimit(7.0f, 10.0f, button.getHeight() * .34f))
+        juce::jlimit(
+            7.0f, 10.0f,
+            button.getHeight() * .34f))
         .withStyle("Bold"));
-    g.drawFittedText(button.getButtonText(),
-                     button.getLocalBounds().reduced(5,2),
-                     juce::Justification::centred, 1, .85f);
+
+    g.drawFittedText(
+        button.getButtonText(),
+        button.getLocalBounds().reduced(5, 2),
+        juce::Justification::centred,
+        1, .85f);
 }
 
 VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& p)
@@ -402,7 +516,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     {
         setAnalyzerEnabled(enabled);
     };
-    settingsPanel->setIvoryTheme(false);
+    settingsPanel->setIvoryTheme(true);
     settingsPanel->setAnalyzerEnabled(true);
     analyzerDb.fill(-90.0f);
     audioProcessor.setAnalyzerEnabled(true);
@@ -724,7 +838,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
             parameterValue("OUTPUT_LEVEL"), " dB", 4, 3, juce::Colour(0xff9ed85c));
 
     setExpandedBand(-1);
-    setIvoryTheme(false);
+    setIvoryTheme(true);
 
     // Hover value box sits above the graph but never intercepts the graph mouse.
     floatingValueBox.setAlwaysOnTop(true);
@@ -2055,7 +2169,7 @@ void VVChainAudioProcessorEditor::drawCard(
         ivoryTheme ? .24f : .52f));
     g.fillRoundedRectangle(r.translated(0.f, 3.f), 8.f);
 
-    metalLook.drawPanelSurface(g, r);
+    metalLook.drawModuleSurface(g, r);
 
     g.setColour(frame.withAlpha(.90f));
     g.drawRoundedRectangle(r, 8.f, 1.35f);
@@ -2097,7 +2211,7 @@ void VVChainAudioProcessorEditor::drawPanel(
     juce::Graphics& g, juce::Rectangle<float> r,
     const juce::String& title, const juce::String& subtitle, juce::Colour accent)
 {
-    metalLook.drawPanelSurface(g, r);
+    metalLook.drawModuleSurface(g, r);
     g.setColour(uiColour(accent).withAlpha(.58f));
     g.fillRoundedRectangle(r.getX(), r.getY(), 4.f, r.getHeight(), 2.f);
 
@@ -2324,7 +2438,7 @@ void VVChainAudioProcessorEditor::timerCallback()
         {
             if (auto* knob = findKnob(id))
             {
-                const float alpha = muted ? 0.62f : 1.0f;
+                const float alpha = 1.0f;
                 knob->slider->getProperties().set("moduleMuted", muted);
                 knob->slider->setAlpha(alpha);
                 knob->label->setAlpha(muted ? 0.68f : 1.0f);
@@ -2454,14 +2568,14 @@ void VVChainAudioProcessorEditor::timerCallback()
         {
             dynDetectSliders[(size_t)b]->getProperties().set(
                 "moduleMuted", eqMuted);
-            dynDetectSliders[(size_t)b]->setAlpha(eqMuted ? 0.62f : 1.0f);
+            dynDetectSliders[(size_t)b]->setAlpha(1.0f);
             dynDetectSliders[(size_t)b]->repaint();
         }
         if (dynTriggerButtons[(size_t)b])
         {
             dynTriggerButtons[(size_t)b]->getProperties().set(
                 "moduleMuted", eqMuted);
-            dynTriggerButtons[(size_t)b]->setAlpha(eqMuted ? 0.62f : 1.0f);
+            dynTriggerButtons[(size_t)b]->setAlpha(1.0f);
             dynTriggerButtons[(size_t)b]->repaint();
         }
         setKnobAlpha("UDMBC_DEGREE" + n, udmbcMuted);
@@ -2577,9 +2691,6 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                                   : juce::Colour(0xff101719)));
     metalLook.drawPanelSurface(g, getLocalBounds().toFloat());
 
-    metalLook.drawPanelSurface(
-        g, juce::Rectangle<float>(0.f, 0.f, (float)getWidth(), 70.f));
-
     const auto shellFrame = uiColour(
         ivoryTheme ? juce::Colour(0xffad7c2f)
                    : juce::Colour(0xffa55d3d));
@@ -2587,6 +2698,13 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.fillRect(0, 68, getWidth(), 2);
     g.setColour(juce::Colours::white.withAlpha(.18f));
     g.fillRect(0, 1, getWidth(), 1);
+
+    const bool uiMuted = metalLook.monochrome;
+    constexpr float screwSize = 22.0f;
+    metalLook.drawScrew(g, { 6.0f, 5.0f, screwSize, screwSize }, uiMuted);
+    metalLook.drawScrew(g, { (float)getWidth() - 28.0f, 5.0f, screwSize, screwSize }, uiMuted);
+    metalLook.drawScrew(g, { 6.0f, (float)getHeight() - 28.0f, screwSize, screwSize }, uiMuted);
+    metalLook.drawScrew(g, { (float)getWidth() - 28.0f, (float)getHeight() - 28.0f, screwSize, screwSize }, uiMuted);
 
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff3b2c20)
                                     : juce::Colour(0xfff1f3f3)));
@@ -2596,7 +2714,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff6a5b49)
                                     : juce::Colour(0xffb8c1c3)));
     g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.70", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.71", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();

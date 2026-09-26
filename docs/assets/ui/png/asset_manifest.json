@@ -1,371 +1,343 @@
 {
-  "theme": "Obsidian Luxury × Industrial Pro × Deep Purple",
-  "background": "1500x930",
-  "knob_matrix": "8x8 / 64",
-  "assets": [
-    {
-      "path": "backgrounds/panel_bg.png",
-      "width": 1500,
-      "height": 930,
-      "mode": "RGB",
-      "alpha": false
-    },
-    {
-      "path": "components/buttons/button_capsule_off.png",
-      "width": 320,
-      "height": 104,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_capsule_on.png",
-      "width": 320,
-      "height": 104,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_capsule_pressed.png",
-      "width": 320,
-      "height": 104,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_power_off.png",
-      "width": 160,
-      "height": 160,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_power_on.png",
-      "width": 160,
-      "height": 160,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_power_pressed.png",
-      "width": 160,
-      "height": 160,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_rect_large_off.png",
-      "width": 340,
-      "height": 120,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_rect_large_on.png",
-      "width": 340,
-      "height": 120,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_rect_large_pressed.png",
-      "width": 340,
-      "height": 120,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_rect_small_off.png",
-      "width": 220,
-      "height": 84,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_rect_small_on.png",
-      "width": 220,
-      "height": 84,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_rect_small_pressed.png",
-      "width": 220,
-      "height": 84,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_square_large_off.png",
-      "width": 160,
-      "height": 160,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_square_large_on.png",
-      "width": 160,
-      "height": 160,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_square_large_pressed.png",
-      "width": 160,
-      "height": 160,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_square_small_off.png",
-      "width": 96,
-      "height": 96,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_square_small_on.png",
-      "width": 96,
-      "height": 96,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_square_small_pressed.png",
-      "width": 96,
-      "height": 96,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_toggle_off.png",
-      "width": 240,
-      "height": 104,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/buttons/button_toggle_on.png",
-      "width": 240,
-      "height": 104,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_line_amber_off.png",
-      "width": 180,
-      "height": 44,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_line_amber_on.png",
-      "width": 180,
-      "height": 44,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_line_purple_off.png",
-      "width": 180,
-      "height": 44,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_line_purple_on.png",
-      "width": 180,
-      "height": 44,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_round_amber_off.png",
-      "width": 96,
-      "height": 96,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_round_amber_on.png",
-      "width": 96,
-      "height": 96,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_round_purple_off.png",
-      "width": 96,
-      "height": 96,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_round_purple_on.png",
-      "width": 96,
-      "height": 96,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_square_amber_off.png",
-      "width": 96,
-      "height": 96,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_square_amber_on.png",
-      "width": 96,
-      "height": 96,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_square_purple_off.png",
-      "width": 96,
-      "height": 96,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_square_purple_on.png",
-      "width": 96,
-      "height": 96,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_tiny_amber_off.png",
-      "width": 48,
-      "height": 48,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_tiny_amber_on.png",
-      "width": 48,
-      "height": 48,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_tiny_purple_off.png",
-      "width": 48,
-      "height": 48,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/leds/led_tiny_purple_on.png",
-      "width": 48,
-      "height": 48,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/screws/screw_hex.png",
-      "width": 128,
-      "height": 128,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/screws/screw_knurled.png",
-      "width": 128,
-      "height": 128,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/screws/screw_phillips.png",
-      "width": 128,
-      "height": 128,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/screws/screw_slot.png",
-      "width": 128,
-      "height": 128,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/screws/screw_torx.png",
-      "width": 128,
-      "height": 128,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/screws/screw_washer.png",
-      "width": 128,
-      "height": 128,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/sliders/slider_h_fill_amber.png",
-      "width": 512,
-      "height": 72,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/sliders/slider_h_fill_purple.png",
-      "width": 512,
-      "height": 72,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/sliders/slider_h_track.png",
-      "width": 512,
-      "height": 72,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/sliders/slider_thumb_rect.png",
-      "width": 104,
-      "height": 128,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/sliders/slider_thumb_round.png",
-      "width": 112,
-      "height": 112,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/sliders/slider_v_fill_amber.png",
-      "width": 72,
-      "height": 512,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/sliders/slider_v_fill_purple.png",
-      "width": 72,
-      "height": 512,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "components/sliders/slider_v_track.png",
-      "width": 72,
-      "height": 512,
-      "mode": "RGBA",
-      "alpha": true
-    },
-    {
-      "path": "knobs/knob_sprite_64.png",
-      "width": 1536,
-      "height": 1536,
-      "mode": "RGBA",
-      "alpha": true
-    }
-  ]
+  "button_disabled.png": {
+    "width": 360,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "fc8b4277ede59bded30ef88215c9ea9bd0fa2791326cb18accf139432213b567",
+    "bytes": 2242
+  },
+  "bypass_led_red.png": {
+    "width": 128,
+    "height": 128,
+    "mode": "RGBA",
+    "sha256": "e8890a58a2e4091f667bc703497686144e2064c9a31d520e5731d7153d822be5",
+    "bytes": 10138
+  },
+  "ivory_button_off.png": {
+    "width": 360,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "bc56be171853d46d2f8449ccab7b27f8ad4b926926aea7ba4a3614961aa4fea4",
+    "bytes": 2588
+  },
+  "ivory_button_on.png": {
+    "width": 360,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "6f3cb6e5addad6252bc07a9fce0b7c7402b5c27442a500e568847ba32fdede6b",
+    "bytes": 6876
+  },
+  "ivory_button_pressed.png": {
+    "width": 360,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "197da28cb20495ae0eab8709eb429b1e6335d0d4dea0b67d3ceb2da044aa56b7",
+    "bytes": 2601
+  },
+  "ivory_graph.png": {
+    "width": 1500,
+    "height": 330,
+    "mode": "RGBA",
+    "sha256": "9fefc63a65a27232ef0c49f0d2dbfdb9b4db3a178e84f0d041dfa674bb078b23",
+    "bytes": 19553
+  },
+  "ivory_knob_strip.png": {
+    "width": 1024,
+    "height": 1024,
+    "mode": "RGBA",
+    "sha256": "1d7546794a69f134b0130e2ebca50a3d577476d26b16fa4f28313c3db5fea926",
+    "bytes": 464264,
+    "grid": "8x8",
+    "frameWidth": 128,
+    "frameHeight": 128,
+    "frames": 64
+  },
+  "ivory_led_off.png": {
+    "width": 128,
+    "height": 128,
+    "mode": "RGBA",
+    "sha256": "83deca5d2e1f1211cf4941204557207eb7e0bc70d2887bedd831e7231cd34da9",
+    "bytes": 907
+  },
+  "ivory_led_on.png": {
+    "width": 128,
+    "height": 128,
+    "mode": "RGBA",
+    "sha256": "5df3ab1e3afdba1d062aec51b89abca519ce708df121d908a4cd3019f07db732",
+    "bytes": 10838
+  },
+  "ivory_module.png": {
+    "width": 600,
+    "height": 930,
+    "mode": "RGBA",
+    "sha256": "1e7383bc7cf5dee55af23d12298f99f6fe113141e39be795af0228171074b0cd",
+    "bytes": 302615
+  },
+  "ivory_panel.png": {
+    "width": 1500,
+    "height": 930,
+    "mode": "RGBA",
+    "sha256": "9fa5d252043a5877e725c553135c1a44a5e65f22d5fde83305c6c88acb0cda8c",
+    "bytes": 745293
+  },
+  "ivory_power_off.png": {
+    "width": 180,
+    "height": 180,
+    "mode": "RGBA",
+    "sha256": "96bf80eb7cfc84cce5a692f35ed532a8797869fe19426f08638a549c4e830228",
+    "bytes": 46022
+  },
+  "ivory_power_on.png": {
+    "width": 180,
+    "height": 180,
+    "mode": "RGBA",
+    "sha256": "cc12f254184253d167f218e5e08f1c2e501a7bfa64d00c39d622d035ad4544ea",
+    "bytes": 45972
+  },
+  "ivory_screw.png": {
+    "width": 96,
+    "height": 96,
+    "mode": "RGBA",
+    "sha256": "44cde9739e43f4b020c5bbbf432975541fbaf3eb3c8b222bc804ef19997b6bf6",
+    "bytes": 1916
+  },
+  "ivory_slider.png": {
+    "width": 420,
+    "height": 72,
+    "mode": "RGBA",
+    "sha256": "265878350c19757942ead3ec8b157bab01fad1eded1aea4bae22156d5eae2696",
+    "bytes": 1821
+  },
+  "ivory_slider_thumb.png": {
+    "width": 120,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "8c18c0a46af5d1b99deb7108bb34d1ef2d233c54c49813c0540b867efd76a557",
+    "bytes": 2099
+  },
+  "ivory_slider_track.png": {
+    "width": 800,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "90e2c5b333f0b3b44c3d647c9bb16121b06adf246f746fb376a449a379315abe",
+    "bytes": 2411
+  },
+  "muted_button_off.png": {
+    "width": 360,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "fc8b4277ede59bded30ef88215c9ea9bd0fa2791326cb18accf139432213b567",
+    "bytes": 2242
+  },
+  "muted_button_on.png": {
+    "width": 360,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "fc8b4277ede59bded30ef88215c9ea9bd0fa2791326cb18accf139432213b567",
+    "bytes": 2242
+  },
+  "muted_button_pressed.png": {
+    "width": 360,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "162317240a7c3f9ba11fd9ffeb3b9de459f1fe69dfc840ad77d2802db5a69a99",
+    "bytes": 2428
+  },
+  "muted_graph.png": {
+    "width": 1500,
+    "height": 330,
+    "mode": "RGBA",
+    "sha256": "89febdd224220971ea556bcb25a2e496a2bca4e58cf1e927f9cfdc306dbef17b",
+    "bytes": 11419
+  },
+  "muted_knob_strip.png": {
+    "width": 1024,
+    "height": 1024,
+    "mode": "RGBA",
+    "sha256": "6964b69d64d040c59808359021498e6396d2f1f87cfcad880a8a172809acaafb",
+    "bytes": 385115,
+    "grid": "8x8",
+    "frameWidth": 128,
+    "frameHeight": 128,
+    "frames": 64
+  },
+  "muted_led_off.png": {
+    "width": 128,
+    "height": 128,
+    "mode": "RGBA",
+    "sha256": "742c592e1c0a83614bb6767671385e9953fd0aee4790b8fc2954fb7d43960955",
+    "bytes": 933
+  },
+  "muted_led_on.png": {
+    "width": 128,
+    "height": 128,
+    "mode": "RGBA",
+    "sha256": "742c592e1c0a83614bb6767671385e9953fd0aee4790b8fc2954fb7d43960955",
+    "bytes": 933
+  },
+  "muted_module.png": {
+    "width": 600,
+    "height": 930,
+    "mode": "RGBA",
+    "sha256": "fb9653d7c1705006d46e1621a161951453a6ba216a6f8d1075fbf67f3688d1ea",
+    "bytes": 429228
+  },
+  "muted_panel.png": {
+    "width": 1500,
+    "height": 930,
+    "mode": "RGBA",
+    "sha256": "f1fa8d0fe6d3179b4228bb3b832dc3a371272fddd5d52bf94656435f2698bb34",
+    "bytes": 1051680
+  },
+  "muted_power_off.png": {
+    "width": 180,
+    "height": 180,
+    "mode": "RGBA",
+    "sha256": "a02cb17699c9c940aa7a43535e56ad3d593b9443af120a008334a1c264f65089",
+    "bytes": 44990
+  },
+  "muted_power_on.png": {
+    "width": 180,
+    "height": 180,
+    "mode": "RGBA",
+    "sha256": "5a1772bd0831b567bda90036f915b03cc316c90b59dab2f38632ba8bc6e6154f",
+    "bytes": 44954
+  },
+  "muted_screw.png": {
+    "width": 96,
+    "height": 96,
+    "mode": "RGBA",
+    "sha256": "7e3ad7bd27bdfeeb38813c3586757648416fc6c0cb59af69cd9d42ef87f1d07e",
+    "bytes": 1920
+  },
+  "muted_slider.png": {
+    "width": 420,
+    "height": 72,
+    "mode": "RGBA",
+    "sha256": "805fe15cfd1ad6cb2f9d34652594e1535448676c3b7b0ed95b96e05a2a59bcf2",
+    "bytes": 1805
+  },
+  "muted_slider_thumb.png": {
+    "width": 120,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "adce16001840d3bb3500eed20eceaa4081c5b5859c7e0e07d832adc677d662be",
+    "bytes": 2087
+  },
+  "muted_slider_track.png": {
+    "width": 800,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "a10ba4e3db9a8efca81aa3832c0120ebdd4ab0de56811685e14c0043651db673",
+    "bytes": 2403
+  },
+  "studio_button_off.png": {
+    "width": 360,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "b0d9852aea8c3bdb3411eeedb8e7a921c9c3adf661ce558fe4b9155e3cb8fa94",
+    "bytes": 2539
+  },
+  "studio_button_on.png": {
+    "width": 360,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "68fb24b8861d7c48c82dcb59ec0d132aeb8a31b3aef68cb7d20b364e7cec96df",
+    "bytes": 7202
+  },
+  "studio_button_pressed.png": {
+    "width": 360,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "31d4769a8aaf0fb56469a74fa0949b647973ea4b885c73d78c8c4733d4a3a34b",
+    "bytes": 2614
+  },
+  "studio_graph.png": {
+    "width": 1500,
+    "height": 330,
+    "mode": "RGBA",
+    "sha256": "ab33d8ca34c7cceb796e87564516f92f6100689a7d273519ad6163f744022ba7",
+    "bytes": 19868
+  },
+  "studio_knob_strip.png": {
+    "width": 1024,
+    "height": 1024,
+    "mode": "RGBA",
+    "sha256": "9be1c5eb37681ba3698ffb4cf99f96d5932368161f8bc0961234de531f37cb3b",
+    "bytes": 460076,
+    "grid": "8x8",
+    "frameWidth": 128,
+    "frameHeight": 128,
+    "frames": 64
+  },
+  "studio_led_off.png": {
+    "width": 128,
+    "height": 128,
+    "mode": "RGBA",
+    "sha256": "f4ba04f0bb76863377e5672fec41b81a643dadf644692b76a4546cb2711fffcb",
+    "bytes": 904
+  },
+  "studio_led_on.png": {
+    "width": 128,
+    "height": 128,
+    "mode": "RGBA",
+    "sha256": "2daaefb4a921c1400b005ffaa72148ce6ef7f201dff52c72dfd3f07a2f07499c",
+    "bytes": 11288
+  },
+  "studio_module.png": {
+    "width": 600,
+    "height": 930,
+    "mode": "RGBA",
+    "sha256": "92309163a5e736d84bb102626e20fc6eb3d9e9b9fcdf2c71232b77b253d4465a",
+    "bytes": 292057
+  },
+  "studio_panel.png": {
+    "width": 1500,
+    "height": 930,
+    "mode": "RGBA",
+    "sha256": "6fed19d3c9c372bb5841114b65e9a239883d931beb4d182703cac9ae551bd5d1",
+    "bytes": 718190
+  },
+  "studio_power_off.png": {
+    "width": 180,
+    "height": 180,
+    "mode": "RGBA",
+    "sha256": "6a7a3bc7cbfe32759926424aee4f66e8f3916d550a34d0bdd96fc8d99df50f1c",
+    "bytes": 48094
+  },
+  "studio_power_on.png": {
+    "width": 180,
+    "height": 180,
+    "mode": "RGBA",
+    "sha256": "6127664569eee1cf222b42355917c6dc98304666d101f03894c073196cc98459",
+    "bytes": 48056
+  },
+  "studio_screw.png": {
+    "width": 96,
+    "height": 96,
+    "mode": "RGBA",
+    "sha256": "efb8c8553da36aac7fa5b69ae50fe5350310906d84f467c37d3d8a9f5aae7f8a",
+    "bytes": 1921
+  },
+  "studio_slider.png": {
+    "width": 420,
+    "height": 72,
+    "mode": "RGBA",
+    "sha256": "3a99e955e8018e2d581a7e743577a90b193e128fc70d76b21dfd889a9c11a6ab",
+    "bytes": 1825
+  },
+  "studio_slider_thumb.png": {
+    "width": 120,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "1d49b6acbdacae36cd80803587a38488fbfbc912380ebb886c4627e5a1fd8631",
+    "bytes": 2102
+  },
+  "studio_slider_track.png": {
+    "width": 800,
+    "height": 120,
+    "mode": "RGBA",
+    "sha256": "429b498fd45b69259875225478b9970b2be8ccbe13d7c7b3914ab97f45920ec8",
+    "bytes": 2420
+  }
 }
