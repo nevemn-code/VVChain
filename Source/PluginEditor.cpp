@@ -78,8 +78,8 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawKnobFrame(
 }
 
 VVChainAudioProcessorEditor::MetalLookAndFeel::MetalLookAndFeel()
-#if !VVCHAIN_HAS_MASTER_LOCK_UI
 {
+#if !VVCHAIN_HAS_MASTER_LOCK_UI
 #define VV_IMG(TARGET, PREFIX, MEMBER, FILE) \
     TARGET.MEMBER = loadImage( \
         VVChainAssets::PREFIX##_##FILE##_png, \
