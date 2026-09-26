@@ -1,0 +1,93 @@
+name: Render Engineering PNG UI v1.0.71
+
+on:
+  push:
+    branches:
+      - ui-engineering-png-v1.0.71
+    paths:
+      - "Tools/generate_ui_png_assets.py"
+      - ".github/workflows/render-engineering-png-v1071.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui-engineering-png-v1.0.71
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Pillow
+        run: python -m pip install --disable-pip-version-check --no-input pillow
+
+      - name: Render production PNG assets
+        run: python Tools/generate_ui_png_assets.py
+
+      - name: Verify engineering delivery contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          root=Path("docs/assets/ui/png")
+          required={
+              "ivory_panel.png":(1500,930),
+              "studio_panel.png":(1500,930),
+              "muted_panel.png":(1500,930),
+              "ivory_module.png":(600,930),
+              "studio_module.png":(600,930),
+              "muted_module.png":(600,930),
+              "ivory_graph.png":(1500,330),
+              "studio_graph.png":(1500,330),
+              "muted_graph.png":(1500,330),
+              "ivory_knob_strip.png":(1024,1024),
+              "studio_knob_strip.png":(1024,1024),
+              "muted_knob_strip.png":(1024,1024),
+              "ivory_button_off.png":(360,120),
+              "ivory_button_on.png":(360,120),
+              "ivory_button_pressed.png":(360,120),
+              "button_disabled.png":(360,120),
+              "ivory_led_on.png":(128,128),
+              "ivory_led_off.png":(128,128),
+              "bypass_led_red.png":(128,128),
+              "ivory_screw.png":(96,96),
+              "ivory_slider_track.png":(800,120),
+              "ivory_slider_thumb.png":(120,120),
+          }
+          for name,size in required.items():
+              p=root/name
+              assert p.is_file(), name
+              im=Image.open(p)
+              assert im.size==size,(name,im.size,size)
+              assert im.mode=="RGBA",(name,im.mode)
+              assert p.read_bytes()[:8]==b"\x89PNG\r\n\x1a\n",name
+          # 8x8 sprite = 64 frames, exactly 128x128 each.
+          for name in ("ivory_knob_strip.png","studio_knob_strip.png","muted_knob_strip.png"):
+              im=Image.open(root/name)
+              assert im.width//8==128 and im.height//8==128,name
+          print("PASS engineering RGBA PNG contract")
+          PY
+
+      - name: Commit rendered PNGs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "VVChain UI Asset Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/assets/ui/png
+          if git diff --cached --quiet; then
+            echo "PNG assets already current"
+            exit 0
+          fi
+          git commit -m "[v1.0.71] Assets: render clean RGBA engineering PNGs"
+          git push origin HEAD:ui-engineering-png-v1.0.71
