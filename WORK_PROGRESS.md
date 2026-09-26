@@ -29,7 +29,7 @@ Locked identities:
 - The approved Master PNGs are the only Visual Masters.
 - The old Python/procedural UI renderer is retired.
 - `assets/ui/runtime/APPROVED.lock` is present.
-- Exactly 46 approved runtime PNGs are committed under `assets/ui/runtime/`.
+- Exactly 47 approved runtime PNGs are committed under `assets/ui/runtime/`.
 - Every runtime PNG is locked by byte count, SHA-256, dimensions and 8-bit RGBA contract in `binary_manifest.json`.
 - Runtime source archive identity is locked: `VVChain_UI_Runtime_Engineering_v1.0.74.zip`, 7,322,749 bytes, SHA-256 `1fca9eca20ccc1852310287fe41fbd59341aa018726c3ce764e934b2a7e6c297`.
 - Six normal metal knob colours are active: Gold, Blue, Green, Red, Black and Silver.
@@ -69,12 +69,23 @@ Locked identities:
   - `assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png`
   - `assets/ui/master/KNOB_MASTER_HIRES.png`
   - `assets/ui/runtime/knobs/knob_reference_hires_56.png`
-- Main band order follows the approved reference exactly: FREQ / GAIN / Q → THRESH / ATTACK / RELEASE → DEGREE / LEVEL / MIX + ADV → AMOUNT / TYPEA.
+- Main band order follows the approved reference exactly: FREQ / GAIN / Q → THRESH / ATTACK / RELEASE → DEGREE / LEVEL / MIX + ADV → AMOUNT / TYPE-A / TRANSIENT.
 - Removed the non-reference PEAK/RMS + ABOVE/BELOW row from the main layout while keeping its underlying parameter state intact.
 - Ivory runtime uses the exact 1265×938 layout Master as its background; fixed labels/frames are not repainted on top.
-- UDMBC ATTACK / RELEASE and TRANSIENT remain available in ADVANCED so processing access is preserved.
+- UDMBC ATTACK / RELEASE remain in ADVANCED; TRANSIENT is restored as the third visible ANALOG-row control and is also mirrored in ADVANCED.
 - Ivory uses the uploaded 8×7 / 56-frame high-resolution knob runtime. Black retains the existing transparent locked sprite set because the uploaded high-resolution source contains an Ivory background field.
 - DSP, parameter IDs, automation and processing order are unchanged.
+
+## v1.0.87 pixel-coordinate checkpoint
+
+- Re-measured the approved 1265×938 composition instead of scaling the old 1448×1086 layout.
+- Lower strip is fixed to x=36, y=351, 1204×570.
+- BAND columns are 236 px wide with 8 px gaps; MASTER is 228 px wide at x=1012.
+- Web and Native rows share the same lane offsets: 58 / 179 / 299 / 423 px.
+- Restored the exact fourth row: AMOUNT / TYPE-A / TRANSIENT.
+- Header hit zones moved to x=862 / 987 / 1113.
+- Web runtime scale now uses 1265×938, not 1448×1086.
+- No DSP algorithm, parameter range, processing order or audio path was changed in this layout checkpoint.
 
 ## Validation evidence
 
@@ -100,7 +111,7 @@ Locked identities:
   - Windows VST3 Release: PASS.
   - Main artifact: `VVChain-v1.0.83-Windows-VST3`.
 - Final main repository check:
-  - approved runtime PNGs: 46
+  - approved runtime PNGs: 47
   - rejected Candidate PNGs under `docs/assets/ui/png/`: 0
   - exact Master PNGs: 2
   - `APPROVED.lock`: present
