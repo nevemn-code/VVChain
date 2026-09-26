@@ -10,7 +10,7 @@ v1.0.85
 
 ## Current checkpoint
 
-**UI3 Hardware Gold visual approved — awaiting byte-exact Master PNG ingest; production v1.0.85 unchanged**
+**UI3 Hardware Gold latest visual locked — 38-asset BOM calculated; awaiting byte-exact Master PNG ingest; production unchanged**
 
 ## Master paths
 
@@ -100,13 +100,13 @@ Future UI changes remain governed by `UI_MASTER_LOCK.md`. Do not regenerate the 
 
 - Branch remains `ui/ui3-hardware-gold-candidate`.
 - The user explicitly approved the latest Hardware Gold / Amber UI visual as the third UI Visual Master source.
-- Latest approved source identity (supersedes the earlier UI3 candidate hash):
+- Latest approved source identity (supersedes all earlier UI3 candidate hashes):
   - intended repository path: `assets/ui/master/VVChain_hardware_gold_master.png`
-  - dimensions: 1492×1054
+  - dimensions: 1448×1086
   - source mode: RGB PNG
-  - bytes: 2,184,907
-  - SHA-256: `88b09c4ad3a208fb5a0579a08f4f63b78762c1ffdef2bf91e8615a1ecab5db03`
-  - prior candidate SHA-256 `5ae2b3e3d021123882503c227abcd8f7b5446cdf5b40b97fed491fc209f69631` is superseded and must not be ingested.
+  - bytes: 1,959,313
+  - SHA-256: `ae8401ad7e3aa477ebcceed2a6ab45a19275500fd9e24a98a87d372c31f0382b`
+- Maximum-fidelity UI3 extraction BOM is locked in `assets/ui/master/UI3_ASSET_BOM_PENDING.json`: 38 planned PNGs in 10 checkpoint groups.
 - This exact binary is not yet present in the repository. Under `UI_MASTER_LOCK.md`, no UI3 engineering PNG derivation may begin until the exact Master binary is committed and its SHA-256 is verified.
 - No production Master/runtime PNG has been changed and main remains on the v1.0.85 two-skin runtime.
 - No DSP, APVTS parameter, automation, processing-order or audio change is permitted as part of UI3.
@@ -114,11 +114,12 @@ Future UI changes remain governed by `UI_MASTER_LOCK.md`. Do not regenerate the 
 
 ## Remaining
 
-**1 byte-exact Master ingest checkpoint, then validated PNG extraction groups**
+**1 byte-exact Master ingest checkpoint, then 10 validated extraction groups / 38 planned PNGs**
 
 ## Next action
 
-1. Commit the exact approved PNG to `assets/ui/master/VVChain_hardware_gold_master.png`.
-2. Verify: 1492×1054 RGB PNG, 2,184,907 bytes, SHA-256 `88b09c4ad3a208fb5a0579a08f4f63b78762c1ffdef2bf91e8615a1ecab5db03`.
-3. Only after that PASS, derive the first UI3 engineering PNG group from the Master, validate, commit, and update this file.
-4. Continue group-by-group checkpoints; never accumulate all UI3 assets before committing.
+1. Put the exact latest approved PNG at `assets/ui/master/VVChain_hardware_gold_master.png`.
+2. Verify: 1448×1086 RGB PNG, 1,959,313 bytes, SHA-256 `ae8401ad7e3aa477ebcceed2a6ab45a19275500fd9e24a98a87d372c31f0382b`.
+3. Only after that PASS, start G01 backgrounds from the committed Master.
+4. Validate G01 against Master, RGBA/alpha/dimensions/hash, commit, update this file.
+5. Continue G02→G10 one group at a time; never regenerate from text/renderer and never admit a failing asset to runtime.
