@@ -6,7 +6,7 @@
     "bytes": 7322749,
     "sha256": "1fca9eca20ccc1852310287fe41fbd59341aa018726c3ce764e934b2a7e6c297"
   },
-  "asset_count": 46,
+  "asset_count": 47,
   "field_order": [
     "bytes",
     "sha256",
@@ -294,6 +294,21 @@
       "ccf2efd9361a8e7a30c9b5b30fd5073554d9c07a7322f6e1bf260abb3feac8ee",
       1024,
       1024
+    ],
+    "knobs/knob_reference_hires_56.png": [
+      2526063,
+      "38f0db7672bc571d53d7b3cdef1f04c5381c250e1bee78c39420085aa4ed9ffe",
+      1312,
+      1148
     ]
-  }
+  },
+  "extensions": [
+    {
+      "version": "v1.0.86",
+      "asset": "knobs/knob_reference_hires_56.png",
+      "source_master": "assets/ui/master/KNOB_MASTER_HIRES.png",
+      "source_master_sha256": "7e35dfee96e954a8ea5e76d82bb8095ad0c697f89f98982965c2a4b03ae5c2f8",
+      "note": "User-approved scoped Ivory knob master; direct engineering sprite."
+    }
+  ]
 }
