@@ -12,8 +12,9 @@ Expected immutable master paths:
 
 - `assets/ui/master/VVChain_black_master.png`
 - `assets/ui/master/VVChain_ivory_master.png`
+- `assets/ui/master/VVChain_hardware_gold_master.png`
 
-Until both exact original Master PNG binaries exist at those paths, no replacement runtime asset may be described as complete, identical, 100% restored, or production-approved.
+For any supported skin, its exact approved Master PNG binary must exist at the locked path before any derived runtime asset may be described as production-approved. Hardware Gold / UI3 is locked to the identity recorded in `assets/ui/master/master_manifest.json`.
 
 ## Prohibited reconstruction
 
