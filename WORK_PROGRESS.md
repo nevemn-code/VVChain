@@ -114,7 +114,7 @@ Future UI changes remain governed by `UI_MASTER_LOCK.md`. Do not regenerate the 
 
 ## Remaining
 
-**10 validated extraction groups / 38 planned PNGs remain; G01 is the first active checkpoint**
+**Two-phase plan active: Phase 1 = all non-knob UI assets; Phase 2 = rotary knobs from user-supplied GitHub/open-source code**
 
 ## G01 current evidence
 
@@ -141,3 +141,29 @@ Future UI changes remain governed by `UI_MASTER_LOCK.md`. Do not regenerate the 
 1. Preserve G01A as the verified full-panel derivative.
 2. Resolve G01B only by a Master-compliant method: exact non-generative source pixels supplied/approved for a clean graph bed, or an explicit policy change authorizing destructive cleanup.
 3. Do not start G02 and do not admit G01 to runtime until G01B passes and both binaries are committed.
+
+
+## UI3 two-phase execution change
+
+User changed the delivery plan:
+
+### Phase 1 — ACTIVE
+Generate and validate all UI3 assets except rotary knob sprites:
+- G01 backgrounds
+- G03 wide dark buttons
+- G04 +ADV buttons
+- G05 settings square
+- G06 LED states
+- G07 TT/SS metal toggle
+- G08 screws / X-OVER slider hardware
+- G09 1st/2nd indicator square
+- G10 value plate
+
+### Phase 2 — DEFERRED
+- G02 rotary knobs only.
+- Do not regenerate, approximate, recolour or procedurally build knob sprites.
+- User will provide GitHub/open-source knob source/implementation later.
+- Existing knob work is not to be treated as final UI3 knob source.
+
+### Phase 1 rule
+Candidate files remain outside production runtime until their own Master comparison / RGBA / alpha / dimension / state-geometry checks pass. Runtime Native/Web parity remains mandatory.
