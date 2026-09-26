@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "AWAITING_BYTE_EXACT_MASTER_BINARY",
+  "status": "VERIFIED_MASTER_LOCKED",
   "branch": "ui/ui3-hardware-gold-candidate",
   "target_path": "assets/ui/master/VVChain_hardware_gold_master.png",
   "expected": {
@@ -25,5 +25,15 @@
     "knob_frames_fixed_canvas_anchor_center": true,
     "knob_body_pixel_translation_tolerance_px": 0,
     "checkpoint_commit_each_validated_group": true
+  },
+  "verified": {
+    "branch_path": "assets/ui/master/VVChain_hardware_gold_master.png",
+    "git_blob_sha1": "daae37024c5af20e54ed4263d4bb6a3eb9f57af1",
+    "bytes": 1959313,
+    "width": 1448,
+    "height": 1086,
+    "mode": "RGB",
+    "sha256": "ae8401ad7e3aa477ebcceed2a6ab45a19275500fd9e24a98a87d372c31f0382b",
+    "master_ingest_commit": "cf2cb74f7485f976c234a0aa279a07bb7239a1fd"
   }
 }
