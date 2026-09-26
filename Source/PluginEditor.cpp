@@ -152,6 +152,7 @@ VVChainAudioProcessorEditor::MetalLookAndFeel::MetalLookAndFeel()
 
     VVCHAIN_MASTER_IMG(blackFullPanel, black_full_panel);
     VVCHAIN_MASTER_IMG(ivoryFullPanel, ivory_full_panel);
+    VVCHAIN_MASTER_IMG(layoutOrderMaster, UI_LAYOUT_MASTER_EXACT_ORDER);
     VVCHAIN_MASTER_IMG(knobGold, knob_gold_64);
     VVCHAIN_MASTER_IMG(knobBlue, knob_blue_64);
     VVCHAIN_MASTER_IMG(knobGreen, knob_green_64);
@@ -228,6 +229,7 @@ bool VVChainAudioProcessorEditor::MetalLookAndFeel::isMasterRuntimeActive() cons
 {
 #if VVCHAIN_HAS_MASTER_LOCK_UI
     return blackFullPanel.isValid() && ivoryFullPanel.isValid()
+        && layoutOrderMaster.isValid()
         && knobSilver.isValid() && knobReferenceHires.isValid()
         && knobPlatinumMaster.isValid();
 #else
@@ -280,7 +282,11 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawPanelSurface(
 #if VVCHAIN_HAS_MASTER_LOCK_UI
     if (isMasterRuntimeActive())
     {
-        drawImage(g, ivoryTheme ? ivoryFullPanel : blackFullPanel, bounds, 1.0f);
+        drawImage(g,
+                  ivoryTheme && layoutOrderMaster.isValid()
+                      ? layoutOrderMaster
+                      : (ivoryTheme ? ivoryFullPanel : blackFullPanel),
+                  bounds, 1.0f);
         return;
     }
 #endif
@@ -639,7 +645,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     setLookAndFeel(&metalLook);
     setResizable(false, false);
 #if VVCHAIN_HAS_MASTER_LOCK_UI
-    setSize(1448, 1086);
+    setSize(1265, 938);
 #else
     setSize(1500, 930);
 #endif
@@ -1321,7 +1327,7 @@ juce::Rectangle<float> VVChainAudioProcessorEditor::eqGraphBounds() const
     // reference while keeping the approved full-panel PNG untouched.
 #if VVCHAIN_HAS_MASTER_LOCK_UI
     if (metalLook.isMasterRuntimeActive())
-        return { 24.f, 94.f, (float) getWidth() - 48.f, 294.f };
+        return { 28.f, 90.f, 1209.f, 255.f };
 #endif
     return { 18.f, 78.f, (float) getWidth() - 36.f, 315.f };
 }
@@ -2906,7 +2912,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff6a5b49)
                                     : juce::Colour(0xffb8c1c3)));
     g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.86",
+    g.drawText("VVCHAIN v1.0.87",
                masterRuntime ? 294 : 20,
                masterRuntime ? 47 : 39,
                180, 12, juce::Justification::left);
