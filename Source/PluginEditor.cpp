@@ -3416,6 +3416,7 @@ void VVChainAudioProcessorEditor::resized()
         ? (w - left * 2 - gap * 4) / 5
         : (w - left * 2 - gap * 4) / 5;
     const int cardW = unitW;
+    const int cardH = masterRuntime ? 664 : 510;
 
     const std::array<int, 4> moduleWidths { 62, 70, 78, 82 };
     constexpr int topGap = 7;
