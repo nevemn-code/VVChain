@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "G01_PARTIAL_BLOCKED",
+  "status": "G01_IN_PROGRESS",
   "source_master": {
     "path": "assets/ui/master/VVChain_hardware_gold_master.png",
     "expected_sha256": "ae8401ad7e3aa477ebcceed2a6ab45a19275500fd9e24a98a87d372c31f0382b",
@@ -45,6 +45,27 @@
           "file": "backgrounds/hardware_gold_graph_bed.png",
           "status": "BLOCKED_MASTER_LOCK",
           "reason": "Master contains baked live EQ curves/nodes; lossless crop alone cannot remove them. Generative/procedural removal is prohibited."
+        }
+      },
+      "status": "PARTIAL",
+      "local_outputs": {
+        "backgrounds/hardware_gold_full_panel.png": {
+          "status": "LOCAL_PASS_PENDING_BINARY_INGEST",
+          "width": 1448,
+          "height": 1086,
+          "mode": "RGBA",
+          "bytes": 2206153,
+          "sha256": "2f9419ddc6517b28e1c041c4a0f1d691889b6e3327492ad68a05b705de3802a9",
+          "validation": "RGB exact to Master; opaque alpha added only"
+        },
+        "backgrounds/hardware_gold_graph_bed.png": {
+          "status": "CANDIDATE_VISUAL_REVIEW_PENDING",
+          "width": 1256,
+          "height": 271,
+          "mode": "RGB",
+          "bytes": 297203,
+          "sha256": "bef22a4d81ffe90998632cc6e401f0e62cd48e027f4063da6e41714d850cc3f6",
+          "method": "Master-pixel cleanup/clone only; no generative reconstruction"
         }
       }
     },
