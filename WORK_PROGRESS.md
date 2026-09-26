@@ -6,11 +6,11 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.72
+v1.0.73
 
 ## Current checkpoint
 
-**Checkpoint 1 — Master Lock / renderer retirement**
+**Checkpoint 2 — Master identity lock / validation gate**
 
 ## Master paths
 
@@ -26,7 +26,7 @@ Required exact original binaries:
 - Retired the repository Python UI PNG renderer from the active source tree.
 - Recorded that existing `docs/assets/ui/png/` assets remain unapproved Candidates until Master comparison.
 - Added resumable checkpoint state.
-- Bumped repository-visible version references to v1.0.72 for this GitHub change batch.
+- Bumped repository-visible version references to v1.0.72 for the initial GitHub change batch.\n- Recorded byte-exact SHA-256, dimensions, byte counts and RGBA mode for both user-approved Master PNGs in `assets/ui/master/master_manifest.json`.\n- Added `Tests/ui_master_lock.py` so future CI cannot silently reintroduce the retired renderer or accept a wrong Master binary.\n- Added explicit runtime and rejected/candidate asset areas.\n- VVChain Fast CI/CD #1328 completed successfully for Checkpoint 1.
 
 ## Accepted runtime assets
 

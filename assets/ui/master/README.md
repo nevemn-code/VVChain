@@ -9,6 +9,6 @@ Required files:
 
 A README, screenshot substitute, renderer output or visually similar reconstruction is **not** a Master.
 
-See `/UI_MASTER_LOCK.md`.
+See `/UI_MASTER_LOCK.md` and `master_manifest.json` for the byte-exact identity lock.
 
 The production runtime must not be rebuilt from this README or from text descriptions.
