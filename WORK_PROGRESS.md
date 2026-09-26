@@ -100,11 +100,13 @@ Future UI changes remain governed by `UI_MASTER_LOCK.md`. Do not regenerate the 
 
 - Branch remains `ui/ui3-hardware-gold-candidate`.
 - The user explicitly approved the latest Hardware Gold / Amber UI visual as the third UI Visual Master source.
-- Approved source identity (exact chat-exported PNG):
+- Latest approved source identity (supersedes the earlier UI3 candidate hash):
   - intended repository path: `assets/ui/master/VVChain_hardware_gold_master.png`
   - dimensions: 1492×1054
   - source mode: RGB PNG
-  - SHA-256: `5ae2b3e3d021123882503c227abcd8f7b5446cdf5b40b97fed491fc209f69631`
+  - bytes: 2,184,907
+  - SHA-256: `88b09c4ad3a208fb5a0579a08f4f63b78762c1ffdef2bf91e8615a1ecab5db03`
+  - prior candidate SHA-256 `5ae2b3e3d021123882503c227abcd8f7b5446cdf5b40b97fed491fc209f69631` is superseded and must not be ingested.
 - This exact binary is not yet present in the repository. Under `UI_MASTER_LOCK.md`, no UI3 engineering PNG derivation may begin until the exact Master binary is committed and its SHA-256 is verified.
 - No production Master/runtime PNG has been changed and main remains on the v1.0.85 two-skin runtime.
 - No DSP, APVTS parameter, automation, processing-order or audio change is permitted as part of UI3.
@@ -117,6 +119,6 @@ Future UI changes remain governed by `UI_MASTER_LOCK.md`. Do not regenerate the 
 ## Next action
 
 1. Commit the exact approved PNG to `assets/ui/master/VVChain_hardware_gold_master.png`.
-2. Verify dimensions and SHA-256 against the locked identity above.
+2. Verify: 1492×1054 RGB PNG, 2,184,907 bytes, SHA-256 `88b09c4ad3a208fb5a0579a08f4f63b78762c1ffdef2bf91e8615a1ecab5db03`.
 3. Only after that PASS, derive the first UI3 engineering PNG group from the Master, validate, commit, and update this file.
 4. Continue group-by-group checkpoints; never accumulate all UI3 assets before committing.
