@@ -1530,6 +1530,18 @@ void VVChainAudioProcessorEditor::drawEqGraph(
 {
     metalLook.drawGraphSurface(g, graph);
 
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+    if (metalLook.isMasterRuntimeActive())
+    {
+        // v1.0.85 upper-section cleanup:
+        // the approved full-panel PNG is not edited. We cover only the live
+        // graph viewport so the obsolete baked split/duplicate axes cannot
+        // interfere with the current single 20 Hz–20 kHz graph.
+        g.setColour(juce::Colour(0xff0c0f10));
+        g.fillRect(graph);
+    }
+#endif
+
     if (analyzerEnabled && !analyzerPath.isEmpty())
     {
         auto fill = analyzerPath;
@@ -1645,7 +1657,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             uiColour(ivoryTheme ? juce::Colour(0xffffd37b)
                                  : juce::Colour(0xff73f0ed)));
         g.setFont(
-            juce::FontOptions(7.5f).withStyle("Bold"));
+            juce::FontOptions(8.0f).withStyle("Bold"));
         g.drawText(
             "X" + juce::String(i + 1) + "  "
                 + formatGraphFrequency(hz),
@@ -1681,7 +1693,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
 
     // Axis labels: dB on the LEFT; frequency along the BOTTOM.
     // Do not waste graph height: +18 / -18 are the actual top / bottom limits.
-    g.setFont(juce::FontOptions(7.0f).withStyle("Bold"));
+    g.setFont(juce::FontOptions(8.0f).withStyle("Bold"));
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xffe8deca)
                                     : juce::Colour(0xffc6d5d7)));
 
@@ -2254,7 +2266,7 @@ void VVChainAudioProcessorEditor::drawEqGraph(
             g.drawVerticalLine((int)x, graph.getY(), graph.getBottom());
         }
 
-        g.setFont(juce::FontOptions(7.0f).withStyle("Bold"));
+        g.setFont(juce::FontOptions(8.0f).withStyle("Bold"));
         g.setColour(juce::Colour(0xffb8bec6));
 
         for (int db = 18; db >= -18; db -= 3)
@@ -2883,7 +2895,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff6a5b49)
                                     : juce::Colour(0xffb8c1c3)));
     g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.84",
+    g.drawText("VVCHAIN v1.0.85",
                masterRuntime ? 294 : 20,
                masterRuntime ? 47 : 39,
                180, 12, juce::Justification::left);
@@ -3369,20 +3381,20 @@ void VVChainAudioProcessorEditor::resized()
         : (w - left * 2 - gap * 4) / 5;
     const int cardW = unitW;
 
-    const std::array<int, 4> moduleWidths { 50, 52, 64, 66 };
-    constexpr int topGap = 5;
-    constexpr int masterW = 78;
+    const std::array<int, 4> moduleWidths { 62, 70, 78, 82 };
+    constexpr int topGap = 7;
+    constexpr int masterW = 104;
     int total = masterW;
     for (auto mw : moduleWidths)
         total += topGap + mw;
-    constexpr int soloModeW = 68;
+    constexpr int soloModeW = 96;
     total += topGap + soloModeW;
 
-    constexpr int settingsW = 28;
-    constexpr int themeW = 76;
-    constexpr int settingsRight = 10;
-    constexpr int settingsGap = 5;
-    constexpr int topY = 17;
+    constexpr int settingsW = 30;
+    constexpr int themeW = 82;
+    constexpr int settingsRight = 12;
+    constexpr int settingsGap = 6;
+    constexpr int topY = 25;
     const int settingsX = w - settingsRight - settingsW;
     const int themeX = settingsX - settingsGap - themeW;
     const int topX = themeX - settingsGap - total;
@@ -3402,16 +3414,16 @@ void VVChainAudioProcessorEditor::resized()
                                  panelY, panelW, panelH);
     }
     if (masterBypassButton)
-        masterBypassButton->setBounds(topX, topY, masterW, 25);
+        masterBypassButton->setBounds(topX, topY, masterW, 28);
     if (soloModeButton)
-        soloModeButton->setBounds(topX + masterW + topGap, topY, soloModeW, 25);
+        soloModeButton->setBounds(topX + masterW + topGap, topY, soloModeW, 28);
 
     int xTop = topX + masterW + topGap + soloModeW + topGap;
     for (int i = 0; i < 4; ++i)
     {
         if (bypassButtons[(size_t) i])
             bypassButtons[(size_t) i]->setBounds(
-                xTop, topY, moduleWidths[(size_t) i], 25);
+                xTop, topY, moduleWidths[(size_t) i], 28);
         xTop += moduleWidths[(size_t) i] + topGap;
     }
 

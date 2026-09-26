@@ -6,11 +6,11 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.84
+v1.0.85
 
 ## Current checkpoint
 
-**v1.0.84 — Third-reference layout alignment; approved PNG binaries unchanged**
+**v1.0.85 — Upper section cleanup; approved PNG binaries unchanged**
 
 ## Master paths
 
@@ -52,6 +52,16 @@ Locked identities:
 - Existing Black/Ivory panel, button, LED, toggle, slider and knob PNG binaries are reused byte-for-byte.
 - No PNG was edited, recoloured, regenerated, replaced or added in this checkpoint.
 - `APPROVED.lock`, `binary_manifest.json` and all previously locked runtime hashes remain unchanged.
+
+## v1.0.85 upper-section checkpoint
+
+- Upper section only. Lower band-strip layout is intentionally untouched in this checkpoint.
+- Native/Web header controls are redistributed and enlarged for legibility while retaining the same functions.
+- The EQ/Dynamic EQ viewport is now one continuous 20 Hz–20 kHz graph.
+- The obsolete split graph, duplicated grid and duplicated frequency labels baked into the older full-panel background are covered only at runtime inside the live graph viewport.
+- Analyzer, EQ nodes, Dynamic EQ, X1/X2/X3, hover readout, SOLO spotlight and graph gestures remain on the same current logic.
+- No Master/runtime PNG was edited, replaced, recoloured, regenerated or deleted.
+- APPROVED.lock, runtime hashes and binary_manifest.json remain unchanged.
 
 ## Validation evidence
 
