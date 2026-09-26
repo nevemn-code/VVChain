@@ -2899,72 +2899,56 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
         metalLook.drawScrew(g, { (float)getWidth() - 28.0f, (float)getHeight() - 28.0f, screwSize, screwSize }, uiMuted);
     }
 
-    g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff3b2c20)
-                                    : juce::Colour(0xfff1f3f3)));
-    g.setFont(juce::FontOptions(masterRuntime ? 31.f : 23.f).withStyle("Bold"));
-    g.drawText("VVCHAIN",
-               masterRuntime ? 89 : 18,
-               masterRuntime ? 27 : 8,
-               masterRuntime ? 205 : 240,
-               masterRuntime ? 38 : 27,
-               juce::Justification::left);
+    if (!(masterRuntime && ivoryTheme))
+    {
+        g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff3b2c20)
+                                        : juce::Colour(0xfff1f3f3)));
+        g.setFont(juce::FontOptions(masterRuntime ? 31.f : 23.f).withStyle("Bold"));
+        g.drawText("VVCHAIN",
+                   masterRuntime ? 89 : 18,
+                   masterRuntime ? 27 : 8,
+                   masterRuntime ? 205 : 240,
+                   masterRuntime ? 38 : 27,
+                   juce::Justification::left);
 
-    g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff6a5b49)
-                                    : juce::Colour(0xffb8c1c3)));
-    g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.87",
-               masterRuntime ? 294 : 20,
-               masterRuntime ? 47 : 39,
-               180, 12, juce::Justification::left);
+        g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff6a5b49)
+                                        : juce::Colour(0xffb8c1c3)));
+        g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
+        g.drawText("VVCHAIN v1.0.87",
+                   masterRuntime ? 294 : 20,
+                   masterRuntime ? 47 : 39,
+                   180, 12, juce::Justification::left);
+    }
 
     const auto graph = eqGraphBounds();
     drawEqGraph(g, graph);
 
-    const int cardY = masterRuntime ? 394 : 404;
+    const int cardY = masterRuntime ? 351 : 404;
     const int gap = masterRuntime ? 4 : 8;
-    const int left = masterRuntime ? 24 : 18;
+    const int left = masterRuntime ? 36 : 18;
     const int unitW = masterRuntime
-        ? (getWidth() - left * 2 - gap * 4) / 5
+        ? 238
         : (getWidth() - left * 2 - gap * 5) / 5;
     const int cardW = unitW;
-    const int cardH = masterRuntime ? 664 : 510;
+    const int cardH = masterRuntime ? 570 : 510;
 
     const std::array<juce::String, 4> bandClasses
     {{ "LOW", "LOW-MID", "HIGH-MID", "HIGH" }};
 
-    for (int b = 0; b < 4; ++b)
+    // The Ivory exact-order Master already contains every card frame, title,
+    // section divider and fixed label. Do not repaint a second layout on top.
+    if (!(masterRuntime && ivoryTheme))
     {
-        const int x = left + b * (cardW + gap);
-        drawCard(g,
-                 { (float) x, (float) cardY, (float) cardW, (float) cardH },
-                 uiColour(kBandColours[(size_t) b]),
-                 "BAND " + juce::String(b + 1),
-                 bandClasses[(size_t) b]);
-
-        const auto textColour = uiColour(
-            ivoryTheme ? juce::Colour(0xff3f3428)
-                       : juce::Colour(0xffdce4e4));
-        g.setColour(textColour.withAlpha(.92f));
-        g.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
-        const std::array<std::pair<int, juce::String>, 4> sectionLabels
-        {{
-            { cardY + 48,  "EQ" },
-            { cardY + 174, "DYNAMIC EQ" },
-            { cardY + 298, "UDMBC" },
-            { cardY + 434, "ANALOG" }
-        }};
-        for (const auto& section : sectionLabels)
+        for (int b = 0; b < 4; ++b)
         {
-            g.drawText(section.second, x + 12, section.first,
-                       cardW - 24, 14, juce::Justification::left);
-            g.setColour(textColour.withAlpha(.24f));
-            g.drawLine((float)x + 12.f, (float)section.first + 14.f,
-                       (float)x + cardW - 12.f, (float)section.first + 14.f, .8f);
-            g.setColour(textColour.withAlpha(.92f));
+            const int x = left + b * (cardW + gap);
+            drawCard(g,
+                     { (float) x, (float) cardY, (float) cardW, (float) cardH },
+                     uiColour(kBandColours[(size_t) b]),
+                     "BAND " + juce::String(b + 1),
+                     bandClasses[(size_t) b]);
         }
-    }
 
-    {
         const int x = left + 4 * (cardW + gap);
         drawCard(g,
                  { (float) x, (float) cardY, (float) cardW, (float) cardH },
