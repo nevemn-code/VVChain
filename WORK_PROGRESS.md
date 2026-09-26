@@ -6,11 +6,11 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.85
+v1.0.86
 
 ## Current checkpoint
 
-**v1.0.85 — Upper section cleanup; approved PNG binaries unchanged**
+**v1.0.86 — Exact band ordering + user-approved high-resolution knob runtime**
 
 ## Master paths
 
@@ -62,6 +62,17 @@ Locked identities:
 - Analyzer, EQ nodes, Dynamic EQ, X1/X2/X3, hover readout, SOLO spotlight and graph gestures remain on the same current logic.
 - No Master/runtime PNG was edited, replaced, recoloured, regenerated or deleted.
 - APPROVED.lock, runtime hashes and binary_manifest.json remain unchanged.
+
+## v1.0.86 exact-order / high-resolution knob checkpoint
+
+- Confirmed uploaded scoped masters:
+  - `assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png`
+  - `assets/ui/master/KNOB_MASTER_HIRES.png`
+  - `assets/ui/runtime/knobs/knob_reference_hires_56.png`
+- Main band order now follows the approved reference: FREQ / GAIN / Q → DYNAMICS / ATTACK / RELEASE → DEGREE / LEVEL / MIX + ADV → AMOUNT / TYPE-A.
+- UDMBC ATTACK / RELEASE and TRANSIENT remain available in ADVANCED so processing access is preserved.
+- Ivory uses the uploaded 8×7 / 56-frame high-resolution knob runtime. Black retains the existing transparent locked sprite set because the uploaded high-resolution source contains an Ivory background field.
+- DSP, parameter IDs, automation and processing order are unchanged.
 
 ## Validation evidence
 
