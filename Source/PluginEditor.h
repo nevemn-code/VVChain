@@ -705,6 +705,7 @@ private:
     std::unique_ptr<BoolAttachment> mixBypassAttachment;
     std::unique_ptr<juce::TextButton> soloPreButton;
     std::unique_ptr<juce::TextButton> soloPostButton;
+    std::array<std::unique_ptr<juce::ToggleButton>, 4> masterSoloMatrixButtons;
     std::unique_ptr<juce::ToggleButton> deltaMonitorButton;
     std::unique_ptr<BoolAttachment> deltaMonitorAttachment;
     std::array<std::unique_ptr<juce::TextButton>, 4> advancedButtons;
