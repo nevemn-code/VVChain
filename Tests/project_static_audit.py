@@ -98,14 +98,11 @@ assert '"moduleMuted"' in editor
 assert "UI IVORY" in editor and "UI STUDIO" in editor
 assert 'id="uiThemeQuick"' in web
 assert "vvchain-v1064-dual-hardware-skins" in web
-assert "vvchain-v1071-engineering-rgba-png" in web
 assert "vvchain-master-runtime-v1076" in web
 assert "assets/ui/runtime/APPROVED.lock" in cmake
 assert "VVCHAIN_HAS_MASTER_LOCK_UI" in editor
-assert "juce_add_binary_data(VVChainAssets" in cmake
-assert 'if(NOT EXISTS "${CMAKE_SOURCE_DIR}/assets/ui/runtime/APPROVED.lock")' in cmake
+assert 'message(FATAL_ERROR "VVChain Master UI approval is required:' in cmake
 assert "target_link_libraries(VVChain PRIVATE VVChainMasterAssets)" in cmake
-assert "target_link_libraries(VVChain PRIVATE VVChainAssets)" in cmake
 assert "VVChainAssets.h" in editor
 assert "VV_IMG(studioAssets, studio, knobStrip, knob_strip)" in editor
 assert "drawKnobFrame" in editor
@@ -115,41 +112,25 @@ assert "constexpr int frameCount = columns * rows;" in editor
 assert "jassert(strip.getWidth() == frameWidth * columns);" in editor
 assert "jassert(strip.getHeight() == frameHeight * rows);" in editor
 
-import struct
-expected_pngs = {
-    "studio_panel.png": (1500, 930),
-    "ivory_panel.png": (1500, 930),
-    "muted_panel.png": (1500, 930),
-    "studio_module.png": (600, 930),
-    "ivory_module.png": (600, 930),
-    "muted_module.png": (600, 930),
-    "studio_graph.png": (1500, 330),
-    "ivory_graph.png": (1500, 330),
-    "muted_graph.png": (1500, 330),
-    "studio_knob_strip.png": (1024, 1024),
-    "ivory_knob_strip.png": (1024, 1024),
-    "muted_knob_strip.png": (1024, 1024),
-    "studio_button_on.png": (360, 120),
-    "ivory_button_on.png": (360, 120),
-    "button_disabled.png": (360, 120),
-    "ivory_led_on.png": (128, 128),
-    "bypass_led_red.png": (128, 128),
-    "ivory_screw.png": (96, 96),
-    "ivory_slider_track.png": (800, 120),
-    "ivory_slider_thumb.png": (120, 120),
-}
-for asset, expected_size in expected_pngs.items():
-    p = ROOT / "docs" / "assets" / "ui" / "png" / asset
-    assert p.is_file(), asset
+import json, struct, hashlib
+runtime_root = ROOT / "assets" / "ui" / "runtime"
+runtime_manifest = json.loads((runtime_root / "binary_manifest.json").read_text(encoding="utf-8"))
+assert (runtime_root / "APPROVED.lock").is_file()
+assert runtime_manifest["asset_count"] == 46
+for rel, spec in runtime_manifest["assets"].items():
+    p = runtime_root / rel
+    assert p.is_file(), rel
     data = p.read_bytes()
-    assert data[:8] == b"\x89PNG\r\n\x1a\n", asset
-    assert struct.unpack(">II", data[16:24]) == expected_size, (asset, expected_size)
-    assert data[25] == 6, (asset, "PNG colour type must be RGBA", data[25])
-assert 'background-image:url("assets/ui/png/muted_panel.png")' in web
-assert 'background-image:url("assets/ui/png/muted_module.png")' in web
-assert 'background-image:url("assets/ui/png/muted_knob_strip.png")' in web
+    assert data[:8] == b"\x89PNG\r\n\x1a\n", rel
+    assert len(data) == spec[0], (rel, len(data), spec[0])
+    assert hashlib.sha256(data).hexdigest() == spec[1], rel
+    assert struct.unpack(">II", data[16:24]) == (spec[2], spec[3]), rel
+    assert data[24] == 8 and data[25] == 6, (rel, data[24], data[25])
+assert not (ROOT / "docs" / "assets" / "ui" / "png").exists()
+assert "assets/ui/png/" not in web
+assert "vvchain-v1071-engineering-rgba-png" not in web
+assert "masterRuntimeActive=true" in web
 assert "filter:grayscale(1)" not in web
-assert ".moduleMuted,.knobMuted,.band.bypassed{opacity:1!important;filter:none!important}" in web
 assert "refreshAnalyzerTap" in web
 
 # TRANSIENT is base-rate, precedes Analog, uses a stereo-linked detector,

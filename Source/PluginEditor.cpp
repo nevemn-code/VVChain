@@ -651,9 +651,9 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     };
     addAndMakeVisible(*settingsButton);
 
-    uiThemeButton = std::make_unique<juce::TextButton>("UI STUDIO");
+    uiThemeButton = std::make_unique<juce::TextButton>("UI BLACK");
     uiThemeButton->setTooltip(
-        "UI SKIN：STUDIO TEAL / IVORY GOLD；只改介面，不改任何音訊參數");
+        "UI SKIN：BLACK GOLD / IVORY GOLD；只改介面，不改任何音訊參數");
     uiThemeButton->onClick = [this]
     {
         setIvoryTheme(!ivoryTheme);
@@ -2884,7 +2884,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff6a5b49)
                                     : juce::Colour(0xffb8c1c3)));
     g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.82", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.83", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();
@@ -3272,7 +3272,7 @@ void VVChainAudioProcessorEditor::setIvoryTheme(bool ivory)
     if (uiThemeButton)
     {
         uiThemeButton->setButtonText(
-            ivory ? "UI IVORY" : "UI STUDIO");
+            ivory ? "UI IVORY" : "UI BLACK");
         uiThemeButton->setColour(
             juce::TextButton::buttonColourId,
             ivory ? juce::Colour(0xff211b14)

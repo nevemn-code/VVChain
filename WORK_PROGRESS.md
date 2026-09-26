@@ -6,11 +6,11 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.82
+v1.0.83
 
 ## Current checkpoint
 
-**Checkpoint 12 — Atomic Candidate retirement prepared**
+**Checkpoint 13 — Approved runtime active; Candidate retirement in progress**
 
 ## Master paths
 
@@ -53,26 +53,26 @@ Their locked identities remain:
 - Added a one-time issue #45 binary handoff gate on main. It accepts only the exact locked Runtime ZIP attachment from the repository owner, verifies archive SHA-256/bytes, verifies all 46 PNGs, creates APPROVED.lock only after PASS, and pushes the binaries to this branch.
 - Native is prepared to stop compiling/linking the rejected VVChainAssets bundle as soon as APPROVED.lock exists; the approved Master bundle becomes the only runtime image source.
 - Native Master mode no longer selects the rejected muted Candidate images for local/global bypass. Theme-correct disabled button PNGs are used and knobs retain approved pixels with muted opacity.
-- Pages validation is now dual-path: Candidate checks before approval, exact 46-file Master runtime checks after approval. This allows the rejected docs/assets/ui/png directory to be deleted safely after activation.
+- Pages validation is now strict Master-only after activation.
+- Binary ingest PASS from issue #45: archive SHA/bytes verified, 46/46 PNGs matched the locked manifest, and APPROVED.lock was created.
+- Rejected Candidate Web CSS and legacy PNG references are removed in v1.0.83; Pages and Native now require the approved Master runtime.
 
 ## Accepted runtime assets
 
-The visual/engineering identities of the 46 staged runtime PNGs are locked in the binary manifest, but they are **not yet active in GitHub runtime** because the binary files have not all been committed and APPROVED.lock has not been created.
+All 46 exact runtime PNG binaries are committed and byte-validated. `APPROVED.lock` is present, so the Master runtime is now the only production UI path for Native and Web.
 
 ## Rejected / unapproved assets
 
-All current legacy files under `docs/assets/ui/png/` remain Candidate/unapproved for Master fidelity. They stay temporarily only to keep Native/Web runnable until the approved binary replacement can be activated atomically.
+The rejected legacy `docs/assets/ui/png/` Candidate set is being removed in this checkpoint. No production code or deployment path may reference it.
 
 ## Remaining
 
-1. Commit all 46 exact runtime PNG binaries matching `binary_manifest.json`.
-2. Run `Tests/ui_master_lock.py` and `Tools/validate_master_runtime.py`.
-3. Perform final visual acceptance against both Masters.
-4. Run `Tools/approve_master_runtime.py` to create APPROVED.lock only after PASS.
-5. Verify Native and Web both activate the same runtime PNG source.
-6. Remove the rejected Candidate runtime after the approved path is confirmed.
-7. Run final Black/Ivory, six-colour knob, platinum 1.5×, bypass, high-DPI, Web and VST3 validation.
-8. Set Remaining to 0 only after the final approved build/deploy passes.
+1. Run final Fast Gate, Windows VST3 and Full Native/DSP validation with the approved runtime active.
+2. Verify Pages deployment stages exactly the same 46 approved runtime PNGs.
+3. Verify Black/Ivory, six-colour knobs, platinum 1.5× Master Gain and bypass state assets in the deployed Web runtime.
+4. Merge PR #44 only after all checks pass.
+5. Confirm main branch Web + VST3 deployment.
+6. Set Remaining to 0 only after the final approved build/deploy passes.
 
 ## Safety / compatibility constraint
 
@@ -80,4 +80,4 @@ Never create APPROVED.lock while any binary is missing, mismatched, substituted 
 
 ## Next action
 
-Use issue #45 for the byte-preserving Runtime ZIP handoff. After the automated 46/46 ingest and APPROVED.lock commit, verify activated Native/Web CI, delete the rejected Candidate PNG directory, run final deployment, then set Remaining to 0.
+Run activated-runtime CI after Candidate deletion. If all checks pass, mark PR #44 ready, merge to main, verify Pages and Windows VST3 outputs, close issue #45, then set Remaining to 0.

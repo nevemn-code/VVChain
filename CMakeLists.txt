@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(VVChain VERSION 1.0.82 LANGUAGES C CXX)
+project(VVChain VERSION 1.0.83 LANGUAGES C CXX)
 
 include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
@@ -26,61 +26,8 @@ if (VVCHAIN_ENABLE_AAX)
     list(APPEND VVCHAIN_FORMATS AAX)
 endif()
 
-if(NOT EXISTS "${CMAKE_SOURCE_DIR}/assets/ui/runtime/APPROVED.lock")
-juce_add_binary_data(VVChainAssets
-    HEADER_NAME VVChainAssets.h
-    NAMESPACE VVChainAssets
-    SOURCES
-        docs/assets/ui/png/ivory_panel.png
-        docs/assets/ui/png/ivory_module.png
-        docs/assets/ui/png/ivory_graph.png
-        docs/assets/ui/png/ivory_knob_strip.png
-        docs/assets/ui/png/ivory_button_off.png
-        docs/assets/ui/png/ivory_button_on.png
-        docs/assets/ui/png/ivory_button_pressed.png
-        docs/assets/ui/png/ivory_led_off.png
-        docs/assets/ui/png/ivory_led_on.png
-        docs/assets/ui/png/ivory_power_off.png
-        docs/assets/ui/png/ivory_power_on.png
-        docs/assets/ui/png/ivory_screw.png
-        docs/assets/ui/png/ivory_slider_track.png
-        docs/assets/ui/png/ivory_slider_thumb.png
-        docs/assets/ui/png/studio_panel.png
-        docs/assets/ui/png/studio_module.png
-        docs/assets/ui/png/studio_graph.png
-        docs/assets/ui/png/studio_knob_strip.png
-        docs/assets/ui/png/studio_button_off.png
-        docs/assets/ui/png/studio_button_on.png
-        docs/assets/ui/png/studio_button_pressed.png
-        docs/assets/ui/png/studio_led_off.png
-        docs/assets/ui/png/studio_led_on.png
-        docs/assets/ui/png/studio_power_off.png
-        docs/assets/ui/png/studio_power_on.png
-        docs/assets/ui/png/studio_screw.png
-        docs/assets/ui/png/studio_slider_track.png
-        docs/assets/ui/png/studio_slider_thumb.png
-        docs/assets/ui/png/muted_panel.png
-        docs/assets/ui/png/muted_module.png
-        docs/assets/ui/png/muted_graph.png
-        docs/assets/ui/png/muted_knob_strip.png
-        docs/assets/ui/png/muted_button_off.png
-        docs/assets/ui/png/muted_button_on.png
-        docs/assets/ui/png/muted_button_pressed.png
-        docs/assets/ui/png/muted_led_off.png
-        docs/assets/ui/png/muted_led_on.png
-        docs/assets/ui/png/muted_power_off.png
-        docs/assets/ui/png/muted_power_on.png
-        docs/assets/ui/png/muted_screw.png
-        docs/assets/ui/png/muted_slider_track.png
-        docs/assets/ui/png/muted_slider_thumb.png
-        docs/assets/ui/png/button_disabled.png
-        docs/assets/ui/png/bypass_led_red.png
-)
-endif()
-
-
-# Master-locked UI runtime is opt-in and atomic.  The new skin is not compiled
-# until APPROVED.lock exists and every required binary asset is present.
+# Master-locked UI runtime is the only production UI source.
+# APPROVED.lock and every required binary asset are mandatory.
 set(VVCHAIN_MASTER_LOCK_SENTINEL "${CMAKE_SOURCE_DIR}/assets/ui/runtime/APPROVED.lock")
 set(VVCHAIN_MASTER_RUNTIME_ASSETS
     assets/ui/runtime/backgrounds/black_full_panel.png
@@ -113,21 +60,22 @@ set(VVCHAIN_MASTER_RUNTIME_ASSETS
     assets/ui/runtime/components/ivory_slider_thumb.png
 )
 
-set(VVCHAIN_HAS_MASTER_LOCK_UI 0)
-if(EXISTS "${VVCHAIN_MASTER_LOCK_SENTINEL}")
-    foreach(asset IN LISTS VVCHAIN_MASTER_RUNTIME_ASSETS)
-        if(NOT EXISTS "${CMAKE_SOURCE_DIR}/${asset}")
-            message(FATAL_ERROR "APPROVED.lock exists but required Master UI asset is missing: ${asset}")
-        endif()
-    endforeach()
-
-    juce_add_binary_data(VVChainMasterAssets
-        HEADER_NAME VVChainMasterAssets.h
-        NAMESPACE VVChainMasterAssets
-        SOURCES ${VVCHAIN_MASTER_RUNTIME_ASSETS}
-    )
-    set(VVCHAIN_HAS_MASTER_LOCK_UI 1)
+if(NOT EXISTS "${VVCHAIN_MASTER_LOCK_SENTINEL}")
+    message(FATAL_ERROR "VVChain Master UI approval is required: assets/ui/runtime/APPROVED.lock is missing")
 endif()
+
+foreach(asset IN LISTS VVCHAIN_MASTER_RUNTIME_ASSETS)
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/${asset}")
+        message(FATAL_ERROR "Required Master UI asset is missing: ${asset}")
+    endif()
+endforeach()
+
+juce_add_binary_data(VVChainMasterAssets
+    HEADER_NAME VVChainMasterAssets.h
+    NAMESPACE VVChainMasterAssets
+    SOURCES ${VVCHAIN_MASTER_RUNTIME_ASSETS}
+)
+set(VVCHAIN_HAS_MASTER_LOCK_UI 1)
 
 juce_add_plugin(VVChain
     COMPANY_NAME "VVChain"
@@ -181,8 +129,4 @@ target_link_libraries(VVChain PRIVATE
 
 juce_generate_juce_header(VVChain)
 
-if(VVCHAIN_HAS_MASTER_LOCK_UI)
-    target_link_libraries(VVChain PRIVATE VVChainMasterAssets)
-else()
-    target_link_libraries(VVChain PRIVATE VVChainAssets)
-endif()
+target_link_libraries(VVChain PRIVATE VVChainMasterAssets)
