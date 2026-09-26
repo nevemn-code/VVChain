@@ -1,5 +1,15 @@
 # VVChain Work Progress
 
+## New request checkpoint — OKK(3) master intake (2026-09-26)
+
+- Branch: `ui/okk3-master-checkpoint`; production `main` remains at v1.0.86.
+- The exact uploaded `OKK(3).png` is preserved byte for byte at `assets/ui/master/OKK3_20260926.png` and identified in `assets/ui/master/OKK3_20260926.identity.json`.
+- Scope: the user's new reference for panel appearance and arrangement. Earlier background and component PNGs are **Candidates** for this request until compared to this master; their prior approval does not prove fidelity to OKK(3).
+- The source is 1265×938 RGBA, but its alpha is entirely opaque and its controls, lettering, bezel, shadows and background are flattened together.
+- Acceptance: exact source identity PASS. New runtime backgrounds, isolated rotary states, buttons, LEDs, bypass states and transparent component assets: NOT YET ACCEPTED. Native/Web replacement: NOT STARTED. No claim of fourfold intrinsic resolution or exact interactive reconstruction.
+- Blocker: the supplied single frame has no hidden background pixels beneath controls and no off/pressed/disabled states or rotating knob angles. Fourfold resampling only creates more pixels; it cannot recover the missing scene detail or states. Do not interpolate these and describe them as master-extracted high-detail assets.
+- Next action: obtain a genuinely higher-resolution approved export with separable background/components and states, or explicit additional masters for them; then extract one group at a time, inspect against the master at 100%, 200%, 400%, validate RGBA/alpha/dimensions, and checkpoint each passing group before switching shared Native/Web runtime.
+
 ## Goal
 
 Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked PNG workflow, then migrate Native and Web to one shared set of Master-validated runtime assets without changing DSP, parameter IDs, automation, mouse behaviour, processing order or preset compatibility.

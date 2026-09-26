@@ -1,0 +1,14 @@
+{
+  "source_name": "OKK(3).png",
+  "path": "assets/ui/master/OKK3_20260926.png",
+  "role": "new user-specified visual master; runtime migration pending asset validation",
+  "bytes": 1926498,
+  "sha256": "42442af654fe93250db9778a31d6d630645fd1574a0105cb21b3cd523a6079c4",
+  "width": 1265,
+  "height": 938,
+  "mode": "RGBA",
+  "alpha_extrema": [
+    255,
+    255
+  ]
+}
