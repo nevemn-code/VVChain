@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "pending_binary_ingest",
+  "status": "locked",
   "source_archive": {
     "filename": "VVChain_UI_Runtime_Engineering_v1.0.74.zip",
     "bytes": 7322749,

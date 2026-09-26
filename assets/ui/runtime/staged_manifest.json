@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "status": "staged_locally_pending_binary_ingest",
+  "status": "locked",
   "version": "v1.0.74",
   "method": {
-    "knobs": "Directly derived from approved colour sheets. Fixed metal body/outer amber LED ring; only pointer moves. Pointer state construction is supersampled 4x then Lanczos downsampled. 64 states cover -125°..+125°.",
+    "knobs": "Directly derived from approved colour sheets. Fixed metal body/outer amber LED ring; only pointer moves. Pointer state construction is supersampled 4x then Lanczos downsampled. 64 states cover -125\u00b0..+125\u00b0.",
     "components": "Direct crop/clean/resize from approved component sheets; no procedural redraw."
   },
   "knobs": {
