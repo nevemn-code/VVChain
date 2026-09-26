@@ -10,7 +10,7 @@ v1.0.85
 
 ## Current checkpoint
 
-**UI3 Hardware Gold latest visual locked — 38-asset BOM calculated; awaiting byte-exact Master PNG ingest; production unchanged**
+**UI3 Hardware Gold Master byte-exact VERIFIED / LOCKED — G01 background extraction is next; production runtime unchanged**
 
 ## Master paths
 
@@ -107,19 +107,19 @@ Future UI changes remain governed by `UI_MASTER_LOCK.md`. Do not regenerate the 
   - bytes: 1,959,313
   - SHA-256: `ae8401ad7e3aa477ebcceed2a6ab45a19275500fd9e24a98a87d372c31f0382b`
 - Maximum-fidelity UI3 extraction BOM is locked in `assets/ui/master/UI3_ASSET_BOM_PENDING.json`: 38 planned PNGs in 10 checkpoint groups.
-- This exact binary is not yet present in the repository. Under `UI_MASTER_LOCK.md`, no UI3 engineering PNG derivation may begin until the exact Master binary is committed and its SHA-256 is verified.
+- Exact Master is now present on the UI3 branch and byte-identity verified: Git blob `daae37024c5af20e54ed4263d4bb6a3eb9f57af1`, 1,959,313 bytes, SHA-256 `ae8401ad7e3aa477ebcceed2a6ab45a19275500fd9e24a98a87d372c31f0382b`. Master ingest commit: `cf2cb74f7485f976c234a0aa279a07bb7239a1fd`.
 - No production Master/runtime PNG has been changed and main remains on the v1.0.85 two-skin runtime.
 - No DSP, APVTS parameter, automation, processing-order or audio change is permitted as part of UI3.
 - Knob-animation invariant is now locked for UI3: every frame must use an identical canvas/anchor/centre; the knob body must remain pixel-stationary and only the pointer/state may change. Any frame-to-frame body translation is a FAIL.
 
 ## Remaining
 
-**1 byte-exact Master ingest checkpoint, then 10 validated extraction groups / 38 planned PNGs**
+**10 validated extraction groups / 38 planned PNGs remain; G01 is the first active checkpoint**
 
 ## Next action
 
-1. Put the exact latest approved PNG at `assets/ui/master/VVChain_hardware_gold_master.png`.
-2. Verify: 1448×1086 RGB PNG, 1,959,313 bytes, SHA-256 `ae8401ad7e3aa477ebcceed2a6ab45a19275500fd9e24a98a87d372c31f0382b`.
-3. Only after that PASS, start G01 backgrounds from the committed Master.
-4. Validate G01 against Master, RGBA/alpha/dimensions/hash, commit, update this file.
-5. Continue G02→G10 one group at a time; never regenerate from text/renderer and never admit a failing asset to runtime.
+1. G01: derive `backgrounds/hardware_gold_full_panel.png` and a clean `backgrounds/hardware_gold_graph_bed.png` from the locked Master only.
+2. Convert runtime derivatives to 8-bit RGBA without changing material, colour, lighting, bevel, AO or geometry.
+3. Compare at 100% / 200% / 400%; graph-bed cleanup must preserve the Master bed while removing only baked live graph content.
+4. PASS only after visual overlay, alpha, size and hash checks.
+5. Commit G01 immediately and update this file before starting G02.
