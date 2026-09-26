@@ -6,11 +6,11 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.75
+v1.0.76
 
 ## Current checkpoint
 
-**Checkpoint 4 — Native Master-runtime integration bridge**
+**Checkpoint 5 — Native + Web Master-runtime integration bridge**
 
 ## Master paths
 
@@ -33,6 +33,10 @@ Required exact original binaries:
 - Knob selection is parameter-ID based: EQ=silver, Dynamic EQ=blue, UDMBC=green, Analog=gold, Tape=red, Transient/XOVER=black, OUTPUT_LEVEL=1.5x platinum.
 - Native sprite reader now supports both 128 px normal frames and 192 px Master Gain frames instead of hard-coding 128.
 - When the Master runtime becomes approved, Native editor geometry switches to the 1470x1070 Master panel basis while preserving DSP/automation/parameter IDs.
+- Fixed the stale static-audit expectation that incorrectly required 128 px for every sprite frame; the renderer now intentionally supports 128 px normal and 192 px platinum Master Gain frames.
+- Web runtime now has an APPROVED.lock gate matching Native. Without the lock, current Candidate assets remain active.
+- When approved, Web switches to the same 1470x1070 Master panel basis, full Black/Ivory backgrounds, six colour knob sprites, 1.5x platinum OUTPUT knob, approved buttons/LEDs/toggles/sliders, and responsive whole-panel scaling.
+- Web knob colour selection is parameter-ID based with the same Native mapping; Dynamic EQ/UDMBC/Analog/Tape/Transient controls now carry explicit IDs where needed.
 
 ## Accepted runtime assets
 

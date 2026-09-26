@@ -98,14 +98,11 @@ assert '"moduleMuted"' in editor
 assert "UI IVORY" in editor and "UI STUDIO" in editor
 assert 'id="uiThemeQuick"' in web
 assert "vvchain-v1064-dual-hardware-skins" in web
-assert "vvchain-v1071-engineering-rgba-png" in web
-assert "juce_add_binary_data(VVChainAssets" in cmake
+assert "vvchain-v1071-engineering-rgba-png" in web\nassert "vvchain-master-runtime-v1076" in web\nassert "assets/ui/runtime/APPROVED.lock" in cmake\nassert "VVCHAIN_HAS_MASTER_LOCK_UI" in editor\nassert "juce_add_binary_data(VVChainAssets" in cmake
 assert "VVChainAssets.h" in editor
 assert "VV_IMG(studioAssets, studio, knobStrip, knob_strip)" in editor
 assert "drawKnobFrame" in editor
-assert "constexpr int frameWidth = 128;" in editor
-assert "constexpr int frameHeight = 128;" in editor
-assert "constexpr int frameCount = columns * rows;" in editor
+assert "const int frameWidth = strip.getWidth() / columns;" in editor\nassert "const int frameHeight = strip.getHeight() / rows;" in editor\nassert "constexpr int frameCount = columns * rows;" in editor
 assert "jassert(strip.getWidth() == frameWidth * columns);" in editor
 assert "jassert(strip.getHeight() == frameHeight * rows);" in editor
 

@@ -310,6 +310,153 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 }
 .moduleMuted,.knobMuted,.band.bypassed{opacity:1!important;filter:none!important}
 </style>
+
+<style id="vvchain-master-runtime-v1076">
+/* Master Asset Lock runtime. This activates only after APPROVED.lock exists. */
+.app.masterRuntime{
+  width:1470px!important;height:1070px!important;padding:0!important;
+  border:0!important;overflow:hidden!important;
+  transform:scale(var(--master-scale,1));transform-origin:center center;
+  box-shadow:0 20px 54px #000c!important;
+}
+.app.masterRuntime:not(.ivoryTheme){
+  background:transparent url("assets/ui/runtime/backgrounds/black_full_panel.png") center/100% 100% no-repeat!important;
+}
+.app.masterRuntime.ivoryTheme{
+  background:transparent url("assets/ui/runtime/backgrounds/ivory_full_panel.png") center/100% 100% no-repeat!important;
+}
+.app.masterRuntime .header{
+  position:absolute;left:0;top:0;width:100%;height:96px;z-index:9;
+  padding:0 38px;background:none!important;border:0!important;box-shadow:none!important;
+}
+.app.masterRuntime .logo{
+  position:absolute;left:42px;top:31px;font-size:31px;line-height:36px;
+  letter-spacing:.18em;color:#e9bf75;text-shadow:0 1px 1px #000,0 0 5px #8b5b1a66;
+}
+.app.masterRuntime.ivoryTheme .logo{color:#49311d;text-shadow:0 1px #fff9}
+.app.masterRuntime .lastModified{position:absolute;left:292px;top:47px;color:#d8b36f}
+.app.masterRuntime.ivoryTheme .lastModified{color:#6b4d2e}
+.app.masterRuntime .versionNav{display:none!important}
+.app.masterRuntime .headerControls{
+  position:absolute;right:38px;top:31px;height:52px;margin:0;gap:6px;z-index:11;
+}
+.app.masterRuntime .transport{
+  position:absolute;left:390px;top:31px;width:515px;height:52px;z-index:12;
+  margin:0;padding:4px 8px;display:grid;
+  grid-template-columns:86px 68px minmax(70px,1fr) 47px 47px 50px 58px;
+  gap:4px;align-items:center;background:transparent!important;
+}
+.app.masterRuntime .transport .tiny{
+  height:32px;background-color:transparent!important;color:#e8c886!important;
+}
+.app.masterRuntime .rowTop{
+  position:absolute;left:28px;top:101px;width:1392px;height:281px;margin:0!important;
+}
+.app.masterRuntime .graph{
+  width:100%;height:281px;background:none!important;background-image:none!important;
+  border:0!important;border-radius:0!important;box-shadow:none!important;
+}
+.app.masterRuntime .bandsFrame{
+  position:absolute;left:28px;top:397px;width:1392px;height:604px;
+  margin:0!important;padding:0!important;background:none!important;background-image:none!important;
+  border:0!important;box-shadow:none!important;
+}
+.app.masterRuntime .bandGrid{height:100%;gap:7px;grid-template-columns:repeat(5,minmax(0,1fr))}
+.app.masterRuntime .band,.app.masterRuntime .panel{
+  background:none!important;background-image:none!important;border:0!important;
+  box-shadow:none!important;border-radius:0!important;padding:7px 8px!important;
+}
+.app.masterRuntime .band:after{display:none!important}
+.app.masterRuntime .dial{
+  background-size:800% 800%!important;background-repeat:no-repeat!important;
+  background-color:transparent!important;border:0!important;box-shadow:none!important;
+}
+.app.masterRuntime .dial[data-knob-asset="gold"]{background-image:url("assets/ui/runtime/knobs/knob_gold_64.png")!important}
+.app.masterRuntime .dial[data-knob-asset="blue"]{background-image:url("assets/ui/runtime/knobs/knob_blue_64.png")!important}
+.app.masterRuntime .dial[data-knob-asset="green"]{background-image:url("assets/ui/runtime/knobs/knob_green_64.png")!important}
+.app.masterRuntime .dial[data-knob-asset="red"]{background-image:url("assets/ui/runtime/knobs/knob_red_64.png")!important}
+.app.masterRuntime .dial[data-knob-asset="black"]{background-image:url("assets/ui/runtime/knobs/knob_black_64.png")!important}
+.app.masterRuntime .dial[data-knob-asset="silver"]{background-image:url("assets/ui/runtime/knobs/knob_silver_64.png")!important}
+.app.masterRuntime .dial[data-knob-asset="platinum"]{background-image:url("assets/ui/runtime/knobs/knob_platinum_master_gain_64.png")!important}
+.app.masterRuntime .masterGainKnob .dial{width:75px!important;height:75px!important}
+.app.masterRuntime:not(.ivoryTheme) .masterBypass,
+.app.masterRuntime:not(.ivoryTheme) .soloBtn,
+.app.masterRuntime:not(.ivoryTheme) .advBtn,
+.app.masterRuntime:not(.ivoryTheme) .bypassBtn,
+.app.masterRuntime:not(.ivoryTheme) .deltaBtn,
+.app.masterRuntime:not(.ivoryTheme) .dynModeBtn,
+.app.masterRuntime:not(.ivoryTheme) .tiny,
+.app.masterRuntime:not(.ivoryTheme) .uiThemeQuick{
+  background-image:url("assets/ui/runtime/components/black_button_off.png")!important;
+  background-size:100% 100%!important;background-color:transparent!important;border:0!important;box-shadow:none!important;
+}
+.app.masterRuntime.ivoryTheme .masterBypass,
+.app.masterRuntime.ivoryTheme .soloBtn,
+.app.masterRuntime.ivoryTheme .advBtn,
+.app.masterRuntime.ivoryTheme .bypassBtn,
+.app.masterRuntime.ivoryTheme .deltaBtn,
+.app.masterRuntime.ivoryTheme .dynModeBtn,
+.app.masterRuntime.ivoryTheme .tiny,
+.app.masterRuntime.ivoryTheme .uiThemeQuick{
+  background-image:url("assets/ui/runtime/components/ivory_button_off.png")!important;
+  background-size:100% 100%!important;background-color:transparent!important;border:0!important;box-shadow:none!important;
+}
+.app.masterRuntime:not(.ivoryTheme) .soloBtn.on,
+.app.masterRuntime:not(.ivoryTheme) .deltaBtn.on,
+.app.masterRuntime:not(.ivoryTheme) .dynModeBtn.on{
+  background-image:url("assets/ui/runtime/components/black_button_on.png")!important;
+}
+.app.masterRuntime.ivoryTheme .soloBtn.on,
+.app.masterRuntime.ivoryTheme .deltaBtn.on,
+.app.masterRuntime.ivoryTheme .dynModeBtn.on{
+  background-image:url("assets/ui/runtime/components/ivory_button_on.png")!important;
+}
+.app.masterRuntime:not(.ivoryTheme) .modeSwitch{background-image:url("assets/ui/runtime/components/black_toggle_off.png")!important}
+.app.masterRuntime.ivoryTheme .modeSwitch{background-image:url("assets/ui/runtime/components/ivory_toggle_off.png")!important}
+.app.masterRuntime .modeSwitch{
+  background-size:100% 100%!important;background-color:transparent!important;border:0!important;box-shadow:none!important;
+}
+.app.masterRuntime:not(.ivoryTheme) .settingsGear{background-image:url("assets/ui/runtime/components/black_square_off.png")!important}
+.app.masterRuntime.ivoryTheme .settingsGear{background-image:url("assets/ui/runtime/components/ivory_square_off.png")!important}
+.app.masterRuntime .settingsGear{
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+  background-color:transparent!important;border:0!important;box-shadow:none!important;
+}
+.app.masterRuntime:not(.ivoryTheme) .led,.app.masterRuntime:not(.ivoryTheme) .bandLed{
+  background-image:url("assets/ui/runtime/components/black_led_off.png")!important;
+  background-size:100% 100%!important;background-color:transparent!important;border:0!important;box-shadow:none!important;
+}
+.app.masterRuntime:not(.ivoryTheme) .led.on,.app.masterRuntime:not(.ivoryTheme) .bandLed.on{
+  background-image:url("assets/ui/runtime/components/black_led_on.png")!important;
+}
+.app.masterRuntime.ivoryTheme .led,.app.masterRuntime.ivoryTheme .bandLed{
+  background-image:url("assets/ui/runtime/components/ivory_led_off.png")!important;
+  background-size:100% 100%!important;background-color:transparent!important;border:0!important;box-shadow:none!important;
+}
+.app.masterRuntime.ivoryTheme .led.on,.app.masterRuntime.ivoryTheme .bandLed.on{
+  background-image:url("assets/ui/runtime/components/ivory_led_on.png")!important;
+}
+.app.masterRuntime .bypassBtn.on,.app.masterRuntime .masterBypass.on{
+  background-image:url("assets/ui/runtime/components/bypass_red.png")!important;
+  background-size:18px 18px!important;background-position:7px center!important;background-repeat:no-repeat!important;
+}
+.app.masterRuntime:not(.ivoryTheme) .detectBlend{
+  background-image:url("assets/ui/runtime/components/black_slider_track.png")!important;
+}
+.app.masterRuntime.ivoryTheme .detectBlend{
+  background-image:url("assets/ui/runtime/components/ivory_slider_track.png")!important;
+}
+.app.masterRuntime .detectBlend{background-size:100% 100%!important;background-color:transparent!important}
+.app.masterRuntime:not(.ivoryTheme) .detectBlend::-webkit-slider-thumb{
+  background-image:url("assets/ui/runtime/components/black_slider_thumb.png")!important;
+}
+.app.masterRuntime.ivoryTheme .detectBlend::-webkit-slider-thumb{
+  background-image:url("assets/ui/runtime/components/ivory_slider_thumb.png")!important;
+}
+.app.masterRuntime .moduleMuted,.app.masterRuntime .knobMuted,.app.masterRuntime .band.bypassed{
+  filter:none!important;
+}
+</style>
 </head>
 <body>
 <div class="app"><span hidden>NO PAGE SCROLL</span><span hidden>DELTA = OUTPUT − DRY · SOLO = SHARED X-OVER PRE/POST</span>
@@ -320,7 +467,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.75</div></div><div class="sub"></div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.76</div></div><div class="sub"></div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · ANALOG COLOR · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -363,7 +510,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
       <div class="settingsRow" aria-disabled="true"><span>CPU / latency display</span><span>RESERVED</span></div>
     </section>
     <section class="settingsSection"><div class="settingsSectionTitle">SYSTEM / ABOUT</div>
-      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.75</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.76</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Build number / commit</span><span>GitHub build metadata</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset UI Settings</span><span>DISABLED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset All Settings</span><span>DISABLED</span></div>
@@ -392,6 +539,35 @@ const analyzerFreqSmooth=new Float32Array(256).fill(-90);
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
 const settingsGear=$("#settingsGear"),settingsPanel=$("#settingsPanel"),themeToggle=$("#themeToggle"),analyzerToggle=$("#analyzerToggle"),uiThemeQuick=$("#uiThemeQuick");
 let settingsPanelVisible=false,ivoryTheme=true;
+let masterRuntimeActive=false;
+function masterKnobAsset(id){
+  id=String(id||"");
+  if(id==="OUTPUT_LEVEL")return "platinum";
+  if(id.startsWith("EQ_COLOR"))return "gold";
+  if(id.startsWith("DYN_"))return "blue";
+  if(id.startsWith("UDMBC_"))return "green";
+  if(id.startsWith("TAPE_"))return "red";
+  if(id.startsWith("TRANSIENT")||id.startsWith("XOVER_"))return "black";
+  return "silver";
+}
+function applyMasterRuntimeScale(){
+  if(!masterRuntimeActive)return;
+  const app=document.querySelector(".app");
+  const scale=Math.min(1,(window.innerWidth-10)/1470,(window.innerHeight-10)/1070);
+  app.style.setProperty("--master-scale",Math.max(.1,scale));
+}
+async function detectMasterRuntime(){
+  try{
+    const lock=await fetch("assets/ui/runtime/APPROVED.lock",{cache:"no-store"});
+    if(!lock.ok)return;
+    masterRuntimeActive=true;
+    document.querySelector(".app").classList.add("masterRuntime");
+    document.body.classList.add("masterRuntimeBody");
+    applyMasterRuntimeScale();
+    drawEQ();
+  }catch(_){}
+}
+window.addEventListener("resize",applyMasterRuntimeScale);
 const tc=(dark,ivory)=>ivoryTheme?ivory:dark;
 function setIvoryTheme(ivory){
   ivoryTheme=!!ivory;
@@ -512,9 +688,9 @@ function setAnalyzerEnabled(enabled){
 analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
 document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
 setAnalyzerEnabled(true);
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.75
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.76
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.75"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.76"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -682,7 +858,7 @@ function makeKnob(parent,cfg){
   const curWheelStep=()=>cfg.dynamicWheelStep?cfg.dynamicWheelStep():(cfg.wheelStep??null);
   const curFineStep=()=>cfg.dynamicFineStep?cfg.dynamicFineStep():0.01;
   const w=document.createElement("div");w.className="knob";w.style.setProperty("--accent",accent);if(cfg.controlId)w.dataset.controlId=cfg.controlId;
-  const d=document.createElement("div");d.className="dial";
+  const d=document.createElement("div");d.className="dial";const masterControlId=cfg.controlId||"";d.dataset.knobAsset=masterKnobAsset(masterControlId);if(masterControlId==="OUTPUT_LEVEL")w.classList.add("masterGainKnob");
   const t=document.createElement("div");t.className="knobTitle";t.textContent=label;
   const v=document.createElement("div");v.className="knobValue";
   const discreteMode=false;
@@ -905,8 +1081,8 @@ makeKnob(staticGrid,{
 });
 
 makeKnob(dynControls,{label:"DYNAMICS",controlId:"DYN_DYNAMICS"+(n+1),get:()=>state.dyn.dynamics[n],set:v=>state.dyn.dynamics[n]=v,min:-100,max:100,suffix:" %",accent:"#f8fafc",formatDigits:0,sensitivity:.70,wheelStep:.70,doubleClickValue:0});
-makeKnob(dynControls,{label:"ATTACK",get:()=>state.dyn.attack[n],set:v=>state.dyn.attack[n]=v,min:.1,max:200,suffix:" ms",accent:"#f8fafc",formatDigits:1});
-makeKnob(dynControls,{label:"RELEASE",get:()=>state.dyn.release[n],set:v=>state.dyn.release[n]=v,min:5,max:2000,suffix:" ms",accent:"#f8fafc",formatDigits:0});
+makeKnob(dynControls,{label:"ATTACK",controlId:"DYN_ATTACK"+(n+1),get:()=>state.dyn.attack[n],set:v=>state.dyn.attack[n]=v,min:.1,max:200,suffix:" ms",accent:"#f8fafc",formatDigits:1});
+makeKnob(dynControls,{label:"RELEASE",controlId:"DYN_RELEASE"+(n+1),get:()=>state.dyn.release[n],set:v=>state.dyn.release[n]=v,min:5,max:2000,suffix:" ms",accent:"#f8fafc",formatDigits:0});
 const detectBlend=card.querySelector(".detectBlend"),detectBlendWrap=card.querySelector(".dynDetectBlend"),triggerBtn=card.querySelector(".triggerBtn");
 const syncDynMode=()=>{const mix=clamp(Number(state.dyn.detectOnsets[n]??50),0,100);detectBlend.value=mix;detectBlendWrap.style.setProperty("--mix",mix+"%");triggerBtn.textContent=state.dyn.triggerBelow[n]?"BELOW":"ABOVE";triggerBtn.classList.toggle("on",!!state.dyn.triggerBelow[n]);};
 const applyDetectBlend=v=>{state.dyn.detectOnsets[n]=clamp(Number(v),0,100);detectBlend.value=state.dyn.detectOnsets[n];syncDynMode();sendParams();drawEQ()};
@@ -922,18 +1098,18 @@ detectBlendWrap.addEventListener("wheel",e=>{e.preventDefault();const units=clam
 triggerBtn.onclick=()=>{state.dyn.triggerBelow[n]=!state.dyn.triggerBelow[n];syncDynMode();sendParams();drawEQ()};
 syncDynMode();
 
-makeKnob(udmbcGrid,{label:"UDMBC %",get:()=>state.udmbc.degree[n],set:v=>state.udmbc.degree[n]=v,min:0,max:100,suffix:" %",accent:"#facc15",markTouched:()=>uiTouched.udmbc[n]=true,mutedWhen:()=>state.udmbc.bypass||(uiTouched.udmbc[n]&&(state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001)),afterSet:v=>{state.udmbc.bandBypass[n]=v<=0.0001;syncOttBandLed?.();syncModuleMute()}});
-makeKnob(udmbcGrid,{label:"ATTACK",get:()=>state.udmbc.compA[n],set:v=>state.udmbc.compA[n]=v,min:.1,max:120,suffix:" ms",accent:"#facc15",formatDigits:1,formatValue:()=>fmt(effectiveCompAttackMs(n),1)+" ms",mutedWhen:()=>state.udmbc.bypass||(uiTouched.udmbc[n]&&(state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001))});
-makeKnob(udmbcGrid,{label:"RELEASE",get:()=>state.udmbc.compR[n],set:v=>state.udmbc.compR[n]=v,min:10,max:2500,suffix:" ms",accent:"#facc15",formatDigits:0,formatValue:()=>fmt(effectiveCompReleaseMs(n),0)+" ms",mutedWhen:()=>state.udmbc.bypass||(uiTouched.udmbc[n]&&(state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001))});
+makeKnob(udmbcGrid,{label:"UDMBC %",controlId:"UDMBC_DEGREE"+(n+1),get:()=>state.udmbc.degree[n],set:v=>state.udmbc.degree[n]=v,min:0,max:100,suffix:" %",accent:"#facc15",markTouched:()=>uiTouched.udmbc[n]=true,mutedWhen:()=>state.udmbc.bypass||(uiTouched.udmbc[n]&&(state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001)),afterSet:v=>{state.udmbc.bandBypass[n]=v<=0.0001;syncOttBandLed?.();syncModuleMute()}});
+makeKnob(udmbcGrid,{label:"ATTACK",controlId:"UDMBC_COMP_A"+(n+1),get:()=>state.udmbc.compA[n],set:v=>state.udmbc.compA[n]=v,min:.1,max:120,suffix:" ms",accent:"#facc15",formatDigits:1,formatValue:()=>fmt(effectiveCompAttackMs(n),1)+" ms",mutedWhen:()=>state.udmbc.bypass||(uiTouched.udmbc[n]&&(state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001))});
+makeKnob(udmbcGrid,{label:"RELEASE",controlId:"UDMBC_COMP_R"+(n+1),get:()=>state.udmbc.compR[n],set:v=>state.udmbc.compR[n]=v,min:10,max:2500,suffix:" ms",accent:"#facc15",formatDigits:0,formatValue:()=>fmt(effectiveCompReleaseMs(n),0)+" ms",mutedWhen:()=>state.udmbc.bypass||(uiTouched.udmbc[n]&&(state.udmbc.bandBypass[n]||state.udmbc.degree[n]<=0.0001))});
 
 // ANALOG COLOR v1.0.16 unity-normalized smooth saturation.
 let syncAnalogLed=()=>{};
-const analogKnob=makeKnob(bottomGrid,{label:"ANALOG COLOR",get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:60,accent:"#60a5fa",markTouched:()=>uiTouched.analog[n]=true,formatValue:v=>fmt(v/6,1),parseValue:raw=>{const x=parseFloat(String(raw).replace(/[^0-9+\-.]/g,""));return Number.isFinite(x)?clamp(x,0,10)*6:NaN},mutedWhen:()=>state.eq.globalBypass||(uiTouched.analog[n]&&(state.eq.colorBypass[n]||state.eq.color[n]<=0.0001)),afterSet:()=>syncAnalogLed()});
+const analogKnob=makeKnob(bottomGrid,{label:"ANALOG COLOR",controlId:"EQ_COLOR_B"+(n+1),get:()=>state.eq.color[n],set:v=>state.eq.color[n]=v,min:0,max:60,accent:"#60a5fa",markTouched:()=>uiTouched.analog[n]=true,formatValue:v=>fmt(v/6,1),parseValue:raw=>{const x=parseFloat(String(raw).replace(/[^0-9+\-.]/g,""));return Number.isFinite(x)?clamp(x,0,10)*6:NaN},mutedWhen:()=>state.eq.globalBypass||(uiTouched.analog[n]&&(state.eq.colorBypass[n]||state.eq.color[n]<=0.0001)),afterSet:()=>syncAnalogLed()});
 analogKnob.classList.add("analogKnob");
 let syncTapeLed=()=>{};
 const typeMax=[50,60,70,90][n];
-const typeKnob=makeKnob(bottomGrid,{label:"TAPE COLOR +",get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:typeMax,accent:cols[n],markTouched:()=>uiTouched.tape[n]=true,formatValue:v=>tape(v,typeMax),parseValue:raw=>{const x=parseFloat(String(raw).replace(/[^0-9+\-.]/g,""));return Number.isFinite(x)?clamp(x,0,10)*typeMax/10:NaN},mutedWhen:()=>state.type.bypass||(uiTouched.tape[n]&&(state.type.bandBypass[n]||state.type.degree[n]<=0.0001)),afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed();knobRefreshers.forEach(fn=>fn())}});
-const transientKnob=makeKnob(bottomGrid,{label:"TRANSIENT",get:()=>state.transient[n],set:v=>state.transient[n]=v,min:-100,max:100,suffix:" %",accent:"#34c759",formatDigits:1});
+const typeKnob=makeKnob(bottomGrid,{label:"TAPE COLOR +",controlId:"TAPE_DEGREE"+(n+1),get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:typeMax,accent:cols[n],markTouched:()=>uiTouched.tape[n]=true,formatValue:v=>tape(v,typeMax),parseValue:raw=>{const x=parseFloat(String(raw).replace(/[^0-9+\-.]/g,""));return Number.isFinite(x)?clamp(x,0,10)*typeMax/10:NaN},mutedWhen:()=>state.type.bypass||(uiTouched.tape[n]&&(state.type.bandBypass[n]||state.type.degree[n]<=0.0001)),afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed();knobRefreshers.forEach(fn=>fn())}});
+const transientKnob=makeKnob(bottomGrid,{label:"TRANSIENT",controlId:"TRANSIENT"+(n+1),get:()=>state.transient[n],set:v=>state.transient[n]=v,min:-100,max:100,suffix:" %",accent:"#34c759",formatDigits:1});
 const mode=document.createElement("button");mode.className="modeSwitch";mode.title="TT = Tube Saturation；SS = Solid-State Saturation";mode.innerHTML="<span>TT</span><i></i><span>SS</span>";
 const syncMode=()=>{mode.classList.toggle("ss",!!state.eq.mode[n]);mode.classList.toggle("muted",uiTouched.analog[n]&&state.eq.color[n]<=0.0001)};mode.onclick=()=>{state.eq.mode[n]=!state.eq.mode[n];syncMode();sendParams();drawEQ()};syncMode();analogKnob.appendChild(mode);
 const x2=document.createElement("button");x2.className="analogX2Btn";x2.textContent="X2";x2.title="ANALOG COLOR X2：0–60% 的 ANALOG COLOR delta × 2";
@@ -1166,8 +1342,7 @@ function dynamicPopupBounds(b,w,h){
 function drawEQ(){
   const r=eqCanvas.getBoundingClientRect(),w=r.width,h=r.height;
   eqCtx.clearRect(0,0,w,h);
-  eqCtx.fillStyle=tc("rgba(7,25,28,.70)","rgba(18,17,13,.68)");
-  eqCtx.fillRect(0,0,w,h);
+  if(!masterRuntimeActive){\n    eqCtx.fillStyle=tc("rgba(7,25,28,.70)","rgba(18,17,13,.68)");\n    eqCtx.fillRect(0,0,w,h);\n  }
 
   if(analyzerEnabled){
     const points=Array.from(analyzerCurve,(db,p)=>{
@@ -2146,6 +2321,7 @@ async function startPlayback(){
   },3500);
 }
 $("#audioFileInput").addEventListener("change",e=>loadAudioFile(e.target.files[0]));bindAudioDrop();$("#playBtn").onclick=()=>startPlayback().catch(()=>$("#status").textContent="PLAY ERROR");$("#stopBtn").onclick=stopPlayback;$("#resetBtn").onclick=()=>location.reload();
+detectMasterRuntime();
 </script>
 </body>
 </html>
