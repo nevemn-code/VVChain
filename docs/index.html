@@ -129,31 +129,186 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 .moduleMuted,.knobMuted,.knobMuted .modeSwitch,.modeSwitch.muted{opacity:.58!important;filter:none!important}
 .band.bypassed{filter:none!important;opacity:.70}
 </style>
-<style id="vvchain-v1067-real-png-assets">
-.app:not(.ivoryTheme),.app:not(.ivoryTheme) .header,.app:not(.ivoryTheme) .bandsFrame,.app:not(.ivoryTheme) .band,.app:not(.ivoryTheme) .panel{background-image:url("assets/ui/png/studio_panel.png")!important;background-size:100% 100%!important;background-repeat:no-repeat!important}
-.app.ivoryTheme,.app.ivoryTheme .header,.app.ivoryTheme .bandsFrame,.app.ivoryTheme .band,.app.ivoryTheme .panel{background-image:url("assets/ui/png/ivory_panel.png")!important;background-size:100% 100%!important;background-repeat:no-repeat!important}
-.app:not(.ivoryTheme) .graph{background-image:url("assets/ui/png/studio_graph.png")!important;background-size:100% 100%!important;background-repeat:no-repeat!important}
-.app.ivoryTheme .graph{background-image:url("assets/ui/png/ivory_graph.png")!important;background-size:100% 100%!important;background-repeat:no-repeat!important}
-.dial{background-repeat:no-repeat!important;background-size:800% 800%!important;background-color:transparent!important;border:0!important;box-shadow:none!important}
+<style id="vvchain-v1071-engineering-rgba-png">
+/* Production hardware UI: clean RGBA PNG assets only.
+   No asset sheets, no baked text, no CSS grayscale simulation. */
+.app:not(.ivoryTheme),.app:not(.ivoryTheme) .header,.app:not(.ivoryTheme) .bandsFrame{
+  background-image:url("assets/ui/png/studio_panel.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+}
+.app.ivoryTheme,.app.ivoryTheme .header,.app.ivoryTheme .bandsFrame{
+  background-image:url("assets/ui/png/ivory_panel.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+}
+.app:not(.ivoryTheme) .band,.app:not(.ivoryTheme) .panel{
+  background-image:url("assets/ui/png/studio_module.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+}
+.app.ivoryTheme .band,.app.ivoryTheme .panel{
+  background-image:url("assets/ui/png/ivory_module.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+}
+.app:not(.ivoryTheme) .graph{
+  background-image:url("assets/ui/png/studio_graph.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+}
+.app.ivoryTheme .graph{
+  background-image:url("assets/ui/png/ivory_graph.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+}
+.dial{
+  background-repeat:no-repeat!important;
+  background-size:800% 800%!important;
+  background-color:transparent!important;
+  border:0!important;box-shadow:none!important;
+}
 .dial:before,.dial:after{content:none!important;display:none!important}
 .app:not(.ivoryTheme) .dial{background-image:url("assets/ui/png/studio_knob_strip.png")!important}
 .app.ivoryTheme .dial{background-image:url("assets/ui/png/ivory_knob_strip.png")!important}
-.app.globalBypass .dial,.moduleMuted .dial,.knobMuted .dial,.band.bypassed .dial{background-image:url("assets/ui/png/muted_knob_strip.png")!important}
-.app:not(.ivoryTheme) .masterBypass,.app:not(.ivoryTheme) .soloBtn,.app:not(.ivoryTheme) .advBtn,.app:not(.ivoryTheme) .bypassBtn,.app:not(.ivoryTheme) .deltaBtn,.app:not(.ivoryTheme) .dynModeBtn,.app:not(.ivoryTheme) .modeSwitch,.app:not(.ivoryTheme) .tiny,.app:not(.ivoryTheme) .uiThemeQuick{background-image:url("assets/ui/png/studio_button_off.png")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:transparent!important;border:0!important;box-shadow:none!important}
-.app:not(.ivoryTheme) .masterBypass.on,.app:not(.ivoryTheme) .soloBtn.on,.app:not(.ivoryTheme) .deltaBtn.on,.app:not(.ivoryTheme) .dynModeBtn.on,.app:not(.ivoryTheme) .modeSwitch.on{background-image:url("assets/ui/png/studio_button_on.png")!important}
-.app.ivoryTheme .masterBypass,.app.ivoryTheme .soloBtn,.app.ivoryTheme .advBtn,.app.ivoryTheme .bypassBtn,.app.ivoryTheme .deltaBtn,.app.ivoryTheme .dynModeBtn,.app.ivoryTheme .modeSwitch,.app.ivoryTheme .tiny,.app.ivoryTheme .uiThemeQuick{background-image:url("assets/ui/png/ivory_button_off.png")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:transparent!important;border:0!important;box-shadow:none!important}
-.app.ivoryTheme .masterBypass.on,.app.ivoryTheme .soloBtn.on,.app.ivoryTheme .deltaBtn.on,.app.ivoryTheme .dynModeBtn.on,.app.ivoryTheme .modeSwitch.on{background-image:url("assets/ui/png/ivory_button_on.png")!important}
-.masterBypass:active,.soloBtn:active,.advBtn:active,.bypassBtn:active,.deltaBtn:active,.dynModeBtn:active,.modeSwitch:active,.tiny:active,.uiThemeQuick:active{background-image:url("assets/ui/png/ivory_button_pressed.png")!important}
-.app:not(.ivoryTheme) .masterBypass:active,.app:not(.ivoryTheme) .soloBtn:active,.app:not(.ivoryTheme) .advBtn:active,.app:not(.ivoryTheme) .bypassBtn:active,.app:not(.ivoryTheme) .deltaBtn:active,.app:not(.ivoryTheme) .dynModeBtn:active,.app:not(.ivoryTheme) .modeSwitch:active,.app:not(.ivoryTheme) .tiny:active,.app:not(.ivoryTheme) .uiThemeQuick:active{background-image:url("assets/ui/png/studio_button_pressed.png")!important}
-.app:not(.ivoryTheme) .led,.app:not(.ivoryTheme) .bandLed{background-image:url("assets/ui/png/studio_led_off.png")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:transparent!important;border:0!important;box-shadow:none!important}.app:not(.ivoryTheme) .led.on,.app:not(.ivoryTheme) .bandLed.on{background-image:url("assets/ui/png/studio_led_on.png")!important}
-.app.ivoryTheme .led,.app.ivoryTheme .bandLed{background-image:url("assets/ui/png/ivory_led_off.png")!important;background-size:100% 100%!important;background-repeat:no-repeat!important;background-color:transparent!important;border:0!important;box-shadow:none!important}.app.ivoryTheme .led.on,.app.ivoryTheme .bandLed.on{background-image:url("assets/ui/png/ivory_led_on.png")!important}
-.bypassBtn.on,.masterBypass.on{background-image:url("assets/ui/png/bypass_led_red.png"),url("assets/ui/png/ivory_button_pressed.png")!important;background-size:15px 15px,100% 100%!important;background-position:6px center,center!important;background-repeat:no-repeat!important;padding-left:14px!important}
-.app:not(.ivoryTheme) .bypassBtn.on,.app:not(.ivoryTheme) .masterBypass.on{background-image:url("assets/ui/png/bypass_led_red.png"),url("assets/ui/png/studio_button_pressed.png")!important}
+.app.globalBypass .dial,.moduleMuted .dial,.knobMuted .dial,.band.bypassed .dial{
+  background-image:url("assets/ui/png/muted_knob_strip.png")!important;
+}
+
+/* All rectangular controls use the clean transparent button PNGs; text stays live. */
+.app:not(.ivoryTheme) .masterBypass,.app:not(.ivoryTheme) .soloBtn,
+.app:not(.ivoryTheme) .advBtn,.app:not(.ivoryTheme) .bypassBtn,
+.app:not(.ivoryTheme) .deltaBtn,.app:not(.ivoryTheme) .dynModeBtn,
+.app:not(.ivoryTheme) .modeSwitch,.app:not(.ivoryTheme) .tiny,
+.app:not(.ivoryTheme) .uiThemeQuick,.app:not(.ivoryTheme) .settingsGear{
+  background-image:url("assets/ui/png/studio_button_off.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+  background-color:transparent!important;border:0!important;box-shadow:none!important;
+}
+.app:not(.ivoryTheme) .soloBtn.on,.app:not(.ivoryTheme) .deltaBtn.on,
+.app:not(.ivoryTheme) .dynModeBtn.on,.app:not(.ivoryTheme) .modeSwitch.on{
+  background-image:url("assets/ui/png/studio_button_on.png")!important;
+}
+.app.ivoryTheme .masterBypass,.app.ivoryTheme .soloBtn,
+.app.ivoryTheme .advBtn,.app.ivoryTheme .bypassBtn,
+.app.ivoryTheme .deltaBtn,.app.ivoryTheme .dynModeBtn,
+.app.ivoryTheme .modeSwitch,.app.ivoryTheme .tiny,
+.app.ivoryTheme .uiThemeQuick,.app.ivoryTheme .settingsGear{
+  background-image:url("assets/ui/png/ivory_button_off.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+  background-color:transparent!important;border:0!important;box-shadow:none!important;
+}
+.app.ivoryTheme .soloBtn.on,.app.ivoryTheme .deltaBtn.on,
+.app.ivoryTheme .dynModeBtn.on,.app.ivoryTheme .modeSwitch.on{
+  background-image:url("assets/ui/png/ivory_button_on.png")!important;
+}
+.app:not(.ivoryTheme) .masterBypass:active,.app:not(.ivoryTheme) .soloBtn:active,
+.app:not(.ivoryTheme) .advBtn:active,.app:not(.ivoryTheme) .bypassBtn:active,
+.app:not(.ivoryTheme) .deltaBtn:active,.app:not(.ivoryTheme) .dynModeBtn:active,
+.app:not(.ivoryTheme) .modeSwitch:active,.app:not(.ivoryTheme) .tiny:active,
+.app:not(.ivoryTheme) .uiThemeQuick:active,.app:not(.ivoryTheme) .settingsGear:active{
+  background-image:url("assets/ui/png/studio_button_pressed.png")!important;
+}
+.app.ivoryTheme .masterBypass:active,.app.ivoryTheme .soloBtn:active,
+.app.ivoryTheme .advBtn:active,.app.ivoryTheme .bypassBtn:active,
+.app.ivoryTheme .deltaBtn:active,.app.ivoryTheme .dynModeBtn:active,
+.app.ivoryTheme .modeSwitch:active,.app.ivoryTheme .tiny:active,
+.app.ivoryTheme .uiThemeQuick:active,.app.ivoryTheme .settingsGear:active{
+  background-image:url("assets/ui/png/ivory_button_pressed.png")!important;
+}
+
+/* BYPASS active = real red LED PNG + pressed hardware button PNG. */
+.bypassBtn.on,.masterBypass.on{
+  background-image:url("assets/ui/png/bypass_led_red.png"),url("assets/ui/png/ivory_button_pressed.png")!important;
+  background-size:15px 15px,100% 100%!important;
+  background-position:6px center,center!important;
+  background-repeat:no-repeat!important;padding-left:14px!important;
+}
+.app:not(.ivoryTheme) .bypassBtn.on,.app:not(.ivoryTheme) .masterBypass.on{
+  background-image:url("assets/ui/png/bypass_led_red.png"),url("assets/ui/png/studio_button_pressed.png")!important;
+}
+
+/* Real LED assets. */
+.app:not(.ivoryTheme) .led,.app:not(.ivoryTheme) .bandLed{
+  background-image:url("assets/ui/png/studio_led_off.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+  background-color:transparent!important;border:0!important;box-shadow:none!important;
+}
+.app:not(.ivoryTheme) .led.on,.app:not(.ivoryTheme) .bandLed.on{
+  background-image:url("assets/ui/png/studio_led_on.png")!important;
+}
+.app.ivoryTheme .led,.app.ivoryTheme .bandLed{
+  background-image:url("assets/ui/png/ivory_led_off.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+  background-color:transparent!important;border:0!important;box-shadow:none!important;
+}
+.app.ivoryTheme .led.on,.app.ivoryTheme .bandLed.on{
+  background-image:url("assets/ui/png/ivory_led_on.png")!important;
+}
+
+/* Range control gets separate track + thumb PNGs. */
+.detectBlend{
+  -webkit-appearance:none;appearance:none;background-color:transparent!important;
+  background-image:url("assets/ui/png/ivory_slider_track.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+}
+.app:not(.ivoryTheme) .detectBlend{
+  background-image:url("assets/ui/png/studio_slider_track.png")!important;
+}
+.detectBlend::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:18px;height:18px;border:0!important;
+  background:transparent url("assets/ui/png/ivory_slider_thumb.png") center/contain no-repeat!important;
+}
+.app:not(.ivoryTheme) .detectBlend::-webkit-slider-thumb{
+  background-image:url("assets/ui/png/studio_slider_thumb.png")!important;
+}
+.detectBlend::-moz-range-thumb{
+  width:18px;height:18px;border:0!important;
+  background:transparent url("assets/ui/png/ivory_slider_thumb.png") center/contain no-repeat!important;
+}
+.app:not(.ivoryTheme) .detectBlend::-moz-range-thumb{
+  background-image:url("assets/ui/png/studio_slider_thumb.png")!important;
+}
+
+/* Power uses dedicated PNG states. */
+.app:not(.ivoryTheme) .masterPower{
+  background-image:url("assets/ui/png/studio_power_off.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+  background-color:transparent!important;border:0!important;box-shadow:none!important;
+}
+.app:not(.ivoryTheme) .masterPower.on{background-image:url("assets/ui/png/studio_power_on.png")!important}
+.app.ivoryTheme .masterPower{
+  background-image:url("assets/ui/png/ivory_power_off.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+  background-color:transparent!important;border:0!important;box-shadow:none!important;
+}
+.app.ivoryTheme .masterPower.on{background-image:url("assets/ui/png/ivory_power_on.png")!important}
+
+/* Disabled/bypassed states are separate raster assets — no runtime grayscale/filter. */
 .globalBypass,.globalBypass *{filter:none!important}
-.app.globalBypass,.app.globalBypass .header,.app.globalBypass .bandsFrame,.app.globalBypass .band,.app.globalBypass .panel,.band.bypassed{background-image:url("assets/ui/png/muted_panel.png")!important;background-size:100% 100%!important;background-repeat:no-repeat!important}
-.globalBypass .masterBypass,.globalBypass .soloBtn,.globalBypass .advBtn,.globalBypass .bypassBtn,.globalBypass .deltaBtn,.globalBypass .dynModeBtn,.globalBypass .modeSwitch,.globalBypass .tiny,.globalBypass .uiThemeQuick,.moduleMuted .modeSwitch,.band.bypassed button{background-image:url("assets/ui/png/muted_button_off.png")!important}
-.globalBypass .led,.globalBypass .bandLed,.moduleMuted .led,.band.bypassed .led{background-image:url("assets/ui/png/muted_led_off.png")!important}
-.moduleMuted,.knobMuted,.band.bypassed{opacity:.72!important;filter:none!important}
+.app.globalBypass,.app.globalBypass .header,.app.globalBypass .bandsFrame{
+  background-image:url("assets/ui/png/muted_panel.png")!important;
+}
+.app.globalBypass .band,.app.globalBypass .panel,.band.bypassed{
+  background-image:url("assets/ui/png/muted_module.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+}
+.app.globalBypass .graph{
+  background-image:url("assets/ui/png/muted_graph.png")!important;
+}
+.globalBypass .masterBypass,.globalBypass .soloBtn,.globalBypass .advBtn,
+.globalBypass .bypassBtn,.globalBypass .deltaBtn,.globalBypass .dynModeBtn,
+.globalBypass .modeSwitch,.globalBypass .tiny,.globalBypass .uiThemeQuick,
+.moduleMuted .modeSwitch,.band.bypassed button{
+  background-image:url("assets/ui/png/button_disabled.png")!important;
+  background-size:100% 100%!important;background-repeat:no-repeat!important;
+}
+.globalBypass .led,.globalBypass .bandLed,.moduleMuted .led,.band.bypassed .led{
+  background-image:url("assets/ui/png/muted_led_off.png")!important;
+}
+.globalBypass .detectBlend,.moduleMuted .detectBlend,.band.bypassed .detectBlend{
+  background-image:url("assets/ui/png/muted_slider_track.png")!important;
+}
+.globalBypass .detectBlend::-webkit-slider-thumb,
+.moduleMuted .detectBlend::-webkit-slider-thumb,
+.band.bypassed .detectBlend::-webkit-slider-thumb{
+  background-image:url("assets/ui/png/muted_slider_thumb.png")!important;
+}
+.moduleMuted,.knobMuted,.band.bypassed{opacity:1!important;filter:none!important}
 </style>
 </head>
 <body>
@@ -165,7 +320,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.70</div></div><div class="sub"></div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.71</div></div><div class="sub"></div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · ANALOG COLOR · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -208,7 +363,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
       <div class="settingsRow" aria-disabled="true"><span>CPU / latency display</span><span>RESERVED</span></div>
     </section>
     <section class="settingsSection"><div class="settingsSectionTitle">SYSTEM / ABOUT</div>
-      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.70</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.71</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Build number / commit</span><span>GitHub build metadata</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset UI Settings</span><span>DISABLED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset All Settings</span><span>DISABLED</span></div>
@@ -236,7 +391,7 @@ const analyzerRaw=new Float32Array(256).fill(-90);
 const analyzerFreqSmooth=new Float32Array(256).fill(-90);
 const eqCanvas=$("#eqCanvas"),eqCtx=eqCanvas.getContext("2d"),graphHint=$("#graphHint");
 const settingsGear=$("#settingsGear"),settingsPanel=$("#settingsPanel"),themeToggle=$("#themeToggle"),analyzerToggle=$("#analyzerToggle"),uiThemeQuick=$("#uiThemeQuick");
-let settingsPanelVisible=false,ivoryTheme=false;
+let settingsPanelVisible=false,ivoryTheme=true;
 const tc=(dark,ivory)=>ivoryTheme?ivory:dark;
 function setIvoryTheme(ivory){
   ivoryTheme=!!ivory;
@@ -252,7 +407,7 @@ uiThemeQuick.addEventListener("click",()=>{
   setIvoryTheme(!ivoryTheme);
   drawEQ();
 });
-setIvoryTheme(false);
+setIvoryTheme(true);
 function setSettingsPanelVisible(visible){
   settingsPanelVisible=!!visible;
   settingsPanel.hidden=!settingsPanelVisible;
@@ -357,9 +512,9 @@ function setAnalyzerEnabled(enabled){
 analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
 document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
 setAnalyzerEnabled(true);
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.70
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.71
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.70"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.71"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -510,12 +665,13 @@ const syncSoloMode=()=>{soloMode.classList.toggle("on",!!state.solo.post);soloMo
 soloMode.onclick=()=>{state.solo.post=!state.solo.post;syncSoloMode()};
 syncSoloMode();
 $("#advPopupClose").onclick=()=>openAdvanced(-1);
+const KNOB_SPRITE_COLUMNS=8,KNOB_SPRITE_ROWS=8,KNOB_FRAME_WIDTH=128,KNOB_FRAME_HEIGHT=128,KNOB_FRAME_COUNT=64;
 function dialVisual(d,v,min,max,a){
   d.style.setProperty("--accent",a);
   const p=clamp((v-min)/Math.max(0.000001,max-min),0,1);
-  const frame=Math.round(p*63);
-  const col=frame%8,row=Math.floor(frame/8);
-  d.style.backgroundPosition=(col*(100/7))+"% "+(row*(100/7))+"%";
+  const frame=Math.round(p*(KNOB_FRAME_COUNT-1));
+  const col=frame%KNOB_SPRITE_COLUMNS,row=Math.floor(frame/KNOB_SPRITE_COLUMNS);
+  d.style.backgroundPosition=(col*(100/(KNOB_SPRITE_COLUMNS-1)))+"% "+(row*(100/(KNOB_SPRITE_ROWS-1)))+"%";
   d.dataset.frame=String(frame);
 }
 function makeKnob(parent,cfg){
@@ -1010,7 +1166,7 @@ function dynamicPopupBounds(b,w,h){
 function drawEQ(){
   const r=eqCanvas.getBoundingClientRect(),w=r.width,h=r.height;
   eqCtx.clearRect(0,0,w,h);
-  eqCtx.fillStyle=tc("rgba(8,37,43,.86)","rgba(23,23,17,.86)");
+  eqCtx.fillStyle=tc("rgba(7,25,28,.70)","rgba(18,17,13,.68)");
   eqCtx.fillRect(0,0,w,h);
 
   if(analyzerEnabled){
