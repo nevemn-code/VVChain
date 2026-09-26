@@ -68,22 +68,22 @@ required_html = [
     "dynDetectBlend",
     "moduleMuteRefreshers",
     'id="uiThemeQuick"',
-    "UI STUDIO",
+    "UI BLACK",
     "UI IVORY",
     "vvchain-v1064-dual-hardware-skins",
-    "vvchain-v1071-engineering-rgba-png",
-    "assets/ui/png/studio_knob_strip.png",
-    "assets/ui/png/ivory_knob_strip.png",
-    "assets/ui/png/studio_button_on.png",
-    "assets/ui/png/ivory_led_on.png",
-    "assets/ui/png/studio_module.png",
-    "assets/ui/png/ivory_module.png",
-    "assets/ui/png/muted_module.png",
-    "assets/ui/png/ivory_slider_track.png",
-    "assets/ui/png/ivory_slider_thumb.png",
-    "KNOB_FRAME_WIDTH=128",
-    "KNOB_FRAME_HEIGHT=128",
-    "KNOB_FRAME_COUNT=64",
+    "vvchain-master-runtime-v1076",
+    "assets/ui/runtime/backgrounds/black_full_panel.png",
+    "assets/ui/runtime/backgrounds/ivory_full_panel.png",
+    "assets/ui/runtime/knobs/knob_gold_64.png",
+    "assets/ui/runtime/knobs/knob_blue_64.png",
+    "assets/ui/runtime/knobs/knob_green_64.png",
+    "assets/ui/runtime/knobs/knob_red_64.png",
+    "assets/ui/runtime/knobs/knob_black_64.png",
+    "assets/ui/runtime/knobs/knob_silver_64.png",
+    "assets/ui/runtime/knobs/knob_platinum_master_gain_64.png",
+    "assets/ui/runtime/components/black_button_on.png",
+    "assets/ui/runtime/components/ivory_button_on.png",
+    "masterRuntimeActive=true",
 ]
 for token in required_html:
     assert token in text, token
@@ -121,6 +121,8 @@ assert cmake_version.group(1) == shown_version.group(1) == cache_version.group(1
     cmake_version.group(1), shown_version.group(1), cache_version.group(1)
 )
 assert not (ROOT / "docs" / "legacy analog-copper.html").exists(), "obsolete legacy analog page must remain deleted"
+assert not (ROOT / "docs" / "assets" / "ui" / "png").exists(), "rejected Candidate PNG directory must be deleted"
+assert "assets/ui/png/" not in text, "Web must not reference rejected Candidate PNGs"
 
 # DELTA analyzer: original/input reference is disconnected and the final
 # Worklet output becomes the only main analyzer source.
