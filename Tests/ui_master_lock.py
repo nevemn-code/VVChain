@@ -44,15 +44,16 @@ def main():
     assert all(v.get("outer_ring_max_diff")==0 for v in legacy_knobs.values())
     hires=staged["knobs"]["knob_reference_hires_56.png"]
     assert hires["columns"]==8 and hires["rows"]==7 and hires["frames"]==56
-    assert hires["frame"]==164
-    assert hires["sha256"]=="38f0db7672bc571d53d7b3cdef1f04c5381c250e1bee78c39420085aa4ed9ffe"
+    assert hires["frame"]==176
+    assert hires["sha256"]=="a55d1eb9e76160c4b528121d2e4f73e61f4567dce1b63a96c490a30b1b04b08e"
+    assert hires["center_span_px"]==[0.504,0.334]
     assert derivative["status"]=="approved_source_identity_locked"
     assert binary["schema"]==1
     assert binary["asset_count"]==47==len(binary["assets"])
     assert binary["assets"]["knobs/knob_reference_hires_56.png"]==[
-        2526063,
-        "38f0db7672bc571d53d7b3cdef1f04c5381c250e1bee78c39420085aa4ed9ffe",
-        1312,1148
+        1618708,
+        "a55d1eb9e76160c4b528121d2e4f73e61f4567dce1b63a96c490a30b1b04b08e",
+        1408,1232
     ]
     assert binary["source_archive"]["sha256"]=="1fca9eca20ccc1852310287fe41fbd59341aa018726c3ce764e934b2a7e6c297"
 

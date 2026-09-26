@@ -45,6 +45,11 @@ SHA-256 `533fc03ef5db2ac73a875f47e83bc62b5f98719b71711ab599872527037c770c`.
 
 ## Next checkpoint
 
+The independent v1.0.87 Ivory rotary alignment uses the previously approved
+56-frame knob source and does **not** accept the 154115 all-component candidate
+archive into runtime. The 154115 composite and its other candidate pieces
+remain separate from this scoped knob correction.
+
 Acquire approved layer/angle/state sources or regenerate each missing state for
 review against the Master. Until passing checks exist for all interaction states,
 keep both Native and Web on the existing locked runtime and leave the product

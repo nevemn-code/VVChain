@@ -1,5 +1,14 @@
 # VVChain Work Progress
 
+## v1.0.87 fixed-axis Ivory rotary checkpoint
+
+- Re-registered all 56 frames of the previously approved high-resolution Ivory knob source to a single 176×176 cell centre and a common ring radius.
+- Measured source frame centre span: 5.609 px horizontal / 3.626 px vertical; corrected candidate: 0.504 / 0.334 px. Radius span: 1.820 → 0.300 px.
+- Frame 0 supplies fixed outer ticks and backdrop; the approved source supplies each rotating dial face. No new metal material or colour scheme was generated.
+- The runtime pathname remains `assets/ui/runtime/knobs/knob_reference_hires_56.png`, shared by Native binary resources and Web CSS. Existing 8×7 / 56-frame selection and sound/parameter logic are unchanged.
+- Runtime manifest, scoped staged manifest, approval lock, Web/Native version display and cache version updated together. This checkpoint is independent of the newer 154115 all-component Candidate; that archive is not accepted into runtime.
+- Verification pending at this checkpoint: Master lock, Web smoke/static audit, UI interaction regression and Native build. Do not call the deployment complete until CI confirms.
+
 ## 154115 full-component candidate audit
 
 - Component inventory and detailed acceptance results: `docs/UI_154115_ASSET_AUDIT.md`.
