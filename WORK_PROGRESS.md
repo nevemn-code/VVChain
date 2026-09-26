@@ -6,11 +6,11 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.86
+v1.0.87
 
 ## Current checkpoint
 
-**v1.0.86 — Exact band ordering + user-approved high-resolution knob runtime**
+**v1.0.87 — Exact 1265×938 layout master runtime**
 
 ## Master paths
 
@@ -45,7 +45,7 @@ Locked identities:
 ## v1.0.84 reference-layout checkpoint
 
 - UI-only change. DSP, parameter IDs, automation, processing order and preset compatibility are unchanged.
-- Native and Web frame geometry now use the supplied third-reference 1448×1086 basis.
+- Native and Web Ivory geometry now uses `UI_LAYOUT_MASTER_EXACT_ORDER.png` directly at its native 1265×938 basis; no approximate 1448×1086 reconstruction.
 - EQ graph and five-column lower section were repositioned/resized to the reference proportions.
 - Band control lanes now follow the reference vertical rhythm: EQ → Dynamic EQ → UDMBC → Analog/Tape/Transient.
 - Normal controls select the already-approved Silver runtime knob sprite; OUTPUT_LEVEL retains the existing 1.5× Platinum Master sprite.
@@ -69,7 +69,9 @@ Locked identities:
   - `assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png`
   - `assets/ui/master/KNOB_MASTER_HIRES.png`
   - `assets/ui/runtime/knobs/knob_reference_hires_56.png`
-- Main band order now follows the approved reference: FREQ / GAIN / Q → DYNAMICS / ATTACK / RELEASE → DEGREE / LEVEL / MIX + ADV → AMOUNT / TYPE-A.
+- Main band order follows the approved reference exactly: FREQ / GAIN / Q → THRESH / ATTACK / RELEASE → DEGREE / LEVEL / MIX + ADV → AMOUNT / TYPEA.
+- Removed the non-reference PEAK/RMS + ABOVE/BELOW row from the main layout while keeping its underlying parameter state intact.
+- Ivory runtime uses the exact 1265×938 layout Master as its background; fixed labels/frames are not repainted on top.
 - UDMBC ATTACK / RELEASE and TRANSIENT remain available in ADVANCED so processing access is preserved.
 - Ivory uses the uploaded 8×7 / 56-frame high-resolution knob runtime. Black retains the existing transparent locked sprite set because the uploaded high-resolution source contains an Ivory background field.
 - DSP, parameter IDs, automation and processing order are unchanged.
