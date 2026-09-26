@@ -10,7 +10,7 @@ v1.0.85
 
 ## Current checkpoint
 
-**v1.0.85 — Upper section cleanup; approved PNG binaries unchanged**
+**UI3 Hardware Gold candidate — awaiting visual approval; production v1.0.85 unchanged**
 
 ## Master paths
 
@@ -96,10 +96,19 @@ Locked identities:
 
 Future UI changes remain governed by `UI_MASTER_LOCK.md`. Do not regenerate the approved UI from descriptions, SVG, CSS, Canvas, Python/procedural renderers or approximate substitutes. Native and Web must continue to share the same approved runtime source.
 
+## UI3 candidate checkpoint
+
+- New work is isolated on branch `ui/ui3-hardware-gold-candidate`.
+- The requested third UI uses the supplied 1586×992 hardware panel as its visual basis.
+- The upper graph visual target is the supplied 939×198 dark/gold EQ / Dynamic EQ reference.
+- Approval preview hashes and the production integration contract are documented in `docs/UI3_HARDWARE_GOLD_CANDIDATE.md`.
+- No production Master/runtime PNG has been changed and main remains on the v1.0.85 two-skin runtime.
+- The third master must not be declared approved until the user accepts the candidate visual.
+
 ## Remaining
 
-**0**
+**1 candidate approval checkpoint**
 
 ## Next action
 
-None for this migration. Any future UI change starts as a new Master-locked checkpoint rather than modifying the approved runtime in place without validation.
+User visually approves the UI3 candidate. Then ingest the approved third Master PNG, extend the Master Lock/manifest to three skins, wire the same approved assets into Native and Web, run validation, version bump and deploy.
