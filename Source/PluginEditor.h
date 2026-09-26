@@ -537,6 +537,15 @@ private:
         bool monochrome = false;
         bool ivoryTheme = true;
         bool isMasterRuntimeActive() const noexcept;
+        const juce::Image& getLayoutOrderMaster() const noexcept
+        {
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+            return layoutOrderMaster;
+#else
+            static const juce::Image empty;
+            return empty;
+#endif
+        }
 
         void drawPanelSurface(juce::Graphics&, juce::Rectangle<float>,
                               bool localMuted = false) const;
