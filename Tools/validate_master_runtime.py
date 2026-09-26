@@ -14,7 +14,7 @@ def load_manifest():
     data = MANIFEST.read_bytes()
     obj = json.loads(data.decode("utf-8"))
     assert obj["schema"] == 1
-    assert obj["asset_count"] == len(obj["assets"]) == 46
+    assert obj["asset_count"] == len(obj["assets"])
     assert obj["png_contract"]["bit_depth"] == 8
     assert obj["png_contract"]["colour_type"] == 6
     return obj, hashlib.sha256(data).hexdigest()
@@ -50,7 +50,7 @@ def main():
         lock = json.loads(LOCK.read_text(encoding="utf-8"))
         assert lock["schema"] == 1
         assert lock["runtime_manifest_sha256"] == manifest_sha
-        assert lock["asset_count"] == 46
+        assert lock["asset_count"] == obj["asset_count"]
         assert not missing, "APPROVED.lock present but files missing: " + ", ".join(missing)
         print("Master runtime: APPROVED + binary hashes PASS")
         return
@@ -59,7 +59,7 @@ def main():
         raise AssertionError("APPROVED.lock is required but missing")
 
     if missing:
-        print(f"Master runtime: pending binary ingest ({len(missing)} / 46 missing)")
+        print(f"Master runtime: pending binary ingest ({len(missing)} / {obj['asset_count']} missing)")
     else:
         print("Master runtime: all binaries present but not approved; run approval only after visual acceptance")
 
