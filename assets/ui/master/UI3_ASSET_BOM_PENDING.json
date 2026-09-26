@@ -47,7 +47,7 @@
           "reason": "Master contains baked live EQ curves/nodes; lossless crop alone cannot remove them. Generative/procedural removal is prohibited."
         }
       },
-      "status": "PARTIAL",
+      "status": "PHASE1_CANDIDATE_REVIEW",
       "local_outputs": {
         "backgrounds/hardware_gold_full_panel.png": {
           "status": "LOCAL_PASS_PENDING_BINARY_INGEST",
@@ -103,7 +103,7 @@
         "knobs/knob_ui3_green_64.png",
         "knobs/knob_ui3_master_silver_64.png"
       ],
-      "status": "DEFERRED_PHASE_2",
+      "status": "DEFERRED_PHASE_2_NO_GENERATION",
       "notes": "Do not generate. Waiting for user-provided GitHub/open-source knob source/implementation."
     },
     {
@@ -120,7 +120,7 @@
         "DELTA",
         "SOLO MATRIX"
       ],
-      "status": "PHASE_1_PENDING"
+      "status": "PHASE1_CANDIDATE_REVIEW"
     },
     {
       "id": "G04",
@@ -134,7 +134,7 @@
       "usage": [
         "+ADV"
       ],
-      "status": "PHASE_1_PENDING"
+      "status": "PHASE1_CANDIDATE_REVIEW"
     },
     {
       "id": "G05",
@@ -145,7 +145,7 @@
         "components/ui3_settings_pressed.png",
         "components/ui3_settings_disabled.png"
       ],
-      "status": "PHASE_1_PENDING"
+      "status": "PHASE1_CANDIDATE_REVIEW"
     },
     {
       "id": "G06",
@@ -156,7 +156,7 @@
         "components/ui3_led_red_off.png",
         "components/ui3_led_red_on.png"
       ],
-      "status": "PHASE_1_PENDING"
+      "status": "PHASE1_CANDIDATE_REVIEW"
     },
     {
       "id": "G07",
@@ -168,7 +168,7 @@
         "components/ui3_toggle_disabled.png"
       ],
       "geometry_rule": "Toggle pivot, body and plate remain on one identical canvas; state change only.",
-      "status": "PHASE_1_PENDING"
+      "status": "PHASE1_CANDIDATE_REVIEW"
     },
     {
       "id": "G08",
@@ -178,7 +178,7 @@
         "components/ui3_slider_track.png",
         "components/ui3_slider_thumb.png"
       ],
-      "status": "PHASE_1_PENDING"
+      "status": "PHASE1_CANDIDATE_REVIEW"
     },
     {
       "id": "G09",
@@ -192,7 +192,7 @@
       "usage": [
         "1st/2nd"
       ],
-      "status": "PHASE_1_PENDING"
+      "status": "PHASE1_CANDIDATE_REVIEW"
     },
     {
       "id": "G10",
@@ -203,7 +203,7 @@
       "usage": [
         "live numeric value background; text remains live"
       ],
-      "status": "PHASE_1_PENDING"
+      "status": "PHASE1_CANDIDATE_REVIEW"
     }
   ],
   "planned_asset_count": 38,
@@ -231,7 +231,7 @@
   "phases": {
     "PHASE_1": {
       "name": "all_non_knob_assets",
-      "status": "IN_PROGRESS",
+      "status": "CANDIDATE_PACK_GENERATED_LOCAL_REVIEW_REQUIRED",
       "groups": [
         "G01",
         "G03",
@@ -243,11 +243,31 @@
         "G09",
         "G10"
       ],
-      "rule": "Generate/validate everything except rotary knob sprites. G02 is explicitly excluded from Phase 1."
+      "rule": "Generate/validate everything except rotary knob sprites. G02 is explicitly excluded from Phase 1.",
+      "local_candidate_pack": {
+        "filename": "VVChain_UI3_Phase1_v3_non_knob.zip",
+        "asset_entries": 53,
+        "includes": [
+          "G01",
+          "G03",
+          "G04",
+          "G05",
+          "G06",
+          "G07",
+          "G08",
+          "G09",
+          "G10"
+        ],
+        "excludes": [
+          "G02 rotary knobs"
+        ],
+        "runtime_admission": false,
+        "note": "Position-locked Master-derived candidates only. No rotary knob asset generated."
+      }
     },
     "PHASE_2": {
       "name": "rotary_knobs_from_user_supplied_open_source_code",
-      "status": "WAITING_FOR_USER_SOURCE",
+      "status": "WAITING_FOR_USER_GITHUB_OPEN_SOURCE_KNOB_SOURCE",
       "groups": [
         "G02"
       ],
