@@ -6,13 +6,14 @@ The two full Master PNGs remain the only Visual Masters. Approved derivative sou
 
 ## Knob assignment
 
-- Metal Gold — general warm/analog controls where gold is the functional colour.
-- Metal Blue — blue-coded functions.
-- Metal Green — green-coded functions.
-- Metal Red — red-coded functions.
-- Metal Black — neutral/dark functions.
-- Metal Silver — neutral precision/EQ controls.
-- Platinum — MASTER gain/output class only, 1.5× normal knob size.
+### v1.0.84 reference presentation
+
+The supplied third reference uses one neutral hardware family across the four band strips. Production selection therefore reuses the existing approved assets without editing them:
+
+- Metal Silver — all normal band controls, including EQ, Dynamic EQ, UDMBC, Analog, Tape and Transient.
+- Platinum — MASTER output class only, 1.5× normal knob size.
+
+The already-approved Gold, Blue, Green, Red and Black sprites remain in the locked runtime set for future approved layouts, but v1.0.84 does not select them by default.
 
 All knob variants preserve the same amber outer LED ring. Runtime state sequences use a fixed body and only move the pointer.
 

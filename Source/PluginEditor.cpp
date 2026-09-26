@@ -253,19 +253,12 @@ VVChainAudioProcessorEditor::MetalLookAndFeel::selectKnobStrip(
     const auto id = slider.getProperties().getWithDefault(
         "vvParameterId", juce::var()).toString();
 
+    // v1.0.84 reference layout: the supplied third reference uses one
+    // neutral hardware knob family across the four bands. Reuse the already
+    // approved Silver sprite byte-for-byte; Master OUT keeps the existing
+    // 1.5x Platinum asset. No runtime PNG is modified or substituted.
     if (id == "OUTPUT_LEVEL" && knobPlatinumMaster.isValid())
         return knobPlatinumMaster;
-    if (id.startsWith("EQ_COLOR") && knobGold.isValid())
-        return knobGold;
-    if (id.startsWith("DYN_") && knobBlue.isValid())
-        return knobBlue;
-    if (id.startsWith("UDMBC_") && knobGreen.isValid())
-        return knobGreen;
-    if (id.startsWith("TAPE_") && knobRed.isValid())
-        return knobRed;
-    if ((id.startsWith("TRANSIENT") || id.startsWith("XOVER_"))
-        && knobBlack.isValid())
-        return knobBlack;
     if (knobSilver.isValid())
         return knobSilver;
 #endif
@@ -630,7 +623,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     setLookAndFeel(&metalLook);
     setResizable(false, false);
 #if VVCHAIN_HAS_MASTER_LOCK_UI
-    setSize(1470, 1070);
+    setSize(1448, 1086);
 #else
     setSize(1500, 930);
 #endif
@@ -1308,10 +1301,11 @@ void VVChainAudioProcessorEditor::setParameter(const juce::String& id, float val
 
 juce::Rectangle<float> VVChainAudioProcessorEditor::eqGraphBounds() const
 {
-    // The approved Master panel has a fixed 1470x1070 hardware frame.
+    // v1.0.84: align the interactive graph to the supplied 1448x1086
+    // reference while keeping the approved full-panel PNG untouched.
 #if VVCHAIN_HAS_MASTER_LOCK_UI
     if (metalLook.isMasterRuntimeActive())
-        return { 27.f, 101.f, (float) getWidth() - 54.f, 281.f };
+        return { 24.f, 94.f, (float) getWidth() - 48.f, 294.f };
 #endif
     return { 18.f, 78.f, (float) getWidth() - 36.f, 315.f };
 }
@@ -2878,26 +2872,33 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff3b2c20)
                                     : juce::Colour(0xfff1f3f3)));
-    g.setFont(juce::FontOptions(23.f).withStyle("Bold"));
-    g.drawText("VVCHAIN", 18, 8, 240, 27, juce::Justification::left);
+    g.setFont(juce::FontOptions(masterRuntime ? 31.f : 23.f).withStyle("Bold"));
+    g.drawText("VVCHAIN",
+               masterRuntime ? 89 : 18,
+               masterRuntime ? 27 : 8,
+               masterRuntime ? 205 : 240,
+               masterRuntime ? 38 : 27,
+               juce::Justification::left);
 
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff6a5b49)
                                     : juce::Colour(0xffb8c1c3)));
     g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.83", 20, 39, 180, 12,
-               juce::Justification::left);
+    g.drawText("VVCHAIN v1.0.84",
+               masterRuntime ? 294 : 20,
+               masterRuntime ? 47 : 39,
+               180, 12, juce::Justification::left);
 
     const auto graph = eqGraphBounds();
     drawEqGraph(g, graph);
 
-    const int cardY = masterRuntime ? 392 : 404;
-    const int gap = masterRuntime ? 10 : 8;
-    const int left = masterRuntime ? 17 : 18;
+    const int cardY = masterRuntime ? 394 : 404;
+    const int gap = masterRuntime ? 4 : 8;
+    const int left = masterRuntime ? 24 : 18;
     const int unitW = masterRuntime
         ? (getWidth() - left * 2 - gap * 4) / 5
         : (getWidth() - left * 2 - gap * 5) / 5;
     const int cardW = unitW;
-    const int cardH = masterRuntime ? 615 : 510;
+    const int cardH = masterRuntime ? 664 : 510;
 
     for (int b = 0; b < 4; ++b)
     {
@@ -3360,9 +3361,9 @@ void VVChainAudioProcessorEditor::resized()
     const int w = getWidth();
 
     const bool masterRuntime = metalLook.isMasterRuntimeActive();
-    const int cardY = masterRuntime ? 392 : 404;
-    const int gap = masterRuntime ? 10 : 8;
-    const int left = masterRuntime ? 17 : 18;
+    const int cardY = masterRuntime ? 394 : 404;
+    const int gap = masterRuntime ? 4 : 8;
+    const int left = masterRuntime ? 24 : 18;
     const int unitW = masterRuntime
         ? (w - left * 2 - gap * 4) / 5
         : (w - left * 2 - gap * 4) / 5;
@@ -3426,28 +3427,38 @@ void VVChainAudioProcessorEditor::resized()
                 x + cardW - 58, cardY + 8, 46, 20);
 
         const int innerX = x + 8;
-        const int innerTop = cardY + (masterRuntime ? 56 : 56);
+        const int innerTop = cardY + (masterRuntime ? 54 : 56);
         const int innerW = cardW - 16;
         const int cellGap = 6;
         const int cellW = (innerW - cellGap * 2) / 3;
         const int rowH = masterRuntime ? 91 : 70;
-        const int knobH = masterRuntime ? 80 : 62;
+        const int knobH = masterRuntime ? 88 : 62;
 
         constexpr int dynamicSectionShiftY = 14;
         constexpr int lowerSectionShiftY = 8;
         const auto cell = [&](int row, int col)
         {
-            // The taller PEAK/RMS + ABOVE row needs real vertical space.
-            // Everything below the static EQ row moves down together.
-            const int dynamicShift =
-                row >= 1 ? dynamicSectionShiftY : 0;
-            const int lowerShift =
-                row >= 3 ? lowerSectionShiftY : 0;
+            int y = innerTop;
+            if (masterRuntime)
+            {
+                // Exact reference-layout lanes measured on the supplied
+                // 1448x1086 image: EQ, Dynamic, UDMBC, Analog/Tape/Transient.
+                constexpr std::array<int, 5> masterOffsets
+                { 0, 124, 196, 268, 404 };
+                y += masterOffsets[(size_t) juce::jlimit(0, 4, row)];
+            }
+            else
+            {
+                const int dynamicShift =
+                    row >= 1 ? dynamicSectionShiftY : 0;
+                const int lowerShift =
+                    row >= 3 ? lowerSectionShiftY : 0;
+                y += row * rowH + dynamicShift + lowerShift;
+            }
+
             return juce::Rectangle<int>(
                 innerX + col * (cellW + cellGap),
-                innerTop + row * rowH
-                    + dynamicShift + lowerShift,
-                cellW, knobH);
+                y, cellW, knobH);
         };
 
         const auto n = juce::String(b + 1);
