@@ -448,6 +448,16 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
   position:absolute!important;inset:0!important;width:1265px!important;height:84px!important;
   margin:0!important;display:block!important;z-index:21;
 }
+.app.masterRuntime.ivoryTheme .header::before{
+  content:"";position:absolute;left:575px;top:30px;width:530px;height:47px;z-index:20;
+  pointer-events:none;
+  background-image:url("assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png");
+  background-repeat:no-repeat;
+  /* direct crop S=(340,30,260,47) stretched only across the obsolete header controls */
+  background-size:2578.653846px 938px;
+  background-position:-1339.615385px -30px;
+}
+
 .app.masterRuntime .headerControls #masterBypass{
   position:absolute!important;left:862px!important;top:37px!important;width:106px!important;height:34px!important;
 }
@@ -459,8 +469,17 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
   position:absolute!important;left:1113px!important;top:37px!important;width:70px!important;height:34px!important;min-width:0!important;
 }
 .app.masterRuntime.ivoryTheme .headerControls #masterBypass,
-.app.masterRuntime.ivoryTheme .headerControls #soloMode,
-.app.masterRuntime.ivoryTheme .headerControls #uiThemeQuick,
+.app.masterRuntime.ivoryTheme .headerControls #soloMode{
+  background-image:url("assets/ui/runtime/components/ivory_button_off.png")!important;
+  background-size:100% 100%!important;background-color:transparent!important;
+  border:0!important;box-shadow:none!important;color:#f8ecd7!important;
+  font:900 9px Consolas!important;
+}
+.app.masterRuntime.ivoryTheme .headerControls #masterBypass.on,
+.app.masterRuntime.ivoryTheme .headerControls #soloMode.on{
+  background-image:url("assets/ui/runtime/components/ivory_button_on.png")!important;
+}
+.app.masterRuntime.ivoryTheme .headerControls #uiThemeQuick{display:none!important}
 .app.masterRuntime.ivoryTheme .headerControls #settingsGear{
   background:none!important;background-image:none!important;border:0!important;box-shadow:none!important;color:transparent!important;
 }
@@ -485,9 +504,32 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 }
 .app.masterRuntime .monitorBand{width:228px!important}
 
+.app.masterRuntime.ivoryTheme .band:not(.monitorBand)::before{
+  content:"";position:absolute;left:17px;top:391px;width:204px;height:124px;z-index:0;
+  pointer-events:none;background-repeat:no-repeat;
+  background-image:url("assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png");
+  /* direct clean-metal strip S=(bandX+24,392,204,15), vertically extended;
+     this removes the obsolete two-knob Analog row without editing the Master. */
+  background-size:1265px 7754.133333px;
+  background-position-y:-3240.533333px;
+}
+.app.masterRuntime.ivoryTheme .band:nth-child(1)::before{background-position-x:-60px}
+.app.masterRuntime.ivoryTheme .band:nth-child(2)::before{background-position-x:-304px}
+.app.masterRuntime.ivoryTheme .band:nth-child(3)::before{background-position-x:-548px}
+.app.masterRuntime.ivoryTheme .band:nth-child(4)::before{background-position-x:-792px}
+.app.masterRuntime .bandBody{z-index:2}
+
 .app.masterRuntime .bandHead{position:absolute!important;inset:0!important;height:0!important;z-index:8}
 .app.masterRuntime.ivoryTheme .bandHead>span,
 .app.masterRuntime.ivoryTheme .sectionLabel{visibility:hidden!important}
+.app.masterRuntime.ivoryTheme .analogLabel{
+  visibility:visible!important;color:#4a3a2d!important;border-bottom:0!important;
+  left:12px!important;right:auto!important;top:404px!important;width:72px!important;
+}
+.app.masterRuntime.ivoryTheme .bottomGrid .knobTitle{
+  visibility:visible!important;color:#4a3a2d!important;font:800 8px/12px Consolas!important;
+}
+
 .app.masterRuntime .bandBody{position:absolute!important;inset:0!important;width:236px!important;height:570px!important;padding:0!important}
 .app.masterRuntime .monitorBand .bandBody{width:228px!important}
 .app.masterRuntime .eqBody{display:block!important}
@@ -546,7 +588,9 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
   top:-18px!important;left:calc(50% + 34px)!important;width:100px!important;height:24px!important;border:0!important;
 }
 .app.masterRuntime.ivoryTheme .bottomGrid .modeSwitch{
-  background:none!important;background-image:none!important;color:transparent!important;box-shadow:none!important;
+  background-image:url("assets/ui/runtime/components/ivory_toggle_off.png")!important;
+  background-size:100% 100%!important;background-color:transparent!important;
+  border:0!important;box-shadow:none!important;color:#f8ecd7!important;
 }
 .app.masterRuntime .monitorBand .bandHead{display:none!important}
 .app.masterRuntime .monitorBand .masterMonitor{
@@ -567,6 +611,14 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 .app.masterRuntime .monitorBand .masterPanelBypass{
   position:absolute!important;left:117px!important;top:203px!important;width:96px!important;height:35px!important;
 }
+.app.masterRuntime .monitorBand .soloPreHit,
+.app.masterRuntime .monitorBand .soloPostHit{
+  position:absolute!important;top:460px!important;height:34px!important;z-index:12!important;
+  background:none!important;border:0!important;box-shadow:none!important;color:transparent!important;
+}
+.app.masterRuntime .monitorBand .soloPreHit{left:15px!important;width:94px!important}
+.app.masterRuntime .monitorBand .soloPostHit{left:116px!important;width:97px!important}
+
 .app.masterRuntime.ivoryTheme .monitorBand .deltaBtn,
 .app.masterRuntime.ivoryTheme .monitorBand .masterPanelBypass{
   background:none!important;background-image:none!important;border:0!important;box-shadow:none!important;color:transparent!important;
@@ -951,8 +1003,15 @@ bypassLed("UDMBC",state.udmbc,"#facc15");
 bypassGlobalLed("ANALOG",()=>state.eq.globalBypass,v=>state.eq.globalBypass=v,"#60a5fa");
 bypassLed("TAPE COLOR",state.type,"#f472b6");
 const soloMode=$("#soloMode");
-const syncSoloMode=()=>{soloMode.classList.toggle("on",!!state.solo.post);soloMode.textContent=state.solo.post?"SOLO POST":"SOLO PRE";sendParams()};
-soloMode.onclick=()=>{state.solo.post=!state.solo.post;syncSoloMode()};
+const syncSoloMode=()=>{
+  soloMode.classList.toggle("on",!!state.mix.bypass);
+  soloMode.textContent="BYPASS";
+};
+soloMode.onclick=()=>{
+  state.mix.bypass=!state.mix.bypass;
+  syncSoloMode();
+  sendParams();
+};
 syncSoloMode();
 $("#advPopupClose").onclick=()=>openAdvanced(-1);
 const KNOB_LEGACY_COLUMNS=8,KNOB_LEGACY_ROWS=8,KNOB_LEGACY_FRAMES=64;
@@ -1278,10 +1337,15 @@ const advBtn=card.querySelector(".advBtn");advBtn.title="UDMBC ADVANCED · BAND 
 }
 
 const monitor=document.createElement("div");monitor.className="band monitorBand";monitor.style.setProperty("--accent","#e5e7eb");
-monitor.innerHTML="<div class='bandHead'><span></span></div><div class='masterMonitor'><button class='deltaBtn'>DELTA</button><button class='masterPanelBypass'>BYPASS</button><div class='monitorKnobRow'></div></div>";
+monitor.innerHTML="<div class='bandHead'><span></span></div><div class='masterMonitor'><button class='deltaBtn'>DELTA</button><button class='masterPanelBypass'>BYPASS</button><div class='monitorKnobRow'></div><button class='soloPreHit'>PRE</button><button class='soloPostHit'>POST</button></div>";
 bg.appendChild(monitor);
-const masterPanelBypass=monitor.querySelector(".masterPanelBypass"),deltaBtn=monitor.querySelector(".deltaBtn"),monitorKnobs=monitor.querySelector(".monitorKnobRow");
-const syncMonitor=()=>{masterPanelBypass.classList.toggle("on",!!state.masterBypass);deltaBtn.classList.toggle("on",!!state.delta)};
+const masterPanelBypass=monitor.querySelector(".masterPanelBypass"),deltaBtn=monitor.querySelector(".deltaBtn"),monitorKnobs=monitor.querySelector(".monitorKnobRow"),soloPreHit=monitor.querySelector(".soloPreHit"),soloPostHit=monitor.querySelector(".soloPostHit");
+const syncMonitor=()=>{
+  masterPanelBypass.classList.toggle("on",!!state.masterBypass);
+  deltaBtn.classList.toggle("on",!!state.delta);
+  soloPreHit.classList.toggle("on",!state.solo.post);
+  soloPostHit.classList.toggle("on",!!state.solo.post);
+};
 masterPanelBypass.onclick=()=>{state.masterBypass=!state.masterBypass;syncMaster();syncMonitor()};
 deltaBtn.onclick=()=>{
   state.delta=!state.delta;
@@ -1291,6 +1355,8 @@ deltaBtn.onclick=()=>{
   sendParams();
   drawEQ();
 };
+soloPreHit.onclick=()=>{state.solo.post=false;syncMonitor();sendParams()};
+soloPostHit.onclick=()=>{state.solo.post=true;syncMonitor();sendParams()};
 makeKnob(monitorKnobs,{label:"MIX",controlId:"DRY_WET",get:()=>state.mix.drywet,set:v=>state.mix.drywet=v,min:0,max:100,suffix:" %",accent:"#38bdf8",formatDigits:0});
 makeKnob(monitorKnobs,{label:"OUT",controlId:"OUTPUT_LEVEL",get:()=>state.mix.output,set:v=>state.mix.output=v,min:-24,max:12,suffix:" dB",accent:"#9ed85c",formatDigits:1});
 syncMonitor();
