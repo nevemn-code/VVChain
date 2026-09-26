@@ -1,5 +1,13 @@
 # VVChain Work Progress
 
+## 154115 full-component candidate audit
+
+- Component inventory and detailed acceptance results: `docs/UI_154115_ASSET_AUDIT.md`.
+- 106 source-visible components produced as engineering candidates, each at original size and a fourfold resampled size; unchanged Master and enlarged panel also included (216 PNGs total).
+- ZIP verified: `VVChain_154115_components_CANDIDATE.zip`, SHA-256 `533fc03ef5db2ac73a875f47e83bc62b5f98719b71711ab599872527037c770c`.
+- Visible RGB source pixels, PNG decoding, RGBA/dimensions and ZIP integrity: PASS. Independent transparent edges, missing states, intrinsic 4× material detail and clean control-free backgrounds: FAIL / unavailable.
+- No generated or candidate image is placed in production runtime. Native and Web remain at existing approved assets; product version remains v1.0.86.
+
 ## New visual source checkpoint — 154115 (2026-09-26)
 
 - The user's newer, higher-resolution `image(20260926-154115).png` is the current full-panel visual reference for this request. Its exact bytes are preserved at `assets/ui/master/VVChain_20260926_154115_master.png`; see adjacent identity JSON.
