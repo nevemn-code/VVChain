@@ -28,10 +28,27 @@
         255,
         255
       ]
+    },
+    "hardware_gold": {
+      "path": "assets/ui/master/VVChain_hardware_gold_master.png",
+      "source_filename": "VVChain_hardware_gold_master.png",
+      "sha256": "ae8401ad7e3aa477ebcceed2a6ab45a19275500fd9e24a98a87d372c31f0382b",
+      "bytes": 1959313,
+      "width": 1448,
+      "height": 1086,
+      "mode": "RGB",
+      "git_blob_sha1": "daae37024c5af20e54ed4263d4bb6a3eb9f57af1"
     }
   },
   "ingest": {
-    "method": "byte_exact_base64_bridge",
-    "verified_against_locked_identity": true
+    "method": "byte_exact_git_blob_reuse_from_main_upload",
+    "verified_against_locked_identity": true,
+    "verification": {
+      "size_match": true,
+      "dimensions_match": true,
+      "mode_match": true,
+      "git_blob_sha1_match": true,
+      "sha256": "ae8401ad7e3aa477ebcceed2a6ab45a19275500fd9e24a98a87d372c31f0382b"
+    }
   }
 }
