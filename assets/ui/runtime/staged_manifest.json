@@ -1,0 +1,149 @@
+{
+  "schema": 1,
+  "status": "locked",
+  "version": "v1.0.74",
+  "method": {
+    "knobs": "Directly derived from approved colour sheets. Fixed metal body/outer amber LED ring; only pointer moves. Pointer state construction is supersampled 4x then Lanczos downsampled. 64 states cover -125\u00b0..+125\u00b0.",
+    "components": "Direct crop/clean/resize from approved component sheets; no procedural redraw."
+  },
+  "knobs": {
+    "knob_gold_64.png": {
+      "width": 1024,
+      "height": 1024,
+      "frame": 128,
+      "frames": 64,
+      "outer_ring_max_diff": 0,
+      "bytes": 362667,
+      "sha256": "a5c5c555d631a86ef954b1038ee551bf71c46de1e7051b9efe6514fd0c34a0e5"
+    },
+    "knob_blue_64.png": {
+      "width": 1024,
+      "height": 1024,
+      "frame": 128,
+      "frames": 64,
+      "outer_ring_max_diff": 0,
+      "bytes": 366271,
+      "sha256": "99fb5eee455161cb5521077e8d9c252aa6203c2c180003a23211d0e6a6b3c90a"
+    },
+    "knob_green_64.png": {
+      "width": 1024,
+      "height": 1024,
+      "frame": 128,
+      "frames": 64,
+      "outer_ring_max_diff": 0,
+      "bytes": 379272,
+      "sha256": "6b618a1050da9bde3b746380990460394fe67740d2d361d357892038714bf3d2"
+    },
+    "knob_red_64.png": {
+      "width": 1024,
+      "height": 1024,
+      "frame": 128,
+      "frames": 64,
+      "outer_ring_max_diff": 0,
+      "bytes": 368394,
+      "sha256": "24132865229efee45e3411508642fbc545cba36e7839e4af4c35c46f4770e4c9"
+    },
+    "knob_black_64.png": {
+      "width": 1024,
+      "height": 1024,
+      "frame": 128,
+      "frames": 64,
+      "outer_ring_max_diff": 0,
+      "bytes": 379163,
+      "sha256": "6b1053a34ff7adc9f71017b9ef49032ebaffe91c4b1dcc84a416e76a61c923c2"
+    },
+    "knob_silver_64.png": {
+      "width": 1024,
+      "height": 1024,
+      "frame": 128,
+      "frames": 64,
+      "outer_ring_max_diff": 0,
+      "bytes": 361283,
+      "sha256": "ccf2efd9361a8e7a30c9b5b30fd5073554d9c07a7322f6e1bf260abb3feac8ee"
+    },
+    "knob_platinum_master_gain_64.png": {
+      "width": 1536,
+      "height": 1536,
+      "frame": 192,
+      "frames": 64,
+      "scale_vs_normal": 1.5,
+      "outer_ring_max_diff": 0,
+      "bytes": 735747,
+      "sha256": "7ebe455e5a41c74b8f23a14f685318ebef906382fbc9cee1103be3c3dcfbe03a"
+    }
+  },
+  "component_sets": {
+    "black_buttons": [
+      "black_button_off.png",
+      "black_button_on.png",
+      "black_button_pressed.png",
+      "black_button_disabled.png"
+    ],
+    "ivory_buttons": [
+      "ivory_button_off.png",
+      "ivory_button_on.png",
+      "ivory_button_pressed.png",
+      "ivory_button_disabled.png"
+    ],
+    "black_squares": [
+      "black_square_off.png",
+      "black_square_on.png",
+      "black_square_pressed.png",
+      "black_square_disabled.png"
+    ],
+    "ivory_squares": [
+      "ivory_square_off.png",
+      "ivory_square_on.png",
+      "ivory_square_pressed.png",
+      "ivory_square_disabled.png"
+    ],
+    "black_toggles": [
+      "black_toggle_off.png",
+      "black_toggle_on.png",
+      "black_toggle_pressed.png",
+      "black_toggle_disabled.png"
+    ],
+    "ivory_toggles": [
+      "ivory_toggle_off.png",
+      "ivory_toggle_on.png",
+      "ivory_toggle_pressed.png",
+      "ivory_toggle_disabled.png"
+    ],
+    "leds": [
+      "black_led_off.png",
+      "black_led_on.png",
+      "ivory_led_off.png",
+      "ivory_led_on.png",
+      "bypass_red.png",
+      "status_green.png",
+      "status_amber.png"
+    ],
+    "screws": [
+      "black_screw.png",
+      "ivory_screw.png"
+    ]
+  },
+  "component_contract": {
+    "button": [
+      360,
+      120
+    ],
+    "square": [
+      128,
+      128
+    ],
+    "toggle": [
+      320,
+      120
+    ],
+    "led": [
+      128,
+      128
+    ],
+    "screw": [
+      96,
+      96
+    ],
+    "mode": "RGBA"
+  }
+}

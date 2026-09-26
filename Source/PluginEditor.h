@@ -536,6 +536,7 @@ private:
         MetalLookAndFeel();
         bool monochrome = false;
         bool ivoryTheme = true;
+        bool isMasterRuntimeActive() const noexcept;
 
         void drawPanelSurface(juce::Graphics&, juce::Rectangle<float>,
                               bool localMuted = false) const;
@@ -580,9 +581,17 @@ private:
 
         HardwareAssets studioAssets, ivoryAssets, mutedAssets;
         juce::Image disabledButton;
+        juce::Image disabledButtonIvory;
         juce::Image bypassLedRed;
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+        juce::Image knobGold, knobBlue, knobGreen, knobRed;
+        juce::Image knobBlack, knobSilver, knobPlatinumMaster;
+        juce::Image blackFullPanel, ivoryFullPanel;
+#endif
 
         const HardwareAssets& assets(bool localMuted = false) const noexcept;
+        const juce::Image& selectKnobStrip(const juce::Slider&,
+                                           const HardwareAssets&) const noexcept;
         static juce::Image loadImage(const void* data, int size);
         static void drawImage(juce::Graphics&, const juce::Image&,
                               juce::Rectangle<float>, float opacity = 1.0f);

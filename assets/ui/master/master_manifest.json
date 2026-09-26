@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "status": "locked",
+  "policy": "UI_MASTER_LOCK.md",
+  "masters": {
+    "black": {
+      "path": "assets/ui/master/VVChain_black_master.png",
+      "source_filename": "image(1).png",
+      "sha256": "173d086d919d0a0b5c0c3100a060dc1929a918f9c1f8e4328424cb2e5e817b38",
+      "bytes": 3012513,
+      "width": 1448,
+      "height": 1086,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        255,
+        255
+      ]
+    },
+    "ivory": {
+      "path": "assets/ui/master/VVChain_ivory_master.png",
+      "source_filename": "image(2).png",
+      "sha256": "9f99da776c8f081abd512bae269c79e47524c011cde190a56c2172ec9957effb",
+      "bytes": 3115458,
+      "width": 1448,
+      "height": 1086,
+      "mode": "RGBA",
+      "alpha_extrema": [
+        255,
+        255
+      ]
+    }
+  },
+  "ingest": {
+    "method": "byte_exact_base64_bridge",
+    "verified_against_locked_identity": true
+  }
+}

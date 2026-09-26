@@ -1,0 +1,299 @@
+{
+  "schema": 1,
+  "status": "locked",
+  "source_archive": {
+    "filename": "VVChain_UI_Runtime_Engineering_v1.0.74.zip",
+    "bytes": 7322749,
+    "sha256": "1fca9eca20ccc1852310287fe41fbd59341aa018726c3ce764e934b2a7e6c297"
+  },
+  "asset_count": 46,
+  "field_order": [
+    "bytes",
+    "sha256",
+    "width",
+    "height"
+  ],
+  "png_contract": {
+    "bit_depth": 8,
+    "colour_type": 6,
+    "mode": "RGBA"
+  },
+  "assets": {
+    "backgrounds/black_full_panel.png": [
+      1408579,
+      "5429d0ab8f99ad4606904804caf15b4df8d3be880b93f06b639eecc70d52d564",
+      1470,
+      1070
+    ],
+    "backgrounds/ivory_full_panel.png": [
+      1640171,
+      "9b6f191e28f11f27a655054a1374333e7e63bcd196b8e272ad1a8e277636e657",
+      1470,
+      1070
+    ],
+    "components/black_button_disabled.png": [
+      45726,
+      "64e1d119426b5186725c73828fc1179304aecbdba343e47a87a1bc2b8f9c782a",
+      360,
+      120
+    ],
+    "components/black_button_off.png": [
+      46806,
+      "640b69f861429d42f05c6ff24dd0b7371af2dd7769e8aa693463de5cbf66f820",
+      360,
+      120
+    ],
+    "components/black_button_on.png": [
+      49195,
+      "28367f6d2705b70bff29763f7a63724edcca21520288b2ba21a0783c3e18f7e7",
+      360,
+      120
+    ],
+    "components/black_button_pressed.png": [
+      50277,
+      "ab6a69b303f3a2137b9c7a3c51f1fd2df742fd0e4a0d41c347f32af9c6b68ef2",
+      360,
+      120
+    ],
+    "components/black_led_off.png": [
+      24884,
+      "816794b5244b86c47a749fdb1f7313835f93b9895fb5f21f27410dd3c7d252b6",
+      128,
+      128
+    ],
+    "components/black_led_on.png": [
+      25949,
+      "21a188ba89c4d6306e08b481bdd9b76138e1189353924e5907a729c607a71e45",
+      128,
+      128
+    ],
+    "components/black_screw.png": [
+      15586,
+      "d7f875095673ea625bd9b763632352c7efff9687e03cd1e128ff9891cf80d9b8",
+      96,
+      96
+    ],
+    "components/black_slider_thumb.png": [
+      23675,
+      "2944d196fddb3e1c37a5fd0be486537aa7f34d4f2a3afa3a3895780966d2264a",
+      128,
+      128
+    ],
+    "components/black_slider_track.png": [
+      88122,
+      "182206e42b9583afe479c02f9652bdecbca4722c954f31e26aa6f87c01c61b04",
+      494,
+      145
+    ],
+    "components/black_square_disabled.png": [
+      20666,
+      "468efba12b716bdffa6204e2895f46e5caabf09f9b3214de4cab7889c56524ac",
+      128,
+      128
+    ],
+    "components/black_square_off.png": [
+      20311,
+      "883d27e796d79a22268ae3880b242ba48dd486d7356114ce9637bb943be8a5ee",
+      128,
+      128
+    ],
+    "components/black_square_on.png": [
+      22784,
+      "ffbec9db569e70a502fa45a7d4b95f7c3e79fb1d14ac855b6a0f6be0a419ede9",
+      128,
+      128
+    ],
+    "components/black_square_pressed.png": [
+      23139,
+      "bcd30aa334831aaed180cd1ad2b48d6a4f45a8985cc810e00f57ec2a0ba6a655",
+      128,
+      128
+    ],
+    "components/black_toggle_disabled.png": [
+      41683,
+      "1656ea63e5f3fe8fde490a6a6389fc52e489ba8ea10003e18e528b272ab9a81c",
+      320,
+      120
+    ],
+    "components/black_toggle_off.png": [
+      43038,
+      "542572201e5b2c679a3aaa6a895695159fae68c777c992d7ea471466b2e9d5b5",
+      320,
+      120
+    ],
+    "components/black_toggle_on.png": [
+      44824,
+      "edee452b920a3f03b8c1eba104aef3ab00e5050fb2007edf9c73870582e64f0a",
+      320,
+      120
+    ],
+    "components/black_toggle_pressed.png": [
+      45457,
+      "d9a53fc65a1a76d694eb6edf3ed33902277d81f73b69125b9f1aee2f58c7e542",
+      320,
+      120
+    ],
+    "components/bypass_red.png": [
+      24335,
+      "de11c9e4160467e869072738345fa8077c756245fa088e66ee2d48e918e1a91d",
+      128,
+      128
+    ],
+    "components/ivory_button_disabled.png": [
+      45451,
+      "6173856807347203fced9f353f10267ef0e4b5aab75eb6d739739f96ff3045e4",
+      360,
+      120
+    ],
+    "components/ivory_button_off.png": [
+      52492,
+      "260e4d78f33c20c94c1a43c071609473fba75a9a4935d65bf7b3ad0ae330c351",
+      360,
+      120
+    ],
+    "components/ivory_button_on.png": [
+      50425,
+      "73bfb26cda6dc634cb6e6f8b7e9c1a4e703e4a38947564de2e74802012cebadf",
+      360,
+      120
+    ],
+    "components/ivory_button_pressed.png": [
+      47935,
+      "73a52f99b5657bbce94126fd7140b966e093eaf10e2ff43e409d403d373af02b",
+      360,
+      120
+    ],
+    "components/ivory_led_off.png": [
+      24884,
+      "4660e5871606684f18620c2db50454a53aed2793d874944ca1b250f352f545e4",
+      128,
+      128
+    ],
+    "components/ivory_led_on.png": [
+      26044,
+      "9ab5b12bac88731fa318cc4c73c40d715a7e1a379ed57de2c60f9d01c5310ed2",
+      128,
+      128
+    ],
+    "components/ivory_screw.png": [
+      16426,
+      "3c30ede219d0961cb7b0deff6a9fa6281d6bb5656a7585abab980790f8db1c41",
+      96,
+      96
+    ],
+    "components/ivory_slider_thumb.png": [
+      24173,
+      "9b1d20ea63a23f5f4e815b54619ff66d5f0a8ebe3302a63b3abb26ee62a4f6f0",
+      128,
+      128
+    ],
+    "components/ivory_slider_track.png": [
+      117401,
+      "8ddcec060dc2b5f96a6e0a8ab0216a9d155564f792eddacd913e3f5dae840186",
+      492,
+      163
+    ],
+    "components/ivory_square_disabled.png": [
+      19844,
+      "dce037f0a8e7f5160de79b0ebecdd1d4cb20408d9e9a3e50df702f98b800608d",
+      128,
+      128
+    ],
+    "components/ivory_square_off.png": [
+      20789,
+      "1c3980e76b34af2e60fd7b87bf0e3b19c95cf1b4811a583668ddcc156eb906a9",
+      128,
+      128
+    ],
+    "components/ivory_square_on.png": [
+      20402,
+      "7c966a3d60350cd4b4be2447b04acdefbde9d8853f477c3ebc0f9747fae223fd",
+      128,
+      128
+    ],
+    "components/ivory_square_pressed.png": [
+      19262,
+      "983fce7ac0ce4919425a2303645195c8f77429a95cc0a2d22c8c6d57fabe4554",
+      128,
+      128
+    ],
+    "components/ivory_toggle_disabled.png": [
+      48211,
+      "1fb0a9490568f66a32a3c0544f668d534136a903884291ac259a58d8b55e38e6",
+      320,
+      120
+    ],
+    "components/ivory_toggle_off.png": [
+      55520,
+      "fa940ca8a5959d6159fa205f4287cc43d3d41c113fba9cff9ebc121fa5c32602",
+      320,
+      120
+    ],
+    "components/ivory_toggle_on.png": [
+      57943,
+      "95b970a0421cb930eca0ca506e8f6de454b43826db26d71be66b01570dd7251d",
+      320,
+      120
+    ],
+    "components/ivory_toggle_pressed.png": [
+      50933,
+      "0bfa4957a4fe69e1448436fda860d75a4d50f9c5ec935f7dd81fb9b58b033c5b",
+      320,
+      120
+    ],
+    "components/status_amber.png": [
+      25192,
+      "28ca8cbea735875c463b019c34813fac9bbfd8928ac7fc04b70250c304594031",
+      128,
+      128
+    ],
+    "components/status_green.png": [
+      24564,
+      "8cd7c57aa8e6ec7273c0f1523b2247c85892309f7fb68848e8b69bf59649eadf",
+      128,
+      128
+    ],
+    "knobs/knob_black_64.png": [
+      379163,
+      "6b1053a34ff7adc9f71017b9ef49032ebaffe91c4b1dcc84a416e76a61c923c2",
+      1024,
+      1024
+    ],
+    "knobs/knob_blue_64.png": [
+      366271,
+      "99fb5eee455161cb5521077e8d9c252aa6203c2c180003a23211d0e6a6b3c90a",
+      1024,
+      1024
+    ],
+    "knobs/knob_gold_64.png": [
+      362667,
+      "a5c5c555d631a86ef954b1038ee551bf71c46de1e7051b9efe6514fd0c34a0e5",
+      1024,
+      1024
+    ],
+    "knobs/knob_green_64.png": [
+      379272,
+      "6b618a1050da9bde3b746380990460394fe67740d2d361d357892038714bf3d2",
+      1024,
+      1024
+    ],
+    "knobs/knob_platinum_master_gain_64.png": [
+      735747,
+      "7ebe455e5a41c74b8f23a14f685318ebef906382fbc9cee1103be3c3dcfbe03a",
+      1536,
+      1536
+    ],
+    "knobs/knob_red_64.png": [
+      368394,
+      "24132865229efee45e3411508642fbc545cba36e7839e4af4c35c46f4770e4c9",
+      1024,
+      1024
+    ],
+    "knobs/knob_silver_64.png": [
+      361283,
+      "ccf2efd9361a8e7a30c9b5b30fd5073554d9c07a7322f6e1bf260abb3feac8ee",
+      1024,
+      1024
+    ]
+  }
+}

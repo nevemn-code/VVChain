@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "status": "approved_source_identity_locked",
+  "policy": "UI_MASTER_LOCK.md",
+  "note": "These are user-approved derivative source sheets from the same conversation. They are not allowed to supersede the two full Visual Masters; they may only be used for direct extraction/state construction under the Master Lock.",
+  "sources": {
+    "black_panel": {
+      "filename": "奢華黑金音訊介面面板.png",
+      "sha256": "6c5b75987c597eae80c674cd4f2cc42651fe91b4a367f8bfe1ee87bcd1e85de6",
+      "bytes": 1353818,
+      "width": 1470,
+      "height": 1070,
+      "mode": "RGB"
+    },
+    "ivory_panel": {
+      "filename": "香檳金象牙色音訊面板介面.png",
+      "sha256": "772b875405a10ee4ff5fe850e3a688a0379d72002ae1d16fbd39f32fa3b7d437",
+      "bytes": 1546409,
+      "width": 1470,
+      "height": 1070,
+      "mode": "RGB"
+    },
+    "black_buttons": {
+      "filename": "黑金金屬音效介面按鈕資產集.png",
+      "sha256": "6cc7fefe7c58ee85e483b0dc7430ac17253c6cf06e3a23120062ddabe8be2465",
+      "bytes": 1387942,
+      "width": 2172,
+      "height": 724,
+      "mode": "RGBA"
+    },
+    "ivory_buttons": {
+      "filename": "香檳金屬質感按鈕與切換元件套組.png",
+      "sha256": "662388299aa5a04b810e104489930b70425d83e62fdc5eda63ccfa2a5c400731",
+      "bytes": 1549176,
+      "width": 2172,
+      "height": 724,
+      "mode": "RGBA"
+    },
+    "black_icons_leds": {
+      "filename": "黑金奢華金屬介面圖示素材包.png",
+      "sha256": "2fd902fcaf2a1d099658dfd8738fd29414292fbb67f13750244f5732b81af7b6",
+      "bytes": 1596862,
+      "width": 2172,
+      "height": 724,
+      "mode": "RGBA"
+    },
+    "ivory_icons_leds": {
+      "filename": "香檳金屬音訊介面元件套組.png",
+      "sha256": "5c3b80cd833500efa00b09e2e6bca6d4f717280ba91eb5ac9d3829e407176c25",
+      "bytes": 1282801,
+      "width": 2172,
+      "height": 724,
+      "mode": "RGBA"
+    },
+    "knob_gold": {
+      "filename": "金色旋鈕_64_格旋轉精靈表.png",
+      "sha256": "cd53e3d65b7c4abd7c7dbd1b4313bddcbea20449c756265aac3511a4a620d820",
+      "bytes": 2287411,
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    "knob_blue": {
+      "filename": "藍色金屬旋鈕_64_格旋轉精靈圖.png",
+      "sha256": "6cad13cc459e7d97e28169e8f5bcc5e18d5db75f716d79de77ac98f064df1ab6",
+      "bytes": 2244204,
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    "knob_green": {
+      "filename": "翡翠金屬旋鈕旋轉動畫圖集.png",
+      "sha256": "9663526018946878b83056145bf9292d2edb4a9dab4ff5c04710929572049a7f",
+      "bytes": 2294293,
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    "knob_red": {
+      "filename": "紅色金屬旋鈕動畫精靈圖_ذریع.png",
+      "sha256": "2a1bd233219bb38443f1bc72f75a0fc80307fd64de924263a44b320b9cf2f3ab",
+      "bytes": 2240840,
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    "knob_black": {
+      "filename": "黑鎳旋鈕64幀精靈表.png",
+      "sha256": "057b92f63ccc7398f6396aee828c30e41cc257d5560213ad6b399bef7255d15b",
+      "bytes": 2337853,
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    "knob_silver": {
+      "filename": "64格金屬音訊旋鈕精靈圖.png",
+      "sha256": "fe4618cfd8d90888434bea78840c76b518a7e89080acbad80a29f1f0c947edf9",
+      "bytes": 2257300,
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    "knob_platinum_master_gain": {
+      "filename": "白金金屬琥珀_led_旋鈕精靈表.png",
+      "sha256": "ee29be518e7fcbea3a2806972dfb70830b41e8b8475b59294b1d88213fd79309",
+      "bytes": 2499619,
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    }
+  }
+}

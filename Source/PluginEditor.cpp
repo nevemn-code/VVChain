@@ -1,6 +1,10 @@
 #include "PluginEditor.h"
 #include "VVChain_DynEQ_Engine.h"
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+#include "VVChainMasterAssets.h"
+#else
 #include "VVChainAssets.h"
+#endif
 
 namespace
 {
@@ -51,10 +55,11 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawKnobFrame(
 
     constexpr int columns = 8;
     constexpr int rows = 8;
-    constexpr int frameWidth = 128;
-    constexpr int frameHeight = 128;
+    const int frameWidth = strip.getWidth() / columns;
+    const int frameHeight = strip.getHeight() / rows;
     constexpr int frameCount = columns * rows;
 
+    jassert(frameWidth > 0 && frameHeight > 0);
     jassert(strip.getWidth() == frameWidth * columns);
     jassert(strip.getHeight() == frameHeight * rows);
 
@@ -74,6 +79,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawKnobFrame(
 
 VVChainAudioProcessorEditor::MetalLookAndFeel::MetalLookAndFeel()
 {
+#if !VVCHAIN_HAS_MASTER_LOCK_UI
 #define VV_IMG(TARGET, PREFIX, MEMBER, FILE) \
     TARGET.MEMBER = loadImage( \
         VVChainAssets::PREFIX##_##FILE##_png, \
@@ -131,21 +137,152 @@ VVChainAudioProcessorEditor::MetalLookAndFeel::MetalLookAndFeel()
     bypassLedRed = loadImage(
         VVChainAssets::bypass_led_red_png,
         VVChainAssets::bypass_led_red_pngSize);
+
+#endif
+
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+#define VVCHAIN_MASTER_IMG(MEMBER, FILE) \
+    MEMBER = loadImage( \
+        VVChainMasterAssets::FILE##_png, \
+        VVChainMasterAssets::FILE##_pngSize)
+
+    VVCHAIN_MASTER_IMG(blackFullPanel, black_full_panel);
+    VVCHAIN_MASTER_IMG(ivoryFullPanel, ivory_full_panel);
+    VVCHAIN_MASTER_IMG(knobGold, knob_gold_64);
+    VVCHAIN_MASTER_IMG(knobBlue, knob_blue_64);
+    VVCHAIN_MASTER_IMG(knobGreen, knob_green_64);
+    VVCHAIN_MASTER_IMG(knobRed, knob_red_64);
+    VVCHAIN_MASTER_IMG(knobBlack, knob_black_64);
+    VVCHAIN_MASTER_IMG(knobSilver, knob_silver_64);
+    VVCHAIN_MASTER_IMG(knobPlatinumMaster, knob_platinum_master_gain_64);
+
+    studioAssets.buttonOff = loadImage(
+        VVChainMasterAssets::black_button_off_png,
+        VVChainMasterAssets::black_button_off_pngSize);
+    studioAssets.buttonOn = loadImage(
+        VVChainMasterAssets::black_button_on_png,
+        VVChainMasterAssets::black_button_on_pngSize);
+    studioAssets.buttonPressed = loadImage(
+        VVChainMasterAssets::black_button_pressed_png,
+        VVChainMasterAssets::black_button_pressed_pngSize);
+    studioAssets.ledOff = loadImage(
+        VVChainMasterAssets::black_led_off_png,
+        VVChainMasterAssets::black_led_off_pngSize);
+    studioAssets.ledOn = loadImage(
+        VVChainMasterAssets::black_led_on_png,
+        VVChainMasterAssets::black_led_on_pngSize);
+    studioAssets.screw = loadImage(
+        VVChainMasterAssets::black_screw_png,
+        VVChainMasterAssets::black_screw_pngSize);
+    studioAssets.sliderTrack = loadImage(
+        VVChainMasterAssets::black_slider_track_png,
+        VVChainMasterAssets::black_slider_track_pngSize);
+    studioAssets.sliderThumb = loadImage(
+        VVChainMasterAssets::black_slider_thumb_png,
+        VVChainMasterAssets::black_slider_thumb_pngSize);
+
+    ivoryAssets.buttonOff = loadImage(
+        VVChainMasterAssets::ivory_button_off_png,
+        VVChainMasterAssets::ivory_button_off_pngSize);
+    ivoryAssets.buttonOn = loadImage(
+        VVChainMasterAssets::ivory_button_on_png,
+        VVChainMasterAssets::ivory_button_on_pngSize);
+    ivoryAssets.buttonPressed = loadImage(
+        VVChainMasterAssets::ivory_button_pressed_png,
+        VVChainMasterAssets::ivory_button_pressed_pngSize);
+    ivoryAssets.ledOff = loadImage(
+        VVChainMasterAssets::ivory_led_off_png,
+        VVChainMasterAssets::ivory_led_off_pngSize);
+    ivoryAssets.ledOn = loadImage(
+        VVChainMasterAssets::ivory_led_on_png,
+        VVChainMasterAssets::ivory_led_on_pngSize);
+    ivoryAssets.screw = loadImage(
+        VVChainMasterAssets::ivory_screw_png,
+        VVChainMasterAssets::ivory_screw_pngSize);
+    ivoryAssets.sliderTrack = loadImage(
+        VVChainMasterAssets::ivory_slider_track_png,
+        VVChainMasterAssets::ivory_slider_track_pngSize);
+    ivoryAssets.sliderThumb = loadImage(
+        VVChainMasterAssets::ivory_slider_thumb_png,
+        VVChainMasterAssets::ivory_slider_thumb_pngSize);
+
+    disabledButton = loadImage(
+        VVChainMasterAssets::black_button_disabled_png,
+        VVChainMasterAssets::black_button_disabled_pngSize);
+    disabledButtonIvory = loadImage(
+        VVChainMasterAssets::ivory_button_disabled_png,
+        VVChainMasterAssets::ivory_button_disabled_pngSize);
+    bypassLedRed = loadImage(
+        VVChainMasterAssets::bypass_red_png,
+        VVChainMasterAssets::bypass_red_pngSize);
+#undef VVCHAIN_MASTER_IMG
+#endif
+}
+
+bool VVChainAudioProcessorEditor::MetalLookAndFeel::isMasterRuntimeActive() const noexcept
+{
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+    return blackFullPanel.isValid() && ivoryFullPanel.isValid()
+        && knobSilver.isValid() && knobPlatinumMaster.isValid();
+#else
+    return false;
+#endif
 }
 
 const VVChainAudioProcessorEditor::MetalLookAndFeel::HardwareAssets&
 VVChainAudioProcessorEditor::MetalLookAndFeel::assets(
     bool localMuted) const noexcept
 {
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+    if (isMasterRuntimeActive())
+    {
+        juce::ignoreUnused(localMuted);
+        return ivoryTheme ? ivoryAssets : studioAssets;
+    }
+#endif
     if (monochrome || localMuted)
         return mutedAssets;
     return ivoryTheme ? ivoryAssets : studioAssets;
+}
+
+const juce::Image&
+VVChainAudioProcessorEditor::MetalLookAndFeel::selectKnobStrip(
+    const juce::Slider& slider, const HardwareAssets& fallback) const noexcept
+{
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+    const auto id = slider.getProperties().getWithDefault(
+        "vvParameterId", juce::var()).toString();
+
+    if (id == "OUTPUT_LEVEL" && knobPlatinumMaster.isValid())
+        return knobPlatinumMaster;
+    if (id.startsWith("EQ_COLOR") && knobGold.isValid())
+        return knobGold;
+    if (id.startsWith("DYN_") && knobBlue.isValid())
+        return knobBlue;
+    if (id.startsWith("UDMBC_") && knobGreen.isValid())
+        return knobGreen;
+    if (id.startsWith("TAPE_") && knobRed.isValid())
+        return knobRed;
+    if ((id.startsWith("TRANSIENT") || id.startsWith("XOVER_"))
+        && knobBlack.isValid())
+        return knobBlack;
+    if (knobSilver.isValid())
+        return knobSilver;
+#endif
+    return fallback.knobStrip;
 }
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawPanelSurface(
     juce::Graphics& g, juce::Rectangle<float> bounds,
     bool localMuted) const
 {
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+    if (isMasterRuntimeActive())
+    {
+        drawImage(g, ivoryTheme ? ivoryFullPanel : blackFullPanel, bounds, 1.0f);
+        return;
+    }
+#endif
     drawImage(g, assets(localMuted).panel, bounds, 1.0f);
 }
 
@@ -153,12 +290,20 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawModuleSurface(
     juce::Graphics& g, juce::Rectangle<float> bounds,
     bool localMuted) const
 {
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+    if (isMasterRuntimeActive())
+        return; // The full approved panel already contains the module metalwork.
+#endif
     drawImage(g, assets(localMuted).module, bounds, 1.0f);
 }
 
 void VVChainAudioProcessorEditor::MetalLookAndFeel::drawGraphSurface(
     juce::Graphics& g, juce::Rectangle<float> bounds) const
 {
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+    if (isMasterRuntimeActive() && !monochrome)
+        return;
+#endif
     const auto& a = assets();
     if (a.graph.isValid())
         drawImage(g, a.graph, bounds, 1.0f);
@@ -189,6 +334,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
     const bool localMuted = static_cast<bool>(
         slider.getProperties().getWithDefault("moduleMuted", false));
     const auto& a = assets(localMuted);
+    const auto& knobStrip = selectKnobStrip(slider, a);
 
     const float side = juce::jmin(area.getWidth(), area.getHeight());
     auto knobBounds = juce::Rectangle<float>(side, side)
@@ -199,7 +345,8 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
         (int) std::lround(
             juce::jlimit(0.0f, 1.0f, sliderPosProportional) * 63.0f));
 
-    drawKnobFrame(g, a.knobStrip, frame, knobBounds, 1.0f);
+    const float knobOpacity = (localMuted || monochrome) ? 0.58f : 1.0f;
+    drawKnobFrame(g, knobStrip, frame, knobBounds, knobOpacity);
 
     if (auto* wheelSlider = dynamic_cast<WheelSlider*>(&slider))
     {
@@ -281,8 +428,9 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
     {
         const juce::Image* image = nullptr;
         if (localMuted || monochrome)
-            image = disabledButton.isValid()
-                ? &disabledButton : &a.buttonOff;
+            image = (ivoryTheme && disabledButtonIvory.isValid())
+                ? &disabledButtonIvory
+                : (disabledButton.isValid() ? &disabledButton : &a.buttonOff);
         else if (shouldDrawButtonAsDown)
             image = &a.buttonPressed;
         else
@@ -428,8 +576,9 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawButtonBackground(
     {
         drawImage(
             g,
-            disabledButton.isValid()
-                ? disabledButton : a.buttonOff,
+            (ivoryTheme && disabledButtonIvory.isValid())
+                ? disabledButtonIvory
+                : (disabledButton.isValid() ? disabledButton : a.buttonOff),
             r, 1.0f);
         return;
     }
@@ -480,7 +629,11 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 {
     setLookAndFeel(&metalLook);
     setResizable(false, false);
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+    setSize(1470, 1070);
+#else
     setSize(1500, 930);
+#endif
     setWantsKeyboardFocus(true);
 
     settingsDismissOverlay = std::make_unique<SettingsDismissOverlay>();
@@ -498,9 +651,9 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     };
     addAndMakeVisible(*settingsButton);
 
-    uiThemeButton = std::make_unique<juce::TextButton>("UI STUDIO");
+    uiThemeButton = std::make_unique<juce::TextButton>("UI BLACK");
     uiThemeButton->setTooltip(
-        "UI SKIN：STUDIO TEAL / IVORY GOLD；只改介面，不改任何音訊參數");
+        "UI SKIN：BLACK GOLD / IVORY GOLD；只改介面，不改任何音訊參數");
     uiThemeButton->onClick = [this]
     {
         setIvoryTheme(!ivoryTheme);
@@ -954,6 +1107,7 @@ void VVChainAudioProcessorEditor::addKnob(
     k.slider->setTextBoxIsEditable(true);
     k.slider->setScrollWheelEnabled(true);
     k.slider->setRange(min, max, step);
+    k.slider->getProperties().set("vvParameterId", id);
     if (id.endsWith("_FREQ") || id.startsWith("UDMBC_X"))
         k.slider->setSkewFactorFromMidPoint(632.f);
 
@@ -1154,7 +1308,11 @@ void VVChainAudioProcessorEditor::setParameter(const juce::String& id, float val
 
 juce::Rectangle<float> VVChainAudioProcessorEditor::eqGraphBounds() const
 {
-    // Intentionally large: the EQ response is the visual focus at the top.
+    // The approved Master panel has a fixed 1470x1070 hardware frame.
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+    if (metalLook.isMasterRuntimeActive())
+        return { 27.f, 101.f, (float) getWidth() - 54.f, 281.f };
+#endif
     return { 18.f, 78.f, (float) getWidth() - 36.f, 315.f };
 }
 
@@ -1397,9 +1555,12 @@ void VVChainAudioProcessorEditor::drawEqGraph(
         g.strokePath(analyzerPath, juce::PathStrokeType(1.0f));
     }
 
-    g.setColour(uiColour(ivoryTheme ? juce::Colour(0xffb58839)
-                                    : juce::Colour(0xff9e6042)).withAlpha(.92f));
-    g.drawRoundedRectangle(graph, 8.f, 1.f);
+    if (!metalLook.isMasterRuntimeActive())
+    {
+        g.setColour(uiColour(ivoryTheme ? juce::Colour(0xffb58839)
+                                        : juce::Colour(0xff9e6042)).withAlpha(.92f));
+        g.drawRoundedRectangle(graph, 8.f, 1.f);
+    }
 
     // Use the entire available gain range: -18 dB at the bottom,
     // +18 dB at the top. Every 3 dB has a real grid line.
@@ -2161,26 +2322,30 @@ void VVChainAudioProcessorEditor::drawCard(
     juce::Graphics& g, juce::Rectangle<float> r, juce::Colour accent,
     const juce::String& title, const juce::String& subtitle)
 {
+    const bool masterRuntime = metalLook.isMasterRuntimeActive();
     const auto frame = uiColour(
         ivoryTheme ? juce::Colour(0xffa9792d)
                    : juce::Colour(0xff9b593d));
 
-    g.setColour(juce::Colours::black.withAlpha(
-        ivoryTheme ? .24f : .52f));
-    g.fillRoundedRectangle(r.translated(0.f, 3.f), 8.f);
+    if (!masterRuntime)
+    {
+        g.setColour(juce::Colours::black.withAlpha(
+            ivoryTheme ? .24f : .52f));
+        g.fillRoundedRectangle(r.translated(0.f, 3.f), 8.f);
 
-    metalLook.drawModuleSurface(g, r);
+        metalLook.drawModuleSurface(g, r);
 
-    g.setColour(frame.withAlpha(.90f));
-    g.drawRoundedRectangle(r, 8.f, 1.35f);
-    g.setColour(juce::Colours::white.withAlpha(.15f));
-    g.drawLine(r.getX() + 7.f, r.getY() + 2.f,
-               r.getRight() - 7.f, r.getY() + 2.f, .8f);
+        g.setColour(frame.withAlpha(.90f));
+        g.drawRoundedRectangle(r, 8.f, 1.35f);
+        g.setColour(juce::Colours::white.withAlpha(.15f));
+        g.drawLine(r.getX() + 7.f, r.getY() + 2.f,
+                   r.getRight() - 7.f, r.getY() + 2.f, .8f);
 
-    accent = uiColour(accent);
-    g.setColour(accent.withAlpha(.44f));
-    g.fillRoundedRectangle(r.getX() + 3.f, r.getY() + 3.f,
-                           2.5f, r.getHeight() - 6.f, 1.2f);
+        accent = uiColour(accent);
+        g.setColour(accent.withAlpha(.44f));
+        g.fillRoundedRectangle(r.getX() + 3.f, r.getY() + 3.f,
+                               2.5f, r.getHeight() - 6.f, 1.2f);
+    }
 
     const bool monitorCard = title == "MASTER";
     const int titleY = monitorCard ? 36 : 8;
@@ -2691,20 +2856,25 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                                   : juce::Colour(0xff101719)));
     metalLook.drawPanelSurface(g, getLocalBounds().toFloat());
 
+    const bool masterRuntime = metalLook.isMasterRuntimeActive();
     const auto shellFrame = uiColour(
         ivoryTheme ? juce::Colour(0xffad7c2f)
                    : juce::Colour(0xffa55d3d));
-    g.setColour(shellFrame.withAlpha(.92f));
-    g.fillRect(0, 68, getWidth(), 2);
-    g.setColour(juce::Colours::white.withAlpha(.18f));
-    g.fillRect(0, 1, getWidth(), 1);
-
     const bool uiMuted = metalLook.monochrome;
-    constexpr float screwSize = 22.0f;
-    metalLook.drawScrew(g, { 6.0f, 5.0f, screwSize, screwSize }, uiMuted);
-    metalLook.drawScrew(g, { (float)getWidth() - 28.0f, 5.0f, screwSize, screwSize }, uiMuted);
-    metalLook.drawScrew(g, { 6.0f, (float)getHeight() - 28.0f, screwSize, screwSize }, uiMuted);
-    metalLook.drawScrew(g, { (float)getWidth() - 28.0f, (float)getHeight() - 28.0f, screwSize, screwSize }, uiMuted);
+
+    if (!masterRuntime)
+    {
+        g.setColour(shellFrame.withAlpha(.92f));
+        g.fillRect(0, 68, getWidth(), 2);
+        g.setColour(juce::Colours::white.withAlpha(.18f));
+        g.fillRect(0, 1, getWidth(), 1);
+
+        constexpr float screwSize = 22.0f;
+        metalLook.drawScrew(g, { 6.0f, 5.0f, screwSize, screwSize }, uiMuted);
+        metalLook.drawScrew(g, { (float)getWidth() - 28.0f, 5.0f, screwSize, screwSize }, uiMuted);
+        metalLook.drawScrew(g, { 6.0f, (float)getHeight() - 28.0f, screwSize, screwSize }, uiMuted);
+        metalLook.drawScrew(g, { (float)getWidth() - 28.0f, (float)getHeight() - 28.0f, screwSize, screwSize }, uiMuted);
+    }
 
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff3b2c20)
                                     : juce::Colour(0xfff1f3f3)));
@@ -2714,18 +2884,20 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff6a5b49)
                                     : juce::Colour(0xffb8c1c3)));
     g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.71", 20, 39, 180, 12,
+    g.drawText("VVCHAIN v1.0.83", 20, 39, 180, 12,
                juce::Justification::left);
 
     const auto graph = eqGraphBounds();
     drawEqGraph(g, graph);
 
-    const int cardY = 404;
-    const int gap = 8;
-    const int left = 18;
-    const int unitW = (getWidth() - left * 2 - gap * 5) / 5;
+    const int cardY = masterRuntime ? 392 : 404;
+    const int gap = masterRuntime ? 10 : 8;
+    const int left = masterRuntime ? 17 : 18;
+    const int unitW = masterRuntime
+        ? (getWidth() - left * 2 - gap * 4) / 5
+        : (getWidth() - left * 2 - gap * 5) / 5;
     const int cardW = unitW;
-    const int cardH = 510;
+    const int cardH = masterRuntime ? 615 : 510;
 
     for (int b = 0; b < 4; ++b)
     {
@@ -3100,7 +3272,7 @@ void VVChainAudioProcessorEditor::setIvoryTheme(bool ivory)
     if (uiThemeButton)
     {
         uiThemeButton->setButtonText(
-            ivory ? "UI IVORY" : "UI STUDIO");
+            ivory ? "UI IVORY" : "UI BLACK");
         uiThemeButton->setColour(
             juce::TextButton::buttonColourId,
             ivory ? juce::Colour(0xff211b14)
@@ -3187,10 +3359,13 @@ void VVChainAudioProcessorEditor::resized()
 {
     const int w = getWidth();
 
-    const int cardY = 404;
-    const int gap = 8;
-    const int left = 18;
-    const int unitW = (w - left * 2 - gap * 4) / 5;
+    const bool masterRuntime = metalLook.isMasterRuntimeActive();
+    const int cardY = masterRuntime ? 392 : 404;
+    const int gap = masterRuntime ? 10 : 8;
+    const int left = masterRuntime ? 17 : 18;
+    const int unitW = masterRuntime
+        ? (w - left * 2 - gap * 4) / 5
+        : (w - left * 2 - gap * 4) / 5;
     const int cardW = unitW;
 
     const std::array<int, 4> moduleWidths { 50, 52, 64, 66 };
@@ -3251,12 +3426,12 @@ void VVChainAudioProcessorEditor::resized()
                 x + cardW - 58, cardY + 8, 46, 20);
 
         const int innerX = x + 8;
-        const int innerTop = cardY + 56;
+        const int innerTop = cardY + (masterRuntime ? 56 : 56);
         const int innerW = cardW - 16;
         const int cellGap = 6;
         const int cellW = (innerW - cellGap * 2) / 3;
-        const int rowH = 70;
-        const int knobH = 62;
+        const int rowH = masterRuntime ? 91 : 70;
+        const int knobH = masterRuntime ? 80 : 62;
 
         constexpr int dynamicSectionShiftY = 14;
         constexpr int lowerSectionShiftY = 8;
@@ -3368,20 +3543,42 @@ void VVChainAudioProcessorEditor::resized()
         const int innerX = x + 14;
         const int innerW = cardW - 28;
 
-        if (masterBypassButton)
-            masterBypassButton->setBounds(
-                innerX, cardY + 64, innerW, 32);
+        if (masterRuntime)
+        {
+            const int halfGap = 8;
+            const int halfW = (innerW - halfGap) / 2;
 
-        if (deltaMonitorButton)
-            deltaMonitorButton->setBounds(
-                innerX, cardY + 118, innerW, 30);
+            placeKnob("DRY_WET",
+                      { innerX, cardY + 70,
+                        halfW, 142 });
+            placeKnob("OUTPUT_LEVEL",
+                      { innerX + halfW + halfGap, cardY + 70,
+                        halfW, 142 });
 
-        placeKnob("DRY_WET",
-                  { innerX, cardY + 190,
-                    innerW, 108 });
-        placeKnob("OUTPUT_LEVEL",
-                  { innerX, cardY + 330,
-                    innerW, 108 });
+            if (deltaMonitorButton)
+                deltaMonitorButton->setBounds(
+                    innerX, cardY + 228, halfW, 34);
+            if (masterBypassButton)
+                masterBypassButton->setBounds(
+                    innerX + halfW + halfGap, cardY + 228, halfW, 34);
+        }
+        else
+        {
+            if (masterBypassButton)
+                masterBypassButton->setBounds(
+                    innerX, cardY + 64, innerW, 32);
+
+            if (deltaMonitorButton)
+                deltaMonitorButton->setBounds(
+                    innerX, cardY + 118, innerW, 30);
+
+            placeKnob("DRY_WET",
+                      { innerX, cardY + 190,
+                        innerW, 108 });
+            placeKnob("OUTPUT_LEVEL",
+                      { innerX, cardY + 330,
+                        innerW, 108 });
+        }
     }
 
     if (expandedBand >= 0)

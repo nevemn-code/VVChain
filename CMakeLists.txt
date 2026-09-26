@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(VVChain VERSION 1.0.71 LANGUAGES C CXX)
+project(VVChain VERSION 1.0.83 LANGUAGES C CXX)
 
 include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
@@ -26,55 +26,56 @@ if (VVCHAIN_ENABLE_AAX)
     list(APPEND VVCHAIN_FORMATS AAX)
 endif()
 
-juce_add_binary_data(VVChainAssets
-    HEADER_NAME VVChainAssets.h
-    NAMESPACE VVChainAssets
-    SOURCES
-        docs/assets/ui/png/ivory_panel.png
-        docs/assets/ui/png/ivory_module.png
-        docs/assets/ui/png/ivory_graph.png
-        docs/assets/ui/png/ivory_knob_strip.png
-        docs/assets/ui/png/ivory_button_off.png
-        docs/assets/ui/png/ivory_button_on.png
-        docs/assets/ui/png/ivory_button_pressed.png
-        docs/assets/ui/png/ivory_led_off.png
-        docs/assets/ui/png/ivory_led_on.png
-        docs/assets/ui/png/ivory_power_off.png
-        docs/assets/ui/png/ivory_power_on.png
-        docs/assets/ui/png/ivory_screw.png
-        docs/assets/ui/png/ivory_slider_track.png
-        docs/assets/ui/png/ivory_slider_thumb.png
-        docs/assets/ui/png/studio_panel.png
-        docs/assets/ui/png/studio_module.png
-        docs/assets/ui/png/studio_graph.png
-        docs/assets/ui/png/studio_knob_strip.png
-        docs/assets/ui/png/studio_button_off.png
-        docs/assets/ui/png/studio_button_on.png
-        docs/assets/ui/png/studio_button_pressed.png
-        docs/assets/ui/png/studio_led_off.png
-        docs/assets/ui/png/studio_led_on.png
-        docs/assets/ui/png/studio_power_off.png
-        docs/assets/ui/png/studio_power_on.png
-        docs/assets/ui/png/studio_screw.png
-        docs/assets/ui/png/studio_slider_track.png
-        docs/assets/ui/png/studio_slider_thumb.png
-        docs/assets/ui/png/muted_panel.png
-        docs/assets/ui/png/muted_module.png
-        docs/assets/ui/png/muted_graph.png
-        docs/assets/ui/png/muted_knob_strip.png
-        docs/assets/ui/png/muted_button_off.png
-        docs/assets/ui/png/muted_button_on.png
-        docs/assets/ui/png/muted_button_pressed.png
-        docs/assets/ui/png/muted_led_off.png
-        docs/assets/ui/png/muted_led_on.png
-        docs/assets/ui/png/muted_power_off.png
-        docs/assets/ui/png/muted_power_on.png
-        docs/assets/ui/png/muted_screw.png
-        docs/assets/ui/png/muted_slider_track.png
-        docs/assets/ui/png/muted_slider_thumb.png
-        docs/assets/ui/png/button_disabled.png
-        docs/assets/ui/png/bypass_led_red.png
+# Master-locked UI runtime is the only production UI source.
+# APPROVED.lock and every required binary asset are mandatory.
+set(VVCHAIN_MASTER_LOCK_SENTINEL "${CMAKE_SOURCE_DIR}/assets/ui/runtime/APPROVED.lock")
+set(VVCHAIN_MASTER_RUNTIME_ASSETS
+    assets/ui/runtime/backgrounds/black_full_panel.png
+    assets/ui/runtime/backgrounds/ivory_full_panel.png
+    assets/ui/runtime/knobs/knob_gold_64.png
+    assets/ui/runtime/knobs/knob_blue_64.png
+    assets/ui/runtime/knobs/knob_green_64.png
+    assets/ui/runtime/knobs/knob_red_64.png
+    assets/ui/runtime/knobs/knob_black_64.png
+    assets/ui/runtime/knobs/knob_silver_64.png
+    assets/ui/runtime/knobs/knob_platinum_master_gain_64.png
+    assets/ui/runtime/components/black_button_off.png
+    assets/ui/runtime/components/black_button_on.png
+    assets/ui/runtime/components/black_button_pressed.png
+    assets/ui/runtime/components/black_button_disabled.png
+    assets/ui/runtime/components/ivory_button_off.png
+    assets/ui/runtime/components/ivory_button_on.png
+    assets/ui/runtime/components/ivory_button_pressed.png
+    assets/ui/runtime/components/ivory_button_disabled.png
+    assets/ui/runtime/components/black_led_off.png
+    assets/ui/runtime/components/black_led_on.png
+    assets/ui/runtime/components/ivory_led_off.png
+    assets/ui/runtime/components/ivory_led_on.png
+    assets/ui/runtime/components/bypass_red.png
+    assets/ui/runtime/components/black_screw.png
+    assets/ui/runtime/components/ivory_screw.png
+    assets/ui/runtime/components/black_slider_track.png
+    assets/ui/runtime/components/black_slider_thumb.png
+    assets/ui/runtime/components/ivory_slider_track.png
+    assets/ui/runtime/components/ivory_slider_thumb.png
 )
+
+if(NOT EXISTS "${VVCHAIN_MASTER_LOCK_SENTINEL}")
+    message(FATAL_ERROR "VVChain Master UI approval is required: assets/ui/runtime/APPROVED.lock is missing")
+endif()
+
+foreach(asset IN LISTS VVCHAIN_MASTER_RUNTIME_ASSETS)
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/${asset}")
+        message(FATAL_ERROR "Required Master UI asset is missing: ${asset}")
+    endif()
+endforeach()
+
+juce_add_binary_data(VVChainMasterAssets
+    HEADER_NAME VVChainMasterAssets.h
+    NAMESPACE VVChainMasterAssets
+    SOURCES ${VVCHAIN_MASTER_RUNTIME_ASSETS}
+)
+set(VVCHAIN_HAS_MASTER_LOCK_UI 1)
 
 juce_add_plugin(VVChain
     COMPANY_NAME "VVChain"
@@ -115,16 +116,17 @@ endif()
 
 target_compile_definitions(VVChain PRIVATE
     VVCHAIN_GIT_COMMIT="${VVCHAIN_GIT_COMMIT}"
+    VVCHAIN_HAS_MASTER_LOCK_UI=${VVCHAIN_HAS_MASTER_LOCK_UI}
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0
 )
 
 target_link_libraries(VVChain PRIVATE
-    VVChainAssets
     juce::juce_audio_utils
     juce::juce_dsp
 )
 
 juce_generate_juce_header(VVChain)
 
+target_link_libraries(VVChain PRIVATE VVChainMasterAssets)
