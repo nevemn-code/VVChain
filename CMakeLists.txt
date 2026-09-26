@@ -26,6 +26,7 @@ if (VVCHAIN_ENABLE_AAX)
     list(APPEND VVCHAIN_FORMATS AAX)
 endif()
 
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/assets/ui/runtime/APPROVED.lock")
 juce_add_binary_data(VVChainAssets
     HEADER_NAME VVChainAssets.h
     NAMESPACE VVChainAssets
@@ -75,6 +76,7 @@ juce_add_binary_data(VVChainAssets
         docs/assets/ui/png/button_disabled.png
         docs/assets/ui/png/bypass_led_red.png
 )
+endif()
 
 
 # Master-locked UI runtime is opt-in and atomic.  The new skin is not compiled
@@ -173,14 +175,14 @@ target_compile_definitions(VVChain PRIVATE
 )
 
 target_link_libraries(VVChain PRIVATE
-    VVChainAssets
     juce::juce_audio_utils
     juce::juce_dsp
 )
 
 juce_generate_juce_header(VVChain)
 
-
 if(VVCHAIN_HAS_MASTER_LOCK_UI)
     target_link_libraries(VVChain PRIVATE VVChainMasterAssets)
+else()
+    target_link_libraries(VVChain PRIVATE VVChainAssets)
 endif()

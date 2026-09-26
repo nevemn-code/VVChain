@@ -57,23 +57,38 @@ jobs:
           set -euo pipefail
           test -s docs/index.html
           test -s docs/vvchain-worklet.js
-          test -s docs/assets/ui/png/ivory_knob_strip.png
-          test -s docs/assets/ui/png/studio_knob_strip.png
-          test -s docs/assets/ui/png/muted_knob_strip.png
-          test -s docs/assets/ui/png/ivory_button_on.png
-          test -s docs/assets/ui/png/bypass_led_red.png
-          test -s docs/assets/ui/png/ivory_module.png
-          test -s docs/assets/ui/png/studio_module.png
-          test -s docs/assets/ui/png/muted_module.png
-          test -s docs/assets/ui/png/ivory_graph.png
-          test -s docs/assets/ui/png/studio_graph.png
-          test -s docs/assets/ui/png/muted_graph.png
-          test -s docs/assets/ui/png/ivory_slider_track.png
-          test -s docs/assets/ui/png/ivory_slider_thumb.png
-          python3 - <<'PY'
+
+          if [ -f assets/ui/runtime/APPROVED.lock ]; then
+            python3 Tools/validate_master_runtime.py --require-approved
+            test -s docs/assets/ui/runtime/APPROVED.lock
+            test -s docs/assets/ui/runtime/backgrounds/black_full_panel.png
+            test -s docs/assets/ui/runtime/backgrounds/ivory_full_panel.png
+            test -s docs/assets/ui/runtime/knobs/knob_gold_64.png
+            test -s docs/assets/ui/runtime/knobs/knob_blue_64.png
+            test -s docs/assets/ui/runtime/knobs/knob_green_64.png
+            test -s docs/assets/ui/runtime/knobs/knob_red_64.png
+            test -s docs/assets/ui/runtime/knobs/knob_black_64.png
+            test -s docs/assets/ui/runtime/knobs/knob_silver_64.png
+            test -s docs/assets/ui/runtime/knobs/knob_platinum_master_gain_64.png
+            test "$(find docs/assets/ui/runtime -type f -name '*.png' | wc -l)" = "46"
+            echo "Pages Master runtime contract: PASS"
+          else
+            test -s docs/assets/ui/png/ivory_knob_strip.png
+            test -s docs/assets/ui/png/studio_knob_strip.png
+            test -s docs/assets/ui/png/muted_knob_strip.png
+            test -s docs/assets/ui/png/ivory_button_on.png
+            test -s docs/assets/ui/png/bypass_led_red.png
+            test -s docs/assets/ui/png/ivory_module.png
+            test -s docs/assets/ui/png/studio_module.png
+            test -s docs/assets/ui/png/muted_module.png
+            test -s docs/assets/ui/png/ivory_graph.png
+            test -s docs/assets/ui/png/studio_graph.png
+            test -s docs/assets/ui/png/muted_graph.png
+            test -s docs/assets/ui/png/ivory_slider_track.png
+            test -s docs/assets/ui/png/ivory_slider_thumb.png
+            python3 - <<'PY'
           from pathlib import Path
           import struct
-
           root = Path("docs/assets/ui/png")
           expected = {
               "ivory_panel.png": (1500, 930),
@@ -104,10 +119,11 @@ jobs:
               data = (root / name).read_bytes()
               assert data[:8] == sig, name
               assert struct.unpack(">II", data[16:24]) == size, (name, size)
-              # PNG IHDR colour type 6 = truecolour with alpha (RGBA).
               assert data[25] == 6, (name, "not RGBA", data[25])
-          print("Pages engineering PNG contract: PASS")
+          print("Pages Candidate fallback PNG contract: PASS")
           PY
+          fi
+
           grep -q 'id="bandGrid"' docs/index.html
           grep -q 'TRANSIENT' docs/index.html
           grep -q 'ANALOG COLOR' docs/index.html

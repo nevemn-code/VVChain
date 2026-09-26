@@ -455,7 +455,10 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 }
 .app.masterRuntime .moduleMuted,.app.masterRuntime .knobMuted,.app.masterRuntime .band.bypassed{
   filter:none!important;
+  opacity:.58!important;
 }
+/* Master runtime bypass keeps approved pixels; rejected muted Candidate PNGs are never selected. */
+.app.masterRuntime .moduleMuted .dial,.app.masterRuntime .knobMuted .dial{filter:none!important}
 </style>
 </head>
 <body>

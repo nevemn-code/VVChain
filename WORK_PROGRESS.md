@@ -10,7 +10,7 @@ v1.0.82
 
 ## Current checkpoint
 
-**Checkpoint 11 — Exact Visual Masters committed**
+**Checkpoint 12 — Atomic Candidate retirement prepared**
 
 ## Master paths
 
@@ -50,6 +50,10 @@ Their locked identities remain:
 - CI and Pages are wired to the runtime integrity validator.
 - The exact original Black and Ivory Visual Master PNG binaries are now committed at their permanent locked paths.
 - Master manifest status is now `locked`; the committed binaries match the previously locked SHA-256, byte counts, dimensions and RGBA contract exactly.
+- Added a one-time issue #45 binary handoff gate on main. It accepts only the exact locked Runtime ZIP attachment from the repository owner, verifies archive SHA-256/bytes, verifies all 46 PNGs, creates APPROVED.lock only after PASS, and pushes the binaries to this branch.
+- Native is prepared to stop compiling/linking the rejected VVChainAssets bundle as soon as APPROVED.lock exists; the approved Master bundle becomes the only runtime image source.
+- Native Master mode no longer selects the rejected muted Candidate images for local/global bypass. Theme-correct disabled button PNGs are used and knobs retain approved pixels with muted opacity.
+- Pages validation is now dual-path: Candidate checks before approval, exact 46-file Master runtime checks after approval. This allows the rejected docs/assets/ui/png directory to be deleted safely after activation.
 
 ## Accepted runtime assets
 
@@ -76,4 +80,4 @@ Never create APPROVED.lock while any binary is missing, mismatched, substituted 
 
 ## Next action
 
-Ingest the exact Master/runtime binary PNGs. The repo is now prepared to reject a partial or wrong binary set automatically.
+Use issue #45 for the byte-preserving Runtime ZIP handoff. After the automated 46/46 ingest and APPROVED.lock commit, verify activated Native/Web CI, delete the rejected Candidate PNG directory, run final deployment, then set Remaining to 0.

@@ -103,6 +103,9 @@ assert "vvchain-master-runtime-v1076" in web
 assert "assets/ui/runtime/APPROVED.lock" in cmake
 assert "VVCHAIN_HAS_MASTER_LOCK_UI" in editor
 assert "juce_add_binary_data(VVChainAssets" in cmake
+assert 'if(NOT EXISTS "${CMAKE_SOURCE_DIR}/assets/ui/runtime/APPROVED.lock")' in cmake
+assert "target_link_libraries(VVChain PRIVATE VVChainMasterAssets)" in cmake
+assert "target_link_libraries(VVChain PRIVATE VVChainAssets)" in cmake
 assert "VVChainAssets.h" in editor
 assert "VV_IMG(studioAssets, studio, knobStrip, knob_strip)" in editor
 assert "drawKnobFrame" in editor

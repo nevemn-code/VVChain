@@ -1,8 +1,9 @@
 #include "PluginEditor.h"
 #include "VVChain_DynEQ_Engine.h"
-#include "VVChainAssets.h"
 #if VVCHAIN_HAS_MASTER_LOCK_UI
 #include "VVChainMasterAssets.h"
+#else
+#include "VVChainAssets.h"
 #endif
 
 namespace
@@ -77,6 +78,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawKnobFrame(
 }
 
 VVChainAudioProcessorEditor::MetalLookAndFeel::MetalLookAndFeel()
+#if !VVCHAIN_HAS_MASTER_LOCK_UI
 {
 #define VV_IMG(TARGET, PREFIX, MEMBER, FILE) \
     TARGET.MEMBER = loadImage( \
@@ -135,6 +137,8 @@ VVChainAudioProcessorEditor::MetalLookAndFeel::MetalLookAndFeel()
     bypassLedRed = loadImage(
         VVChainAssets::bypass_led_red_png,
         VVChainAssets::bypass_led_red_pngSize);
+
+#endif
 
 #if VVCHAIN_HAS_MASTER_LOCK_UI
 #define VVCHAIN_MASTER_IMG(MEMBER, FILE) \
@@ -205,6 +209,9 @@ VVChainAudioProcessorEditor::MetalLookAndFeel::MetalLookAndFeel()
     disabledButton = loadImage(
         VVChainMasterAssets::black_button_disabled_png,
         VVChainMasterAssets::black_button_disabled_pngSize);
+    disabledButtonIvory = loadImage(
+        VVChainMasterAssets::ivory_button_disabled_png,
+        VVChainMasterAssets::ivory_button_disabled_pngSize);
     bypassLedRed = loadImage(
         VVChainMasterAssets::bypass_red_png,
         VVChainMasterAssets::bypass_red_pngSize);
@@ -226,6 +233,13 @@ const VVChainAudioProcessorEditor::MetalLookAndFeel::HardwareAssets&
 VVChainAudioProcessorEditor::MetalLookAndFeel::assets(
     bool localMuted) const noexcept
 {
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+    if (isMasterRuntimeActive())
+    {
+        juce::ignoreUnused(localMuted);
+        return ivoryTheme ? ivoryAssets : studioAssets;
+    }
+#endif
     if (monochrome || localMuted)
         return mutedAssets;
     return ivoryTheme ? ivoryAssets : studioAssets;
@@ -263,7 +277,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawPanelSurface(
     bool localMuted) const
 {
 #if VVCHAIN_HAS_MASTER_LOCK_UI
-    if (isMasterRuntimeActive() && !localMuted && !monochrome)
+    if (isMasterRuntimeActive())
     {
         drawImage(g, ivoryTheme ? ivoryFullPanel : blackFullPanel, bounds, 1.0f);
         return;
@@ -277,7 +291,7 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawModuleSurface(
     bool localMuted) const
 {
 #if VVCHAIN_HAS_MASTER_LOCK_UI
-    if (isMasterRuntimeActive() && !localMuted && !monochrome)
+    if (isMasterRuntimeActive())
         return; // The full approved panel already contains the module metalwork.
 #endif
     drawImage(g, assets(localMuted).module, bounds, 1.0f);
@@ -331,7 +345,8 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
         (int) std::lround(
             juce::jlimit(0.0f, 1.0f, sliderPosProportional) * 63.0f));
 
-    drawKnobFrame(g, knobStrip, frame, knobBounds, 1.0f);
+    const float knobOpacity = (localMuted || monochrome) ? 0.58f : 1.0f;
+    drawKnobFrame(g, knobStrip, frame, knobBounds, knobOpacity);
 
     if (auto* wheelSlider = dynamic_cast<WheelSlider*>(&slider))
     {
@@ -413,8 +428,9 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawToggleButton(
     {
         const juce::Image* image = nullptr;
         if (localMuted || monochrome)
-            image = disabledButton.isValid()
-                ? &disabledButton : &a.buttonOff;
+            image = (ivoryTheme && disabledButtonIvory.isValid())
+                ? &disabledButtonIvory
+                : (disabledButton.isValid() ? &disabledButton : &a.buttonOff);
         else if (shouldDrawButtonAsDown)
             image = &a.buttonPressed;
         else
@@ -560,8 +576,9 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawButtonBackground(
     {
         drawImage(
             g,
-            disabledButton.isValid()
-                ? disabledButton : a.buttonOff,
+            (ivoryTheme && disabledButtonIvory.isValid())
+                ? disabledButtonIvory
+                : (disabledButton.isValid() ? disabledButton : a.buttonOff),
             r, 1.0f);
         return;
     }

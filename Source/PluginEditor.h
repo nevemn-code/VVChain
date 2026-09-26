@@ -581,6 +581,7 @@ private:
 
         HardwareAssets studioAssets, ivoryAssets, mutedAssets;
         juce::Image disabledButton;
+        juce::Image disabledButtonIvory;
         juce::Image bypassLedRed;
 #if VVCHAIN_HAS_MASTER_LOCK_UI
         juce::Image knobGold, knobBlue, knobGreen, knobRed;
