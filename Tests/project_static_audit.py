@@ -98,17 +98,52 @@ assert '"moduleMuted"' in editor
 assert "UI IVORY" in editor and "UI STUDIO" in editor
 assert 'id="uiThemeQuick"' in web
 assert "vvchain-v1064-dual-hardware-skins" in web
-assert "vvchain-v1067-real-png-assets" in web
+assert "vvchain-v1071-engineering-rgba-png" in web
 assert "juce_add_binary_data(VVChainAssets" in cmake
 assert "VVChainAssets.h" in editor
 assert "VV_IMG(studioAssets, studio, knobStrip, knob_strip)" in editor
 assert "drawKnobFrame" in editor
-for asset in ("studio_knob_strip.png","ivory_knob_strip.png","studio_button_on.png","ivory_led_on.png","muted_knob_strip.png","bypass_led_red.png"):
+assert "constexpr int frameWidth = 128;" in editor
+assert "constexpr int frameHeight = 128;" in editor
+assert "constexpr int frameCount = columns * rows;" in editor
+assert "jassert(strip.getWidth() == frameWidth * columns);" in editor
+assert "jassert(strip.getHeight() == frameHeight * rows);" in editor
+
+import struct
+expected_pngs = {
+    "studio_panel.png": (1500, 930),
+    "ivory_panel.png": (1500, 930),
+    "muted_panel.png": (1500, 930),
+    "studio_module.png": (600, 930),
+    "ivory_module.png": (600, 930),
+    "muted_module.png": (600, 930),
+    "studio_graph.png": (1500, 330),
+    "ivory_graph.png": (1500, 330),
+    "muted_graph.png": (1500, 330),
+    "studio_knob_strip.png": (1024, 1024),
+    "ivory_knob_strip.png": (1024, 1024),
+    "muted_knob_strip.png": (1024, 1024),
+    "studio_button_on.png": (360, 120),
+    "ivory_button_on.png": (360, 120),
+    "button_disabled.png": (360, 120),
+    "ivory_led_on.png": (128, 128),
+    "bypass_led_red.png": (128, 128),
+    "ivory_screw.png": (96, 96),
+    "ivory_slider_track.png": (800, 120),
+    "ivory_slider_thumb.png": (120, 120),
+}
+for asset, expected_size in expected_pngs.items():
     p = ROOT / "docs" / "assets" / "ui" / "png" / asset
     assert p.is_file(), asset
-    assert p.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n", asset
+    data = p.read_bytes()
+    assert data[:8] == b"\x89PNG\r\n\x1a\n", asset
+    assert struct.unpack(">II", data[16:24]) == expected_size, (asset, expected_size)
+    assert data[25] == 6, (asset, "PNG colour type must be RGBA", data[25])
 assert 'background-image:url("assets/ui/png/muted_panel.png")' in web
+assert 'background-image:url("assets/ui/png/muted_module.png")' in web
+assert 'background-image:url("assets/ui/png/muted_knob_strip.png")' in web
 assert "filter:grayscale(1)" not in web
+assert ".moduleMuted,.knobMuted,.band.bypassed{opacity:1!important;filter:none!important}" in web
 assert "refreshAnalyzerTap" in web
 
 # TRANSIENT is base-rate, precedes Analog, uses a stereo-linked detector,
