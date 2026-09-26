@@ -33,6 +33,7 @@ jobs:
           sparse-checkout: |
             docs
             assets/ui/runtime
+            assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png
             Tools/validate_master_runtime.py
           sparse-checkout-cone-mode: true
 
@@ -42,9 +43,11 @@ jobs:
           set -euo pipefail
           rm -rf docs/assets/ui/runtime
           python3 Tools/validate_master_runtime.py --require-approved
-          mkdir -p docs/assets/ui
+          mkdir -p docs/assets/ui docs/assets/ui/master
           cp -a assets/ui/runtime docs/assets/ui/runtime
+          cp assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png docs/assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png
           test -f docs/assets/ui/runtime/APPROVED.lock
+          test -s docs/assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png
           echo "Approved Master runtime staged from the repository source assets."
 
       - name: Fast Web validation
@@ -58,6 +61,7 @@ jobs:
           test -s docs/assets/ui/runtime/APPROVED.lock
           test -s docs/assets/ui/runtime/backgrounds/black_full_panel.png
           test -s docs/assets/ui/runtime/backgrounds/ivory_full_panel.png
+          test -s docs/assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png
           test -s docs/assets/ui/runtime/knobs/knob_gold_64.png
           test -s docs/assets/ui/runtime/knobs/knob_blue_64.png
           test -s docs/assets/ui/runtime/knobs/knob_green_64.png
