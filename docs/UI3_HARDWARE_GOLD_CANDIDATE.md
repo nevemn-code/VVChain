@@ -12,11 +12,13 @@ Required immutable repository destination:
 
 - `assets/ui/master/VVChain_hardware_gold_master.png`
 
-Exact source identity:
+Exact source identity (latest approved visual, superseding the previous candidate):
 
 - dimensions: **1492×1054**
 - PNG source mode: **RGB**
-- SHA-256: `5ae2b3e3d021123882503c227abcd8f7b5446cdf5b40b97fed491fc209f69631`
+- bytes: **2,184,907**
+- SHA-256: `88b09c4ad3a208fb5a0579a08f4f63b78762c1ffdef2bf91e8615a1ecab5db03`
+- superseded prior candidate SHA-256: `5ae2b3e3d021123882503c227abcd8f7b5446cdf5b40b97fed491fc209f69631` — **DO NOT INGEST**
 
 The approved image includes the requested Band 2 EQ row with three yellow knobs. Its control arrangement, material response, lighting, metal, bevel, AO, button styling, LED styling and proportions are not to be redesigned.
 
@@ -56,7 +58,7 @@ Production graph implementation after approval:
 
 ## Required repository integration after byte-exact Master ingest
 
-1. Verify the committed file at `assets/ui/master/VVChain_hardware_gold_master.png` is exactly 1492×1054 and SHA-256 `5ae2b3e3d021123882503c227abcd8f7b5446cdf5b40b97fed491fc209f69631`.
+1. Verify the committed file at `assets/ui/master/VVChain_hardware_gold_master.png` is exactly 1492×1054 RGB PNG, 2,184,907 bytes and SHA-256 `88b09c4ad3a208fb5a0579a08f4f63b78762c1ffdef2bf91e8615a1ecab5db03`.
 2. Extend `master_manifest.json` and `UI_MASTER_LOCK.md` from 2 masters to 3.
 3. Derive/validate UI3 runtime assets only from that committed approved Master.
 4. Keep every animated knob frame on one identical pixel canvas and centre anchor. The knob body may not translate by even one pixel between states; only the pointer/state changes. Frame geometry mismatch = FAIL.
