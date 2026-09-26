@@ -33,5 +33,27 @@
   "ingest": {
     "method": "byte_exact_base64_bridge",
     "verified_against_locked_identity": true
+  },
+  "scoped_masters": {
+    "layout_order": {
+      "path": "assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png",
+      "source_filename": "image(20260926-113256).png",
+      "sha256": "4b59db6134fc9c9eca6494cf64cb28f17c3e09d0b93920e3b93c1d3ddf3b86bd",
+      "bytes": 1970820,
+      "width": 1265,
+      "height": 938,
+      "mode": "RGBA",
+      "scope": "layout_order_only"
+    },
+    "knob_hires": {
+      "path": "assets/ui/master/KNOB_MASTER_HIRES.png",
+      "source_filename": "ChatGPT Image 2026-09-26 knob master.png",
+      "sha256": "7e35dfee96e954a8ea5e76d82bb8095ad0c697f89f98982965c2a4b03ae5c2f8",
+      "bytes": 3399053,
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "scope": "ivory_rotary_knob_only"
+    }
   }
 }
