@@ -167,3 +167,17 @@ Generate and validate all UI3 assets except rotary knob sprites:
 
 ### Phase 1 rule
 Candidate files remain outside production runtime until their own Master comparison / RGBA / alpha / dimension / state-geometry checks pass. Runtime Native/Web parity remains mandatory.
+
+
+## Phase 1 non-knob candidate generation checkpoint
+
+- Phase split is now enforced.
+- G02 rotary knobs: **FROZEN / NOT GENERATED**. Waiting for user-provided GitHub/open-source knob implementation.
+- Local Phase 1 candidate pack generated from the locked Hardware Gold Master:
+  - `VVChain_UI3_Phase1_v3_non_knob.zip`
+  - 53 candidate entries
+  - covers G01, G03, G04, G05, G06, G07, G08, G09, G10
+  - all files are candidate-only and are not admitted to production runtime yet.
+- Candidate strategy is position-locked to the 1448×1086 Master coordinate basis to avoid rescaling visual material.
+- Known outstanding background defect remains tracked: the first EQ-row knob area has the previously reported upper-edge/cut-mark issue. Because rotary knobs are now Phase 2, this must not be silently fixed by regenerating or approximating a knob; any background cleanup must remain Master-derived and separately validated.
+- Next Phase 1 action: visual-review/refine the non-knob candidate pack, then commit each passing group separately before touching Native/Web runtime.
