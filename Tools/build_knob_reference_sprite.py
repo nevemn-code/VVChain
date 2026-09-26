@@ -4,7 +4,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "assets/ui/master/KNOB_MASTER_HIRES.png"
-OUTPUT = ROOT / "assets/ui/runtime/knobs/knob_reference_hires_56.png"
+# This is the unaligned intermediate, never a production runtime PNG.
+# Run align_knob_reference_sprite.py after this extraction and validate the
+# resulting frame geometry before modifying the locked runtime manifest.
+OUTPUT = ROOT / "assets/ui/candidates/knob_reference_hires_56_unaligned.png"
 
 X = [0, 164, 323, 484, 636, 786, 938, 1092, 1253]
 Y = [1, 164, 328, 488, 648, 808, 969, 1131]

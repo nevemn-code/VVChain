@@ -1,9 +1,9 @@
 {
   "schema": 1,
   "status": "locked",
-  "version": "v1.0.86",
+  "version": "v1.0.87",
   "method": {
-    "knobs": "Legacy locked knob sheets remain available. v1.0.86 adds the user-approved Ivory high-resolution 8x7 / 56-frame rotary sheet; no procedural redesign.",
+    "knobs": "v1.0.87 aligns the approved 56-frame Ivory sheet to one circle centre; frame 0 provides the unchanged fixed bezel and ticks. No material redesign.",
     "components": "Direct crop/clean/resize from approved component sheets; no procedural redraw."
   },
   "knobs": {
@@ -72,17 +72,22 @@
       "sha256": "7ebe455e5a41c74b8f23a14f685318ebef906382fbc9cee1103be3c3dcfbe03a"
     },
     "knob_reference_hires_56.png": {
-      "width": 1312,
-      "height": 1148,
-      "frame": 164,
+      "width": 1408,
+      "height": 1232,
+      "frame": 176,
       "columns": 8,
       "rows": 7,
       "frames": 56,
-      "bytes": 2526063,
-      "sha256": "38f0db7672bc571d53d7b3cdef1f04c5381c250e1bee78c39420085aa4ed9ffe",
+      "bytes": 1618708,
+      "sha256": "a55d1eb9e76160c4b528121d2e4f73e61f4567dce1b63a96c490a30b1b04b08e",
       "source_master": "assets/ui/master/KNOB_MASTER_HIRES.png",
       "source_master_sha256": "7e35dfee96e954a8ea5e76d82bb8095ad0c697f89f98982965c2a4b03ae5c2f8",
-      "background_scope": "ivory"
+      "background_scope": "ivory",
+      "center_span_px": [
+        0.504,
+        0.334
+      ],
+      "source_original_sha256": "38f0db7672bc571d53d7b3cdef1f04c5381c250e1bee78c39420085aa4ed9ffe"
     }
   },
   "component_sets": {

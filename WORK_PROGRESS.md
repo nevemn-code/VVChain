@@ -1,5 +1,41 @@
 # VVChain Work Progress
 
+## v1.0.87 fixed-axis Ivory rotary checkpoint
+
+- Re-registered all 56 frames of the previously approved high-resolution Ivory knob source to a single 176×176 cell centre and a common ring radius.
+- Measured source frame centre span: 5.609 px horizontal / 3.626 px vertical; corrected candidate: 0.504 / 0.334 px. Radius span: 1.820 → 0.300 px.
+- Frame 0 supplies fixed outer ticks and backdrop; the approved source supplies each rotating dial face. No new metal material or colour scheme was generated.
+- The runtime pathname remains `assets/ui/runtime/knobs/knob_reference_hires_56.png`, shared by Native binary resources and Web CSS. Existing 8×7 / 56-frame selection and sound/parameter logic are unchanged.
+- Runtime manifest, scoped staged manifest, approval lock, Web/Native version display and cache version updated together. This checkpoint is independent of the newer 154115 all-component Candidate; that archive is not accepted into runtime.
+- Verification pending at this checkpoint: Master lock, Web smoke/static audit, UI interaction regression and Native build. Do not call the deployment complete until CI confirms.
+
+## 154115 full-component candidate audit
+
+- Component inventory and detailed acceptance results: `docs/UI_154115_ASSET_AUDIT.md`.
+- 106 source-visible components produced as engineering candidates, each at original size and a fourfold resampled size; unchanged Master and enlarged panel also included (216 PNGs total).
+- ZIP verified: `VVChain_154115_components_CANDIDATE.zip`, SHA-256 `533fc03ef5db2ac73a875f47e83bc62b5f98719b71711ab599872527037c770c`.
+- Visible RGB source pixels, PNG decoding, RGBA/dimensions and ZIP integrity: PASS. Independent transparent edges, missing states, intrinsic 4× material detail and clean control-free backgrounds: FAIL / unavailable.
+- No generated or candidate image is placed in production runtime. Native and Web remain at existing approved assets; product version remains v1.0.86.
+
+## New visual source checkpoint — 154115 (2026-09-26)
+
+- The user's newer, higher-resolution `image(20260926-154115).png` is the current full-panel visual reference for this request. Its exact bytes are preserved at `assets/ui/master/VVChain_20260926_154115_master.png`; see adjacent identity JSON.
+- It supersedes OKK(3) for current visual acceptance; OKK(3) remains as historical intake, not the active visual source.
+- Source identity: 1456×1080, RGBA, alpha 255 everywhere, SHA-256 `479bf03e2ff528ece86536d5d65f1aa77a54247e4cb1b25d2eff53969f3654b2`.
+- The user explicitly permits reconstructing isolated PNGs so long as exact colours, material and geometry are preserved. This does not establish 100% fidelity from an opaque single frame.
+- First high-resolution transparent knob generation compared visually against source: **FAIL** (ring thickness, highlight and pointer shape differ). It is not admitted to runtime.
+- Runtime migration and version bump remain blocked until component groups and their non-default states pass source comparison. Preserve existing Native/Web behavior meanwhile.
+
+## New request checkpoint — OKK(3) master intake (2026-09-26)
+
+- Branch: `ui/okk3-master-checkpoint`; production `main` remains at v1.0.86.
+- The exact uploaded `OKK(3).png` is preserved byte for byte at `assets/ui/master/OKK3_20260926.png` and identified in `assets/ui/master/OKK3_20260926.identity.json`.
+- Scope: the user's new reference for panel appearance and arrangement. Earlier background and component PNGs are **Candidates** for this request until compared to this master; their prior approval does not prove fidelity to OKK(3).
+- The source is 1265×938 RGBA, but its alpha is entirely opaque and its controls, lettering, bezel, shadows and background are flattened together.
+- Acceptance: exact source identity PASS. New runtime backgrounds, isolated rotary states, buttons, LEDs, bypass states and transparent component assets: NOT YET ACCEPTED. Native/Web replacement: NOT STARTED. No claim of fourfold intrinsic resolution or exact interactive reconstruction.
+- Blocker: the supplied single frame has no hidden background pixels beneath controls and no off/pressed/disabled states or rotating knob angles. Fourfold resampling only creates more pixels; it cannot recover the missing scene detail or states. Do not interpolate these and describe them as master-extracted high-detail assets.
+- Next action: obtain a genuinely higher-resolution approved export with separable background/components and states, or explicit additional masters for them; then extract one group at a time, inspect against the master at 100%, 200%, 400%, validate RGBA/alpha/dimensions, and checkpoint each passing group before switching shared Native/Web runtime.
+
 ## Goal
 
 Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked PNG workflow, then migrate Native and Web to one shared set of Master-validated runtime assets without changing DSP, parameter IDs, automation, mouse behaviour, processing order or preset compatibility.
