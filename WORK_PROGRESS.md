@@ -6,11 +6,11 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.76
+v1.0.77
 
 ## Current checkpoint
 
-**Checkpoint 5 — Native + Web Master-runtime integration bridge**
+**Checkpoint 6 — Web syntax recovery + CI revalidation**
 
 ## Master paths
 
@@ -37,6 +37,9 @@ Required exact original binaries:
 - Web runtime now has an APPROVED.lock gate matching Native. Without the lock, current Candidate assets remain active.
 - When approved, Web switches to the same 1470x1070 Master panel basis, full Black/Ivory backgrounds, six colour knob sprites, 1.5x platinum OUTPUT knob, approved buttons/LEDs/toggles/sliders, and responsive whole-panel scaling.
 - Web knob colour selection is parameter-ID based with the same Native mapping; Dynamic EQ/UDMBC/Analog/Tape/Transient controls now carry explicit IDs where needed.
+- VVChain Fast CI/CD #1332 exposed one Web-only integration defect: literal `\\n` characters were inserted into the `drawEQ()` Master-runtime guard, causing Node syntax validation to fail.
+- Replaced those escaped characters with real JavaScript newlines. No DSP, parameter, automation or interaction logic changed.
+- The earlier v1.0.75 stale 128-px static-audit assertion was already corrected to permit the approved 192-px platinum Master Gain sprite.
 
 ## Accepted runtime assets
 
