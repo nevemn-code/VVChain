@@ -342,7 +342,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 /* Master runtime bypass keeps approved pixels; rejected muted Candidate PNGs are never selected. */
 .app.masterRuntime .moduleMuted .dial,.app.masterRuntime .knobMuted .dial{filter:none!important}
 
-/* v1.0.86: approved state assets only; no rejected Candidate fallback. */
+/* v1.0.87: approved state assets only; no rejected Candidate fallback. */
 .app.masterRuntime:not(.ivoryTheme) .modeSwitch.on{
   background-image:url("assets/ui/runtime/components/black_toggle_on.png")!important;
 }
@@ -424,6 +424,151 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
   background-image:url("assets/ui/runtime/components/ivory_toggle_disabled.png")!important;
 }
 </style>
+
+<style id="vvchain-layout-master-v1087">
+/* Exact 1265×938 composition. The uploaded reference is the visual authority. */
+.app.masterRuntime{
+  width:1265px!important;height:938px!important;padding:0!important;border:0!important;
+  overflow:hidden!important;transform:scale(var(--master-scale,1));transform-origin:center center;
+}
+.app.masterRuntime.ivoryTheme{
+  background:transparent url("assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png") center/1265px 938px no-repeat!important;
+}
+.app.masterRuntime .transport{display:none!important}
+.app.masterRuntime .header{
+  position:absolute!important;inset:0!important;width:1265px!important;height:84px!important;
+  padding:0!important;background:none!important;border:0!important;box-shadow:none!important;z-index:20;
+}
+.app.masterRuntime.ivoryTheme .logo,
+.app.masterRuntime.ivoryTheme .lastModified,
+.app.masterRuntime.ivoryTheme .sub,
+.app.masterRuntime.ivoryTheme .versionNav,
+.app.masterRuntime.ivoryTheme .leds{display:none!important}
+.app.masterRuntime .headerControls{
+  position:absolute!important;inset:0!important;width:1265px!important;height:84px!important;
+  margin:0!important;display:block!important;z-index:21;
+}
+.app.masterRuntime .headerControls #masterBypass{
+  position:absolute!important;left:761px!important;top:36px!important;width:105px!important;height:34px!important;
+}
+.app.masterRuntime .headerControls #soloMode{
+  position:absolute!important;left:881px!important;top:36px!important;width:114px!important;height:34px!important;
+}
+.app.masterRuntime .headerControls #uiThemeQuick{
+  position:absolute!important;left:1008px!important;top:36px!important;width:70px!important;height:34px!important;min-width:0!important;
+}
+.app.masterRuntime .headerControls #settingsGear{
+  position:absolute!important;left:1092px!important;top:36px!important;width:70px!important;height:34px!important;min-width:0!important;
+}
+.app.masterRuntime.ivoryTheme .headerControls #masterBypass,
+.app.masterRuntime.ivoryTheme .headerControls #soloMode,
+.app.masterRuntime.ivoryTheme .headerControls #uiThemeQuick,
+.app.masterRuntime.ivoryTheme .headerControls #settingsGear{
+  background:none!important;background-image:none!important;border:0!important;box-shadow:none!important;color:transparent!important;
+}
+.app.masterRuntime .rowTop{
+  position:absolute!important;left:28px!important;top:90px!important;width:1209px!important;height:255px!important;margin:0!important;
+}
+.app.masterRuntime .graph{
+  width:1209px!important;height:255px!important;border:0!important;border-radius:0!important;
+  box-shadow:none!important;background:none!important;background-image:none!important;
+}
+.app.masterRuntime .bandsFrame{
+  position:absolute!important;left:36px!important;top:351px!important;width:1206px!important;height:570px!important;
+  margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;background:none!important;
+}
+.app.masterRuntime .bandGrid{
+  width:1206px!important;height:570px!important;display:grid!important;
+  grid-template-columns:repeat(5,238px)!important;gap:4px!important;
+}
+.app.masterRuntime .band{
+  width:238px!important;height:570px!important;padding:0!important;margin:0!important;
+  border:0!important;border-radius:0!important;box-shadow:none!important;background:none!important;overflow:hidden!important;
+}
+.app.masterRuntime .bandHead{position:absolute!important;inset:0!important;height:0!important;z-index:8}
+.app.masterRuntime.ivoryTheme .bandHead>span,
+.app.masterRuntime.ivoryTheme .sectionLabel{visibility:hidden!important}
+.app.masterRuntime .bandBody{position:absolute!important;inset:0!important;width:238px!important;height:570px!important;padding:0!important}
+.app.masterRuntime .eqBody{display:block!important}
+.app.masterRuntime .staticGrid{
+  position:absolute!important;left:20px!important;top:58px!important;width:202px!important;height:98px!important;
+  display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:4px!important;
+}
+.app.masterRuntime .dynSection{
+  position:absolute!important;left:20px!important;top:179px!important;width:202px!important;height:98px!important;
+  padding:0!important;border:0!important;background:none!important;
+}
+.app.masterRuntime .dynModeRow{display:none!important}
+.app.masterRuntime .dynControls{
+  width:202px!important;height:98px!important;display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:4px!important;
+}
+.app.masterRuntime .udmbcGrid{
+  position:absolute!important;left:20px!important;top:299px!important;width:202px!important;height:98px!important;
+  display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:4px!important;transform:none!important;
+}
+.app.masterRuntime .bottomGrid{
+  position:absolute!important;left:46px!important;top:423px!important;width:150px!important;height:98px!important;
+  display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:18px!important;transform:none!important;
+}
+.app.masterRuntime .knob{height:98px!important;overflow:visible!important}
+.app.masterRuntime .knobTitle{height:12px!important;line-height:12px!important}
+.app.masterRuntime.ivoryTheme .knobTitle{visibility:hidden!important}
+.app.masterRuntime .staticGrid .dial,
+.app.masterRuntime .dynControls .dial,
+.app.masterRuntime .udmbcGrid .dial,
+.app.masterRuntime .bottomGrid .dial{
+  width:68px!important;height:68px!important;margin:0 auto!important;
+}
+.app.masterRuntime .knobValue{
+  width:58px!important;height:15px!important;line-height:15px!important;margin:0 auto!important;
+  border:0!important;border-radius:0!important;font:800 8px/15px Consolas!important;
+}
+.app.masterRuntime.ivoryTheme .knobValue{
+  color:#30261d!important;background:rgba(238,231,220,.93)!important;
+}
+.app.masterRuntime .band .advBtn{
+  position:absolute!important;left:158px!important;top:306px!important;width:64px!important;height:24px!important;z-index:12!important;
+}
+.app.masterRuntime .band .soloBtn{
+  position:absolute!important;left:18px!important;top:522px!important;width:100px!important;height:34px!important;z-index:12!important;
+}
+.app.masterRuntime .band .bypassBtn{
+  position:absolute!important;left:126px!important;top:522px!important;width:100px!important;height:34px!important;z-index:12!important;
+}
+.app.masterRuntime.ivoryTheme .band .advBtn,
+.app.masterRuntime.ivoryTheme .band .soloBtn,
+.app.masterRuntime.ivoryTheme .band .bypassBtn{
+  background:none!important;background-image:none!important;border:0!important;box-shadow:none!important;color:transparent!important;
+}
+.app.masterRuntime .bandLed,.app.masterRuntime .analogX2Btn{display:none!important}
+.app.masterRuntime .bottomGrid .modeSwitch{
+  top:-18px!important;width:72px!important;height:24px!important;border:0!important;
+}
+.app.masterRuntime.ivoryTheme .bottomGrid .modeSwitch{
+  background:none!important;background-image:none!important;color:transparent!important;box-shadow:none!important;
+}
+.app.masterRuntime .monitorBand .bandHead{display:none!important}
+.app.masterRuntime .monitorBand .masterMonitor{
+  position:absolute!important;inset:0!important;width:238px!important;height:570px!important;padding:0!important;display:block!important;
+}
+.app.masterRuntime .monitorBand .monitorKnobRow{
+  position:absolute!important;left:20px!important;top:76px!important;width:202px!important;height:118px!important;
+  display:grid!important;grid-template-columns:repeat(2,1fr)!important;grid-template-rows:1fr!important;gap:10px!important;transform:none!important;
+}
+.app.masterRuntime .monitorBand .monitorKnobRow .dial{width:76px!important;height:76px!important}
+.app.masterRuntime .monitorBand .deltaBtn{
+  position:absolute!important;left:19px!important;top:203px!important;width:94px!important;height:35px!important;
+}
+.app.masterRuntime .monitorBand .masterPanelBypass{
+  position:absolute!important;left:126px!important;top:203px!important;width:94px!important;height:35px!important;
+}
+.app.masterRuntime.ivoryTheme .monitorBand .deltaBtn,
+.app.masterRuntime.ivoryTheme .monitorBand .masterPanelBypass{
+  background:none!important;background-image:none!important;border:0!important;box-shadow:none!important;color:transparent!important;
+}
+.app.masterRuntime .masterPower,.app.masterRuntime .masterBypassLabel{display:none!important}
+</style>
+
 </head>
 <body>
 <div class="app"><span hidden>NO PAGE SCROLL</span><span hidden>DELTA = OUTPUT − DRY · SOLO = SHARED X-OVER PRE/POST</span>
@@ -434,7 +579,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.86</div></div><div class="sub"></div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.87</div></div><div class="sub"></div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · ANALOG COLOR · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -477,7 +622,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
       <div class="settingsRow" aria-disabled="true"><span>CPU / latency display</span><span>RESERVED</span></div>
     </section>
     <section class="settingsSection"><div class="settingsSectionTitle">SYSTEM / ABOUT</div>
-      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.86</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.87</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Build number / commit</span><span>GitHub build metadata</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset UI Settings</span><span>DISABLED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset All Settings</span><span>DISABLED</span></div>
@@ -509,7 +654,7 @@ let settingsPanelVisible=false,ivoryTheme=true;
 let masterRuntimeActive=true;
 function masterKnobAsset(id){
   id=String(id||"");
-  // v1.0.86: use the uploaded high-resolution reference knob on Ivory.
+  // v1.0.87: use the uploaded high-resolution reference knob on Ivory.
   // Black keeps the existing transparent locked assets because the uploaded
   // source sheet contains an Ivory background field.
   if(ivoryTheme)return "reference";
@@ -518,7 +663,7 @@ function masterKnobAsset(id){
 function applyMasterRuntimeScale(){
   if(!masterRuntimeActive)return;
   const app=document.querySelector(".app");
-  const scale=Math.min(1,(window.innerWidth-10)/1448,(window.innerHeight-10)/1086);
+  const scale=Math.min(1,(window.innerWidth-10)/1265,(window.innerHeight-10)/938);
   app.style.setProperty("--master-scale",Math.max(.1,scale));
 }
 function detectMasterRuntime(){
@@ -535,7 +680,7 @@ function setIvoryTheme(ivory){
   ivoryTheme=!!ivory;
   document.querySelector(".app").classList.toggle("ivoryTheme",ivoryTheme);
   themeToggle.textContent=ivoryTheme?"THEME  IVORY GOLD":"THEME  BLACK GOLD";
-  uiThemeQuick.textContent=ivoryTheme?"UI IVORY":"UI BLACK";
+  uiThemeQuick.textContent=masterRuntimeActive?"△":(ivoryTheme?"UI IVORY":"UI BLACK");
 }
 themeToggle.addEventListener("click",()=>{
   setIvoryTheme(!ivoryTheme);
@@ -652,9 +797,9 @@ function setAnalyzerEnabled(enabled){
 analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
 document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
 setAnalyzerEnabled(true);
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.86
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.87
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.86"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.87"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -846,7 +991,7 @@ function makeKnob(parent,cfg){
   v.contentEditable="true";
   v.spellcheck=false;
   v.setAttribute("inputmode","decimal");
-  w.append(d,t,v);parent.appendChild(w);
+  w.append(t,d,v);parent.appendChild(w);
   const def=get();
   const render=()=>{
     const n=get(),lo=curMin(),hi=curMax();
@@ -1051,7 +1196,7 @@ makeKnob(staticGrid,{
   formatValue:v=>isRollOffType(n)?((i=>i===0?6:i*12)(clamp(Math.round(v),0,6)))+" dB/oct":fmt(v,2)
 });
 
-makeKnob(dynControls,{label:"DYNAMICS",controlId:"DYN_DYNAMICS"+(n+1),get:()=>state.dyn.dynamics[n],set:v=>state.dyn.dynamics[n]=v,min:-100,max:100,suffix:" %",accent:"#f8fafc",formatDigits:0,sensitivity:.70,wheelStep:.70,doubleClickValue:0});
+makeKnob(dynControls,{label:"THRESH",controlId:"DYN_DYNAMICS"+(n+1),get:()=>state.dyn.dynamics[n],set:v=>state.dyn.dynamics[n]=v,min:-100,max:100,suffix:" %",accent:"#f8fafc",formatDigits:0,sensitivity:.70,wheelStep:.70,doubleClickValue:0});
 makeKnob(dynControls,{label:"ATTACK",controlId:"DYN_ATTACK"+(n+1),get:()=>state.dyn.attack[n],set:v=>state.dyn.attack[n]=v,min:.1,max:200,suffix:" ms",accent:"#f8fafc",formatDigits:1});
 makeKnob(dynControls,{label:"RELEASE",controlId:"DYN_RELEASE"+(n+1),get:()=>state.dyn.release[n],set:v=>state.dyn.release[n]=v,min:5,max:2000,suffix:" ms",accent:"#f8fafc",formatDigits:0});
 const detectBlend=card.querySelector(".detectBlend"),detectBlendWrap=card.querySelector(".dynDetectBlend"),triggerBtn=card.querySelector(".triggerBtn");
@@ -1079,7 +1224,7 @@ const analogKnob=makeKnob(bottomGrid,{label:"AMOUNT",controlId:"EQ_COLOR_B"+(n+1
 analogKnob.classList.add("analogKnob");
 let syncTapeLed=()=>{};
 const typeMax=[50,60,70,90][n];
-const typeKnob=makeKnob(bottomGrid,{label:"TYPE-A",controlId:"TAPE_DEGREE"+(n+1),get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:typeMax,accent:cols[n],markTouched:()=>uiTouched.tape[n]=true,formatValue:v=>tape(v,typeMax),parseValue:raw=>{const x=parseFloat(String(raw).replace(/[^0-9+\-.]/g,""));return Number.isFinite(x)?clamp(x,0,10)*typeMax/10:NaN},mutedWhen:()=>state.type.bypass||(uiTouched.tape[n]&&(state.type.bandBypass[n]||state.type.degree[n]<=0.0001)),afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed();knobRefreshers.forEach(fn=>fn())}});
+const typeKnob=makeKnob(bottomGrid,{label:"TYPEA",controlId:"TAPE_DEGREE"+(n+1),get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:typeMax,accent:cols[n],markTouched:()=>uiTouched.tape[n]=true,formatValue:v=>tape(v,typeMax),parseValue:raw=>{const x=parseFloat(String(raw).replace(/[^0-9+\-.]/g,""));return Number.isFinite(x)?clamp(x,0,10)*typeMax/10:NaN},mutedWhen:()=>state.type.bypass||(uiTouched.tape[n]&&(state.type.bandBypass[n]||state.type.degree[n]<=0.0001)),afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed();knobRefreshers.forEach(fn=>fn())}});
 const mode=document.createElement("button");mode.className="modeSwitch";mode.title="TT = Tube Saturation；SS = Solid-State Saturation";mode.innerHTML="<span>TT</span><i></i><span>SS</span>";
 const syncMode=()=>{mode.classList.toggle("ss",!!state.eq.mode[n]);mode.classList.toggle("muted",uiTouched.analog[n]&&state.eq.color[n]<=0.0001)};mode.onclick=()=>{state.eq.mode[n]=!state.eq.mode[n];syncMode();sendParams();drawEQ()};syncMode();analogKnob.appendChild(mode);
 const x2=document.createElement("button");x2.className="analogX2Btn";x2.textContent="X2";x2.title="ANALOG COLOR X2：0–60% 的 ANALOG COLOR delta × 2";
@@ -1127,11 +1272,11 @@ const advBtn=card.querySelector(".advBtn");advBtn.title="UDMBC ADVANCED · BAND 
 }
 
 const monitor=document.createElement("div");monitor.className="band monitorBand";monitor.style.setProperty("--accent","#e5e7eb");
-monitor.innerHTML="<div class='bandHead'><span></span><span style='font:7px Consolas;color:#7f8790'>GLOBAL</span></div><div class='masterMonitor'><div class='masterBypassLabel'>BYPASS</div><button class='masterPower'>⏻</button><button class='deltaBtn'>DELTA</button><div class='monitorKnobRow'></div></div>";
+monitor.innerHTML="<div class='bandHead'><span></span></div><div class='masterMonitor'><button class='deltaBtn'>DELTA</button><button class='masterPanelBypass'>BYPASS</button><div class='monitorKnobRow'></div></div>";
 bg.appendChild(monitor);
-const masterPower=monitor.querySelector(".masterPower"),deltaBtn=monitor.querySelector(".deltaBtn"),monitorKnobs=monitor.querySelector(".monitorKnobRow");
-const syncMonitor=()=>{masterPower.classList.toggle("on",!!state.masterBypass);deltaBtn.classList.toggle("on",!!state.delta)};
-masterPower.onclick=()=>{state.masterBypass=!state.masterBypass;syncMaster();syncMonitor()};
+const masterPanelBypass=monitor.querySelector(".masterPanelBypass"),deltaBtn=monitor.querySelector(".deltaBtn"),monitorKnobs=monitor.querySelector(".monitorKnobRow");
+const syncMonitor=()=>{masterPanelBypass.classList.toggle("on",!!state.masterBypass);deltaBtn.classList.toggle("on",!!state.delta)};
+masterPanelBypass.onclick=()=>{state.masterBypass=!state.masterBypass;syncMaster();syncMonitor()};
 deltaBtn.onclick=()=>{
   state.delta=!state.delta;
   analyzerCurve.fill(-90);
@@ -1314,7 +1459,7 @@ function drawEQ(){
   eqCtx.clearRect(0,0,w,h);
 
   if(masterRuntimeActive){
-    // v1.0.86 upper-section cleanup: do not modify the approved PNG.
+    // v1.0.87 upper-section cleanup: do not modify the approved PNG.
     // This live viewport intentionally hides the obsolete baked split graph,
     // duplicate frequency labels and duplicate grid inside the old panel.
     eqCtx.fillStyle="#0c0f10";
