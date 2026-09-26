@@ -1,5 +1,14 @@
 # VVChain Work Progress
 
+## New visual source checkpoint — 154115 (2026-09-26)
+
+- The user's newer, higher-resolution `image(20260926-154115).png` is the current full-panel visual reference for this request. Its exact bytes are preserved at `assets/ui/master/VVChain_20260926_154115_master.png`; see adjacent identity JSON.
+- It supersedes OKK(3) for current visual acceptance; OKK(3) remains as historical intake, not the active visual source.
+- Source identity: 1456×1080, RGBA, alpha 255 everywhere, SHA-256 `479bf03e2ff528ece86536d5d65f1aa77a54247e4cb1b25d2eff53969f3654b2`.
+- The user explicitly permits reconstructing isolated PNGs so long as exact colours, material and geometry are preserved. This does not establish 100% fidelity from an opaque single frame.
+- First high-resolution transparent knob generation compared visually against source: **FAIL** (ring thickness, highlight and pointer shape differ). It is not admitted to runtime.
+- Runtime migration and version bump remain blocked until component groups and their non-default states pass source comparison. Preserve existing Native/Web behavior meanwhile.
+
 ## New request checkpoint — OKK(3) master intake (2026-09-26)
 
 - Branch: `ui/okk3-master-checkpoint`; production `main` remains at v1.0.86.
