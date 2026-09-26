@@ -118,6 +118,39 @@ jobs:
         python3 Tests/ui_master_lock.py
         python3 Tools/validate_master_runtime.py
 
+    - name: Render exact Web layout screenshot
+      if: github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        set -euo pipefail
+        rm -rf docs/assets/ui/runtime docs/assets/ui/master
+        mkdir -p docs/assets/ui/master docs/assets/ui
+        cp -a assets/ui/runtime docs/assets/ui/runtime
+        cp assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png docs/assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png
+        python3 -m http.server 8123 --directory docs >/tmp/vvchain-http.log 2>&1 &
+        server_pid=$!
+        trap 'kill $server_pid || true' EXIT
+        for i in {1..20}; do
+          curl -fsS http://127.0.0.1:8123/ >/dev/null && break
+          sleep 0.25
+        done
+        chrome_bin="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser)"
+        test -n "$chrome_bin"
+        "$chrome_bin" --headless=new --no-sandbox --disable-gpu --hide-scrollbars \
+          --window-size=1265,938 \
+          --screenshot=vvchain-okk2-preview.png \
+          http://127.0.0.1:8123/
+        test -s vvchain-okk2-preview.png
+
+    - name: Upload exact Web layout screenshot
+      if: github.event_name == 'pull_request'
+      uses: actions/upload-artifact@v4
+      with:
+        name: vvchain-okk2-preview
+        path: vvchain-okk2-preview.png
+        retention-days: 3
+
+
     - name: UI / interaction regression x10
       shell: bash
       run: |
