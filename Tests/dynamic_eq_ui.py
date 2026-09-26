@@ -500,6 +500,17 @@ def test_v103_ui_rules_50():
     assert 'mutedWhen:()=>state.type.bypass||state.type.bandBypass[n]||state.type.degree[n]<=0.0001' in web
     assert 'state.transient' in web
     assert 'addKnob("TRANSIENT" + n' in cpp
+    # v1.0.87 exact 1265x938 coordinate contract.
+    assert 'setSize(1265, 938);' in cpp
+    assert 'return { 28.f, 86.f, 1212.f, 260.f };' in cpp
+    assert 'grid-template-columns:236px 236px 236px 236px 228px!important' in web
+    assert 'left:862px!important;top:37px!important;width:106px!important;height:34px!important' in web
+    assert 'left:1113px!important;top:37px!important;width:70px!important;height:34px!important' in web
+    assert 'grid-template-columns:repeat(3,1fr)!important;gap:0!important' in web
+    assert 'const transientKnob=makeKnob(bottomGrid' in web
+    assert 'placeKnob("TRANSIENT" + n, cell(4, 2));' in cpp
+    assert 'constexpr std::array<int, 5> masterOffsets' in cpp
+    assert '{ 58, 179, 0, 299, 423 };' in cpp
 
     assert "const hzv=invLog(clamp(x,0,w)/w);" in web
     assert "const targetGain=yToDb(y,h);" in web
