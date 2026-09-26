@@ -6,21 +6,20 @@ The two full Master PNGs remain the only Visual Masters. Approved derivative sou
 
 ## Knob assignment
 
-### v1.0.84 reference presentation
+### v1.0.86 reference presentation
 
 The supplied third reference uses one neutral hardware family across the four band strips. Production selection therefore reuses the existing approved assets without editing them:
 
-- Metal Silver — all normal band controls, including EQ, Dynamic EQ, UDMBC, Analog, Tape and Transient.
-- Platinum — MASTER output class only, 1.5× normal knob size.
+- Ivory runtime — `knob_reference_hires_56.png`, directly derived from the user-approved `KNOB_MASTER_HIRES.png`; 8×7 / 56 frames / 164×164 engineering cells.
+- Black runtime — existing Silver/Platinum transparent locked sprites remain active until a black-safe transparent derivative of the new high-resolution master is approved.
 
-The already-approved Gold, Blue, Green, Red and Black sprites remain in the locked runtime set for future approved layouts, but v1.0.84 does not select them by default.
-
-All knob variants preserve the same amber outer LED ring. Runtime state sequences use a fixed body and only move the pointer.
+The older Gold, Blue, Green, Red and Black sprites remain in the locked runtime set for compatibility and future approved layouts.
 
 ## Runtime target
 
-Normal knob sprite: 8×8, 64 frames, 128×128 per frame, 1024×1024 sheet.
-Master Gain: 8×8, 64 frames, 192×192 per frame, 1536×1536 sheet.
+Legacy transparent knob sprites: 8×8, 64 frames.
+Ivory high-resolution reference knob: 8×7, 56 frames, 164×164 engineering cells, 1312×1148 sheet.
+Master Gain legacy fallback: 8×8, 64 frames, 192×192 per frame, 1536×1536 sheet.
 
 ## Buttons / indicators
 

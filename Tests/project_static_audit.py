@@ -108,7 +108,9 @@ assert "VV_IMG(studioAssets, studio, knobStrip, knob_strip)" in editor
 assert "drawKnobFrame" in editor
 assert "const int frameWidth = strip.getWidth() / columns;" in editor
 assert "const int frameHeight = strip.getHeight() / rows;" in editor
-assert "constexpr int frameCount = columns * rows;" in editor
+assert "const int frameCount = columns * rows;" in editor
+assert "knob_reference_hires_56" in editor
+assert "spriteRows" in editor
 assert "jassert(strip.getWidth() == frameWidth * columns);" in editor
 assert "jassert(strip.getHeight() == frameHeight * rows);" in editor
 
@@ -116,7 +118,7 @@ import json, struct, hashlib
 runtime_root = ROOT / "assets" / "ui" / "runtime"
 runtime_manifest = json.loads((runtime_root / "binary_manifest.json").read_text(encoding="utf-8"))
 assert (runtime_root / "APPROVED.lock").is_file()
-assert runtime_manifest["asset_count"] == 46
+assert runtime_manifest["asset_count"] == 47
 for rel, spec in runtime_manifest["assets"].items():
     p = runtime_root / rel
     assert p.is_file(), rel

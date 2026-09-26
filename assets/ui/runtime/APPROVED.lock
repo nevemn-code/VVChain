@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "runtime_manifest_sha256": "f85e2bc653109d8e5ff93ddadb1f6fcaa74a21c3785df4a9ed69442c000436c8",
-  "asset_count": 46,
+  "runtime_manifest_sha256": "53b658d03484ee08aab274189d3c1fc682a88e4212ce66419396d12c15693f05",
+  "asset_count": 47,
   "master_black_sha256": "173d086d919d0a0b5c0c3100a060dc1929a918f9c1f8e4328424cb2e5e817b38",
   "master_ivory_sha256": "9f99da776c8f081abd512bae269c79e47524c011cde190a56c2172ec9957effb",
-  "note": "Created only after byte-exact validation; does not generate visual assets."
+  "note": "v1.0.86 adds the user-approved scoped Ivory high-resolution knob runtime; existing full-panel Master hashes remain unchanged."
 }

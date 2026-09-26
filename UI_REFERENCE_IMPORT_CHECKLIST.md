@@ -13,7 +13,7 @@ docs/
   UI_LAYOUT_EXACT_ORDER.md
   KNOB_RUNTIME_MAPPING.md
 
-tools/
+Tools/
   build_knob_reference_sprite.py
 
 ## Native JUCE changes

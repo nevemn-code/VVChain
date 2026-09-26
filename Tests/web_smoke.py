@@ -54,9 +54,9 @@ required_html = [
     "new URL(\"vvchain-worklet.js\",document.baseURI)",
     'id="bandGrid"',
     "grid-template-columns:repeat(4,minmax(0,1fr)) 1fr",
-    "UDMBC %",
-    "ANALOG COLOR",
-    "TAPE COLOR +",
+    "DEGREE",
+    "AMOUNT",
+    "TYPE-A",
     "TRANSIENT",
     "masterBypassLabel",
     "graphHintBandHtml",
@@ -80,10 +80,15 @@ required_html = [
     "assets/ui/runtime/knobs/knob_red_64.png",
     "assets/ui/runtime/knobs/knob_black_64.png",
     "assets/ui/runtime/knobs/knob_silver_64.png",
+    "assets/ui/runtime/knobs/knob_reference_hires_56.png",
     "assets/ui/runtime/knobs/knob_platinum_master_gain_64.png",
     "assets/ui/runtime/components/black_button_on.png",
     "assets/ui/runtime/components/ivory_button_on.png",
     "masterRuntimeActive=true",
+    "KNOB_REFERENCE_ROWS=7",
+    "KNOB_REFERENCE_FRAMES=56",
+    "MIX + ADV",
+    "bandClass",
 ]
 for token in required_html:
     assert token in text, token

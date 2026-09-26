@@ -38,18 +38,29 @@ def main():
     derivative=json.loads(DERIVATIVE.read_text(encoding="utf-8"))
     binary=json.loads(BINARY_MANIFEST.read_text(encoding="utf-8"))
     assert staged["status"] in {"staged_locally_pending_binary_ingest","locked"}
-    assert len(staged["knobs"])==7
+    assert len(staged["knobs"])==8
     assert staged["knobs"]["knob_platinum_master_gain_64.png"]["scale_vs_normal"]==1.5
-    assert all(v.get("outer_ring_max_diff")==0 for v in staged["knobs"].values())
+    legacy_knobs={k:v for k,v in staged["knobs"].items() if k!="knob_reference_hires_56.png"}
+    assert all(v.get("outer_ring_max_diff")==0 for v in legacy_knobs.values())
+    hires=staged["knobs"]["knob_reference_hires_56.png"]
+    assert hires["columns"]==8 and hires["rows"]==7 and hires["frames"]==56
+    assert hires["frame"]==164
+    assert hires["sha256"]=="38f0db7672bc571d53d7b3cdef1f04c5381c250e1bee78c39420085aa4ed9ffe"
     assert derivative["status"]=="approved_source_identity_locked"
     assert binary["schema"]==1
-    assert binary["asset_count"]==46==len(binary["assets"])
+    assert binary["asset_count"]==47==len(binary["assets"])
+    assert binary["assets"]["knobs/knob_reference_hires_56.png"]==[
+        2526063,
+        "38f0db7672bc571d53d7b3cdef1f04c5381c250e1bee78c39420085aa4ed9ffe",
+        1312,1148
+    ]
     assert binary["source_archive"]["sha256"]=="1fca9eca20ccc1852310287fe41fbd59341aa018726c3ce764e934b2a7e6c297"
 
     m=json.loads(MANIFEST.read_text(encoding="utf-8"))
     assert m["status"] in {"pending_ingest","locked"}
     missing=[]
-    for name, spec in m["masters"].items():
+    scoped=m.get("scoped_masters",{})
+    for name, spec in {**m["masters"], **scoped}.items():
         p=ROOT/spec["path"]
         if not p.exists():
             missing.append(str(p.relative_to(ROOT)))

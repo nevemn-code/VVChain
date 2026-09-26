@@ -24,3 +24,8 @@ Important:
 - Either use the new 56-frame asset with 8x7 logic, or add per-asset frame metadata.
 - The engineering sprite keeps source knob pixels 1:1 and only center-pads cells to a regular 164x164 grid.
 - The original master remains the visual source of truth.
+
+## v1.0.86 runtime selection
+
+- Ivory: use the 56-frame high-resolution reference sprite.
+- Black: retain the existing transparent locked Silver/Platinum sprites until a transparent black-safe derivative is approved.

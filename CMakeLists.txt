@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(VVChain VERSION 1.0.85 LANGUAGES C CXX)
+project(VVChain VERSION 1.0.86 LANGUAGES C CXX)
 
 include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
@@ -38,6 +38,7 @@ set(VVCHAIN_MASTER_RUNTIME_ASSETS
     assets/ui/runtime/knobs/knob_red_64.png
     assets/ui/runtime/knobs/knob_black_64.png
     assets/ui/runtime/knobs/knob_silver_64.png
+    assets/ui/runtime/knobs/knob_reference_hires_56.png
     assets/ui/runtime/knobs/knob_platinum_master_gain_64.png
     assets/ui/runtime/components/black_button_off.png
     assets/ui/runtime/components/black_button_on.png
