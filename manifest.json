@@ -1,0 +1,12 @@
+{
+  "package": "VVChain_UI_GitHub_Import_v2",
+  "layout_master": "assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png",
+  "knob_master": "assets/ui/master/KNOB_MASTER_HIRES.png",
+  "runtime_knob": "assets/ui/runtime/knobs/knob_reference_hires_56.png",
+  "runtime_geometry": {
+    "columns": 8,
+    "rows": 7,
+    "frames": 56,
+    "frame_px": 164
+  }
+}
