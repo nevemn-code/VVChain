@@ -5,6 +5,7 @@ on:
     branches: [ "main" ]
     paths:
       - "docs/**"
+      - "assets/ui/runtime/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -31,7 +32,22 @@ jobs:
           fetch-depth: 1
           sparse-checkout: |
             docs
+            assets/ui/runtime
           sparse-checkout-cone-mode: true
+
+      - name: Stage approved Master runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf docs/assets/ui/runtime
+          if [ -f assets/ui/runtime/APPROVED.lock ]; then
+            mkdir -p docs/assets/ui
+            cp -a assets/ui/runtime docs/assets/ui/runtime
+            test -f docs/assets/ui/runtime/APPROVED.lock
+            echo "Master runtime staged from the repository source assets."
+          else
+            echo "APPROVED.lock absent: deploy the existing Candidate runtime only."
+          fi
 
       - name: Fast Web validation
         shell: bash

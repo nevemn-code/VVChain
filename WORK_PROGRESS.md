@@ -6,11 +6,11 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.79
+v1.0.80
 
 ## Current checkpoint
 
-**Checkpoint 8 — 1470×1070 Master geometry alignment**
+**Checkpoint 9 — Shared Native/Web runtime deployment path**
 
 ## Master paths
 
@@ -47,6 +47,9 @@ Required exact original binaries:
 - Prevented the old Candidate graph texture, module texture, procedural outer trim, duplicate screws and duplicate card borders from painting over the approved full-panel Master.
 - Repositioned Master MIX/OUT side-by-side in the source panel's top Output block; the platinum OUTPUT control retains its 1.5× runtime sprite.
 - Legacy Candidate geometry remains unchanged while APPROVED.lock is absent.
+- Pages deployment now checks out the root `assets/ui/runtime/` source and copies it byte-for-byte into the docs deployment staging area only when `APPROVED.lock` exists.
+- This is a deployment copy, not a visual generator: Native consumes the root source assets and Web consumes the exact staged copy from that same source.
+- Pages now redeploys when approved runtime assets change, so Native/Web cannot silently diverge after Master activation.
 
 ## Accepted runtime assets
 
