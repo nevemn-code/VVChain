@@ -10,7 +10,7 @@ v1.0.85
 
 ## Current checkpoint
 
-**UI3 Hardware Gold candidate — awaiting visual approval; production v1.0.85 unchanged**
+**UI3 Hardware Gold visual approved — awaiting byte-exact Master PNG ingest; production v1.0.85 unchanged**
 
 ## Master paths
 
@@ -96,19 +96,27 @@ Locked identities:
 
 Future UI changes remain governed by `UI_MASTER_LOCK.md`. Do not regenerate the approved UI from descriptions, SVG, CSS, Canvas, Python/procedural renderers or approximate substitutes. Native and Web must continue to share the same approved runtime source.
 
-## UI3 candidate checkpoint
+## UI3 approved-visual checkpoint
 
-- New work is isolated on branch `ui/ui3-hardware-gold-candidate`.
-- The requested third UI uses the supplied 1586×992 hardware panel as its visual basis.
-- The upper graph visual target is the supplied 939×198 dark/gold EQ / Dynamic EQ reference.
-- Approval preview hashes and the production integration contract are documented in `docs/UI3_HARDWARE_GOLD_CANDIDATE.md`.
+- Branch remains `ui/ui3-hardware-gold-candidate`.
+- The user explicitly approved the latest Hardware Gold / Amber UI visual as the third UI Visual Master source.
+- Approved source identity (exact chat-exported PNG):
+  - intended repository path: `assets/ui/master/VVChain_hardware_gold_master.png`
+  - dimensions: 1492×1054
+  - source mode: RGB PNG
+  - SHA-256: `5ae2b3e3d021123882503c227abcd8f7b5446cdf5b40b97fed491fc209f69631`
+- This exact binary is not yet present in the repository. Under `UI_MASTER_LOCK.md`, no UI3 engineering PNG derivation may begin until the exact Master binary is committed and its SHA-256 is verified.
 - No production Master/runtime PNG has been changed and main remains on the v1.0.85 two-skin runtime.
-- The third master must not be declared approved until the user accepts the candidate visual.
+- No DSP, APVTS parameter, automation, processing-order or audio change is permitted as part of UI3.
+- Knob-animation invariant is now locked for UI3: every frame must use an identical canvas/anchor/centre; the knob body must remain pixel-stationary and only the pointer/state may change. Any frame-to-frame body translation is a FAIL.
 
 ## Remaining
 
-**1 candidate approval checkpoint**
+**1 byte-exact Master ingest checkpoint, then validated PNG extraction groups**
 
 ## Next action
 
-User visually approves the UI3 candidate. Then ingest the approved third Master PNG, extend the Master Lock/manifest to three skins, wire the same approved assets into Native and Web, run validation, version bump and deploy.
+1. Commit the exact approved PNG to `assets/ui/master/VVChain_hardware_gold_master.png`.
+2. Verify dimensions and SHA-256 against the locked identity above.
+3. Only after that PASS, derive the first UI3 engineering PNG group from the Master, validate, commit, and update this file.
+4. Continue group-by-group checkpoints; never accumulate all UI3 assets before committing.
