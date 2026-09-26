@@ -5,6 +5,8 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 MANIFEST=ROOT/"assets/ui/master/master_manifest.json"
+STAGED=ROOT/"assets/ui/runtime/staged_manifest.json"
+DERIVATIVE=ROOT/"assets/ui/master/approved_derivative_sources.json"
 RENDERERS=[
     ROOT/"Tools/generate_ui_png_assets.py",
     ROOT/"Tools/generate_ui_assets.py",
@@ -23,8 +25,18 @@ def main():
     assert (ROOT/"UI_MASTER_LOCK.md").is_file()
     assert (ROOT/"WORK_PROGRESS.md").is_file()
     assert MANIFEST.is_file()
+    assert STAGED.is_file()
+    assert DERIVATIVE.is_file()
     for p in RENDERERS:
         assert not p.exists(), f"retired UI renderer returned: {p}"
+
+    staged=json.loads(STAGED.read_text(encoding="utf-8"))
+    derivative=json.loads(DERIVATIVE.read_text(encoding="utf-8"))
+    assert staged["status"] in {"staged_locally_pending_binary_ingest","locked"}
+    assert len(staged["knobs"])==7
+    assert staged["knobs"]["knob_platinum_master_gain_64.png"]["scale_vs_normal"]==1.5
+    assert all(v.get("outer_ring_max_diff")==0 for v in staged["knobs"].values())
+    assert derivative["status"]=="approved_source_identity_locked"
 
     m=json.loads(MANIFEST.read_text(encoding="utf-8"))
     assert m["status"] in {"pending_ingest","locked"}

@@ -16,3 +16,5 @@
 - `UI_MASTER_LOCK.md`：UI Master 唯一來源、驗收與禁止重新生成規則。
 - `WORK_PROGRESS.md`：長任務 checkpoint、已完成/剩餘項目與下一步。
 - `assets/ui/master/`：只存放使用者確認的原始 Master PNG；不得由 renderer 產生。
+
+- `UI_ASSET_MAP.md`：已核准衍生素材的功能對應、旋鈕配色與 Runtime 合約。\n
