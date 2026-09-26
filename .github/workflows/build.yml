@@ -104,6 +104,14 @@ jobs:
           python3 Tests/project_static_audit.py
         done
 
+    - name: Exact OKK(2) layout contract x100
+      shell: bash
+      run: |
+        for i in {1..100}; do
+          python3 Tests/ui_exact_layout_reference.py >/dev/null
+        done
+        echo "Exact OKK(2) layout contract: 100/100 PASS"
+
     - name: UI Master Lock gate
       shell: bash
       run: |
