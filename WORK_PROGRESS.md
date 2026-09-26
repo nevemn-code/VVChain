@@ -10,7 +10,7 @@ v1.0.85
 
 ## Current checkpoint
 
-**UI3 Hardware Gold Master byte-exact VERIFIED / LOCKED — G01 background extraction is next; production runtime unchanged**
+**UI3 G01 in progress — full-panel RGBA derivative PASS locally; clean graph-bed remains blocked by strict Master-lock; production runtime unchanged**
 
 ## Master paths
 
@@ -116,10 +116,28 @@ Future UI changes remain governed by `UI_MASTER_LOCK.md`. Do not regenerate the 
 
 **10 validated extraction groups / 38 planned PNGs remain; G01 is the first active checkpoint**
 
+## G01 current evidence
+
+### G01A — hardware_gold_full_panel.png
+- Source: locked `assets/ui/master/VVChain_hardware_gold_master.png`
+- Method: RGB→RGBA only; no resampling, redraw, recolour, crop or material change.
+- Output dimensions: 1448×1086
+- Output mode: RGBA
+- Alpha extrema: 255..255
+- RGB pixels vs Master: byte-identical
+- Output bytes: 2,206,153
+- SHA-256: `2f9419ddc6517b28e1c041c4a0f1d691889b6e3327492ad68a05b705de3802a9`
+- Validation: **PASS locally**
+- Runtime admission: **NOT YET** — binary is not committed to the branch yet.
+
+### G01B — hardware_gold_graph_bed.png
+- The locked Master graph contains baked live EQ response curves and numbered nodes 1–4.
+- A clean graph bed cannot be obtained by crop/alpha conversion alone.
+- Removing those baked live objects by generative fill, procedural redraw, CSS/Canvas recreation or AI inpainting would violate `UI_MASTER_LOCK.md`.
+- Therefore G01B is currently **BLOCKED**, not PASS, and must not enter runtime.
+
 ## Next action
 
-1. G01: derive `backgrounds/hardware_gold_full_panel.png` and a clean `backgrounds/hardware_gold_graph_bed.png` from the locked Master only.
-2. Convert runtime derivatives to 8-bit RGBA without changing material, colour, lighting, bevel, AO or geometry.
-3. Compare at 100% / 200% / 400%; graph-bed cleanup must preserve the Master bed while removing only baked live graph content.
-4. PASS only after visual overlay, alpha, size and hash checks.
-5. Commit G01 immediately and update this file before starting G02.
+1. Preserve G01A as the verified full-panel derivative.
+2. Resolve G01B only by a Master-compliant method: exact non-generative source pixels supplied/approved for a clean graph bed, or an explicit policy change authorizing destructive cleanup.
+3. Do not start G02 and do not admit G01 to runtime until G01B passes and both binaries are committed.
