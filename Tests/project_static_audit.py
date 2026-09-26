@@ -95,7 +95,7 @@ assert "if (analyzerOn && p.deltaMonitor)" in processor
 assert 'parameterValue("DELTA_MONITOR") > 0.5f' in editor
 assert "uiThemeButton" in editor_h + editor
 assert '"moduleMuted"' in editor
-assert "UI IVORY" in editor and "UI STUDIO" in editor
+assert "UI IVORY" in editor and "UI BLACK" in editor
 assert 'id="uiThemeQuick"' in web
 assert "vvchain-v1064-dual-hardware-skins" in web
 assert "vvchain-master-runtime-v1076" in web
