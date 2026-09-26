@@ -459,14 +459,14 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 }
 
 .app.masterRuntime .headerControls #masterBypass{
-  position:absolute!important;left:862px!important;top:37px!important;width:106px!important;height:34px!important;
+  position:absolute!important;left:862px!important;top:38px!important;width:105px!important;height:35px!important;
 }
 .app.masterRuntime .headerControls #soloMode{
-  position:absolute!important;left:987px!important;top:37px!important;width:106px!important;height:34px!important;
+  position:absolute!important;left:987px!important;top:38px!important;width:105px!important;height:35px!important;
 }
 .app.masterRuntime .headerControls #uiThemeQuick{display:none!important}
 .app.masterRuntime .headerControls #settingsGear{
-  position:absolute!important;left:1113px!important;top:37px!important;width:70px!important;height:34px!important;min-width:0!important;
+  position:absolute!important;left:1112px!important;top:38px!important;width:69px!important;height:35px!important;min-width:0!important;
 }
 .app.masterRuntime.ivoryTheme .headerControls #masterBypass,
 .app.masterRuntime.ivoryTheme .headerControls #soloMode{
@@ -502,7 +502,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
   width:236px!important;height:570px!important;padding:0!important;margin:0!important;
   border:0!important;border-radius:0!important;box-shadow:none!important;background:none!important;overflow:hidden!important;
 }
-.app.masterRuntime .monitorBand{width:228px!important}
+.app.masterRuntime .monitorBand{width:238px!important;transform:translateX(-8px)!important}
 
 .app.masterRuntime.ivoryTheme .band:not(.monitorBand)::before{
   content:"";position:absolute;left:17px;top:391px;width:204px;height:124px;z-index:0;
@@ -594,30 +594,30 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 }
 .app.masterRuntime .monitorBand .bandHead{display:none!important}
 .app.masterRuntime .monitorBand .masterMonitor{
-  position:absolute!important;inset:0!important;width:228px!important;height:570px!important;padding:0!important;display:block!important;
+  position:absolute!important;inset:0!important;width:238px!important;height:570px!important;padding:0!important;display:block!important;
 }
 .app.masterRuntime .monitorBand .monitorKnobRow{
-  position:absolute!important;inset:0!important;width:228px!important;height:570px!important;
+  position:absolute!important;inset:0!important;width:238px!important;height:570px!important;
   display:block!important;transform:none!important;
 }
-.app.masterRuntime .monitorBand .monitorKnobRow .knob{position:absolute!important;top:70px!important;width:68px!important;height:118px!important}
-.app.masterRuntime .monitorBand .monitorKnobRow .knob:nth-child(1){left:23px!important}
-.app.masterRuntime .monitorBand .monitorKnobRow .knob:nth-child(2){left:128px!important}
-.app.masterRuntime .monitorBand .monitorKnobRow .knob:nth-child(1) .dial{width:76px!important;height:76px!important;transform:translateX(-4px)}
-.app.masterRuntime .monitorBand .monitorKnobRow .knob:nth-child(2) .dial{width:84px!important;height:84px!important;transform:translateX(-8px)}
+.app.masterRuntime .monitorBand .monitorKnobRow .knob{position:absolute!important;top:70px!important;width:90px!important;height:118px!important}
+.app.masterRuntime .monitorBand .monitorKnobRow .knob:nth-child(1){left:21px!important}
+.app.masterRuntime .monitorBand .monitorKnobRow .knob:nth-child(2){left:125px!important}
+.app.masterRuntime .monitorBand .monitorKnobRow .knob:nth-child(1) .dial{width:76px!important;height:76px!important;margin:0 auto!important}
+.app.masterRuntime .monitorBand .monitorKnobRow .knob:nth-child(2) .dial{width:84px!important;height:84px!important;margin:0 auto!important}
 .app.masterRuntime .monitorBand .deltaBtn{
-  position:absolute!important;left:15px!important;top:203px!important;width:94px!important;height:35px!important;
+  position:absolute!important;left:24px!important;top:203px!important;width:94px!important;height:35px!important;
 }
 .app.masterRuntime .monitorBand .masterPanelBypass{
-  position:absolute!important;left:117px!important;top:203px!important;width:96px!important;height:35px!important;
+  position:absolute!important;left:124px!important;top:203px!important;width:98px!important;height:35px!important;
 }
 .app.masterRuntime .monitorBand .soloPreHit,
 .app.masterRuntime .monitorBand .soloPostHit{
   position:absolute!important;top:460px!important;height:34px!important;z-index:12!important;
   background:none!important;border:0!important;box-shadow:none!important;color:transparent!important;
 }
-.app.masterRuntime .monitorBand .soloPreHit{left:15px!important;width:94px!important}
-.app.masterRuntime .monitorBand .soloPostHit{left:116px!important;width:97px!important}
+.app.masterRuntime .monitorBand .soloPreHit{left:25px!important;width:88px!important}
+.app.masterRuntime .monitorBand .soloPostHit{left:127px!important;width:92px!important}
 
 .app.masterRuntime.ivoryTheme .monitorBand .deltaBtn,
 .app.masterRuntime.ivoryTheme .monitorBand .masterPanelBypass{
@@ -1288,7 +1288,7 @@ const analogKnob=makeKnob(bottomGrid,{label:"AMOUNT",controlId:"EQ_COLOR_B"+(n+1
 analogKnob.classList.add("analogKnob");
 let syncTapeLed=()=>{};
 const typeMax=[50,60,70,90][n];
-const typeKnob=makeKnob(bottomGrid,{label:"TYPE-A",controlId:"TAPE_DEGREE"+(n+1),get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:typeMax,accent:cols[n],markTouched:()=>uiTouched.tape[n]=true,formatValue:v=>tape(v,typeMax),parseValue:raw=>{const x=parseFloat(String(raw).replace(/[^0-9+\-.]/g,""));return Number.isFinite(x)?clamp(x,0,10)*typeMax/10:NaN},mutedWhen:()=>state.type.bypass||(uiTouched.tape[n]&&(state.type.bandBypass[n]||state.type.degree[n]<=0.0001)),afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed();knobRefreshers.forEach(fn=>fn())}});
+const typeKnob=makeKnob(bottomGrid,{label:"TYPEA",controlId:"TAPE_DEGREE"+(n+1),get:()=>state.type.degree[n],set:v=>state.type.degree[n]=v,min:0,max:typeMax,accent:cols[n],markTouched:()=>uiTouched.tape[n]=true,formatValue:v=>tape(v,typeMax),parseValue:raw=>{const x=parseFloat(String(raw).replace(/[^0-9+\-.]/g,""));return Number.isFinite(x)?clamp(x,0,10)*typeMax/10:NaN},mutedWhen:()=>state.type.bypass||(uiTouched.tape[n]&&(state.type.bandBypass[n]||state.type.degree[n]<=0.0001)),afterSet:v=>{state.type.bandBypass[n]=v<=0.0001;syncTapeLed();knobRefreshers.forEach(fn=>fn())}});
 const transientKnob=makeKnob(bottomGrid,{label:"TRANSIENT",controlId:"TRANSIENT"+(n+1),get:()=>state.transient[n],set:v=>state.transient[n]=v,min:-100,max:100,suffix:" %",accent:"#34c759",formatDigits:1});
 const mode=document.createElement("button");mode.className="modeSwitch";mode.title="TT = Tube Saturation；SS = Solid-State Saturation";mode.innerHTML="<span>TT</span><i></i><span>SS</span>";
 const syncMode=()=>{mode.classList.toggle("ss",!!state.eq.mode[n]);mode.classList.toggle("muted",uiTouched.analog[n]&&state.eq.color[n]<=0.0001)};mode.onclick=()=>{state.eq.mode[n]=!state.eq.mode[n];syncMode();sendParams();drawEQ()};syncMode();analogKnob.appendChild(mode);
@@ -1529,14 +1529,12 @@ function dynamicPopupBounds(b,w,h){
 function drawEQ(){
   const r=eqCanvas.getBoundingClientRect(),w=r.width,h=r.height;
   eqCtx.clearRect(0,0,w,h);
+  const exactIvory=masterRuntimeActive&&ivoryTheme;
 
-  if(masterRuntimeActive){
-    // v1.0.87 upper-section cleanup: do not modify the approved PNG.
-    // This live viewport intentionally hides the obsolete baked split graph,
-    // duplicate frequency labels and duplicate grid inside the old panel.
+  if(masterRuntimeActive&&!exactIvory){
     eqCtx.fillStyle="#0c0f10";
     eqCtx.fillRect(0,0,w,h);
-  }else{
+  }else if(!masterRuntimeActive){
     eqCtx.fillStyle=tc("rgba(7,25,28,.70)","rgba(18,17,13,.68)");
     eqCtx.fillRect(0,0,w,h);
   }
@@ -1576,7 +1574,7 @@ function drawEQ(){
     eqCtx.stroke();
   }
 
-  if(masterRuntimeActive){
+  if(masterRuntimeActive&&!exactIvory){
     eqCtx.strokeStyle=ivoryTheme?"#a77b3766":"#a9634366";
     eqCtx.lineWidth=1;
     eqCtx.strokeRect(.5,.5,Math.max(0,w-1),Math.max(0,h-1));
@@ -1584,6 +1582,7 @@ function drawEQ(){
 
   // Gain axis: the full usable range is exactly -18 .. +18 dB.
   // Every 3 dB is shown and the dB labels stay on the LEFT.
+  if(!exactIvory){
   const dbTicks=[18,15,12,9,6,3,0,-3,-6,-9,-12,-15,-18];
   dbTicks.forEach(db=>{
     const y=dbToY(db,h);
@@ -1655,6 +1654,8 @@ function drawEQ(){
     eqCtx.quadraticCurveTo(x+eightWidth,markerY+eightHeight,x,markerY);
     eqCtx.stroke();
     eqCtx.textAlign="left";
+  }
+
   }
 
   // Static Offset response.
