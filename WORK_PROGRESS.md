@@ -6,11 +6,11 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.78
+v1.0.79
 
 ## Current checkpoint
 
-**Checkpoint 7 — Static-audit recovery + CI revalidation**
+**Checkpoint 8 — 1470×1070 Master geometry alignment**
 
 ## Master paths
 
@@ -42,6 +42,11 @@ Required exact original binaries:
 - The earlier v1.0.75 stale 128-px static-audit assertion was already corrected to permit the approved 192-px platinum Master Gain sprite.
 - VVChain Fast CI/CD #1333 confirmed Web smoke ×10 passes at v1.0.77; it then exposed literal `\\n` tokens accidentally embedded in two new static-audit assertion lines.
 - Replaced only those malformed assertion separators with real Python newlines; the PNG-signature escape string remains intentionally unchanged.
+- VVChain Fast CI/CD #1334 Fast Gate passed completely at v1.0.78: Web smoke ×10, project audit ×10, UI Master Lock gate, UI regression ×10 and analyzer matrix ×10 all PASS.
+- Aligned Native Master geometry to the approved 1470×1070 blank hardware panel: EQ interior 27/101/1416/281, lower frame starts at y=392, 5 hardware columns use the real lower-panel span, and row spacing expands only when Master runtime is active.
+- Prevented the old Candidate graph texture, module texture, procedural outer trim, duplicate screws and duplicate card borders from painting over the approved full-panel Master.
+- Repositioned Master MIX/OUT side-by-side in the source panel's top Output block; the platinum OUTPUT control retains its 1.5× runtime sprite.
+- Legacy Candidate geometry remains unchanged while APPROVED.lock is absent.
 
 ## Accepted runtime assets
 
