@@ -6,11 +6,11 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.77
+v1.0.78
 
 ## Current checkpoint
 
-**Checkpoint 6 — Web syntax recovery + CI revalidation**
+**Checkpoint 7 — Static-audit recovery + CI revalidation**
 
 ## Master paths
 
@@ -40,6 +40,8 @@ Required exact original binaries:
 - VVChain Fast CI/CD #1332 exposed one Web-only integration defect: literal `\\n` characters were inserted into the `drawEQ()` Master-runtime guard, causing Node syntax validation to fail.
 - Replaced those escaped characters with real JavaScript newlines. No DSP, parameter, automation or interaction logic changed.
 - The earlier v1.0.75 stale 128-px static-audit assertion was already corrected to permit the approved 192-px platinum Master Gain sprite.
+- VVChain Fast CI/CD #1333 confirmed Web smoke ×10 passes at v1.0.77; it then exposed literal `\\n` tokens accidentally embedded in two new static-audit assertion lines.
+- Replaced only those malformed assertion separators with real Python newlines; the PNG-signature escape string remains intentionally unchanged.
 
 ## Accepted runtime assets
 
