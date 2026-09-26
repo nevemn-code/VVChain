@@ -25,24 +25,19 @@ void SettingsGearButton::setIvoryTheme(bool ivory)
     repaint();
 }
 
-void SettingsGearButton::paintButton(juce::Graphics& g, bool highlighted, bool down)
+void SettingsGearButton::paintButton(
+    juce::Graphics& g, bool highlighted, bool down)
 {
-    auto r = getLocalBounds().toFloat().reduced(0.5f);
-    const bool active = panelOpen || down;
-    const auto bg = ivoryTheme
-        ? (active ? juce::Colour(0xffd7cdbd) : juce::Colour(0xffeee7dc))
-        : (active ? juce::Colour(0xff30353d) : juce::Colour(0xff171a1f));
-    const auto border = ivoryTheme
-        ? (highlighted || active ? juce::Colour(0xff81786d) : juce::Colour(0xffb8aea0))
-        : (highlighted || active ? juce::Colour(0xff7d8792) : juce::Colour(0xff454b53));
-    const auto icon = ivoryTheme
-        ? juce::Colour(0xff34383d)
-        : (highlighted || active ? juce::Colour(0xffedf2f7) : juce::Colour(0xff8d96a0));
+    // Use the editor LookAndFeel for the button body. In v1.0.71 that body is
+    // the same clean PNG button asset as the rest of the hardware UI.
+    getLookAndFeel().drawButtonBackground(
+        g, *this, juce::Colours::transparentBlack,
+        highlighted, down || panelOpen);
 
-    g.setColour(bg);
-    g.fillRoundedRectangle(r, 4.0f);
-    g.setColour(border);
-    g.drawRoundedRectangle(r, 4.0f, 1.0f);
+    auto r = getLocalBounds().toFloat().reduced(0.5f);
+    const auto icon = ivoryTheme
+        ? juce::Colour(0xffffefd2)
+        : juce::Colour(0xffeef7f7);
 
     const float cx = r.getCentreX();
     const float cy = r.getCentreY();
@@ -54,15 +49,18 @@ void SettingsGearButton::paintButton(juce::Graphics& g, bool highlighted, bool d
     {
         g.saveState();
         g.addTransform(juce::AffineTransform::rotation(
-            juce::MathConstants<float>::twoPi * static_cast<float>(i) / 8.0f,
+            juce::MathConstants<float>::twoPi
+                * static_cast<float>(i) / 8.0f,
             cx, cy));
-        g.fillRoundedRectangle(cx - 1.35f, cy - outer - 1.1f,
-                               2.7f, 3.1f, 0.7f);
+        g.fillRoundedRectangle(
+            cx - 1.35f, cy - outer - 1.1f,
+            2.7f, 3.1f, 0.7f);
         g.restoreState();
     }
 
     g.drawEllipse(cx - 5.1f, cy - 5.1f, 10.2f, 10.2f, 1.6f);
-    g.drawEllipse(cx - inner, cy - inner, inner * 2.0f, inner * 2.0f, 1.5f);
+    g.drawEllipse(cx - inner, cy - inner,
+                  inner * 2.0f, inner * 2.0f, 1.5f);
 }
 
 void SettingsDismissOverlay::mouseDown(const juce::MouseEvent&)
