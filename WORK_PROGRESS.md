@@ -6,11 +6,11 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.74
+v1.0.75
 
 ## Current checkpoint
 
-**Checkpoint 3 — Approved derivative identity + engineering asset staging**
+**Checkpoint 4 — Native Master-runtime integration bridge**
 
 ## Master paths
 
@@ -27,6 +27,12 @@ Required exact original binaries:
 - Recorded that existing `docs/assets/ui/png/` assets remain unapproved Candidates until Master comparison.
 - Added resumable checkpoint state.
 - Bumped repository-visible version references to v1.0.72 for the initial GitHub change batch.\n- Recorded byte-exact SHA-256, dimensions, byte counts and RGBA mode for both user-approved Master PNGs in `assets/ui/master/master_manifest.json`.\n- Added `Tests/ui_master_lock.py` so future CI cannot silently reintroduce the retired renderer or accept a wrong Master binary.\n- Added explicit runtime and rejected/candidate asset areas.\n- VVChain Fast CI/CD #1328 completed successfully for Checkpoint 1.\n- VVChain Fast CI/CD #1329 completed successfully for Checkpoint 2, including the UI Master Lock gate.\n- Locked exact identities of all user-approved panel/button/icon/knob derivative source sheets.\n- Staged seven engineered knob sprites locally: six metal colours at 128 px/frame and platinum Master Gain at 192 px/frame (1.5x).\n- Rebuilt knob state sequences so the metal body and amber outer LED ring are fixed across all 64 states; measured outer-ring max pixel delta = 0 for every colour.\n- Pointer motion is 64 states over -125°..+125°, constructed at 4x sampling then downsampled.\n- Staged direct-crop RGBA button/square/toggle/LED/screw assets from the approved source sheets; no procedural redraw.
+- Added a Native Master runtime integration bridge guarded by `assets/ui/runtime/APPROVED.lock`; without the lock, the existing Candidate runtime remains active and buildable.
+- CMake now refuses an incomplete Master runtime if APPROVED.lock exists but any required asset is missing.
+- Prepared Native loading for the full Black/Ivory approved panel backgrounds, six colour knob sprites, 1.5x platinum Master Gain sprite, approved buttons/LEDs/screws and slider assets.
+- Knob selection is parameter-ID based: EQ=silver, Dynamic EQ=blue, UDMBC=green, Analog=gold, Tape=red, Transient/XOVER=black, OUTPUT_LEVEL=1.5x platinum.
+- Native sprite reader now supports both 128 px normal frames and 192 px Master Gain frames instead of hard-coding 128.
+- When the Master runtime becomes approved, Native editor geometry switches to the 1470x1070 Master panel basis while preserving DSP/automation/parameter IDs.
 
 ## Accepted runtime assets
 

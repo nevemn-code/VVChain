@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(VVChain VERSION 1.0.74 LANGUAGES C CXX)
+project(VVChain VERSION 1.0.75 LANGUAGES C CXX)
 
 include(FetchContent)
 set(CMAKE_CXX_STANDARD 20)
@@ -76,6 +76,57 @@ juce_add_binary_data(VVChainAssets
         docs/assets/ui/png/bypass_led_red.png
 )
 
+
+# Master-locked UI runtime is opt-in and atomic.  The new skin is not compiled
+# until APPROVED.lock exists and every required binary asset is present.
+set(VVCHAIN_MASTER_LOCK_SENTINEL "${CMAKE_SOURCE_DIR}/assets/ui/runtime/APPROVED.lock")
+set(VVCHAIN_MASTER_RUNTIME_ASSETS
+    assets/ui/runtime/backgrounds/black_full_panel.png
+    assets/ui/runtime/backgrounds/ivory_full_panel.png
+    assets/ui/runtime/knobs/knob_gold_64.png
+    assets/ui/runtime/knobs/knob_blue_64.png
+    assets/ui/runtime/knobs/knob_green_64.png
+    assets/ui/runtime/knobs/knob_red_64.png
+    assets/ui/runtime/knobs/knob_black_64.png
+    assets/ui/runtime/knobs/knob_silver_64.png
+    assets/ui/runtime/knobs/knob_platinum_master_gain_64.png
+    assets/ui/runtime/components/black_button_off.png
+    assets/ui/runtime/components/black_button_on.png
+    assets/ui/runtime/components/black_button_pressed.png
+    assets/ui/runtime/components/black_button_disabled.png
+    assets/ui/runtime/components/ivory_button_off.png
+    assets/ui/runtime/components/ivory_button_on.png
+    assets/ui/runtime/components/ivory_button_pressed.png
+    assets/ui/runtime/components/ivory_button_disabled.png
+    assets/ui/runtime/components/black_led_off.png
+    assets/ui/runtime/components/black_led_on.png
+    assets/ui/runtime/components/ivory_led_off.png
+    assets/ui/runtime/components/ivory_led_on.png
+    assets/ui/runtime/components/bypass_red.png
+    assets/ui/runtime/components/black_screw.png
+    assets/ui/runtime/components/ivory_screw.png
+    assets/ui/runtime/components/black_slider_track.png
+    assets/ui/runtime/components/black_slider_thumb.png
+    assets/ui/runtime/components/ivory_slider_track.png
+    assets/ui/runtime/components/ivory_slider_thumb.png
+)
+
+set(VVCHAIN_HAS_MASTER_LOCK_UI 0)
+if(EXISTS "${VVCHAIN_MASTER_LOCK_SENTINEL}")
+    foreach(asset IN LISTS VVCHAIN_MASTER_RUNTIME_ASSETS)
+        if(NOT EXISTS "${CMAKE_SOURCE_DIR}/${asset}")
+            message(FATAL_ERROR "APPROVED.lock exists but required Master UI asset is missing: ${asset}")
+        endif()
+    endforeach()
+
+    juce_add_binary_data(VVChainMasterAssets
+        HEADER_NAME VVChainMasterAssets.h
+        NAMESPACE VVChainMasterAssets
+        SOURCES ${VVCHAIN_MASTER_RUNTIME_ASSETS}
+    )
+    set(VVCHAIN_HAS_MASTER_LOCK_UI 1)
+endif()
+
 juce_add_plugin(VVChain
     COMPANY_NAME "VVChain"
     BUNDLE_ID "com.vvchain.plugin"
@@ -115,6 +166,7 @@ endif()
 
 target_compile_definitions(VVChain PRIVATE
     VVCHAIN_GIT_COMMIT="${VVCHAIN_GIT_COMMIT}"
+    VVCHAIN_HAS_MASTER_LOCK_UI=${VVCHAIN_HAS_MASTER_LOCK_UI}
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0
@@ -128,3 +180,7 @@ target_link_libraries(VVChain PRIVATE
 
 juce_generate_juce_header(VVChain)
 
+
+if(VVCHAIN_HAS_MASTER_LOCK_UI)
+    target_link_libraries(VVChain PRIVATE VVChainMasterAssets)
+endif()
