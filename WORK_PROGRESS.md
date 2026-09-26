@@ -10,74 +10,75 @@ v1.0.83
 
 ## Current checkpoint
 
-**Checkpoint 13 — Approved runtime active; Candidate retirement in progress**
+**COMPLETE — Master-locked Black / Ivory runtime deployed**
 
 ## Master paths
 
-Required exact original Visual Master binaries:
+Exact original Visual Master binaries:
 
 - `assets/ui/master/VVChain_black_master.png`
 - `assets/ui/master/VVChain_ivory_master.png`
 
-Their locked identities remain:
+Locked identities:
 
 - Black: 1448×1086 RGBA, 3,012,513 bytes, SHA-256 `173d086d919d0a0b5c0c3100a060dc1929a918f9c1f8e4328424cb2e5e817b38`
 - Ivory: 1448×1086 RGBA, 3,115,458 bytes, SHA-256 `9f99da776c8f081abd512bae269c79e47524c011cde190a56c2172ec9957effb`
 
-## Completed checkpoints
+## Final production state
 
-- Master Asset Lock policy is permanent and is referenced by project rules.
-- The old Python/procedural UI renderer has been retired from the repository.
-- Existing `docs/assets/ui/png/` files are Candidate-only and cannot be treated as Master-faithful.
-- Exact Visual Master identities are locked in `assets/ui/master/master_manifest.json`.
-- Approved panel/button/icon/knob derivative source identities are locked separately and do not supersede the full Masters.
-- Six normal metal knob colours are staged: Gold, Blue, Green, Red, Black and Silver.
-- Platinum Master Gain is staged at 1.5× normal knob size.
-- All knob sprites use 64 states; the body and amber outer LED ring remain fixed and only the pointer state moves.
-- Knob engineering used X4 sampling before final downsampling.
-- Native Master runtime bridge is guarded by `assets/ui/runtime/APPROVED.lock`.
-- Web Master runtime uses the same approval sentinel and the same source runtime files.
-- Native/Web parameter-ID knob mapping is aligned: EQ=silver, Dynamic EQ=blue, UDMBC=green, Analog=gold, Tape=red, Transient/XOVER=black, OUTPUT_LEVEL=platinum 1.5×.
-- Native Master geometry is aligned to the approved 1470×1070 engineering panel basis.
-- Old Candidate graph/module textures, duplicate procedural frames and duplicate screws are suppressed when the Master runtime is active.
-- Pages deployment copies the approved root runtime byte-for-byte; it does not redraw or regenerate UI assets.
-- Fast CI/CD #1334 passed all Fast Gate checks after the syntax/static-audit corrections.
-- Fast CI/CD #1336 passed completely: Fast Gate, Windows VST3 Release and Full Native/DSP Validation all succeeded.
-- Added `assets/ui/runtime/binary_manifest.json` covering all 46 approved runtime PNGs with byte count, SHA-256 and exact dimensions.
-- Locked source archive identity: `VVChain_UI_Runtime_Engineering_v1.0.74.zip`, 7,322,749 bytes, SHA-256 `1fca9eca20ccc1852310287fe41fbd59341aa018726c3ce764e934b2a7e6c297`.
-- Added `Tools/validate_master_runtime.py`. It validates existing runtime files and becomes strict when APPROVED.lock exists.
-- Added `Tools/approve_master_runtime.py`. It is validation-only: it never renders pixels and can create APPROVED.lock only after the exact Masters and every runtime PNG pass byte/hash/dimension/RGBA checks.
-- CI and Pages are wired to the runtime integrity validator.
-- The exact original Black and Ivory Visual Master PNG binaries are now committed at their permanent locked paths.
-- Master manifest status is now `locked`; the committed binaries match the previously locked SHA-256, byte counts, dimensions and RGBA contract exactly.
-- Added a one-time issue #45 binary handoff gate on main. It accepts only the exact locked Runtime ZIP attachment from the repository owner, verifies archive SHA-256/bytes, verifies all 46 PNGs, creates APPROVED.lock only after PASS, and pushes the binaries to this branch.
-- Native is prepared to stop compiling/linking the rejected VVChainAssets bundle as soon as APPROVED.lock exists; the approved Master bundle becomes the only runtime image source.
-- Native Master mode no longer selects the rejected muted Candidate images for local/global bypass. Theme-correct disabled button PNGs are used and knobs retain approved pixels with muted opacity.
-- Pages validation is now strict Master-only after activation.
-- Binary ingest PASS from issue #45: archive SHA/bytes verified, 46/46 PNGs matched the locked manifest, and APPROVED.lock was created.
-- Rejected Candidate Web CSS and legacy PNG references are removed in v1.0.83; Pages and Native now require the approved Master runtime.
+- The approved Master PNGs are the only Visual Masters.
+- The old Python/procedural UI renderer is retired.
+- `assets/ui/runtime/APPROVED.lock` is present.
+- Exactly 46 approved runtime PNGs are committed under `assets/ui/runtime/`.
+- Every runtime PNG is locked by byte count, SHA-256, dimensions and 8-bit RGBA contract in `binary_manifest.json`.
+- Runtime source archive identity is locked: `VVChain_UI_Runtime_Engineering_v1.0.74.zip`, 7,322,749 bytes, SHA-256 `1fca9eca20ccc1852310287fe41fbd59341aa018726c3ce764e934b2a7e6c297`.
+- Six normal metal knob colours are active: Gold, Blue, Green, Red, Black and Silver.
+- Platinum Master Gain uses the 1.5× runtime sprite.
+- Knob state engineering used X4 sampling and 64 states; the amber outer LED ring remains fixed.
+- Native and Web use the same approved root runtime source.
+- Pages deploys a byte-for-byte staged copy of the approved root runtime.
+- Native production CMake requires the approved Master runtime and no longer links the rejected Candidate bundle.
+- Web production runtime is Master-only; the rejected Candidate CSS/path is removed.
+- Rejected legacy `docs/assets/ui/png/` Candidate files are completely deleted: 0 remain.
+- UI labels now identify the dark skin as BLACK / BLACK GOLD instead of the rejected STUDIO TEAL wording.
 
-## Accepted runtime assets
+## Validation evidence
 
-All 46 exact runtime PNG binaries are committed and byte-validated. `APPROVED.lock` is present, so the Master runtime is now the only production UI path for Native and Web.
-
-## Rejected / unapproved assets
-
-The rejected legacy `docs/assets/ui/png/` Candidate set is being removed in this checkpoint. No production code or deployment path may reference it.
-
-## Remaining
-
-1. Run final Fast Gate, Windows VST3 and Full Native/DSP validation with the approved runtime active.
-2. Verify Pages deployment stages exactly the same 46 approved runtime PNGs.
-3. Verify Black/Ivory, six-colour knobs, platinum 1.5× Master Gain and bypass state assets in the deployed Web runtime.
-4. Merge PR #44 only after all checks pass.
-5. Confirm main branch Web + VST3 deployment.
-6. Set Remaining to 0 only after the final approved build/deploy passes.
+- Issue #45 binary ingest: PASS — exact archive SHA/bytes verified and 46/46 PNGs matched the locked per-file manifest before `APPROVED.lock` was created.
+- PR validation, Fast CI/CD #1369 / run 36226292789: PASS.
+  - Fast Gate: PASS.
+  - JavaScript / Web smoke ×10: PASS.
+  - Whole-project static audit ×10: PASS.
+  - UI Master Lock gate: PASS.
+  - UI / interaction regression ×10: PASS.
+  - Analyzer contribution matrix ×10: PASS.
+  - Full Native / DSP Validation: PASS.
+  - Windows VST3 Release build/package/upload: PASS.
+- PR #44 merged to `main` as `a83f665332650608b4c5ec3774ee12be6aad51f7`.
+- Main Pages #544 / run 36226682246: PASS.
+  - Master runtime APPROVED + binary hashes: PASS.
+  - Pages approved Master runtime contract: PASS.
+  - Web version/cache parity: PASS.
+  - GitHub Pages deployment: PASS.
+  - Deployment URL: `https://nevemn-code.github.io/VVChain/`.
+- Main Fast CI/CD #1370 / run 36226682254: PASS.
+  - Fast Gate: PASS.
+  - Windows VST3 Release: PASS.
+  - Main artifact: `VVChain-v1.0.83-Windows-VST3`.
+- Final main repository check:
+  - approved runtime PNGs: 46
+  - rejected Candidate PNGs under `docs/assets/ui/png/`: 0
+  - exact Master PNGs: 2
+  - `APPROVED.lock`: present
 
 ## Safety / compatibility constraint
 
-Never create APPROVED.lock while any binary is missing, mismatched, substituted or merely similar. Never delete the currently referenced Candidate runtime before the approved replacement is present and validated.
+Future UI changes remain governed by `UI_MASTER_LOCK.md`. Do not regenerate the approved UI from descriptions, SVG, CSS, Canvas, Python/procedural renderers or approximate substitutes. Native and Web must continue to share the same approved runtime source.
+
+## Remaining
+
+**0**
 
 ## Next action
 
-Run activated-runtime CI after Candidate deletion. If all checks pass, mark PR #44 ready, merge to main, verify Pages and Windows VST3 outputs, close issue #45, then set Remaining to 0.
+None for this migration. Any future UI change starts as a new Master-locked checkpoint rather than modifying the approved runtime in place without validation.
