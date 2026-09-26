@@ -29,7 +29,7 @@ for token in [
 for token in [
     "const int cardY = masterRuntime ? 351 : 404;",
     "const int cardW = masterRuntime",
-    "masterRuntime ? 236",
+    "? 236",
     "masterRuntime ? 570",
     "grid-template-columns:236px 236px 236px 236px 228px",
 ]:
