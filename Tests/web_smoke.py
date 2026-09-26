@@ -56,7 +56,7 @@ required_html = [
     "grid-template-columns:repeat(4,minmax(0,1fr)) 1fr",
     "DEGREE",
     "AMOUNT",
-    "TYPE-A",
+    "TYPEA",
     "TRANSIENT",
     "masterBypassLabel",
     "graphHintBandHtml",
