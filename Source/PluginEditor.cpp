@@ -54,10 +54,14 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawKnobFrame(
         return;
 
     constexpr int columns = 8;
-    constexpr int rows = 8;
+    const int candidateFrameWidth = strip.getWidth() / columns;
+    const bool isReference56 =
+        candidateFrameWidth > 0
+        && strip.getHeight() == candidateFrameWidth * 7;
+    const int rows = isReference56 ? 7 : 8;
     const int frameWidth = strip.getWidth() / columns;
     const int frameHeight = strip.getHeight() / rows;
-    constexpr int frameCount = columns * rows;
+    const int frameCount = columns * rows;
 
     jassert(frameWidth > 0 && frameHeight > 0);
     jassert(strip.getWidth() == frameWidth * columns);
@@ -154,6 +158,7 @@ VVChainAudioProcessorEditor::MetalLookAndFeel::MetalLookAndFeel()
     VVCHAIN_MASTER_IMG(knobRed, knob_red_64);
     VVCHAIN_MASTER_IMG(knobBlack, knob_black_64);
     VVCHAIN_MASTER_IMG(knobSilver, knob_silver_64);
+    VVCHAIN_MASTER_IMG(knobReferenceHires, knob_reference_hires_56);
     VVCHAIN_MASTER_IMG(knobPlatinumMaster, knob_platinum_master_gain_64);
 
     studioAssets.buttonOff = loadImage(
@@ -223,7 +228,8 @@ bool VVChainAudioProcessorEditor::MetalLookAndFeel::isMasterRuntimeActive() cons
 {
 #if VVCHAIN_HAS_MASTER_LOCK_UI
     return blackFullPanel.isValid() && ivoryFullPanel.isValid()
-        && knobSilver.isValid() && knobPlatinumMaster.isValid();
+        && knobSilver.isValid() && knobReferenceHires.isValid()
+        && knobPlatinumMaster.isValid();
 #else
     return false;
 #endif
@@ -253,10 +259,12 @@ VVChainAudioProcessorEditor::MetalLookAndFeel::selectKnobStrip(
     const auto id = slider.getProperties().getWithDefault(
         "vvParameterId", juce::var()).toString();
 
-    // v1.0.84 reference layout: the supplied third reference uses one
-    // neutral hardware knob family across the four bands. Reuse the already
-    // approved Silver sprite byte-for-byte; Master OUT keeps the existing
-    // 1.5x Platinum asset. No runtime PNG is modified or substituted.
+    // v1.0.86 scoped knob master:
+    // Ivory uses the user-approved 56-frame high-resolution knob sheet.
+    // Black keeps the existing transparent locked sprites because the supplied
+    // high-resolution source contains an Ivory background field.
+    if (ivoryTheme && knobReferenceHires.isValid())
+        return knobReferenceHires;
     if (id == "OUTPUT_LEVEL" && knobPlatinumMaster.isValid())
         return knobPlatinumMaster;
     if (knobSilver.isValid())
@@ -333,10 +341,18 @@ void VVChainAudioProcessorEditor::MetalLookAndFeel::drawRotarySlider(
     auto knobBounds = juce::Rectangle<float>(side, side)
         .withCentre({ area.getCentreX(), area.getCentreY() });
 
+    constexpr int spriteColumns = 8;
+    const int candidateFrameWidth = knobStrip.getWidth() / spriteColumns;
+    const int spriteRows =
+        candidateFrameWidth > 0
+        && knobStrip.getHeight() == candidateFrameWidth * 7
+            ? 7 : 8;
+    const int spriteFrames = spriteColumns * spriteRows;
     const int frame = juce::jlimit(
-        0, 63,
+        0, spriteFrames - 1,
         (int) std::lround(
-            juce::jlimit(0.0f, 1.0f, sliderPosProportional) * 63.0f));
+            juce::jlimit(0.0f, 1.0f, sliderPosProportional)
+            * static_cast<float>(spriteFrames - 1)));
 
     const float knobOpacity = (localMuted || monochrome) ? 0.58f : 1.0f;
     drawKnobFrame(g, knobStrip, frame, knobBounds, knobOpacity);
@@ -798,7 +814,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
         // The two EQ / ANALOG controls live inside every BAND card.
         // They intentionally remain attached to the shared DSP parameters.
-        addKnob("EQ_COLOR_B" + n, "ANALOG COLOR", 0, 60, .1,
+        addKnob("EQ_COLOR_B" + n, "AMOUNT", 0, 60, .1,
                 parameterValue("EQ_COLOR" + n), " %", b, 6,
                 juce::Colour(0xff60a5fa), false, "EQ_COLOR" + n);
 
@@ -865,14 +881,14 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addAndMakeVisible(*soloButtons[(size_t) b]);
 
         // Main screen intentionally keeps only the three UDMBC performance knobs.
-        addKnob("UDMBC_DEGREE" + n, "UDMBC %", 0, 100, .1,
+        addKnob("UDMBC_DEGREE" + n, "DEGREE", 0, 100, .1,
                 parameterValue("UDMBC_DEGREE" + n), " %", b, 3, juce::Colour(0xfffacc15));
         addKnob("UDMBC_COMP_A" + n, "ATTACK", .1, 250, .1,
                 parameterValue("UDMBC_COMP_A" + n), " ms", b, 4, juce::Colour(0xfffacc15));
         addKnob("UDMBC_COMP_R" + n, "RELEASE", 10, 2500, 1,
                 parameterValue("UDMBC_COMP_R" + n), " ms", b, 5, juce::Colour(0xfffacc15));
 
-        addKnob("TAPE_DEGREE" + n, "TAPE COLOR +", 0, 100, .1,
+        addKnob("TAPE_DEGREE" + n, "TYPE-A", 0, 100, .1,
                 parameterValue("TAPE_DEGREE" + n), "", b, 7, c, true);
 
         addKnob("TRANSIENT" + n, "TRANSIENT", -100, 100, .1,
@@ -917,12 +933,12 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
                 parameterValue("UDMBC_LIFT_M" + n), " %", b, 23, c);
         addKnob("UDMBC_COMP_T" + n, "COMP THRESH", -24, 0, .1,
                 parameterValue("UDMBC_COMP_T" + n), " dB", b, 24, c);
-        addKnob("UDMBC_COMP_M" + n, "COMP MIX", 0, 100, .1,
+        addKnob("UDMBC_COMP_M" + n, "MIX", 0, 100, .1,
                 parameterValue("UDMBC_COMP_M" + n), " %", b, 25, c);
-        addKnob("UDMBC_LEVEL" + n, "BAND LEVEL", -24, 12, .1,
+        addKnob("UDMBC_LEVEL" + n, "LEVEL", -24, 12, .1,
                 parameterValue("UDMBC_LEVEL" + n), " dB", b, 26, c);
 
-        advancedButtons[(size_t) b] = std::make_unique<juce::TextButton>("+ ADV");
+        advancedButtons[(size_t) b] = std::make_unique<juce::TextButton>("MIX + ADV");
         advancedButtons[(size_t) b]->setTooltip("開啟 BAND " + n + " 的 UDMBC ADVANCED");
         advancedButtons[(size_t) b]->onClick = [this, b]
         {
@@ -2353,25 +2369,20 @@ void VVChainAudioProcessorEditor::drawCard(
                                2.5f, r.getHeight() - 6.f, 1.2f);
     }
 
-    const bool monitorCard = title == "MASTER";
-    const int titleY = monitorCard ? 36 : 8;
+    const int titleY = 8;
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff2a231d)
                                     : juce::Colour(0xfff0f3f3)));
     g.setFont(juce::FontOptions(12.5f).withStyle("Bold"));
-    if (monitorCard)
-        g.drawText(title, (int)r.getX(), (int)r.getY() + titleY,
-                   (int)r.getWidth(), 18, juce::Justification::centred);
-    else
-        g.drawText(title, (int)r.getX() + 13, (int)r.getY() + titleY,
-                   100, 18, juce::Justification::left);
+    g.drawText(title, (int)r.getX() + 13, (int)r.getY() + titleY,
+               110, 18, juce::Justification::left);
 
-    if (!monitorCard)
+    if (!subtitle.isEmpty())
     {
         g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff63584b)
                                         : juce::Colour(0xffb3bec0)));
         g.setFont(juce::FontOptions(8.1f).withStyle("Bold"));
-        g.drawText(subtitle, (int)r.getX() + 13, (int)r.getY() + 26,
-                   (int)r.getWidth() - 80, 12, juce::Justification::left);
+        g.drawText(subtitle, (int)r.getX() + 100, (int)r.getY() + titleY + 1,
+                   (int)r.getWidth() - 113, 16, juce::Justification::right);
     }
 
     g.setColour(frame.withAlpha(.22f));
@@ -2895,7 +2906,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(uiColour(ivoryTheme ? juce::Colour(0xff6a5b49)
                                     : juce::Colour(0xffb8c1c3)));
     g.setFont(juce::FontOptions(8.2f).withStyle("Bold"));
-    g.drawText("VVCHAIN v1.0.85",
+    g.drawText("VVCHAIN v1.0.86",
                masterRuntime ? 294 : 20,
                masterRuntime ? 47 : 39,
                180, 12, juce::Justification::left);
@@ -2912,6 +2923,9 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     const int cardW = unitW;
     const int cardH = masterRuntime ? 664 : 510;
 
+    const std::array<juce::String, 4> bandClasses
+    {{ "LOW", "LOW-MID", "HIGH-MID", "HIGH" }};
+
     for (int b = 0; b < 4; ++b)
     {
         const int x = left + b * (cardW + gap);
@@ -2919,7 +2933,29 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                  { (float) x, (float) cardY, (float) cardW, (float) cardH },
                  uiColour(kBandColours[(size_t) b]),
                  "BAND " + juce::String(b + 1),
-                 "TRANSIENT · ANALOG · UDMBC · TAPE COLOR");
+                 bandClasses[(size_t) b]);
+
+        const auto textColour = uiColour(
+            ivoryTheme ? juce::Colour(0xff3f3428)
+                       : juce::Colour(0xffdce4e4));
+        g.setColour(textColour.withAlpha(.92f));
+        g.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+        const std::array<std::pair<int, juce::String>, 4> sectionLabels
+        {{
+            { cardY + 48,  "EQ" },
+            { cardY + 174, "DYNAMIC EQ" },
+            { cardY + 298, "UDMBC" },
+            { cardY + 434, "ANALOG" }
+        }};
+        for (const auto& section : sectionLabels)
+        {
+            g.drawText(section.second, x + 12, section.first,
+                       cardW - 24, 14, juce::Justification::left);
+            g.setColour(textColour.withAlpha(.24f));
+            g.drawLine((float)x + 12.f, (float)section.first + 14.f,
+                       (float)x + cardW - 12.f, (float)section.first + 14.f, .8f);
+            g.setColour(textColour.withAlpha(.92f));
+        }
     }
 
     {
@@ -2928,7 +2964,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                  { (float) x, (float) cardY, (float) cardW, (float) cardH },
                  uiColour(juce::Colour(0xffe5e7eb)),
                  "MASTER",
-                 "GLOBAL BYPASS · DELTA · MIX / OUT");
+                 "MONITOR / OUTPUT");
     }
 
     // Floating UDMBC Advanced popup: it overlays the controls and never changes band height.
@@ -3431,12 +3467,10 @@ void VVChainAudioProcessorEditor::resized()
     {
         const int x = left + b * (cardW + gap);
 
-        if (advancedButtons[(size_t) b])
-            advancedButtons[(size_t) b]->setBounds(
-                x + cardW - 108, cardY + 8, 50, 20);
         if (soloButtons[(size_t) b])
             soloButtons[(size_t) b]->setBounds(
-                x + cardW - 58, cardY + 8, 46, 20);
+                x + 14, cardY + cardH - 50,
+                juce::jmax(72, (cardW - 34) / 2), 34);
 
         const int innerX = x + 8;
         const int innerTop = cardY + (masterRuntime ? 54 : 56);
@@ -3456,7 +3490,7 @@ void VVChainAudioProcessorEditor::resized()
                 // Exact reference-layout lanes measured on the supplied
                 // 1448x1086 image: EQ, Dynamic, UDMBC, Analog/Tape/Transient.
                 constexpr std::array<int, 5> masterOffsets
-                { 0, 124, 196, 268, 404 };
+                { 22, 148, 210, 272, 408 };
                 y += masterOffsets[(size_t) juce::jlimit(0, 4, row)];
             }
             else
@@ -3475,9 +3509,9 @@ void VVChainAudioProcessorEditor::resized()
 
         const auto n = juce::String(b + 1);
 
-        // ROW 1 — static EQ: GAIN / FREQ / Q
-        placeKnob("EQ" + n + "_GAIN", cell(0, 0));
-        placeKnob("EQ" + n + "_FREQ", cell(0, 1));
+        // ROW 1 — exact reference order: FREQ / GAIN / Q
+        placeKnob("EQ" + n + "_FREQ", cell(0, 0));
+        placeKnob("EQ" + n + "_GAIN", cell(0, 1));
         placeKnob("EQ" + n + "_Q",    cell(0, 2));
 
         // ROW 2 — Dynamic EQ
@@ -3507,15 +3541,30 @@ void VVChainAudioProcessorEditor::resized()
                     ? "BELOW" : "ABOVE");
         }
 
-        // ROW 4 — UDMBC
+        // ROW 3 — exact reference order: DEGREE / LEVEL / MIX + ADV
         placeKnob("UDMBC_DEGREE" + n, cell(3, 0));
-        placeKnob("UDMBC_COMP_A" + n, cell(3, 1));
-        placeKnob("UDMBC_COMP_R" + n, cell(3, 2));
+        placeKnob("UDMBC_LEVEL" + n,  cell(3, 1));
+        placeKnob("UDMBC_COMP_M" + n, cell(3, 2));
 
-        // ROW 5 — ANALOG / TYPE-A / TRANSIENT
-        placeKnob("EQ_COLOR_B" + n, cell(4, 0));
-        placeKnob("TAPE_DEGREE" + n, cell(4, 1));
-        placeKnob("TRANSIENT" + n, cell(4, 2));
+        if (advancedButtons[(size_t) b])
+        {
+            const auto mixCell = cell(3, 2);
+            advancedButtons[(size_t) b]->setBounds(
+                mixCell.getX(), mixCell.getY() - 22,
+                mixCell.getWidth(), 20);
+        }
+
+        // ROW 4 — exact reference ANALOG order: AMOUNT / TYPE-A.
+        const int analogGap = 10;
+        const int analogW = (innerW - analogGap) / 2;
+        const int analogY = cell(4, 0).getY();
+        placeKnob("EQ_COLOR_B" + n, { innerX, analogY, analogW, knobH });
+        placeKnob("TAPE_DEGREE" + n,
+                  { innerX + analogW + analogGap, analogY, analogW, knobH });
+
+        if (auto* k = findKnob("UDMBC_COMP_A" + n)) k->slider->setBounds({});
+        if (auto* k = findKnob("UDMBC_COMP_R" + n)) k->slider->setBounds({});
+        if (auto* k = findKnob("TRANSIENT" + n)) k->slider->setBounds({});
 
         if (analogModeButtons[(size_t) b])
             if (auto* knob = findKnob("EQ_COLOR_B" + n))
@@ -3632,10 +3681,10 @@ void VVChainAudioProcessorEditor::resized()
         };
 
         const auto n = juce::String(expandedBand + 1);
-        const std::array<juce::String, 7> bandAdv
+        const std::array<juce::String, 8> bandAdv
         {{
             "UDMBC_LIFT_T", "UDMBC_LIFT_A", "UDMBC_LIFT_R", "UDMBC_LIFT_M",
-            "UDMBC_COMP_T", "UDMBC_COMP_M", "UDMBC_LEVEL"
+            "UDMBC_COMP_T", "UDMBC_COMP_A", "UDMBC_COMP_R", "TRANSIENT"
         }};
         const std::array<juce::String, 8> sharedAdv
         {{
@@ -3643,7 +3692,7 @@ void VVChainAudioProcessorEditor::resized()
             "UDMBC_INPUT", "UDMBC_GATE", "UDMBC_MIX", "UDMBC_OUTPUT"
         }};
 
-        for (int i = 0; i < 7; ++i)
+        for (int i = 0; i < 8; ++i)
             placeKnob(bandAdv[(size_t)i] + n, p(i));
         for (int i = 0; i < 8; ++i)
             placeKnob(sharedAdv[(size_t)i], p(i + 8));
