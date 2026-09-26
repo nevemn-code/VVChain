@@ -18,3 +18,6 @@
 - `assets/ui/master/`：只存放使用者確認的原始 Master PNG；不得由 renderer 產生。
 
 - `UI_ASSET_MAP.md`：已核准衍生素材的功能對應、旋鈕配色與 Runtime 合約。\n
+- `assets/ui/runtime/binary_manifest.json`：46 個核准 Runtime PNG 的 byte/SHA-256/dimension 完整鎖定清單。
+- `Tools/validate_master_runtime.py`：只做 Runtime binary 完整性驗證，不產生 UI。
+- `Tools/approve_master_runtime.py`：全部 Master/Runtime 驗證通過後才建立 APPROVED.lock；不產生或重畫任何像素。

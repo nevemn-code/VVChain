@@ -6,78 +6,73 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.80
+v1.0.81
 
 ## Current checkpoint
 
-**Checkpoint 9 — Shared Native/Web runtime deployment path**
+**Checkpoint 10 — Byte-exact runtime integrity contract**
 
 ## Master paths
 
-Required exact original binaries:
+Required exact original Visual Master binaries:
 
 - `assets/ui/master/VVChain_black_master.png`
 - `assets/ui/master/VVChain_ivory_master.png`
 
-## Completed in this checkpoint
+Their locked identities remain:
 
-- Created permanent UI Master Lock policy.
-- Declared the two approved original UI PNGs as the only Visual Masters.
-- Retired the repository Python UI PNG renderer from the active source tree.
-- Recorded that existing `docs/assets/ui/png/` assets remain unapproved Candidates until Master comparison.
-- Added resumable checkpoint state.
-- Bumped repository-visible version references to v1.0.72 for the initial GitHub change batch.\n- Recorded byte-exact SHA-256, dimensions, byte counts and RGBA mode for both user-approved Master PNGs in `assets/ui/master/master_manifest.json`.\n- Added `Tests/ui_master_lock.py` so future CI cannot silently reintroduce the retired renderer or accept a wrong Master binary.\n- Added explicit runtime and rejected/candidate asset areas.\n- VVChain Fast CI/CD #1328 completed successfully for Checkpoint 1.\n- VVChain Fast CI/CD #1329 completed successfully for Checkpoint 2, including the UI Master Lock gate.\n- Locked exact identities of all user-approved panel/button/icon/knob derivative source sheets.\n- Staged seven engineered knob sprites locally: six metal colours at 128 px/frame and platinum Master Gain at 192 px/frame (1.5x).\n- Rebuilt knob state sequences so the metal body and amber outer LED ring are fixed across all 64 states; measured outer-ring max pixel delta = 0 for every colour.\n- Pointer motion is 64 states over -125°..+125°, constructed at 4x sampling then downsampled.\n- Staged direct-crop RGBA button/square/toggle/LED/screw assets from the approved source sheets; no procedural redraw.
-- Added a Native Master runtime integration bridge guarded by `assets/ui/runtime/APPROVED.lock`; without the lock, the existing Candidate runtime remains active and buildable.
-- CMake now refuses an incomplete Master runtime if APPROVED.lock exists but any required asset is missing.
-- Prepared Native loading for the full Black/Ivory approved panel backgrounds, six colour knob sprites, 1.5x platinum Master Gain sprite, approved buttons/LEDs/screws and slider assets.
-- Knob selection is parameter-ID based: EQ=silver, Dynamic EQ=blue, UDMBC=green, Analog=gold, Tape=red, Transient/XOVER=black, OUTPUT_LEVEL=1.5x platinum.
-- Native sprite reader now supports both 128 px normal frames and 192 px Master Gain frames instead of hard-coding 128.
-- When the Master runtime becomes approved, Native editor geometry switches to the 1470x1070 Master panel basis while preserving DSP/automation/parameter IDs.
-- Fixed the stale static-audit expectation that incorrectly required 128 px for every sprite frame; the renderer now intentionally supports 128 px normal and 192 px platinum Master Gain frames.
-- Web runtime now has an APPROVED.lock gate matching Native. Without the lock, current Candidate assets remain active.
-- When approved, Web switches to the same 1470x1070 Master panel basis, full Black/Ivory backgrounds, six colour knob sprites, 1.5x platinum OUTPUT knob, approved buttons/LEDs/toggles/sliders, and responsive whole-panel scaling.
-- Web knob colour selection is parameter-ID based with the same Native mapping; Dynamic EQ/UDMBC/Analog/Tape/Transient controls now carry explicit IDs where needed.
-- VVChain Fast CI/CD #1332 exposed one Web-only integration defect: literal `\\n` characters were inserted into the `drawEQ()` Master-runtime guard, causing Node syntax validation to fail.
-- Replaced those escaped characters with real JavaScript newlines. No DSP, parameter, automation or interaction logic changed.
-- The earlier v1.0.75 stale 128-px static-audit assertion was already corrected to permit the approved 192-px platinum Master Gain sprite.
-- VVChain Fast CI/CD #1333 confirmed Web smoke ×10 passes at v1.0.77; it then exposed literal `\\n` tokens accidentally embedded in two new static-audit assertion lines.
-- Replaced only those malformed assertion separators with real Python newlines; the PNG-signature escape string remains intentionally unchanged.
-- VVChain Fast CI/CD #1334 Fast Gate passed completely at v1.0.78: Web smoke ×10, project audit ×10, UI Master Lock gate, UI regression ×10 and analyzer matrix ×10 all PASS.
-- Aligned Native Master geometry to the approved 1470×1070 blank hardware panel: EQ interior 27/101/1416/281, lower frame starts at y=392, 5 hardware columns use the real lower-panel span, and row spacing expands only when Master runtime is active.
-- Prevented the old Candidate graph texture, module texture, procedural outer trim, duplicate screws and duplicate card borders from painting over the approved full-panel Master.
-- Repositioned Master MIX/OUT side-by-side in the source panel's top Output block; the platinum OUTPUT control retains its 1.5× runtime sprite.
-- Legacy Candidate geometry remains unchanged while APPROVED.lock is absent.
-- Pages deployment now checks out the root `assets/ui/runtime/` source and copies it byte-for-byte into the docs deployment staging area only when `APPROVED.lock` exists.
-- This is a deployment copy, not a visual generator: Native consumes the root source assets and Web consumes the exact staged copy from that same source.
-- Pages now redeploys when approved runtime assets change, so Native/Web cannot silently diverge after Master activation.
+- Black: 1448×1086 RGBA, 3,012,513 bytes, SHA-256 `173d086d919d0a0b5c0c3100a060dc1929a918f9c1f8e4328424cb2e5e817b38`
+- Ivory: 1448×1086 RGBA, 3,115,458 bytes, SHA-256 `9f99da776c8f081abd512bae269c79e47524c011cde190a56c2172ec9957effb`
+
+## Completed checkpoints
+
+- Master Asset Lock policy is permanent and is referenced by project rules.
+- The old Python/procedural UI renderer has been retired from the repository.
+- Existing `docs/assets/ui/png/` files are Candidate-only and cannot be treated as Master-faithful.
+- Exact Visual Master identities are locked in `assets/ui/master/master_manifest.json`.
+- Approved panel/button/icon/knob derivative source identities are locked separately and do not supersede the full Masters.
+- Six normal metal knob colours are staged: Gold, Blue, Green, Red, Black and Silver.
+- Platinum Master Gain is staged at 1.5× normal knob size.
+- All knob sprites use 64 states; the body and amber outer LED ring remain fixed and only the pointer state moves.
+- Knob engineering used X4 sampling before final downsampling.
+- Native Master runtime bridge is guarded by `assets/ui/runtime/APPROVED.lock`.
+- Web Master runtime uses the same approval sentinel and the same source runtime files.
+- Native/Web parameter-ID knob mapping is aligned: EQ=silver, Dynamic EQ=blue, UDMBC=green, Analog=gold, Tape=red, Transient/XOVER=black, OUTPUT_LEVEL=platinum 1.5×.
+- Native Master geometry is aligned to the approved 1470×1070 engineering panel basis.
+- Old Candidate graph/module textures, duplicate procedural frames and duplicate screws are suppressed when the Master runtime is active.
+- Pages deployment copies the approved root runtime byte-for-byte; it does not redraw or regenerate UI assets.
+- Fast CI/CD #1334 passed all Fast Gate checks after the syntax/static-audit corrections.
+- Fast CI/CD #1336 passed completely: Fast Gate, Windows VST3 Release and Full Native/DSP Validation all succeeded.
+- Added `assets/ui/runtime/binary_manifest.json` covering all 46 approved runtime PNGs with byte count, SHA-256 and exact dimensions.
+- Locked source archive identity: `VVChain_UI_Runtime_Engineering_v1.0.74.zip`, 7,322,749 bytes, SHA-256 `1fca9eca20ccc1852310287fe41fbd59341aa018726c3ce764e934b2a7e6c297`.
+- Added `Tools/validate_master_runtime.py`. It validates existing runtime files and becomes strict when APPROVED.lock exists.
+- Added `Tools/approve_master_runtime.py`. It is validation-only: it never renders pixels and can create APPROVED.lock only after the exact Masters and every runtime PNG pass byte/hash/dimension/RGBA checks.
+- CI and Pages are wired to the runtime integrity validator.
 
 ## Accepted runtime assets
 
-None yet under the new Master Lock process.
+The visual/engineering identities of the 46 staged runtime PNGs are locked in the binary manifest, but they are **not yet active in GitHub runtime** because the binary files have not all been committed and APPROVED.lock has not been created.
 
 ## Rejected / unapproved assets
 
-All current assets under `docs/assets/ui/png/` are treated as Candidate/unapproved for Master fidelity until individually validated.
-
-They remain temporarily in place only to avoid breaking Native/Web before the exact Master binaries and replacement runtime set are committed.
+All current legacy files under `docs/assets/ui/png/` remain Candidate/unapproved for Master fidelity. They stay temporarily only to keep Native/Web runnable until the approved binary replacement can be activated atomically.
 
 ## Remaining
 
-1. Commit the exact original black Master PNG binary.
-2. Commit the exact original ivory Master PNG binary.
-3. Verify byte-level PNG validity and record hashes/dimensions.
-4. Derive/crop/clean the required engineering assets from the actual Masters only.
-5. Validate every asset group against the Master.
-6. Move only PASS assets into the production runtime set.
-7. Wire Native and Web to the same approved runtime files.
-8. Remove rejected Candidate runtime files only after replacements are present.
-9. Validate Black UI, Ivory UI, knob colour set, 1.5x platinum Master Gain knob, bypass states, scaling, high-DPI, Native and Web.
-10. Run CI/CD and set Remaining to 0 only after all checks pass.
+1. Commit the two exact original Visual Master PNG binaries.
+2. Commit all 46 exact runtime PNG binaries matching `binary_manifest.json`.
+3. Run `Tests/ui_master_lock.py` and `Tools/validate_master_runtime.py`.
+4. Perform final visual acceptance against both Masters.
+5. Run `Tools/approve_master_runtime.py` to create APPROVED.lock only after PASS.
+6. Verify Native and Web both activate the same runtime PNG source.
+7. Remove the rejected Candidate runtime after the approved path is confirmed.
+8. Run final Black/Ivory, six-colour knob, platinum 1.5×, bypass, high-DPI, Web and VST3 validation.
+9. Set Remaining to 0 only after the final approved build/deploy passes.
 
 ## Safety / compatibility constraint
 
-Do not delete the currently referenced runtime PNG files until their approved replacements exist in the repository and the corresponding Native/Web references can be switched atomically. This prevents a broken half-migration.
+Never create APPROVED.lock while any binary is missing, mismatched, substituted or merely similar. Never delete the currently referenced Candidate runtime before the approved replacement is present and validated.
 
 ## Next action
 
-Ingest the two exact user-approved Master PNG binaries into `assets/ui/master/`. Do not regenerate substitutes.
+Ingest the exact Master/runtime binary PNGs. The repo is now prepared to reject a partial or wrong binary set automatically.

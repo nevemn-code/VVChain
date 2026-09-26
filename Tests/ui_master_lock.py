@@ -7,6 +7,7 @@ ROOT=Path(__file__).resolve().parents[1]
 MANIFEST=ROOT/"assets/ui/master/master_manifest.json"
 STAGED=ROOT/"assets/ui/runtime/staged_manifest.json"
 DERIVATIVE=ROOT/"assets/ui/master/approved_derivative_sources.json"
+BINARY_MANIFEST=ROOT/"assets/ui/runtime/binary_manifest.json"
 RENDERERS=[
     ROOT/"Tools/generate_ui_png_assets.py",
     ROOT/"Tools/generate_ui_assets.py",
@@ -27,16 +28,23 @@ def main():
     assert MANIFEST.is_file()
     assert STAGED.is_file()
     assert DERIVATIVE.is_file()
+    assert BINARY_MANIFEST.is_file()
+    assert (ROOT/"Tools/validate_master_runtime.py").is_file()
+    assert (ROOT/"Tools/approve_master_runtime.py").is_file()
     for p in RENDERERS:
         assert not p.exists(), f"retired UI renderer returned: {p}"
 
     staged=json.loads(STAGED.read_text(encoding="utf-8"))
     derivative=json.loads(DERIVATIVE.read_text(encoding="utf-8"))
+    binary=json.loads(BINARY_MANIFEST.read_text(encoding="utf-8"))
     assert staged["status"] in {"staged_locally_pending_binary_ingest","locked"}
     assert len(staged["knobs"])==7
     assert staged["knobs"]["knob_platinum_master_gain_64.png"]["scale_vs_normal"]==1.5
     assert all(v.get("outer_ring_max_diff")==0 for v in staged["knobs"].values())
     assert derivative["status"]=="approved_source_identity_locked"
+    assert binary["schema"]==1
+    assert binary["asset_count"]==46==len(binary["assets"])
+    assert binary["source_archive"]["sha256"]=="1fca9eca20ccc1852310287fe41fbd59341aa018726c3ce764e934b2a7e6c297"
 
     m=json.loads(MANIFEST.read_text(encoding="utf-8"))
     assert m["status"] in {"pending_ingest","locked"}
