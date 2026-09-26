@@ -158,17 +158,26 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 .app.masterRuntime.ivoryTheme .lastModified{color:#6b4d2e}
 .app.masterRuntime .versionNav{display:none!important}
 .app.masterRuntime .headerControls{
-  position:absolute;right:38px;top:31px;height:52px;margin:0;gap:6px;z-index:11;
+  position:absolute;right:30px;top:27px;height:40px;margin:0;gap:5px;z-index:11;
+}
+.app.masterRuntime .headerControls .masterBypass,
+.app.masterRuntime .headerControls .uiThemeQuick{
+  height:29px!important;min-width:78px!important;
 }
 .app.masterRuntime .transport{
-  position:absolute;left:390px;top:31px;width:515px;height:52px;z-index:12;
-  margin:0;padding:4px 8px;display:grid;
-  grid-template-columns:86px 68px minmax(70px,1fr) 47px 47px 50px 58px;
-  gap:4px;align-items:center;background:transparent!important;
+  position:absolute;left:340px;top:27px;width:550px;height:40px;z-index:12;
+  margin:0;padding:3px 7px;display:grid;
+  grid-template-columns:88px 64px minmax(110px,1fr) 48px 48px 52px 60px;
+  gap:5px;align-items:center;background:transparent!important;
 }
 .app.masterRuntime .transport .tiny{
-  height:32px;background-color:transparent!important;color:#e8c886!important;
+  height:29px!important;font-size:8.5px!important;font-weight:900!important;
+  background-color:transparent!important;
 }
+.app.masterRuntime:not(.ivoryTheme) .transport .tiny{color:#e8c886!important}
+.app.masterRuntime.ivoryTheme .transport .tiny{color:#5a4026!important}
+.app.masterRuntime .headerControls .masterBypass,
+.app.masterRuntime .headerControls .uiThemeQuick{font-size:8.5px!important;font-weight:900!important}
 .app.masterRuntime .rowTop{
   position:absolute;left:24px;top:94px;width:1400px;height:294px;margin:0!important;
 }
@@ -316,7 +325,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 /* Master runtime bypass keeps approved pixels; rejected muted Candidate PNGs are never selected. */
 .app.masterRuntime .moduleMuted .dial,.app.masterRuntime .knobMuted .dial{filter:none!important}
 
-/* v1.0.84: approved state assets only; no rejected Candidate fallback. */
+/* v1.0.85: approved state assets only; no rejected Candidate fallback. */
 .app.masterRuntime:not(.ivoryTheme) .modeSwitch.on{
   background-image:url("assets/ui/runtime/components/black_toggle_on.png")!important;
 }
@@ -408,7 +417,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.84</div></div><div class="sub"></div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.85</div></div><div class="sub"></div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · ANALOG COLOR · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -451,7 +460,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
       <div class="settingsRow" aria-disabled="true"><span>CPU / latency display</span><span>RESERVED</span></div>
     </section>
     <section class="settingsSection"><div class="settingsSectionTitle">SYSTEM / ABOUT</div>
-      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.84</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.85</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Build number / commit</span><span>GitHub build metadata</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset UI Settings</span><span>DISABLED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset All Settings</span><span>DISABLED</span></div>
@@ -483,7 +492,7 @@ let settingsPanelVisible=false,ivoryTheme=true;
 let masterRuntimeActive=true;
 function masterKnobAsset(id){
   id=String(id||"");
-  // v1.0.84 third-reference mapping: reuse the approved Silver family
+  // v1.0.85 third-reference mapping: reuse the approved Silver family
   // for every normal control; Master OUT retains the 1.5x Platinum asset.
   return id==="OUTPUT_LEVEL"?"platinum":"silver";
 }
@@ -622,9 +631,9 @@ function setAnalyzerEnabled(enabled){
 analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
 document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
 setAnalyzerEnabled(true);
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.84
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.85
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.84"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.85"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;
@@ -1276,7 +1285,14 @@ function dynamicPopupBounds(b,w,h){
 function drawEQ(){
   const r=eqCanvas.getBoundingClientRect(),w=r.width,h=r.height;
   eqCtx.clearRect(0,0,w,h);
-  if(!masterRuntimeActive){
+
+  if(masterRuntimeActive){
+    // v1.0.85 upper-section cleanup: do not modify the approved PNG.
+    // This live viewport intentionally hides the obsolete baked split graph,
+    // duplicate frequency labels and duplicate grid inside the old panel.
+    eqCtx.fillStyle="#0c0f10";
+    eqCtx.fillRect(0,0,w,h);
+  }else{
     eqCtx.fillStyle=tc("rgba(7,25,28,.70)","rgba(18,17,13,.68)");
     eqCtx.fillRect(0,0,w,h);
   }
@@ -1316,6 +1332,12 @@ function drawEQ(){
     eqCtx.stroke();
   }
 
+  if(masterRuntimeActive){
+    eqCtx.strokeStyle=ivoryTheme?"#a77b3766":"#a9634366";
+    eqCtx.lineWidth=1;
+    eqCtx.strokeRect(.5,.5,Math.max(0,w-1),Math.max(0,h-1));
+  }
+
   // Gain axis: the full usable range is exactly -18 .. +18 dB.
   // Every 3 dB is shown and the dB labels stay on the LEFT.
   const dbTicks=[18,15,12,9,6,3,0,-3,-6,-9,-12,-15,-18];
@@ -1345,7 +1367,7 @@ function drawEQ(){
   });
 
   eqCtx.fillStyle=tc("#c6d5d7","#e7ddca");
-  eqCtx.font="bold 7px Consolas";
+  eqCtx.font="bold 8px Consolas";
   eqCtx.textAlign="left";
   dbTicks.forEach(db=>{
     if(db===15||db===-15)return;
@@ -1374,7 +1396,7 @@ function drawEQ(){
 
     const hovered=hoverXover===b;
     eqCtx.fillStyle=tc("#000c","#0c0b09dd");eqCtx.fillRect(x-48,labelY,96,15);
-    eqCtx.fillStyle="#ffe36a";eqCtx.font="bold 8px Consolas";eqCtx.textAlign="center";
+    eqCtx.fillStyle="#ffe36a";eqCtx.font="bold 8.5px Consolas";eqCtx.textAlign="center";
     eqCtx.fillText("X"+(b+1)+" "+hz(state.udmbc.x[b]),x,labelY+11);
 
     const eightWidth=5+ov*0.10;
