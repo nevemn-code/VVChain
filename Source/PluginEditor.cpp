@@ -766,6 +766,23 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     };
     addAndMakeVisible(*soloPostButton);
 
+    {
+        const std::array<juce::String, 4> labels
+        {{ "UDMBC", "ANALOG", "TYPE-A", "TRANSIENT" }};
+        for (size_t i = 0; i < labels.size(); ++i)
+        {
+            masterSoloMatrixButtons[i] =
+                std::make_unique<juce::ToggleButton>(labels[i]);
+            masterSoloMatrixButtons[i]->setLookAndFeel(&metalLook);
+            masterSoloMatrixButtons[i]->setButtonText(labels[i]);
+            masterSoloMatrixButtons[i]->setToggleState(
+                true, juce::dontSendNotification);
+            // Layout-only presentation: do not invent new DSP solo semantics.
+            masterSoloMatrixButtons[i]->setInterceptsMouseClicks(false, false);
+            addAndMakeVisible(*masterSoloMatrixButtons[i]);
+        }
+    }
+
     soloModeButton = std::make_unique<juce::ToggleButton>("SOLO PRE");
     soloModeButton->setLookAndFeel(&metalLook);
     soloModeButton->setButtonText("SOLO PRE");
@@ -988,9 +1005,10 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     }
 
     // Global monitor controls: DELTA + MIX / OUT.
-    deltaMonitorButton = std::make_unique<juce::ToggleButton>("DELTA");
+    deltaMonitorButton = std::make_unique<juce::ToggleButton>("△ DELTA");
     deltaMonitorButton->setLookAndFeel(&metalLook);
     deltaMonitorButton->setComponentID("DELTA_MONITOR");
+    deltaMonitorButton->setButtonText("△ DELTA");
     deltaMonitorButton->setColour(
         juce::ToggleButton::tickColourId, juce::Colour(0xffffffff));
     deltaMonitorButton->setTooltip(
@@ -1337,7 +1355,11 @@ void VVChainAudioProcessorEditor::placeKnob(const juce::String& id, juce::Rectan
     {
         const bool exactIvory =
             metalLook.isMasterRuntimeActive() && ivoryTheme;
-        k->label->setVisible(!exactIvory);
+        const bool patchedAnalogLabel =
+            id.startsWith("EQ_COLOR_B")
+            || id.startsWith("TAPE_DEGREE")
+            || id.startsWith("TRANSIENT");
+        k->label->setVisible(!exactIvory || patchedAnalogLabel);
         k->label->setBounds(area.removeFromTop(12));
 
         // The original fixed 68 px textbox was wider than the four-column
@@ -3440,6 +3462,7 @@ void VVChainAudioProcessorEditor::setIvoryTheme(bool ivory)
     for (auto& b : analogModeButtons) if (b) b->repaint();
     for (auto& b : analogX2Buttons) if (b) b->repaint();
     if (masterBypassButton) masterBypassButton->repaint();
+    for (auto& b : masterSoloMatrixButtons) if (b) b->repaint();
     if (soloModeButton) soloModeButton->repaint();
 
     // Force all active/bypass colours through the newly selected skin.
@@ -3706,6 +3729,15 @@ void VVChainAudioProcessorEditor::resized()
                 deltaMonitorButton->setBounds(x + 24, cardY + 203, 94, 35);
             if (masterBypassButton)
                 masterBypassButton->setBounds(x + 124, cardY + 203, 98, 35);
+            if (masterSoloMatrixButtons[0])
+                masterSoloMatrixButtons[0]->setBounds(x + 26, cardY + 289, 87, 29);
+            if (masterSoloMatrixButtons[1])
+                masterSoloMatrixButtons[1]->setBounds(x + 127, cardY + 289, 87, 29);
+            if (masterSoloMatrixButtons[2])
+                masterSoloMatrixButtons[2]->setBounds(x + 26, cardY + 331, 87, 29);
+            if (masterSoloMatrixButtons[3])
+                masterSoloMatrixButtons[3]->setBounds(x + 127, cardY + 331, 87, 29);
+
             if (soloPreButton)
                 soloPreButton->setBounds(x + 25, cardY + 463, 88, 25);
             if (soloPostButton)
@@ -3713,6 +3745,9 @@ void VVChainAudioProcessorEditor::resized()
         }
         else
         {
+            for (auto& button : masterSoloMatrixButtons)
+                if (button) button->setBounds({});
+
             if (masterBypassButton)
                 masterBypassButton->setBounds(
                     innerX, cardY + 64, innerW, 32);
