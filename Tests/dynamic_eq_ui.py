@@ -235,6 +235,12 @@ def test_eq_xy_drag_math():
     assert 'gainAtCursor=yToDb(y,h)' in web
     assert 'const targetGain=yToDb(y,h);' in web
     assert 'GAIN / FREQ / Q' in cpp
+    assert 'exact reference order: FREQ / GAIN / Q' in cpp
+    assert 'placeKnob("UDMBC_LEVEL" + n,  cell(3, 1));' in cpp
+    assert 'placeKnob("UDMBC_COMP_M" + n, cell(3, 2));' in cpp
+    assert 'label:"FREQ",controlId:"EQ"+(n+1)+"_FREQ"' in web
+    assert 'label:"LEVEL",controlId:"UDMBC_LEVEL"+(n+1)' in web
+    assert 'label:"MIX",controlId:"UDMBC_COMP_M"+(n+1)' in web
     assert 'function graphHintBandHtml' in web
     hint_block = web[web.index('function graphHintBandHtml'):web.index('eqCanvas.addEventListener("contextmenu"')]
     assert 'data-kind="gain"' in hint_block
