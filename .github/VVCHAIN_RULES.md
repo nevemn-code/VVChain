@@ -131,3 +131,12 @@ ANALOG COLOR 自 **v1.0.47** 起以「既有 unity-normalized smooth algebraic s
 - main push 後，Web Pages 與 Windows VST3 應平行執行，互不等待；Fast Gate 只在 PR / 手動驗證執行，避免 merge 後重複跑一次。
 - 只有需要比較完整 commit 範圍的 sync gate 使用 `fetch-depth: 0`；Pages / Windows artifact 使用淺層 checkout。
 - CI verification branch: workflow changes must validated by an actual PR run before merge.
+
+## UI Master Asset Lock（最高優先）
+- UI 視覺工作必須遵守根目錄 `UI_MASTER_LOCK.md`。
+- 使用者確認的原始 Master PNG 是唯一 Visual Master / Single Source of Truth。
+- 禁止 SVG/CSS/Canvas/Python/procedural renderer 或 deterministic generator 重新建立「相似」Master。
+- 未經 Master 比對 PASS 的 PNG 只能是 Candidate，不得視為 production runtime。
+- Native / Web 必須共用同一批已驗收 Runtime PNG。
+- CI/CD 只能 Build/Test/Validate/Package/Deploy 已提交素材，不得產生或重畫 UI 視覺資產。
+- UI 長任務每個安全階段都要更新 `WORK_PROGRESS.md`；中斷後以 GitHub 實際 Master、progress、log、diff 為恢復依據。

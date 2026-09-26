@@ -11,3 +11,8 @@
 - `Tests/`：Reference 與 Web smoke regression。
 - `docs/`：GitHub Pages 預覽、架構與測試文件。
 - `.github/`：GitHub Actions 與相關設定。
+
+## UI Master Lock / 長任務恢復
+- `UI_MASTER_LOCK.md`：UI Master 唯一來源、驗收與禁止重新生成規則。
+- `WORK_PROGRESS.md`：長任務 checkpoint、已完成/剩餘項目與下一步。
+- `assets/ui/master/`：只存放使用者確認的原始 Master PNG；不得由 renderer 產生。
