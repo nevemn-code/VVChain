@@ -1,9 +1,9 @@
 {
   "schema": 1,
   "status": "locked",
-  "version": "v1.0.74",
+  "version": "v1.0.86",
   "method": {
-    "knobs": "Directly derived from approved colour sheets. Fixed metal body/outer amber LED ring; only pointer moves. Pointer state construction is supersampled 4x then Lanczos downsampled. 64 states cover -125\u00b0..+125\u00b0.",
+    "knobs": "Legacy locked knob sheets remain available. v1.0.86 adds the user-approved Ivory high-resolution 8x7 / 56-frame rotary sheet; no procedural redesign.",
     "components": "Direct crop/clean/resize from approved component sheets; no procedural redraw."
   },
   "knobs": {
@@ -70,6 +70,19 @@
       "outer_ring_max_diff": 0,
       "bytes": 735747,
       "sha256": "7ebe455e5a41c74b8f23a14f685318ebef906382fbc9cee1103be3c3dcfbe03a"
+    },
+    "knob_reference_hires_56.png": {
+      "width": 1312,
+      "height": 1148,
+      "frame": 164,
+      "columns": 8,
+      "rows": 7,
+      "frames": 56,
+      "bytes": 2526063,
+      "sha256": "38f0db7672bc571d53d7b3cdef1f04c5381c250e1bee78c39420085aa4ed9ffe",
+      "source_master": "assets/ui/master/KNOB_MASTER_HIRES.png",
+      "source_master_sha256": "7e35dfee96e954a8ea5e76d82bb8095ad0c697f89f98982965c2a4b03ae5c2f8",
+      "background_scope": "ivory"
     }
   },
   "component_sets": {
