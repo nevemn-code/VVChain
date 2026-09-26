@@ -44,6 +44,52 @@ jobs:
           test -s docs/assets/ui/png/muted_knob_strip.png
           test -s docs/assets/ui/png/ivory_button_on.png
           test -s docs/assets/ui/png/bypass_led_red.png
+          test -s docs/assets/ui/png/ivory_module.png
+          test -s docs/assets/ui/png/studio_module.png
+          test -s docs/assets/ui/png/muted_module.png
+          test -s docs/assets/ui/png/ivory_graph.png
+          test -s docs/assets/ui/png/studio_graph.png
+          test -s docs/assets/ui/png/muted_graph.png
+          test -s docs/assets/ui/png/ivory_slider_track.png
+          test -s docs/assets/ui/png/ivory_slider_thumb.png
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+
+          root = Path("docs/assets/ui/png")
+          expected = {
+              "ivory_panel.png": (1500, 930),
+              "studio_panel.png": (1500, 930),
+              "muted_panel.png": (1500, 930),
+              "ivory_module.png": (600, 930),
+              "studio_module.png": (600, 930),
+              "muted_module.png": (600, 930),
+              "ivory_graph.png": (1500, 330),
+              "studio_graph.png": (1500, 330),
+              "muted_graph.png": (1500, 330),
+              "ivory_knob_strip.png": (1024, 1024),
+              "studio_knob_strip.png": (1024, 1024),
+              "muted_knob_strip.png": (1024, 1024),
+              "ivory_button_off.png": (360, 120),
+              "ivory_button_on.png": (360, 120),
+              "ivory_button_pressed.png": (360, 120),
+              "button_disabled.png": (360, 120),
+              "ivory_led_on.png": (128, 128),
+              "ivory_led_off.png": (128, 128),
+              "bypass_led_red.png": (128, 128),
+              "ivory_screw.png": (96, 96),
+              "ivory_slider_track.png": (800, 120),
+              "ivory_slider_thumb.png": (120, 120),
+          }
+          sig = b"\x89PNG\r\n\x1a\n"
+          for name, size in expected.items():
+              data = (root / name).read_bytes()
+              assert data[:8] == sig, name
+              assert struct.unpack(">II", data[16:24]) == size, (name, size)
+              # PNG IHDR colour type 6 = truecolour with alpha (RGBA).
+              assert data[25] == 6, (name, "not RGBA", data[25])
+          print("Pages engineering PNG contract: PASS")
+          PY
           grep -q 'id="bandGrid"' docs/index.html
           grep -q 'TRANSIENT' docs/index.html
           grep -q 'ANALOG COLOR' docs/index.html

@@ -535,11 +535,15 @@ private:
     public:
         MetalLookAndFeel();
         bool monochrome = false;
-        bool ivoryTheme = false;
+        bool ivoryTheme = true;
 
         void drawPanelSurface(juce::Graphics&, juce::Rectangle<float>,
                               bool localMuted = false) const;
+        void drawModuleSurface(juce::Graphics&, juce::Rectangle<float>,
+                               bool localMuted = false) const;
         void drawGraphSurface(juce::Graphics&, juce::Rectangle<float>) const;
+        void drawScrew(juce::Graphics&, juce::Rectangle<float>,
+                       bool localMuted = false) const;
 
         void drawRotarySlider(juce::Graphics&, int x, int y, int width, int height,
                               float sliderPosProportional, float rotaryStartAngle,
@@ -563,16 +567,19 @@ private:
         struct HardwareAssets
         {
             juce::Image panel;
+            juce::Image module;
             juce::Image graph;
             juce::Image knobStrip;
             juce::Image buttonOff, buttonOn, buttonPressed;
             juce::Image ledOff, ledOn;
             juce::Image powerOff, powerOn;
             juce::Image screw;
-            juce::Image slider;
+            juce::Image sliderTrack;
+            juce::Image sliderThumb;
         };
 
         HardwareAssets studioAssets, ivoryAssets, mutedAssets;
+        juce::Image disabledButton;
         juce::Image bypassLedRed;
 
         const HardwareAssets& assets(bool localMuted = false) const noexcept;
