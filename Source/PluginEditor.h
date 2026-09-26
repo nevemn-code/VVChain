@@ -585,7 +585,7 @@ private:
         juce::Image bypassLedRed;
 #if VVCHAIN_HAS_MASTER_LOCK_UI
         juce::Image knobGold, knobBlue, knobGreen, knobRed;
-        juce::Image knobBlack, knobSilver, knobPlatinumMaster;
+        juce::Image knobBlack, knobSilver, knobReferenceHires, knobPlatinumMaster;
         juce::Image blackFullPanel, ivoryFullPanel;
 #endif
 
