@@ -234,7 +234,6 @@ def test_eq_xy_drag_math():
     assert 'const hzv=invLog(clamp(x,0,w)/w);' in web
     assert 'gainAtCursor=yToDb(y,h)' in web
     assert 'const targetGain=yToDb(y,h);' in web
-    assert 'GAIN / FREQ / Q' in cpp
     assert 'exact reference order: FREQ / GAIN / Q' in cpp
     assert 'placeKnob("UDMBC_LEVEL" + n,  cell(3, 1));' in cpp
     assert 'placeKnob("UDMBC_COMP_M" + n, cell(3, 2));' in cpp
