@@ -1295,6 +1295,9 @@ void VVChainAudioProcessorEditor::placeKnob(const juce::String& id, juce::Rectan
 {
     if (auto* k = findKnob(id))
     {
+        const bool exactIvory =
+            metalLook.isMasterRuntimeActive() && ivoryTheme;
+        k->label->setVisible(!exactIvory);
         k->label->setBounds(area.removeFromTop(12));
 
         // The original fixed 68 px textbox was wider than the four-column
@@ -3466,7 +3469,7 @@ void VVChainAudioProcessorEditor::resized()
 
         const int innerX = masterRuntime ? x + 20 : x + 8;
         const int innerTop = masterRuntime ? cardY : cardY + 56;
-        const int innerW = masterRuntime ? cardW - 40 : cardW - 16;
+        const int innerW = masterRuntime ? cardW - 36 : cardW - 16;
         const int cellGap = masterRuntime ? 4 : 6;
         const int cellW = (innerW - cellGap * 2) / 3;
         const int rowH = masterRuntime ? 120 : 70;
@@ -3535,7 +3538,7 @@ void VVChainAudioProcessorEditor::resized()
         const int analogW = (innerW - analogGap) / 2;
         const int analogY = cell(4, 0).getY();
         placeKnob("EQ_COLOR_B" + n,
-                  { innerX + (masterRuntime ? 10 : 0), analogY, analogW, knobH });
+                  { innerX + (masterRuntime ? 6 : 0), analogY, analogW, knobH });
         placeKnob("TAPE_DEGREE" + n,
                   { innerX + analogW + analogGap - (masterRuntime ? 10 : 0),
                     analogY, analogW, knobH });
