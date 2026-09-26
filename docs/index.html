@@ -621,8 +621,34 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 
 .app.masterRuntime.ivoryTheme .monitorBand .deltaBtn,
 .app.masterRuntime.ivoryTheme .monitorBand .masterPanelBypass{
-  background:none!important;background-image:none!important;border:0!important;box-shadow:none!important;color:transparent!important;
+  background-color:transparent!important;
+  background-image:url("assets/ui/runtime/components/ivory_button_off.png")!important;
+  background-size:100% 100%!important;border:0!important;box-shadow:none!important;
+  color:#f8ecd7!important;font:900 9px Consolas!important;
 }
+.app.masterRuntime.ivoryTheme .monitorBand .deltaBtn.on,
+.app.masterRuntime.ivoryTheme .monitorBand .masterPanelBypass.on{
+  background-image:url("assets/ui/runtime/components/ivory_button_on.png")!important;
+}
+.app.masterRuntime .monitorBand .soloMatrixOverlay{
+  position:absolute!important;left:0!important;top:0!important;width:238px!important;height:570px!important;
+  pointer-events:none!important;z-index:14!important;
+}
+.app.masterRuntime .monitorBand .soloMatrixOverlay button{
+  position:absolute!important;height:29px!important;width:87px!important;
+  background-image:url("assets/ui/runtime/components/ivory_button_on.png")!important;
+  background-size:100% 100%!important;background-color:transparent!important;
+  border:0!important;box-shadow:none!important;color:#f8ecd7!important;
+  font:900 9px Consolas!important;padding-left:12px!important;
+}
+.app.masterRuntime .monitorBand .soloMatrixOverlay button::before{
+  content:"";position:absolute;left:9px;top:10px;width:7px;height:7px;border-radius:50%;
+  background:#ffc44a;box-shadow:0 0 4px #ffb22e;
+}
+.app.masterRuntime .monitorBand .soloMatrixOverlay .m1{left:26px!important;top:289px!important}
+.app.masterRuntime .monitorBand .soloMatrixOverlay .m2{left:127px!important;top:289px!important}
+.app.masterRuntime .monitorBand .soloMatrixOverlay .m3{left:26px!important;top:331px!important}
+.app.masterRuntime .monitorBand .soloMatrixOverlay .m4{left:127px!important;top:331px!important}
 .app.masterRuntime .masterPower,.app.masterRuntime .masterBypassLabel{display:none!important}
 </style>
 
@@ -1337,7 +1363,7 @@ const advBtn=card.querySelector(".advBtn");advBtn.title="UDMBC ADVANCED · BAND 
 }
 
 const monitor=document.createElement("div");monitor.className="band monitorBand";monitor.style.setProperty("--accent","#e5e7eb");
-monitor.innerHTML="<div class='bandHead'><span></span></div><div class='masterMonitor'><button class='deltaBtn'>DELTA</button><button class='masterPanelBypass'>BYPASS</button><div class='monitorKnobRow'></div><button class='soloPreHit'>PRE</button><button class='soloPostHit'>POST</button></div>";
+monitor.innerHTML="<div class='bandHead'><span></span></div><div class='masterMonitor'><button class='deltaBtn'>△ DELTA</button><button class='masterPanelBypass'>BYPASS</button><div class='monitorKnobRow'></div><div class='soloMatrixOverlay'><button class='m1'>UDMBC</button><button class='m2'>ANALOG</button><button class='m3'>TYPE-A</button><button class='m4'>TRANSIENT</button></div><button class='soloPreHit'>PRE</button><button class='soloPostHit'>POST</button></div>";
 bg.appendChild(monitor);
 const masterPanelBypass=monitor.querySelector(".masterPanelBypass"),deltaBtn=monitor.querySelector(".deltaBtn"),monitorKnobs=monitor.querySelector(".monitorKnobRow"),soloPreHit=monitor.querySelector(".soloPreHit"),soloPostHit=monitor.querySelector(".soloPostHit");
 const syncMonitor=()=>{
