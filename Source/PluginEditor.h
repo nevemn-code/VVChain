@@ -586,7 +586,7 @@ private:
 #if VVCHAIN_HAS_MASTER_LOCK_UI
         juce::Image knobGold, knobBlue, knobGreen, knobRed;
         juce::Image knobBlack, knobSilver, knobReferenceHires, knobPlatinumMaster;
-        juce::Image blackFullPanel, ivoryFullPanel;
+        juce::Image blackFullPanel, ivoryFullPanel, layoutOrderMaster;
 #endif
 
         const HardwareAssets& assets(bool localMuted = false) const noexcept;
