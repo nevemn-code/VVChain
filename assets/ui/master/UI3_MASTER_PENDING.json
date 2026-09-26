@@ -5,19 +5,23 @@
   "target_path": "assets/ui/master/VVChain_hardware_gold_master.png",
   "expected": {
     "filename": "VVChain_hardware_gold_master.png",
-    "width": 1492,
-    "height": 1054,
+    "width": 1448,
+    "height": 1086,
     "mode": "RGB",
-    "bytes": 2184907,
-    "sha256": "88b09c4ad3a208fb5a0579a08f4f63b78762c1ffdef2bf91e8615a1ecab5db03"
+    "bytes": 1959313,
+    "sha256": "ae8401ad7e3aa477ebcceed2a6ab45a19275500fd9e24a98a87d372c31f0382b"
   },
-  "supersedes_sha256": "5ae2b3e3d021123882503c227abcd8f7b5446cdf5b40b97fed491fc209f69631",
+  "supersedes_sha256": [
+    "88b09c4ad3a208fb5a0579a08f4f63b78762c1ffdef2bf91e8615a1ecab5db03",
+    "5ae2b3e3d021123882503c227abcd8f7b5446cdf5b40b97fed491fc209f69631"
+  ],
   "rules": {
     "visual_master_is_single_source_of_truth": true,
     "derive_only_from_committed_master": true,
     "no_renderer_reconstruction": true,
     "no_runtime_admission_before_validation": true,
     "native_web_share_same_validated_pngs": true,
+    "ci_may_not_generate_visual_assets": true,
     "knob_frames_fixed_canvas_anchor_center": true,
     "knob_body_pixel_translation_tolerance_px": 0,
     "checkpoint_commit_each_validated_group": true
