@@ -760,7 +760,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
 
         // DYNAMICS is the single user-facing dynamic macro.
         // Threshold is automatically linked to DYNAMICS in the DSP.
-        addKnob("DYN_DYNAMICS" + n, "DYNAMICS", -100, 100, .1,
+        addKnob("DYN_DYNAMICS" + n, "THRESH", -100, 100, .1,
                 parameterValue("DYN_DYNAMICS" + n), " %", b, 8, c);
         if (auto* dynamicsKnob = findKnob("DYN_DYNAMICS" + n))
             dynamicsKnob->slider->setTooltip(
@@ -894,7 +894,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addKnob("UDMBC_COMP_R" + n, "RELEASE", 10, 2500, 1,
                 parameterValue("UDMBC_COMP_R" + n), " ms", b, 5, juce::Colour(0xfffacc15));
 
-        addKnob("TAPE_DEGREE" + n, "TYPE-A", 0, 100, .1,
+        addKnob("TAPE_DEGREE" + n, "TYPEA", 0, 100, .1,
                 parameterValue("TAPE_DEGREE" + n), "", b, 7, c, true);
 
         addKnob("TRANSIENT" + n, "TRANSIENT", -100, 100, .1,
@@ -3399,59 +3399,58 @@ void VVChainAudioProcessorEditor::resized()
     const int w = getWidth();
 
     const bool masterRuntime = metalLook.isMasterRuntimeActive();
-    const int cardY = masterRuntime ? 394 : 404;
+    const int cardY = masterRuntime ? 351 : 404;
     const int gap = masterRuntime ? 4 : 8;
-    const int left = masterRuntime ? 24 : 18;
+    const int left = masterRuntime ? 36 : 18;
     const int unitW = masterRuntime
-        ? (w - left * 2 - gap * 4) / 5
+        ? 238
         : (w - left * 2 - gap * 4) / 5;
     const int cardW = unitW;
-    const int cardH = masterRuntime ? 664 : 510;
+    const int cardH = masterRuntime ? 570 : 510;
 
-    const std::array<int, 4> moduleWidths { 62, 70, 78, 82 };
-    constexpr int topGap = 7;
-    constexpr int masterW = 104;
-    int total = masterW;
-    for (auto mw : moduleWidths)
-        total += topGap + mw;
-    constexpr int soloModeW = 96;
-    total += topGap + soloModeW;
-
-    constexpr int settingsW = 30;
-    constexpr int themeW = 82;
-    constexpr int settingsRight = 12;
-    constexpr int settingsGap = 6;
-    constexpr int topY = 25;
-    const int settingsX = w - settingsRight - settingsW;
-    const int themeX = settingsX - settingsGap - themeW;
-    const int topX = themeX - settingsGap - total;
+    constexpr int masterW = 105;
+    constexpr int soloModeW = 114;
+    constexpr int settingsW = 70;
+    constexpr int themeW = 70;
+    constexpr int topY = 36;
+    const int topX = masterRuntime ? 761 : 0;
+    const int themeX = masterRuntime ? 1008 : w - 180;
+    const int settingsX = masterRuntime ? 1092 : w - 100;
 
     if (settingsDismissOverlay)
         settingsDismissOverlay->setBounds(getLocalBounds());
     if (settingsButton)
-        settingsButton->setBounds(settingsX, topY - 1, settingsW, settingsW);
+        settingsButton->setBounds(
+            settingsX, topY, settingsW, masterRuntime ? 34 : settingsW);
     if (uiThemeButton)
-        uiThemeButton->setBounds(themeX, topY - 1, themeW, settingsW);
+    {
+        uiThemeButton->setBounds(
+            themeX, topY, themeW, masterRuntime ? 34 : settingsW);
+        if (masterRuntime)
+            uiThemeButton->setButtonText("△");
+    }
     if (settingsPanel)
     {
         constexpr int panelW = 330;
-        const int panelY = topY + settingsW + 7;
+        const int panelY = topY + (masterRuntime ? 41 : settingsW + 7);
         const int panelH = juce::jmin(480, getHeight() - panelY - 10);
         settingsPanel->setBounds(settingsX + settingsW - panelW,
                                  panelY, panelW, panelH);
     }
     if (masterBypassButton)
-        masterBypassButton->setBounds(topX, topY, masterW, 28);
+        masterBypassButton->setBounds(
+            topX, topY, masterW, masterRuntime ? 34 : 28);
     if (soloModeButton)
-        soloModeButton->setBounds(topX + masterW + topGap, topY, soloModeW, 28);
+        soloModeButton->setBounds(
+            masterRuntime ? 881 : topX + masterW + 7,
+            topY, soloModeW, masterRuntime ? 34 : 28);
 
-    int xTop = topX + masterW + topGap + soloModeW + topGap;
-    for (int i = 0; i < 4; ++i)
+    for (auto& b : bypassButtons)
     {
-        if (bypassButtons[(size_t) i])
-            bypassButtons[(size_t) i]->setBounds(
-                xTop, topY, moduleWidths[(size_t) i], 28);
-        xTop += moduleWidths[(size_t) i] + topGap;
+        if (!b)
+            continue;
+        if (masterRuntime)
+            b->setBounds({});
     }
 
     for (int b = 0; b < 4; ++b)
@@ -3460,16 +3459,18 @@ void VVChainAudioProcessorEditor::resized()
 
         if (soloButtons[(size_t) b])
             soloButtons[(size_t) b]->setBounds(
-                x + 14, cardY + cardH - 50,
-                juce::jmax(72, (cardW - 34) / 2), 34);
+                masterRuntime ? x + 18 : x + 14,
+                masterRuntime ? cardY + cardH - 48 : cardY + cardH - 50,
+                masterRuntime ? 100 : juce::jmax(72, (cardW - 34) / 2),
+                34);
 
-        const int innerX = x + 8;
-        const int innerTop = cardY + (masterRuntime ? 54 : 56);
-        const int innerW = cardW - 16;
-        const int cellGap = 6;
+        const int innerX = masterRuntime ? x + 20 : x + 8;
+        const int innerTop = masterRuntime ? cardY : cardY + 56;
+        const int innerW = masterRuntime ? cardW - 40 : cardW - 16;
+        const int cellGap = masterRuntime ? 4 : 6;
         const int cellW = (innerW - cellGap * 2) / 3;
-        const int rowH = masterRuntime ? 91 : 70;
-        const int knobH = masterRuntime ? 88 : 62;
+        const int rowH = masterRuntime ? 120 : 70;
+        const int knobH = masterRuntime ? 92 : 62;
 
         constexpr int dynamicSectionShiftY = 14;
         constexpr int lowerSectionShiftY = 8;
@@ -3478,10 +3479,10 @@ void VVChainAudioProcessorEditor::resized()
             int y = innerTop;
             if (masterRuntime)
             {
-                // Exact reference-layout lanes measured on the supplied
-                // 1448x1086 image: EQ, Dynamic, UDMBC, Analog/Tape/Transient.
+                // Exact lanes measured from UI_LAYOUT_MASTER_EXACT_ORDER.png
+                // (1265 x 938), relative to the 570 px band card.
                 constexpr std::array<int, 5> masterOffsets
-                { 22, 148, 210, 272, 408 };
+                { 58, 179, 299, 299, 423 };
                 y += masterOffsets[(size_t) juce::jlimit(0, 4, row)];
             }
             else
@@ -3510,27 +3511,11 @@ void VVChainAudioProcessorEditor::resized()
         placeKnob("DYN_ATTACK" + n,   cell(1, 1));
         placeKnob("DYN_RELEASE" + n,  cell(1, 2));
 
-        // Dynamic detector mode row follows the supplied reference:
-        // PEAK/RMS ~= 31% left, ABOVE/BELOW ~= 31% right,
-        // with the large centre gap preserved. Height matches + ADV.
-        const int modeW =
-            juce::jmax(44, juce::roundToInt(innerW * 0.31f));
-        const int modeY = cell(1, 0).getY() - 21;
-
+        // The exact layout has only THRESH / ATTACK / RELEASE in the main strip.
         if (dynDetectSliders[(size_t) b])
-        {
-            dynDetectSliders[(size_t) b]->setBounds(
-                innerX, modeY, modeW, 21);
-        }
-
+            dynDetectSliders[(size_t) b]->setBounds({});
         if (dynTriggerButtons[(size_t) b])
-        {
-            dynTriggerButtons[(size_t) b]->setBounds(
-                innerX + innerW - modeW, modeY, modeW, 21);
-            dynTriggerButtons[(size_t) b]->setButtonText(
-                parameterValue("DYN_TRIGGER_BELOW" + n) > 0.5f
-                    ? "BELOW" : "ABOVE");
-        }
+            dynTriggerButtons[(size_t) b]->setBounds({});
 
         // ROW 3 — exact reference order: DEGREE / LEVEL / MIX + ADV
         placeKnob("UDMBC_DEGREE" + n, cell(3, 0));
@@ -3541,17 +3526,19 @@ void VVChainAudioProcessorEditor::resized()
         {
             const auto mixCell = cell(3, 2);
             advancedButtons[(size_t) b]->setBounds(
-                mixCell.getX(), mixCell.getY() - 22,
-                mixCell.getWidth(), 20);
+                mixCell.getX() - 3, mixCell.getY() - 15,
+                mixCell.getWidth() + 6, 22);
         }
 
-        // ROW 4 — exact reference ANALOG order: AMOUNT / TYPE-A.
-        const int analogGap = 10;
+        // ROW 4 — exact reference ANALOG order: AMOUNT / TYPEA.
+        const int analogGap = masterRuntime ? 18 : 10;
         const int analogW = (innerW - analogGap) / 2;
         const int analogY = cell(4, 0).getY();
-        placeKnob("EQ_COLOR_B" + n, { innerX, analogY, analogW, knobH });
+        placeKnob("EQ_COLOR_B" + n,
+                  { innerX + (masterRuntime ? 10 : 0), analogY, analogW, knobH });
         placeKnob("TAPE_DEGREE" + n,
-                  { innerX + analogW + analogGap, analogY, analogW, knobH });
+                  { innerX + analogW + analogGap - (masterRuntime ? 10 : 0),
+                    analogY, analogW, knobH });
 
         if (auto* k = findKnob("UDMBC_COMP_A" + n)) k->slider->setBounds({});
         if (auto* k = findKnob("UDMBC_COMP_R" + n)) k->slider->setBounds({});
@@ -3562,42 +3549,57 @@ void VVChainAudioProcessorEditor::resized()
             {
                 const auto r = knob->slider->getBounds();
                 analogModeButtons[(size_t) b]->setBounds(
-                    r.getCentreX() - 18, r.getY() - 25, 36, 12);
+                    masterRuntime ? r.getCentreX() - 1 : r.getCentreX() - 18,
+                    masterRuntime ? r.getY() - 19 : r.getY() - 25,
+                    masterRuntime ? 72 : 36,
+                    masterRuntime ? 24 : 12);
             }
 
-        if (udmbcBandBypassButtons[(size_t) b])
-            if (auto* knob = findKnob("UDMBC_DEGREE" + n))
-            {
-                const auto r = knob->slider->getBounds();
-                udmbcBandBypassButtons[(size_t) b]->setBounds(
-                    r.getCentreX() - 7, r.getY() - 10, 14, 14);
-            }
+        if (masterRuntime)
+        {
+            if (udmbcBandBypassButtons[(size_t) b])
+                udmbcBandBypassButtons[(size_t) b]->setBounds({});
+            if (analogX2Buttons[(size_t) b])
+                analogX2Buttons[(size_t) b]->setBounds({});
+            if (analogBypassButtons[(size_t) b])
+                analogBypassButtons[(size_t) b]->setBounds({});
+            if (tapeBandBypassButtons[(size_t) b])
+                tapeBandBypassButtons[(size_t) b]->setBounds({});
+        }
+        else
+        {
+            if (udmbcBandBypassButtons[(size_t) b])
+                if (auto* knob = findKnob("UDMBC_DEGREE" + n))
+                {
+                    const auto r = knob->slider->getBounds();
+                    udmbcBandBypassButtons[(size_t) b]->setBounds(
+                        r.getCentreX() - 7, r.getY() - 10, 14, 14);
+                }
 
-        if (analogX2Buttons[(size_t) b])
-            if (auto* knob = findKnob("EQ_COLOR_B" + n))
-            {
-                const auto r = knob->slider->getBounds();
-                analogX2Buttons[(size_t) b]->setBounds(
-                    r.getX() + 1, r.getY() - 13, 24, 14);
-            }
+            if (analogX2Buttons[(size_t) b])
+                if (auto* knob = findKnob("EQ_COLOR_B" + n))
+                {
+                    const auto r = knob->slider->getBounds();
+                    analogX2Buttons[(size_t) b]->setBounds(
+                        r.getX() + 1, r.getY() - 13, 24, 14);
+                }
 
-        if (analogBypassButtons[(size_t) b])
-            if (auto* knob = findKnob("EQ_COLOR_B" + n))
-            {
-                const auto r = knob->slider->getBounds();
-                // Same LED geometry/logic as TYPE-A: upper-right,
-                // lit = active, dim = bypass.
-                analogBypassButtons[(size_t) b]->setBounds(
-                    r.getRight() - 14, r.getY() - 10, 14, 14);
-            }
+            if (analogBypassButtons[(size_t) b])
+                if (auto* knob = findKnob("EQ_COLOR_B" + n))
+                {
+                    const auto r = knob->slider->getBounds();
+                    analogBypassButtons[(size_t) b]->setBounds(
+                        r.getRight() - 14, r.getY() - 10, 14, 14);
+                }
 
-        if (tapeBandBypassButtons[(size_t) b])
-            if (auto* knob = findKnob("TAPE_DEGREE" + n))
-            {
-                const auto r = knob->slider->getBounds();
-                tapeBandBypassButtons[(size_t) b]->setBounds(
-                    r.getRight() - 14, r.getY() - 10, 14, 14);
-            }
+            if (tapeBandBypassButtons[(size_t) b])
+                if (auto* knob = findKnob("TAPE_DEGREE" + n))
+                {
+                    const auto r = knob->slider->getBounds();
+                    tapeBandBypassButtons[(size_t) b]->setBounds(
+                        r.getRight() - 14, r.getY() - 10, 14, 14);
+                }
+        }
     }
 
     // Fifth unit: global MASTER controls only.
@@ -3608,22 +3610,19 @@ void VVChainAudioProcessorEditor::resized()
 
         if (masterRuntime)
         {
-            const int halfGap = 8;
+            const int halfGap = 10;
             const int halfW = (innerW - halfGap) / 2;
 
             placeKnob("DRY_WET",
-                      { innerX, cardY + 70,
-                        halfW, 142 });
+                      { innerX, cardY + 76,
+                        halfW, 118 });
             placeKnob("OUTPUT_LEVEL",
-                      { innerX + halfW + halfGap, cardY + 70,
-                        halfW, 142 });
+                      { innerX + halfW + halfGap, cardY + 76,
+                        halfW, 118 });
 
             if (deltaMonitorButton)
                 deltaMonitorButton->setBounds(
-                    innerX, cardY + 228, halfW, 34);
-            if (masterBypassButton)
-                masterBypassButton->setBounds(
-                    innerX + halfW + halfGap, cardY + 228, halfW, 34);
+                    innerX + 4, cardY + 203, 94, 35);
         }
         else
         {
