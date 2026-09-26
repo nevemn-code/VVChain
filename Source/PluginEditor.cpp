@@ -928,7 +928,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addKnob("UDMBC_COMP_R" + n, "RELEASE", 10, 2500, 1,
                 parameterValue("UDMBC_COMP_R" + n), " ms", b, 5, juce::Colour(0xfffacc15));
 
-        addKnob("TAPE_DEGREE" + n, "TYPE-A", 0, 100, .1,
+        addKnob("TAPE_DEGREE" + n, "TYPEA", 0, 100, .1,
                 parameterValue("TAPE_DEGREE" + n), "", b, 7, c, true);
 
         addKnob("TRANSIENT" + n, "TRANSIENT", -100, 100, .1,
@@ -1596,12 +1596,10 @@ void VVChainAudioProcessorEditor::drawEqGraph(
     metalLook.drawGraphSurface(g, graph);
 
 #if VVCHAIN_HAS_MASTER_LOCK_UI
-    if (metalLook.isMasterRuntimeActive())
+    if (metalLook.isMasterRuntimeActive() && !ivoryTheme)
     {
-        // v1.0.85 upper-section cleanup:
-        // the approved full-panel PNG is not edited. We cover only the live
-        // graph viewport so the obsolete baked split/duplicate axes cannot
-        // interfere with the current single 20 Hz–20 kHz graph.
+        // Black still needs the runtime graph cleanup. Ivory v1.0.87 keeps
+        // the approved graph/grid/frame visible and only overlays live data.
         g.setColour(juce::Colour(0xff0c0f10));
         g.fillRect(graph);
     }
@@ -3022,7 +3020,7 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                      bandClasses[(size_t) b]);
         }
 
-        const int x = masterRuntime ? 1012 : left + 4 * (cardW + gap);
+        const int x = masterRuntime ? 1004 : left + 4 * (cardW + gap);
         drawCard(g,
                  { (float) x, (float) cardY, (float) masterCardW, (float) cardH },
                  uiColour(juce::Colour(0xffe5e7eb)),
@@ -3502,12 +3500,12 @@ void VVChainAudioProcessorEditor::resized()
 
     constexpr int masterW = 106;
     constexpr int soloModeW = 106;
-    constexpr int settingsW = 70;
+    constexpr int settingsW = 69;
     constexpr int themeW = 70;
-    constexpr int topY = 37;
+    constexpr int topY = 38;
     const int topX = masterRuntime ? 862 : 0;
     const int themeX = masterRuntime ? 0 : w - 180;
-    const int settingsX = masterRuntime ? 1113 : w - 100;
+    const int settingsX = masterRuntime ? 1112 : w - 100;
 
     if (settingsDismissOverlay)
         settingsDismissOverlay->setBounds(getLocalBounds());
@@ -3529,11 +3527,11 @@ void VVChainAudioProcessorEditor::resized()
     if (topMasterBypassButton)
         topMasterBypassButton->setBounds(
             masterRuntime ? topX : juce::Rectangle<int>{}.getX(),
-            topY, masterRuntime ? masterW : 0, masterRuntime ? 34 : 0);
+            topY, masterRuntime ? 105 : 0, masterRuntime ? 35 : 0);
     if (mixBypassButton)
         mixBypassButton->setBounds(
             masterRuntime ? 987 : 0, topY,
-            masterRuntime ? soloModeW : 0, masterRuntime ? 34 : 0);
+            masterRuntime ? 105 : 0, masterRuntime ? 35 : 0);
     if (masterBypassButton && !masterRuntime)
         masterBypassButton->setBounds(topX, topY, masterW, 28);
     if (soloModeButton)
@@ -3698,17 +3696,20 @@ void VVChainAudioProcessorEditor::resized()
 
         if (masterRuntime)
         {
-            placeKnob("DRY_WET",      { x + 23,  cardY + 70, 68, 118 });
-            placeKnob("OUTPUT_LEVEL", { x + 128, cardY + 70, 84, 118 });
+            // Pixel-aligned to OKK(2).png:
+            // MIX center x=1070, OUT center x=1174,
+            // DELTA x=1028, BYPASS x=1128, PRE x=1029, POST x=1131.
+            placeKnob("DRY_WET",      { x + 21,  cardY + 70, 90, 118 });
+            placeKnob("OUTPUT_LEVEL", { x + 125, cardY + 70, 90, 118 });
 
             if (deltaMonitorButton)
-                deltaMonitorButton->setBounds(x + 15, cardY + 203, 94, 35);
+                deltaMonitorButton->setBounds(x + 24, cardY + 203, 94, 35);
             if (masterBypassButton)
-                masterBypassButton->setBounds(x + 117, cardY + 203, 96, 35);
+                masterBypassButton->setBounds(x + 124, cardY + 203, 98, 35);
             if (soloPreButton)
-                soloPreButton->setBounds(x + 15, cardY + 460, 94, 34);
+                soloPreButton->setBounds(x + 25, cardY + 463, 88, 25);
             if (soloPostButton)
-                soloPostButton->setBounds(x + 116, cardY + 460, 97, 34);
+                soloPostButton->setBounds(x + 127, cardY + 463, 92, 25);
         }
         else
         {
