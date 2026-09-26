@@ -289,6 +289,15 @@ def generate_muted():
     save_rgba(led(base,"red"),OUT/"bypass_led_red.png")
 
 def main():
+    # Keep the production asset directory deterministic. Remove obsolete
+    # runtime PNGs from earlier generators before rendering the v1.0.71 set.
+    for stale in OUT.glob("*.png"):
+        stale.unlink()
+    for stale_name in ("MANIFEST.txt",):
+        stale_path = OUT / stale_name
+        if stale_path.exists():
+            stale_path.unlink()
+
     generate_theme("ivory")
     generate_theme("studio")
     generate_muted()
