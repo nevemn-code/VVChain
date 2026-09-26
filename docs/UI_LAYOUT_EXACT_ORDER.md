@@ -38,7 +38,7 @@ Relative to `cardY = 351`:
 2. `EQ`: **FREQ / GAIN / Q**.
 3. `DYNAMIC EQ`: **THRESH / ATTACK / RELEASE**.
 4. `UDMBC`: **DEGREE / LEVEL / MIX + ADV**.
-5. `ANALOG`: **TT / SS** over **AMOUNT / TYPE-A / TRANSIENT**.
+5. `ANALOG`: **TT / SS** over **AMOUNT / TYPEA / TRANSIENT**.
 6. Bottom buttons: **SOLO / BYPASS**.
 
 ## MASTER column
