@@ -690,6 +690,12 @@ private:
     std::array<std::unique_ptr<BoolAttachment>, 4> bypassAttachments;
     std::unique_ptr<juce::ToggleButton> masterBypassButton;
     std::unique_ptr<BoolAttachment> masterBypassAttachment;
+    std::unique_ptr<juce::ToggleButton> topMasterBypassButton;
+    std::unique_ptr<BoolAttachment> topMasterBypassAttachment;
+    std::unique_ptr<juce::ToggleButton> mixBypassButton;
+    std::unique_ptr<BoolAttachment> mixBypassAttachment;
+    std::unique_ptr<juce::TextButton> soloPreButton;
+    std::unique_ptr<juce::TextButton> soloPostButton;
     std::unique_ptr<juce::ToggleButton> deltaMonitorButton;
     std::unique_ptr<BoolAttachment> deltaMonitorAttachment;
     std::array<std::unique_ptr<juce::TextButton>, 4> advancedButtons;
