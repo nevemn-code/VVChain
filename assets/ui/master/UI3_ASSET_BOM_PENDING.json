@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "G01_IN_PROGRESS",
+  "status": "PHASE_1_NON_KNOB_ASSETS",
   "source_master": {
     "path": "assets/ui/master/VVChain_hardware_gold_master.png",
     "expected_sha256": "ae8401ad7e3aa477ebcceed2a6ab45a19275500fd9e24a98a87d372c31f0382b",
@@ -102,7 +102,9 @@
         "knobs/knob_ui3_pink_64.png",
         "knobs/knob_ui3_green_64.png",
         "knobs/knob_ui3_master_silver_64.png"
-      ]
+      ],
+      "status": "DEFERRED_PHASE_2",
+      "notes": "Do not generate. Waiting for user-provided GitHub/open-source knob source/implementation."
     },
     {
       "id": "G03",
@@ -117,7 +119,8 @@
         "MASTER BYPASS",
         "DELTA",
         "SOLO MATRIX"
-      ]
+      ],
+      "status": "PHASE_1_PENDING"
     },
     {
       "id": "G04",
@@ -130,7 +133,8 @@
       ],
       "usage": [
         "+ADV"
-      ]
+      ],
+      "status": "PHASE_1_PENDING"
     },
     {
       "id": "G05",
@@ -140,7 +144,8 @@
         "components/ui3_settings_on.png",
         "components/ui3_settings_pressed.png",
         "components/ui3_settings_disabled.png"
-      ]
+      ],
+      "status": "PHASE_1_PENDING"
     },
     {
       "id": "G06",
@@ -150,7 +155,8 @@
         "components/ui3_led_amber_on.png",
         "components/ui3_led_red_off.png",
         "components/ui3_led_red_on.png"
-      ]
+      ],
+      "status": "PHASE_1_PENDING"
     },
     {
       "id": "G07",
@@ -161,7 +167,8 @@
         "components/ui3_toggle_pressed.png",
         "components/ui3_toggle_disabled.png"
       ],
-      "geometry_rule": "Toggle pivot, body and plate remain on one identical canvas; state change only."
+      "geometry_rule": "Toggle pivot, body and plate remain on one identical canvas; state change only.",
+      "status": "PHASE_1_PENDING"
     },
     {
       "id": "G08",
@@ -170,7 +177,8 @@
         "components/ui3_screw.png",
         "components/ui3_slider_track.png",
         "components/ui3_slider_thumb.png"
-      ]
+      ],
+      "status": "PHASE_1_PENDING"
     },
     {
       "id": "G09",
@@ -183,7 +191,8 @@
       ],
       "usage": [
         "1st/2nd"
-      ]
+      ],
+      "status": "PHASE_1_PENDING"
     },
     {
       "id": "G10",
@@ -193,7 +202,8 @@
       ],
       "usage": [
         "live numeric value background; text remains live"
-      ]
+      ],
+      "status": "PHASE_1_PENDING"
     }
   ],
   "planned_asset_count": 38,
@@ -207,7 +217,6 @@
   ],
   "checkpoint_order": [
     "G01",
-    "G02",
     "G03",
     "G04",
     "G05",
@@ -215,7 +224,34 @@
     "G07",
     "G08",
     "G09",
-    "G10"
+    "G10",
+    "G02"
   ],
-  "runtime_admission": "Forbidden until exact Master binary is committed and each group passes validation."
+  "runtime_admission": "Phase 1 non-knob assets may enter runtime only after per-group validation. G02 rotary knobs remain excluded until Phase 2 source is supplied.",
+  "phases": {
+    "PHASE_1": {
+      "name": "all_non_knob_assets",
+      "status": "IN_PROGRESS",
+      "groups": [
+        "G01",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "G07",
+        "G08",
+        "G09",
+        "G10"
+      ],
+      "rule": "Generate/validate everything except rotary knob sprites. G02 is explicitly excluded from Phase 1."
+    },
+    "PHASE_2": {
+      "name": "rotary_knobs_from_user_supplied_open_source_code",
+      "status": "WAITING_FOR_USER_SOURCE",
+      "groups": [
+        "G02"
+      ],
+      "rule": "Do not generate or approximate knob sprites. User will provide GitHub/open-source implementation/source later."
+    }
+  }
 }
