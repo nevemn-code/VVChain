@@ -6,7 +6,12 @@ This policy is effective from **v1.0.72** and is the highest-priority rule for V
 
 ## Single Source of Truth
 
-The user-approved original PNGs are the only Visual Masters.
+The user-approved original full-panel PNGs remain the surface/skin Visual Masters.
+Two scoped masters are also locked for v1.0.86:
+- `assets/ui/master/UI_LAYOUT_MASTER_EXACT_ORDER.png` controls component ordering/grouping only.
+- `assets/ui/master/KNOB_MASTER_HIRES.png` controls the Ivory rotary-knob appearance only.
+
+When a scoped master conflicts with an older full-panel baked control position or older knob sprite, the scoped master wins only for its declared scope; panel material/lighting still comes from the full-panel Master.
 
 Expected immutable master paths:
 
