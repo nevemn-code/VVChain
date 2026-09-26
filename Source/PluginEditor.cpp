@@ -735,7 +735,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
     topMasterBypassButton = std::make_unique<juce::ToggleButton>("BYPASS");
     topMasterBypassButton->setLookAndFeel(&metalLook);
     topMasterBypassButton->setButtonText("BYPASS");
-    topMasterBypassButton->setTooltip("Top MASTER BYPASS mirror");
+    topMasterBypassButton->setTooltip("MASTER BYPASS");
     topMasterBypassAttachment = std::make_unique<BoolAttachment>(
         audioProcessor.apvts, "MASTER_BYPASS", *topMasterBypassButton);
     addAndMakeVisible(*topMasterBypassButton);
@@ -2923,6 +2923,26 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     metalLook.drawPanelSurface(g, getLocalBounds().toFloat());
 
     const bool masterRuntime = metalLook.isMasterRuntimeActive();
+
+#if VVCHAIN_HAS_MASTER_LOCK_UI
+    if (masterRuntime && ivoryTheme && metalLook.getLayoutOrderMaster().isValid())
+    {
+        // Header: remove the obsolete FULL CHAIN / SOLO PRE / triangle group by
+        // stretching a clean brushed-metal source strip from the SAME locked Master.
+        g.drawImage(metalLook.getLayoutOrderMaster(),
+                    575, 30, 530, 47,
+                    340, 30, 260, 47);
+
+        // Analog rows: remove the obsolete two-knob baked row. Each destination
+        // uses a clean strip from its own band in the same locked Master.
+        constexpr int bandX[4] { 36, 280, 524, 768 };
+        constexpr int sourceX[4] { 60, 304, 548, 792 };
+        for (int b = 0; b < 4; ++b)
+            g.drawImage(metalLook.getLayoutOrderMaster(),
+                        bandX[b] + 17, 742, 204, 124,
+                        sourceX[b], 392, 204, 15);
+    }
+#endif
     const auto shellFrame = uiColour(
         ivoryTheme ? juce::Colour(0xffad7c2f)
                    : juce::Colour(0xffa55d3d));
@@ -2980,6 +3000,16 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
 
     // The Ivory exact-order Master already contains every card frame, title,
     // section divider and fixed label. Do not repaint a second layout on top.
+    if (masterRuntime && ivoryTheme)
+    {
+        g.setColour(juce::Colour(0xff493a2c));
+        g.setFont(juce::FontOptions(9.0f).withStyle("Bold"));
+        constexpr int bandX[4] { 36, 280, 524, 768 };
+        for (int b = 0; b < 4; ++b)
+            g.drawText("ANALOG", bandX[b] + 12, 754, 72, 14,
+                       juce::Justification::left);
+    }
+
     if (!(masterRuntime && ivoryTheme))
     {
         for (int b = 0; b < 4; ++b)
@@ -3003,15 +3033,21 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     // Floating UDMBC Advanced popup: it overlays the controls and never changes band height.
     if (masterRuntime)
     {
-        const float fixedButtonAlpha = ivoryTheme ? 0.01f : 1.0f;
-        if (topMasterBypassButton) topMasterBypassButton->setAlpha(fixedButtonAlpha);
-        if (mixBypassButton) mixBypassButton->setAlpha(fixedButtonAlpha);
-        if (masterBypassButton) masterBypassButton->setAlpha(fixedButtonAlpha);
-        if (deltaMonitorButton) deltaMonitorButton->setAlpha(fixedButtonAlpha);
-        if (soloPreButton) soloPreButton->setAlpha(fixedButtonAlpha);
-        if (soloPostButton) soloPostButton->setAlpha(fixedButtonAlpha);
-        for (auto& b : soloButtons) if (b) b->setAlpha(fixedButtonAlpha);
-        for (auto& b : advancedButtons) if (b) b->setAlpha(fixedButtonAlpha);
+        const float bakedAlpha = ivoryTheme ? 0.01f : 1.0f;
+        // Header pixels were cleaned above, therefore these two live button
+        // assets are intentionally visible and provide real state feedback.
+        if (topMasterBypassButton) topMasterBypassButton->setAlpha(1.0f);
+        if (mixBypassButton) mixBypassButton->setAlpha(1.0f);
+
+        // These controls exactly overlay approved baked art; keep them as
+        // invisible hit zones on Ivory.
+        if (masterBypassButton) masterBypassButton->setAlpha(bakedAlpha);
+        if (deltaMonitorButton) deltaMonitorButton->setAlpha(bakedAlpha);
+        if (soloPreButton) soloPreButton->setAlpha(bakedAlpha);
+        if (soloPostButton) soloPostButton->setAlpha(bakedAlpha);
+        if (settingsButton) settingsButton->setAlpha(bakedAlpha);
+        for (auto& b : soloButtons) if (b) b->setAlpha(bakedAlpha);
+        for (auto& b : advancedButtons) if (b) b->setAlpha(bakedAlpha);
     }
 
     if (expandedBand >= 0)
