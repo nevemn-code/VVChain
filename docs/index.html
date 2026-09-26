@@ -134,7 +134,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 <style id="vvchain-master-runtime-v1076">
 /* Master Asset Lock runtime. This activates only after APPROVED.lock exists. */
 .app.masterRuntime{
-  width:1470px!important;height:1070px!important;padding:0!important;
+  width:1448px!important;height:1086px!important;padding:0!important;
   border:0!important;overflow:hidden!important;
   transform:scale(var(--master-scale,1));transform-origin:center center;
   box-shadow:0 20px 54px #000c!important;
@@ -150,11 +150,11 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
   padding:0 38px;background:none!important;border:0!important;box-shadow:none!important;
 }
 .app.masterRuntime .logo{
-  position:absolute;left:42px;top:31px;font-size:31px;line-height:36px;
-  letter-spacing:.18em;color:#e9bf75;text-shadow:0 1px 1px #000,0 0 5px #8b5b1a66;
+  position:absolute;left:89px;top:27px;font-size:31px;line-height:38px;
+  letter-spacing:.12em;color:#e9bf75;text-shadow:0 1px 1px #000,0 0 5px #8b5b1a66;
 }
 .app.masterRuntime.ivoryTheme .logo{color:#49311d;text-shadow:0 1px #fff9}
-.app.masterRuntime .lastModified{position:absolute;left:292px;top:47px;color:#d8b36f}
+.app.masterRuntime .lastModified{position:absolute;left:294px;top:47px;color:#d8b36f}
 .app.masterRuntime.ivoryTheme .lastModified{color:#6b4d2e}
 .app.masterRuntime .versionNav{display:none!important}
 .app.masterRuntime .headerControls{
@@ -170,21 +170,57 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
   height:32px;background-color:transparent!important;color:#e8c886!important;
 }
 .app.masterRuntime .rowTop{
-  position:absolute;left:28px;top:101px;width:1392px;height:281px;margin:0!important;
+  position:absolute;left:24px;top:94px;width:1400px;height:294px;margin:0!important;
 }
 .app.masterRuntime .graph{
-  width:100%;height:281px;background:none!important;background-image:none!important;
+  width:100%;height:294px;background:none!important;background-image:none!important;
   border:0!important;border-radius:0!important;box-shadow:none!important;
 }
 .app.masterRuntime .bandsFrame{
-  position:absolute;left:28px;top:397px;width:1392px;height:604px;
+  position:absolute;left:24px;top:394px;width:1400px;height:664px;
   margin:0!important;padding:0!important;background:none!important;background-image:none!important;
   border:0!important;box-shadow:none!important;
 }
-.app.masterRuntime .bandGrid{height:100%;gap:7px;grid-template-columns:repeat(5,minmax(0,1fr))}
+.app.masterRuntime .bandGrid{height:100%;gap:4px;grid-template-columns:repeat(5,minmax(0,1fr))}
 .app.masterRuntime .band,.app.masterRuntime .panel{
   background:none!important;background-image:none!important;border:0!important;
   box-shadow:none!important;border-radius:0!important;padding:7px 8px!important;
+}
+.app.masterRuntime .bandHead{height:40px!important;position:relative}
+.app.masterRuntime .bandBody{height:calc(100% - 40px)!important;position:relative}
+.app.masterRuntime .eqBody{display:block!important;padding:0 2px!important;position:relative}
+.app.masterRuntime .staticGrid{
+  position:absolute!important;left:0;right:0;top:16px;height:96px!important;
+}
+.app.masterRuntime .dynSection{
+  position:absolute!important;left:0;right:0;top:138px;height:124px!important;
+}
+.app.masterRuntime .udmbcGrid{
+  position:absolute!important;left:0;right:0;top:282px;height:96px!important;transform:none!important;
+}
+.app.masterRuntime .bottomGrid{
+  position:absolute!important;left:0;right:0;top:418px;height:96px!important;transform:none!important;
+}
+.app.masterRuntime .staticGrid .dial,.app.masterRuntime .dynControls .dial{
+  width:60px!important;height:60px!important;
+}
+.app.masterRuntime .udmbcGrid .dial,.app.masterRuntime .bottomGrid .dial{
+  width:58px!important;height:58px!important;
+}
+.app.masterRuntime .band .soloBtn{
+  position:absolute;left:14px;bottom:16px;width:112px;height:34px;z-index:7;
+}
+.app.masterRuntime .band .bypassBtn{
+  position:absolute;right:14px;bottom:16px;width:112px;height:34px;z-index:7;
+}
+.app.masterRuntime .band .advBtn{
+  position:absolute;right:12px;top:312px;width:74px;height:26px;z-index:7;
+}
+.app.masterRuntime .monitorBand .bandHead{transform:none!important}
+.app.masterRuntime .monitorBand .masterMonitor{padding-top:26px!important}
+.app.masterRuntime .monitorBand .monitorKnobRow{
+  height:160px!important;display:grid!important;grid-template-columns:1fr 1fr!important;
+  grid-template-rows:1fr!important;gap:8px!important;transform:translateY(8px)!important;
 }
 .app.masterRuntime .band:after{display:none!important}
 .app.masterRuntime .dial{
@@ -280,7 +316,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
 /* Master runtime bypass keeps approved pixels; rejected muted Candidate PNGs are never selected. */
 .app.masterRuntime .moduleMuted .dial,.app.masterRuntime .knobMuted .dial{filter:none!important}
 
-/* v1.0.83: approved state assets only; no rejected Candidate fallback. */
+/* v1.0.84: approved state assets only; no rejected Candidate fallback. */
 .app.masterRuntime:not(.ivoryTheme) .modeSwitch.on{
   background-image:url("assets/ui/runtime/components/black_toggle_on.png")!important;
 }
@@ -372,7 +408,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
     <button class="tiny" id="playBtn">PLAY</button><button class="tiny" id="stopBtn">STOP</button><button class="tiny" id="resetBtn">RESET</button><span class="tiny" id="status">READY</span>
   </div>
   <div class="header">
-    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.83</div></div><div class="sub"></div></div>
+    <div><div class="brandLine"><div class="logo">VVCHAIN</div><div class="lastModified">VVCHAIN v1.0.84</div></div><div class="sub"></div></div>
     <div class="headerControls"><div class="versionNav"><span class="labTag">VVCHAIN · ANALOG COLOR · FULL CHAIN</span></div>
       <button id="masterBypass" class="masterBypass">BYPASS</button>
       <button id="soloMode" class="masterBypass">SOLO PRE</button>
@@ -415,7 +451,7 @@ html,body,.app,.app *{-webkit-font-smoothing:antialiased;text-rendering:geometri
       <div class="settingsRow" aria-disabled="true"><span>CPU / latency display</span><span>RESERVED</span></div>
     </section>
     <section class="settingsSection"><div class="settingsSectionTitle">SYSTEM / ABOUT</div>
-      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.83</span></div>
+      <div class="settingsRow" aria-disabled="true"><span>VVChain Version</span><span>1.0.84</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Build number / commit</span><span>GitHub build metadata</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset UI Settings</span><span>DISABLED</span></div>
       <div class="settingsRow" aria-disabled="true"><span>Reset All Settings</span><span>DISABLED</span></div>
@@ -447,18 +483,14 @@ let settingsPanelVisible=false,ivoryTheme=true;
 let masterRuntimeActive=true;
 function masterKnobAsset(id){
   id=String(id||"");
-  if(id==="OUTPUT_LEVEL")return "platinum";
-  if(id.startsWith("EQ_COLOR"))return "gold";
-  if(id.startsWith("DYN_"))return "blue";
-  if(id.startsWith("UDMBC_"))return "green";
-  if(id.startsWith("TAPE_"))return "red";
-  if(id.startsWith("TRANSIENT")||id.startsWith("XOVER_"))return "black";
-  return "silver";
+  // v1.0.84 third-reference mapping: reuse the approved Silver family
+  // for every normal control; Master OUT retains the 1.5x Platinum asset.
+  return id==="OUTPUT_LEVEL"?"platinum":"silver";
 }
 function applyMasterRuntimeScale(){
   if(!masterRuntimeActive)return;
   const app=document.querySelector(".app");
-  const scale=Math.min(1,(window.innerWidth-10)/1470,(window.innerHeight-10)/1070);
+  const scale=Math.min(1,(window.innerWidth-10)/1448,(window.innerHeight-10)/1086);
   app.style.setProperty("--master-scale",Math.max(.1,scale));
 }
 function detectMasterRuntime(){
@@ -590,9 +622,9 @@ function setAnalyzerEnabled(enabled){
 analyzerToggle.addEventListener("click",()=>setAnalyzerEnabled(!analyzerEnabled));
 document.addEventListener("visibilitychange",()=>{if(document.hidden)stopAnalyzerLoop();else if(playing&&analyzerEnabled)startAnalyzerLoop()});
 setAnalyzerEnabled(true);
-// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.83
+// Active Web DSP source of truth: docs/vvchain-worklet.js · VVCHAIN v1.0.84
 function makeWorkletUrl(){
-  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.83"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
+  return new URL("vvchain-worklet.js",document.baseURI).href+"?v=1.0.84"+"-hpf30-eqtypes-oct6-ledrollback-dynright-axisflash2-fixedtunnel-ledzero";
 }
 function switchToDirectAudioFallback(){
   if(directFallback||!source||!audioCtx)return;

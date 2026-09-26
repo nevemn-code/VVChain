@@ -6,11 +6,11 @@ Replace the rejected/approximate VVChain UI asset pipeline with a Master-locked 
 
 ## Current version
 
-v1.0.83
+v1.0.84
 
 ## Current checkpoint
 
-**COMPLETE — Master-locked Black / Ivory runtime deployed**
+**v1.0.84 — Third-reference layout alignment; approved PNG binaries unchanged**
 
 ## Master paths
 
@@ -41,6 +41,17 @@ Locked identities:
 - Web production runtime is Master-only; the rejected Candidate CSS/path is removed.
 - Rejected legacy `docs/assets/ui/png/` Candidate files are completely deleted: 0 remain.
 - UI labels now identify the dark skin as BLACK / BLACK GOLD instead of the rejected STUDIO TEAL wording.
+
+## v1.0.84 reference-layout checkpoint
+
+- UI-only change. DSP, parameter IDs, automation, processing order and preset compatibility are unchanged.
+- Native and Web frame geometry now use the supplied third-reference 1448×1086 basis.
+- EQ graph and five-column lower section were repositioned/resized to the reference proportions.
+- Band control lanes now follow the reference vertical rhythm: EQ → Dynamic EQ → UDMBC → Analog/Tape/Transient.
+- Normal controls select the already-approved Silver runtime knob sprite; OUTPUT_LEVEL retains the existing 1.5× Platinum Master sprite.
+- Existing Black/Ivory panel, button, LED, toggle, slider and knob PNG binaries are reused byte-for-byte.
+- No PNG was edited, recoloured, regenerated, replaced or added in this checkpoint.
+- `APPROVED.lock`, `binary_manifest.json` and all previously locked runtime hashes remain unchanged.
 
 ## Validation evidence
 
