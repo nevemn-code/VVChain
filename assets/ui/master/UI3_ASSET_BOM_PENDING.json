@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "PLANNED_NOT_DERIVED",
+  "status": "G01_PARTIAL_BLOCKED",
   "source_master": {
     "path": "assets/ui/master/VVChain_hardware_gold_master.png",
     "expected_sha256": "ae8401ad7e3aa477ebcceed2a6ab45a19275500fd9e24a98a87d372c31f0382b",
@@ -25,7 +25,28 @@
         "backgrounds/hardware_gold_full_panel.png",
         "backgrounds/hardware_gold_graph_bed.png"
       ],
-      "notes": "Graph bed must be cleaned only from Master so live analyzer/EQ/Dynamic nodes are not double-baked."
+      "notes": "Graph bed must be cleaned only from Master so live analyzer/EQ/Dynamic nodes are not double-baked.",
+      "subgroups": {
+        "G01A": {
+          "file": "backgrounds/hardware_gold_full_panel.png",
+          "status": "PASS_LOCAL_NOT_COMMITTED",
+          "width": 1448,
+          "height": 1086,
+          "mode": "RGBA",
+          "bytes": 2206153,
+          "sha256": "2f9419ddc6517b28e1c041c4a0f1d691889b6e3327492ad68a05b705de3802a9",
+          "rgb_pixels_identical_to_master": true,
+          "alpha_extrema": [
+            255,
+            255
+          ]
+        },
+        "G01B": {
+          "file": "backgrounds/hardware_gold_graph_bed.png",
+          "status": "BLOCKED_MASTER_LOCK",
+          "reason": "Master contains baked live EQ curves/nodes; lossless crop alone cannot remove them. Generative/procedural removal is prohibited."
+        }
+      }
     },
     {
       "id": "G02",
