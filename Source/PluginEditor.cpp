@@ -732,6 +732,40 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         audioProcessor.apvts, "MASTER_BYPASS", *masterBypassButton);
     addAndMakeVisible(*masterBypassButton);
 
+    topMasterBypassButton = std::make_unique<juce::ToggleButton>("BYPASS");
+    topMasterBypassButton->setLookAndFeel(&metalLook);
+    topMasterBypassButton->setButtonText("BYPASS");
+    topMasterBypassButton->setTooltip("Top MASTER BYPASS mirror");
+    topMasterBypassAttachment = std::make_unique<BoolAttachment>(
+        audioProcessor.apvts, "MASTER_BYPASS", *topMasterBypassButton);
+    addAndMakeVisible(*topMasterBypassButton);
+
+    mixBypassButton = std::make_unique<juce::ToggleButton>("BYPASS");
+    mixBypassButton->setLookAndFeel(&metalLook);
+    mixBypassButton->setButtonText("BYPASS");
+    mixBypassButton->setTooltip("MIX / OUT BYPASS");
+    mixBypassAttachment = std::make_unique<BoolAttachment>(
+        audioProcessor.apvts, "MIX_BYPASS", *mixBypassButton);
+    addAndMakeVisible(*mixBypassButton);
+
+    soloPreButton = std::make_unique<juce::TextButton>("PRE");
+    soloPreButton->setLookAndFeel(&metalLook);
+    soloPreButton->onClick = [this]
+    {
+        if (auto* parameter = audioProcessor.apvts.getParameter("SOLO_MODE"))
+            parameter->setValueNotifyingHost(parameter->convertTo0to1(0.0f));
+    };
+    addAndMakeVisible(*soloPreButton);
+
+    soloPostButton = std::make_unique<juce::TextButton>("POST");
+    soloPostButton->setLookAndFeel(&metalLook);
+    soloPostButton->onClick = [this]
+    {
+        if (auto* parameter = audioProcessor.apvts.getParameter("SOLO_MODE"))
+            parameter->setValueNotifyingHost(parameter->convertTo0to1(1.0f));
+    };
+    addAndMakeVisible(*soloPostButton);
+
     soloModeButton = std::make_unique<juce::ToggleButton>("SOLO PRE");
     soloModeButton->setLookAndFeel(&metalLook);
     soloModeButton->setButtonText("SOLO PRE");
@@ -894,7 +928,7 @@ VVChainAudioProcessorEditor::VVChainAudioProcessorEditor(VVChainAudioProcessor& 
         addKnob("UDMBC_COMP_R" + n, "RELEASE", 10, 2500, 1,
                 parameterValue("UDMBC_COMP_R" + n), " ms", b, 5, juce::Colour(0xfffacc15));
 
-        addKnob("TAPE_DEGREE" + n, "TYPEA", 0, 100, .1,
+        addKnob("TAPE_DEGREE" + n, "TYPE-A", 0, 100, .1,
                 parameterValue("TAPE_DEGREE" + n), "", b, 7, c, true);
 
         addKnob("TRANSIENT" + n, "TRANSIENT", -100, 100, .1,
@@ -1047,6 +1081,12 @@ VVChainAudioProcessorEditor::~VVChainAudioProcessorEditor()
 
     if (masterBypassButton) masterBypassButton->setLookAndFeel(nullptr);
     masterBypassAttachment.reset();
+    if (topMasterBypassButton) topMasterBypassButton->setLookAndFeel(nullptr);
+    topMasterBypassAttachment.reset();
+    if (mixBypassButton) mixBypassButton->setLookAndFeel(nullptr);
+    mixBypassAttachment.reset();
+    if (soloPreButton) soloPreButton->setLookAndFeel(nullptr);
+    if (soloPostButton) soloPostButton->setLookAndFeel(nullptr);
     if (deltaMonitorButton) deltaMonitorButton->setLookAndFeel(nullptr);
     deltaMonitorAttachment.reset();
 
@@ -1330,7 +1370,7 @@ juce::Rectangle<float> VVChainAudioProcessorEditor::eqGraphBounds() const
     // reference while keeping the approved full-panel PNG untouched.
 #if VVCHAIN_HAS_MASTER_LOCK_UI
     if (metalLook.isMasterRuntimeActive())
-        return { 28.f, 90.f, 1209.f, 255.f };
+        return { 28.f, 86.f, 1212.f, 260.f };
 #endif
     return { 18.f, 78.f, (float) getWidth() - 36.f, 315.f };
 }
@@ -2927,12 +2967,12 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
     drawEqGraph(g, graph);
 
     const int cardY = masterRuntime ? 351 : 404;
-    const int gap = masterRuntime ? 4 : 8;
+    const int gap = masterRuntime ? 8 : 8;
     const int left = masterRuntime ? 36 : 18;
-    const int unitW = masterRuntime
-        ? 238
+    const int cardW = masterRuntime
+        ? 236
         : (getWidth() - left * 2 - gap * 5) / 5;
-    const int cardW = unitW;
+    const int masterCardW = masterRuntime ? 228 : cardW;
     const int cardH = masterRuntime ? 570 : 510;
 
     const std::array<juce::String, 4> bandClasses
@@ -2952,15 +2992,28 @@ void VVChainAudioProcessorEditor::paint(juce::Graphics& g)
                      bandClasses[(size_t) b]);
         }
 
-        const int x = left + 4 * (cardW + gap);
+        const int x = masterRuntime ? 1012 : left + 4 * (cardW + gap);
         drawCard(g,
-                 { (float) x, (float) cardY, (float) cardW, (float) cardH },
+                 { (float) x, (float) cardY, (float) masterCardW, (float) cardH },
                  uiColour(juce::Colour(0xffe5e7eb)),
                  "MASTER",
                  "MONITOR / OUTPUT");
     }
 
     // Floating UDMBC Advanced popup: it overlays the controls and never changes band height.
+    if (masterRuntime)
+    {
+        const float fixedButtonAlpha = ivoryTheme ? 0.01f : 1.0f;
+        if (topMasterBypassButton) topMasterBypassButton->setAlpha(fixedButtonAlpha);
+        if (mixBypassButton) mixBypassButton->setAlpha(fixedButtonAlpha);
+        if (masterBypassButton) masterBypassButton->setAlpha(fixedButtonAlpha);
+        if (deltaMonitorButton) deltaMonitorButton->setAlpha(fixedButtonAlpha);
+        if (soloPreButton) soloPreButton->setAlpha(fixedButtonAlpha);
+        if (soloPostButton) soloPostButton->setAlpha(fixedButtonAlpha);
+        for (auto& b : soloButtons) if (b) b->setAlpha(fixedButtonAlpha);
+        for (auto& b : advancedButtons) if (b) b->setAlpha(fixedButtonAlpha);
+    }
+
     if (expandedBand >= 0)
     {
         const float popupW = juce::jmin(900.f, (float) getWidth() - 40.f);
@@ -3403,22 +3456,22 @@ void VVChainAudioProcessorEditor::resized()
 
     const bool masterRuntime = metalLook.isMasterRuntimeActive();
     const int cardY = masterRuntime ? 351 : 404;
-    const int gap = masterRuntime ? 4 : 8;
+    const int gap = 8;
     const int left = masterRuntime ? 36 : 18;
-    const int unitW = masterRuntime
-        ? 238
+    const int cardW = masterRuntime
+        ? 236
         : (w - left * 2 - gap * 4) / 5;
-    const int cardW = unitW;
+    const int masterCardW = masterRuntime ? 228 : cardW;
     const int cardH = masterRuntime ? 570 : 510;
 
-    constexpr int masterW = 105;
-    constexpr int soloModeW = 114;
+    constexpr int masterW = 106;
+    constexpr int soloModeW = 106;
     constexpr int settingsW = 70;
     constexpr int themeW = 70;
-    constexpr int topY = 36;
-    const int topX = masterRuntime ? 761 : 0;
-    const int themeX = masterRuntime ? 1008 : w - 180;
-    const int settingsX = masterRuntime ? 1092 : w - 100;
+    constexpr int topY = 37;
+    const int topX = masterRuntime ? 862 : 0;
+    const int themeX = masterRuntime ? 0 : w - 180;
+    const int settingsX = masterRuntime ? 1113 : w - 100;
 
     if (settingsDismissOverlay)
         settingsDismissOverlay->setBounds(getLocalBounds());
@@ -3426,12 +3479,9 @@ void VVChainAudioProcessorEditor::resized()
         settingsButton->setBounds(
             settingsX, topY, settingsW, masterRuntime ? 34 : settingsW);
     if (uiThemeButton)
-    {
         uiThemeButton->setBounds(
-            themeX, topY, themeW, masterRuntime ? 34 : settingsW);
-        if (masterRuntime)
-            uiThemeButton->setButtonText("△");
-    }
+            masterRuntime ? juce::Rectangle<int>{}
+                          : juce::Rectangle<int>{ themeX, topY, themeW, settingsW });
     if (settingsPanel)
     {
         constexpr int panelW = 330;
@@ -3440,13 +3490,18 @@ void VVChainAudioProcessorEditor::resized()
         settingsPanel->setBounds(settingsX + settingsW - panelW,
                                  panelY, panelW, panelH);
     }
-    if (masterBypassButton)
-        masterBypassButton->setBounds(
-            topX, topY, masterW, masterRuntime ? 34 : 28);
+    if (topMasterBypassButton)
+        topMasterBypassButton->setBounds(
+            masterRuntime ? topX : juce::Rectangle<int>{}.getX(),
+            topY, masterRuntime ? masterW : 0, masterRuntime ? 34 : 0);
+    if (mixBypassButton)
+        mixBypassButton->setBounds(
+            masterRuntime ? 987 : 0, topY,
+            masterRuntime ? soloModeW : 0, masterRuntime ? 34 : 0);
+    if (masterBypassButton && !masterRuntime)
+        masterBypassButton->setBounds(topX, topY, masterW, 28);
     if (soloModeButton)
-        soloModeButton->setBounds(
-            masterRuntime ? 881 : topX + masterW + 7,
-            topY, soloModeW, masterRuntime ? 34 : 28);
+        soloModeButton->setBounds({});
 
     for (auto& b : bypassButtons)
     {
@@ -3462,18 +3517,18 @@ void VVChainAudioProcessorEditor::resized()
 
         if (soloButtons[(size_t) b])
             soloButtons[(size_t) b]->setBounds(
-                masterRuntime ? x + 18 : x + 14,
-                masterRuntime ? cardY + cardH - 48 : cardY + cardH - 50,
-                masterRuntime ? 100 : juce::jmax(72, (cardW - 34) / 2),
+                masterRuntime ? x + 16 : x + 14,
+                masterRuntime ? cardY + 516 : cardY + cardH - 50,
+                masterRuntime ? 101 : juce::jmax(72, (cardW - 34) / 2),
                 34);
 
-        const int innerX = masterRuntime ? x + 20 : x + 8;
+        const int innerX = masterRuntime ? x + 17 : x + 8;
         const int innerTop = masterRuntime ? cardY : cardY + 56;
-        const int innerW = masterRuntime ? cardW - 36 : cardW - 16;
-        const int cellGap = masterRuntime ? 4 : 6;
+        const int innerW = masterRuntime ? 204 : cardW - 16;
+        const int cellGap = masterRuntime ? 0 : 6;
         const int cellW = (innerW - cellGap * 2) / 3;
         const int rowH = masterRuntime ? 120 : 70;
-        const int knobH = masterRuntime ? 92 : 62;
+        const int knobH = masterRuntime ? 98 : 62;
 
         constexpr int dynamicSectionShiftY = 14;
         constexpr int lowerSectionShiftY = 8;
@@ -3485,7 +3540,7 @@ void VVChainAudioProcessorEditor::resized()
                 // Exact lanes measured from UI_LAYOUT_MASTER_EXACT_ORDER.png
                 // (1265 x 938), relative to the 570 px band card.
                 constexpr std::array<int, 5> masterOffsets
-                { 58, 179, 299, 299, 423 };
+                { 58, 179, 0, 299, 423 };
                 y += masterOffsets[(size_t) juce::jlimit(0, 4, row)];
             }
             else
@@ -3529,32 +3584,26 @@ void VVChainAudioProcessorEditor::resized()
         {
             const auto mixCell = cell(3, 2);
             advancedButtons[(size_t) b]->setBounds(
-                mixCell.getX() - 3, mixCell.getY() - 15,
-                mixCell.getWidth() + 6, 22);
+                mixCell.getX() - 1, mixCell.getY() - 13,
+                mixCell.getWidth() - 2, 24);
         }
 
-        // ROW 4 — exact reference ANALOG order: AMOUNT / TYPEA.
-        const int analogGap = masterRuntime ? 18 : 10;
-        const int analogW = (innerW - analogGap) / 2;
-        const int analogY = cell(4, 0).getY();
-        placeKnob("EQ_COLOR_B" + n,
-                  { innerX + (masterRuntime ? 6 : 0), analogY, analogW, knobH });
-        placeKnob("TAPE_DEGREE" + n,
-                  { innerX + analogW + analogGap - (masterRuntime ? 10 : 0),
-                    analogY, analogW, knobH });
+        // ROW 4 — exact reference order: AMOUNT / TYPE-A / TRANSIENT.
+        placeKnob("EQ_COLOR_B" + n, cell(4, 0));
+        placeKnob("TAPE_DEGREE" + n, cell(4, 1));
+        placeKnob("TRANSIENT" + n, cell(4, 2));
 
         if (auto* k = findKnob("UDMBC_COMP_A" + n)) k->slider->setBounds({});
         if (auto* k = findKnob("UDMBC_COMP_R" + n)) k->slider->setBounds({});
-        if (auto* k = findKnob("TRANSIENT" + n)) k->slider->setBounds({});
 
         if (analogModeButtons[(size_t) b])
             if (auto* knob = findKnob("EQ_COLOR_B" + n))
             {
                 const auto r = knob->slider->getBounds();
                 analogModeButtons[(size_t) b]->setBounds(
-                    masterRuntime ? r.getCentreX() - 1 : r.getCentreX() - 18,
-                    masterRuntime ? r.getY() - 19 : r.getY() - 25,
-                    masterRuntime ? 72 : 36,
+                    masterRuntime ? x + 69 : r.getCentreX() - 18,
+                    masterRuntime ? r.getY() - 24 : r.getY() - 25,
+                    masterRuntime ? 100 : 36,
                     masterRuntime ? 24 : 12);
             }
 
@@ -3605,27 +3654,25 @@ void VVChainAudioProcessorEditor::resized()
         }
     }
 
-    // Fifth unit: global MASTER controls only.
+    // Fifth unit: exact MASTER geometry from the 1265x938 reference.
     {
-        const int x = left + 4 * (cardW + gap);
-        const int innerX = x + 14;
-        const int innerW = cardW - 28;
+        const int x = masterRuntime ? 1012 : left + 4 * (cardW + gap);
+        const int innerX = x + 15;
+        const int innerW = masterRuntime ? 198 : cardW - 28;
 
         if (masterRuntime)
         {
-            const int halfGap = 10;
-            const int halfW = (innerW - halfGap) / 2;
-
-            placeKnob("DRY_WET",
-                      { innerX, cardY + 76,
-                        halfW, 118 });
-            placeKnob("OUTPUT_LEVEL",
-                      { innerX + halfW + halfGap, cardY + 76,
-                        halfW, 118 });
+            placeKnob("DRY_WET",      { x + 23,  cardY + 70, 68, 118 });
+            placeKnob("OUTPUT_LEVEL", { x + 128, cardY + 70, 84, 118 });
 
             if (deltaMonitorButton)
-                deltaMonitorButton->setBounds(
-                    innerX + 4, cardY + 203, 94, 35);
+                deltaMonitorButton->setBounds(x + 15, cardY + 203, 94, 35);
+            if (masterBypassButton)
+                masterBypassButton->setBounds(x + 117, cardY + 203, 96, 35);
+            if (soloPreButton)
+                soloPreButton->setBounds(x + 15, cardY + 460, 94, 34);
+            if (soloPostButton)
+                soloPostButton->setBounds(x + 116, cardY + 460, 97, 34);
         }
         else
         {
